@@ -1,0 +1,21 @@
+{
+  "serial": {
+    "provider_calls": 3,
+    "provider_host_ms": 1503.300086,
+    "blocking_16_byte_d2h_calls": 3,
+    "blocking_16_byte_d2h_host_ms": 1499.636478,
+    "actual_16_byte_d2h_gpu_ms": 0.0013440000000000001,
+    "diis_kernel_overlap_ms": 125.583113,
+    "other_provider_host_ms": 3.6636080000000675
+  },
+  "auto": {
+    "provider_calls": 3,
+    "provider_host_ms": 1424.3184899999999,
+    "blocking_16_byte_d2h_calls": 3,
+    "blocking_16_byte_d2h_host_ms": 1420.585835,
+    "actual_16_byte_d2h_gpu_ms": 0.001312,
+    "diis_kernel_overlap_ms": 43.759862000000005,
+    "other_provider_host_ms": 3.732654999999795
+  },
+  "scope": "Matched three-update host-only Nsight windows with resident exchange held at legacy. No VIBEQC_DF_TRACE fences. Long small D2H calls also await earlier K; these inclusive provider intervals are not the old component-fenced 203 ms interval. CUDA event completion tracing and memory sampling are enabled, so these are intrusive attribution, not promotion timings."
+}

@@ -1,0 +1,17 @@
+{
+  "host": "node3",
+  "cpu": "AMD EPYC 7K62 48-Core Processor",
+  "gpu": "NVIDIA GeForce RTX 5090, 580.95.05",
+  "python": "3.11.14",
+  "pyscf": "2.14.0",
+  "numpy": "2.4.6",
+  "pytest": "9.1.1",
+  "cmake": "4.2.1",
+  "ninja": "1.13.0.git.kitware.jobserver-pipe-1",
+  "cxx": "g++ 11.4.0",
+  "cuda": "nvcc 12.9.86",
+  "cuda_architecture": "120",
+  "build": "Fresh exact-input CPU/CUDA Release builds; AOT off; CUDA sm_120; 680 native/runtime/build inputs bound in source-identity.json.",
+  "agent": "ChatGPT",
+  "model": "GPT-5.6 Sol"
+}

@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "benchmark": "issue_41_dpdp_dpds_rys4",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "base_commit": "dcff6056817f75f54b0c20fe6f592d072b0a6a5b",
+      "dirty_candidate": true
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": "3.11.14",
+    "timestamp_utc": "2026-08-28T12:31:41.953197+00:00"
+  },
+  "implementation": {
+    "dpdp_force": {
+      "block_threads": 352,
+      "component_lanes": 324,
+      "minimum_blocks_per_sm": 1,
+      "pair_orientation": "swapped",
+      "pair_storage": "recomputed",
+      "recurrence": "rys4",
+      "schedule": "component_lanes"
+    },
+    "dpdp_fock": {
+      "block_threads": 64,
+      "reason": "Retain the accepted tiled value path while the force worker uses a larger cooperative Rys4 geometry.",
+      "schedule": "tiled_components"
+    },
+    "dpds_force": {
+      "block_threads": 256,
+      "component_lanes": 8,
+      "minimum_blocks_per_sm": 1,
+      "recurrence": "rys4",
+      "schedule": "uniform_component_warps",
+      "tasks_per_block": 32,
+      "tasks_per_warp": 4
+    },
+    "dpds_fock": {
+      "block_threads": 128,
+      "reason": "Retain the accepted component-lane value path while the force worker uses uniform component warps.",
+      "schedule": "component_lanes"
+    },
+    "generator_fix": "Tiled Fock Coulomb setup advances by the explicit Fock block size rather than the unrelated force block size."
+  },
+  "gates": {
+    "maximum_energy_error_hartree": 1e-10,
+    "maximum_force_error_hartree_per_bohr": 1e-07,
+    "maximum_small_system_regression_fraction": 0.02
+  },
+  "results": {
+    "isolated_force": {
+      "dpdp": {
+        "component_lane_rys4_milliseconds": 399.939026,
+        "component_lane_subset_wick_milliseconds": 1308.24463,
+        "maximum_force_error_hartree_per_bohr": 7.275957614183426e-12,
+        "passed": true,
+        "speedup": 3.2711102066843556
+      },
+      "dpds": {
+        "component_lane_rys4_milliseconds": 109.091446,
+        "component_lane_subset_wick_milliseconds": 152.188477,
+        "maximum_force_error_hartree_per_bohr": 6.3806737671257e-12,
+        "passed": true,
+        "uniform_warp_rys4_milliseconds": 15.3836489,
+        "uniform_warp_speedup": 9.892872490089136
+      }
+    },
+    "production_resources": {
+      "dpdp_ordinary_force": {
+        "registers_per_thread": 168,
+        "shared_bytes": 1312,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 200
+      },
+      "dpdp_persistent_force": {
+        "registers_per_thread": 168,
+        "shared_bytes": 1320,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 200
+      },
+      "dpds_ordinary_force": {
+        "registers_per_thread": 254,
+        "shared_bytes": 36872,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 112
+      },
+      "dpds_persistent_force": {
+        "registers_per_thread": 254,
+        "shared_bytes": 36872,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 112
+      }
+    },
+    "rejected_candidates": {
+      "dpdp_uniform_warp_rys4": {
+        "cubin_bytes": 8108160,
+        "helper_persistent_spill_load_bytes": 6712,
+        "helper_persistent_spill_store_bytes": 6320,
+        "helper_spill_load_bytes": 6576,
+        "helper_spill_store_bytes": 6296,
+        "reason": "Reject before endpoint testing because the uniform-warp helper spills and the kernel reaches the register ceiling.",
+        "registers_per_thread": 255,
+        "shared_bytes": 36872,
+        "stack_bytes": 1048
+      }
+    },
+    "production_profile": {
+      "combined_saving_milliseconds_per_replay": 118.5053177,
+      "dpdp": {
+        "candidate_milliseconds_per_replay": 35.60957,
+        "parent_milliseconds_per_replay": 114.339467,
+        "saving_milliseconds_per_replay": 78.729897,
+        "speedup": 3.2109196207648676
+      },
+      "dpds": {
+        "candidate_milliseconds_per_replay": 23.361051,
+        "parent_milliseconds_per_replay": 63.1364717,
+        "saving_milliseconds_per_replay": 39.7754207,
+        "speedup": 2.702638323078872
+      },
+      "profiled_replays": 3,
+      "two_electron_force_candidate_milliseconds_per_replay": 1137.41067,
+      "two_electron_force_parent_milliseconds_per_replay": 1256.506351,
+      "two_electron_force_saving_milliseconds_per_replay": 119.095681
+    },
+    "endpoint": {
+      "candidate_vibeqc_median_seconds": 2.5655019840341993,
+      "energy_error_hartree": 1.4551915228366852e-11,
+      "force_error_hartree_per_bohr": 3.1535673579441426e-08,
+      "gpu4pyscf_median_seconds": 2.13469925703248,
+      "iteration_branch": [
+        1
+      ],
+      "parent_vibeqc_median_seconds": 2.684644647000823,
+      "repeats_per_engine": 5,
+      "saving_seconds": 0.1191426629666239,
+      "vibeqc_over_gpu4pyscf": 1.2018095643133324
+    },
+    "small_system_checks": {
+      "96_ao": {
+        "change_from_parent_fraction": -0.034973776660004424,
+        "energy_error_hartree": 1.5916157281026244e-12,
+        "force_error_hartree_per_bohr": 9.262465565373912e-09,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.18942409800365567
+      },
+      "192_ao": {
+        "change_from_parent_fraction": -0.05146558047001521,
+        "energy_error_hartree": 9.549694368615746e-12,
+        "force_error_hartree_per_bohr": 1.0881416420693846e-08,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.7084939740016125
+      }
+    }
+  },
+  "current_gap": {
+    "gpu4pyscf_seconds": 2.13469925703248,
+    "parity_remaining_seconds": 0.4308027270017192,
+    "required_vibeqc_reduction_fraction_for_1_05x": 0.12631748724688383,
+    "target_ratio": 1.05,
+    "target_remaining_seconds": 0.3240677641500951,
+    "target_vibeqc_seconds": 2.241434219884104,
+    "two_electron_force_device_milliseconds": 1137.41067,
+    "vibeqc_seconds": 2.5655019840341993
+  }
+}

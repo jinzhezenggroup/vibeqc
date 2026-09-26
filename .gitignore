@@ -1,0 +1,34 @@
+/build/
+/.cache/
+/.pytest_cache/
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+*.dll
+*.egg-info/
+/.venv/
+/_references/
+/.artifacts/
+# Current CUDA ownership is derived from source + the semantic ledger and belongs
+# in CI/local artifacts, not in Git (avoids a repository-wide conflict hotspot).
+/docs/cuda_ownership_current.json
+# Benchmark runs are staged outside the reviewed result tree. A deliberate
+# small scientific fixture can still be force-added with a hash-pinned reason.
+/benchmarks/results/**/attempts/
+/benchmarks/results/**/*.log
+/benchmarks/results/**/*.xml
+/benchmarks/results/**/*.chk
+/benchmarks/results/**/*.checkpoint
+/benchmarks/results/**/*.nsys-rep
+/benchmarks/results/**/*.ncu-rep
+/benchmarks/results/**/*.sqlite*
+# Full benchmark run bundles belong in external or ignored artifact storage.
+/benchmarks/results/**/*.zip
+/benchmarks/results/**/*.tar
+/benchmarks/results/**/*.tar.gz
+/benchmarks/results/**/*.tgz
+/benchmarks/results/**/*.tar.xz
+/benchmarks/results/**/*.tar.zst
+/benchmarks/results/**/*.7z
+/docs/_build/

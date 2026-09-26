@@ -1,0 +1,153 @@
+{
+  "scope": "Post-master-integration CPU validation; not CUDA acceptance.",
+  "scientific_source_equivalent_to": "a0e622137c4331fdc759a720719664b7cace6a05",
+  "cpu_library_sha256": "02e6308dd58369fbc79dcd46180218c22ad9fa1f44bb6b05f20df0a61bcc17b7",
+  "cpu_build_identity_header_sha256": "5a1f26d61701499374068873de4235e46d255b2a0a9912b0410d24881b028d90",
+  "host_python_tests": {
+    "passed": 230,
+    "log_path": ".artifacts/pr427-integration/cpu-build-and-host-tests.log",
+    "sha256": "2aed252995e8ccf379cdfe32ae4589bb096928017105e29f6ae6d1f56538f8ef"
+  },
+  "cpu_native_tests": [
+    {
+      "name": "vibeqc_fock_build_tests",
+      "seconds": 0.00327977
+    },
+    {
+      "name": "vibeqc_ecp_projector_tests",
+      "seconds": 0.29649
+    },
+    {
+      "name": "vibeqc_ecp_capability_tests",
+      "seconds": 0.00314983
+    },
+    {
+      "name": "vibeqc_fock_provider_tests",
+      "seconds": 0.0859955
+    },
+    {
+      "name": "vibeqc_fock_api_tests",
+      "seconds": 0.00445635
+    },
+    {
+      "name": "vibeqc_native_tests",
+      "seconds": 0.0312999
+    },
+    {
+      "name": "vibeqc_final_state_tests",
+      "seconds": 0.00303103
+    },
+    {
+      "name": "vibeqc_ks_final_state_tests",
+      "seconds": 0.00251614
+    },
+    {
+      "name": "vibeqc_eigen_frame_tests",
+      "seconds": 0.00216158
+    },
+    {
+      "name": "vibeqc_initial_density_tests",
+      "seconds": 0.00293818
+    },
+    {
+      "name": "vibeqc_mp2_contract_tests",
+      "seconds": 0.00949462
+    },
+    {
+      "name": "vibeqc_scf_proposal_tests",
+      "seconds": 0.0684565
+    },
+    {
+      "name": "vibeqc_batch_tests",
+      "seconds": 0.139027
+    },
+    {
+      "name": "vibeqc_cpp_api_tests",
+      "seconds": 0.556794
+    },
+    {
+      "name": "vibeqc_cartesian_integral_tests",
+      "seconds": 0.0306745
+    },
+    {
+      "name": "vibeqc_density_fitting_tests",
+      "seconds": 0.156765
+    },
+    {
+      "name": "vibeqc_density_factor_tests",
+      "seconds": 0.00277507
+    },
+    {
+      "name": "vibeqc_cuda_eigensolver_policy_tests",
+      "seconds": 0.00150312
+    },
+    {
+      "name": "vibeqc_uhf_tests",
+      "seconds": 0.0304109
+    },
+    {
+      "name": "vibeqc_spherical_tests",
+      "seconds": 2.22497
+    },
+    {
+      "name": "vibeqc_basis_contract_tests",
+      "seconds": 0.00924183
+    },
+    {
+      "name": "vibeqc_grid_tests",
+      "seconds": 0.00297537
+    },
+    {
+      "name": "vibeqc_dft_tests",
+      "seconds": 0.74773
+    },
+    {
+      "name": "vibeqc_xc_point_tests",
+      "seconds": 0.00403649
+    },
+    {
+      "name": "vibeqc_uks_state_tests",
+      "seconds": 2.18301
+    },
+    {
+      "name": "vibeqc_dft_api_tests",
+      "seconds": 2.09852
+    },
+    {
+      "name": "vibeqc_scf_diagnostic_tests",
+      "seconds": 0.98271
+    },
+    {
+      "name": "vibeqc_dft_density_source_tests",
+      "seconds": 0.756403
+    },
+    {
+      "name": "vibeqc_uks_tests",
+      "seconds": 2.2441
+    },
+    {
+      "name": "vibeqc_mixed_precision_tests",
+      "seconds": 0.00253872
+    },
+    {
+      "name": "vibeqc_precision_policy_tests",
+      "seconds": 0.00655179
+    }
+  ],
+  "cpu_native_xml_sha256": "f75d339eed5390fad924a51c529393cd5cfc83798a3c1977f78c74c913232121",
+  "preserved_initial_host_attempt": {
+    "passed": 229,
+    "failed": 1,
+    "reason": "Fresh worktree had no native library; rebuilt integration CPU library and reran successfully.",
+    "log_sha256": "a4d08d75f19b7e64c7471bc36d8abaec38c93af42db97432afc45ceb115119db"
+  },
+  "full_fock_cross_repeat_verification": {
+    "raw_report_sha256": "f8eeb4ee38bb46175e1198f9698bbd34aa0584237ce4f39e97fc8c5acc1e42ee",
+    "all_48_samples_converged": true,
+    "maximum_across_all_current_tighter_repeat_pairs": 9.49906819869284e-13,
+    "maximum_repeat_spread_at_each_qualified_control": 7.016609515630989e-14,
+    "margin": 3e-12
+  },
+  "agent": "ChatGPT",
+  "model": "GPT-6 Astra Pro"
+}

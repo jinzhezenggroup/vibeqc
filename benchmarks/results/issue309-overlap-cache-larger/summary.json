@@ -1,0 +1,129 @@
+{
+  "comparisons": [
+    {
+      "ao": 96,
+      "baseline_over_candidate": 1.4701045018507621,
+      "baseline_seconds": 0.9210914559662342,
+      "batch": 4,
+      "candidate": "lazy-core",
+      "candidate_seconds": 0.626548286061734,
+      "endpoint": "energy"
+    },
+    {
+      "ao": 96,
+      "baseline_over_candidate": 1.1348395463395875,
+      "baseline_seconds": 2.5499476159457117,
+      "batch": 4,
+      "candidate": "lazy-core",
+      "candidate_seconds": 2.2469675331376493,
+      "endpoint": "force"
+    },
+    {
+      "ao": 96,
+      "baseline_over_candidate": 1.4866999306633364,
+      "baseline_seconds": 0.9212357779033482,
+      "batch": 4,
+      "candidate": "overlap-cache",
+      "candidate_seconds": 0.6196514568291605,
+      "endpoint": "energy"
+    },
+    {
+      "ao": 96,
+      "baseline_over_candidate": 1.1347905640633993,
+      "baseline_seconds": 2.541575577808544,
+      "batch": 4,
+      "candidate": "overlap-cache",
+      "candidate_seconds": 2.2396869151853025,
+      "endpoint": "force"
+    },
+    {
+      "ao": 96,
+      "baseline_over_candidate": 2.829277386552065,
+      "baseline_seconds": 0.9211633380036801,
+      "batch": 4,
+      "candidate": "combined",
+      "candidate_seconds": 0.32558254711329937,
+      "endpoint": "energy"
+    },
+    {
+      "ao": 96,
+      "baseline_over_candidate": 1.2959464659272077,
+      "baseline_seconds": 2.5327239350881428,
+      "batch": 4,
+      "candidate": "combined",
+      "candidate_seconds": 1.9543430239427835,
+      "endpoint": "force"
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.4749994832230697,
+      "baseline_seconds": 3.258497219067067,
+      "batch": 1,
+      "candidate": "lazy-core",
+      "candidate_seconds": 2.2091514309868217,
+      "endpoint": "energy"
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.1972979101538994,
+      "baseline_seconds": 6.383552834158763,
+      "batch": 1,
+      "candidate": "lazy-core",
+      "candidate_seconds": 5.331632820889354,
+      "endpoint": "force"
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.5143457124885609,
+      "baseline_seconds": 3.2713087571319193,
+      "batch": 1,
+      "candidate": "overlap-cache",
+      "candidate_seconds": 2.1602126450743526,
+      "endpoint": "energy"
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.2101714205483496,
+      "baseline_seconds": 6.389121442101896,
+      "batch": 1,
+      "candidate": "overlap-cache",
+      "candidate_seconds": 5.279517706017941,
+      "endpoint": "force"
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 2.9408442112235127,
+      "baseline_seconds": 3.264696695841849,
+      "batch": 1,
+      "candidate": "combined",
+      "candidate_seconds": 1.110122285084799,
+      "endpoint": "energy"
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.515303880095275,
+      "baseline_seconds": 6.388515254948288,
+      "batch": 1,
+      "candidate": "combined",
+      "candidate_seconds": 4.215996104059741,
+      "endpoint": "force"
+    }
+  ],
+  "complete_force_gate_hartree_per_bohr": 1e-08,
+  "df_allowance_bytes": 1073741824,
+  "energy_gate_hartree": 1e-09,
+  "iteration_retry_matched": true,
+  "limitations": [
+    "Cold and changed-geometry samples remain in the archive; only warm endpoints are summarized here.",
+    "Replay gates use separately prepared same-model endpoints, not an independent external-engine parity claim.",
+    "192 AO batch 4, 384 AO batch 1/4, constrained-memory and other spin/representation timing domains remain open.",
+    "Routine final reference eigensolves remain one per RHF item; #310/#311 are separate work."
+  ],
+  "native_library_sha256": "2a0a2af39f9b42887d138a966cc32a5eb3ba10df019a658883d5a43ca0eecbda",
+  "native_scientific_source_identity": "60c8eab129c85d7a5cb853d4104e0cb96d8d84c9ffbc86d5b34571405df6b41a",
+  "pairs_per_workload_selection": 5,
+  "schema": "vibeqc.issue309.larger-preparation-ablation.v1",
+  "scope": "RHF spherical def2-SVP and matching auxiliary basis; separate clean and profiled invocations",
+  "slurm_job_id": "9477",
+  "source_commit": "c10496949f0a3291ed3df374d04961d01777084f"
+}

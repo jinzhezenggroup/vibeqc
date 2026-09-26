@@ -1,0 +1,7 @@
+{
+  "path": "src/tensor/cuda_error.hpp",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
+  "regions": []
+}

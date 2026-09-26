@@ -1,0 +1,2106 @@
+{
+  "schema": "vibeqc.issue308.stage-ledger.v1",
+  "scope": "Diagnostic stage and fixed-D measurements. No clean endpoint speedup or GPU4PySCF parity claim. Incomplete K probes do not validate full K output.",
+  "runs": [
+    {
+      "run": "resident-96",
+      "status": "completed",
+      "slurm_job": "9538",
+      "seconds": 0.5469978800974786,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.53105392947106e-13,
+          "electron_trace": 40.000000000000014
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.190672406,
+          "nbf": 96,
+          "naux": 96,
+          "rank": 20,
+          "value_plan_resident_bytes": 34630549,
+          "value_plan_peak_bytes": 36114737,
+          "streamed": false
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 0.017900217
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 0.000953871
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 0.000520153
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 0.000213798
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 0.000601107
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 0.000389393
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 7.105427357601002e-15
+        }
+      ],
+      "independent_errors": {
+        "density": 4.440892098500626e-16,
+        "j": 1.127986593019159e-12,
+        "dense_k": 5.115907697472721e-13,
+        "occupied_k": 5.062616992290714e-13
+      },
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 9216,
+        "planner_auxiliary_tile": 96,
+        "executed_ao_rows": 96,
+        "executed_auxiliary_tile": 96
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        }
+      ],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 361.527995,
+          "exclusive_ms": 6.486631999999986
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 144.401185,
+          "exclusive_ms": 144.401185
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 4.916724,
+          "exclusive_ms": 4.916724
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 185.673473,
+          "exclusive_ms": 17.32471800000002
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 85.384277,
+          "exclusive_ms": 85.384277
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 82.964478,
+          "exclusive_ms": 0.1397270000000077
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1,
+          "inclusive_ms": 82.526472,
+          "exclusive_ms": 82.526472
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 0.298279,
+          "exclusive_ms": 0.298279
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 17.934133,
+          "exclusive_ms": 0.1318320000000001
+        },
+        "stream:ri_j_gemm": {
+          "calls": 4,
+          "inclusive_ms": 17.802301,
+          "exclusive_ms": 17.802301
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 1.386597,
+          "exclusive_ms": 0.442335
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.944262,
+          "exclusive_ms": 0.944262
+        },
+        "stream:ri_k_occupied": {
+          "calls": 2,
+          "inclusive_ms": 0.729251,
+          "exclusive_ms": 0.311273
+        },
+        "stream:ri_k_occupied_gemm": {
+          "calls": 4,
+          "inclusive_ms": 0.417978,
+          "exclusive_ms": 0.417978
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": null,
+      "observed_process_host_high_water_bytes": 71069696,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-96/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-96/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-tetramer-def2-svp-spherical",
+        "nbf": 96,
+        "naux": 96,
+        "energy": -304.7729549858992,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 96,
+        "metric_min_max": [
+          0.10102036582368622,
+          752.7269023992983
+        ],
+        "seed_checks": {
+          "commutator_max": 1.1155076862223723e-11,
+          "eigen_residual_max": 3.6708414086206176e-12,
+          "orthogonality_max": 1.532373786949424e-13,
+          "electron_trace_error": 7.105427357601002e-14,
+          "metric_idempotency_max": 1.000310945187266e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "0ab6cbb37b82d8c82567e75277da11ae798d4ec01b4afaeaf055ecfb970b91d8",
+        "reference_sha256": "1853f0340f503b2ded9d4b8a07bceed1a06ce5b813dee246034bbaf1018731a5"
+      },
+      "full_comparison_arrays": {
+        "bytes": 294912,
+        "sha256": "c7548a0639f82f359d5025f6f162eb0607a35d48c3f1021753c1068ca3517f27",
+        "retention": "Transient native J/K outputs; independent maximum errors cover every component, and exact inputs/runner are retained for reproduction."
+      }
+    },
+    {
+      "run": "streamed-96",
+      "status": "failed",
+      "slurm_job": "9538",
+      "seconds": 0.3375066160224378,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.53105392947106e-13,
+          "electron_trace": 40.000000000000014
+        }
+      ],
+      "independent_errors": "not_run",
+      "failure_detail": "CUDA DF auxiliary tile is invalid\n",
+      "k_shape": {},
+      "completed_jk_work": [],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 154.39434,
+          "exclusive_ms": 4.716231999999991
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 144.572232,
+          "exclusive_ms": 144.572232
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 4.942153,
+          "exclusive_ms": 4.942153
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 0.163723,
+          "exclusive_ms": 0.163723
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": null,
+      "observed_process_host_high_water_bytes": 70803456,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-96/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-96/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-tetramer-def2-svp-spherical",
+        "nbf": 96,
+        "naux": 96,
+        "energy": -304.7729549858992,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 96,
+        "metric_min_max": [
+          0.10102036582368622,
+          752.7269023992983
+        ],
+        "seed_checks": {
+          "commutator_max": 1.1155076862223723e-11,
+          "eigen_residual_max": 3.6708414086206176e-12,
+          "orthogonality_max": 1.532373786949424e-13,
+          "electron_trace_error": 7.105427357601002e-14,
+          "metric_idempotency_max": 1.000310945187266e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "0ab6cbb37b82d8c82567e75277da11ae798d4ec01b4afaeaf055ecfb970b91d8",
+        "reference_sha256": "1853f0340f503b2ded9d4b8a07bceed1a06ce5b813dee246034bbaf1018731a5"
+      }
+    },
+    {
+      "run": "streamed-96-valid",
+      "status": "completed",
+      "slurm_job": "9539",
+      "seconds": 1.3844175438862294,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.53105392947106e-13,
+          "electron_trace": 40.000000000000014
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.108618566,
+          "nbf": 96,
+          "naux": 96,
+          "rank": 20,
+          "value_plan_resident_bytes": 31386517,
+          "value_plan_peak_bytes": 32870705,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 0.169937474
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 0.168897076
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 0.161152241
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 0.152673755
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 0.152464625
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 0.150305781
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 8.881784197001252e-15
+        }
+      ],
+      "independent_errors": {
+        "density": 4.440892098500626e-16,
+        "j": 1.142197447734361e-12,
+        "dense_k": 5.133671265866724e-13,
+        "occupied_k": 5.044853423896711e-13
+      },
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 8192,
+        "planner_auxiliary_tile": 96,
+        "executed_ao_rows": 96,
+        "executed_auxiliary_tile": 85
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 1769472,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 1769472,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 1769472,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 1769472,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 1769472,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 1769472,
+          "equivalent_raw_tensor_passes": 2.0
+        }
+      ],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 1211.776475,
+          "exclusive_ms": 6.719473999999764
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 141.865779,
+          "exclusive_ms": 141.865779
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 5.165518,
+          "exclusive_ms": 5.165518
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 103.371533,
+          "exclusive_ms": 17.125204999999994
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 86.246328,
+          "exclusive_ms": 86.246328
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 322.331375,
+          "exclusive_ms": 0.6146350000000211
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 24,
+          "inclusive_ms": 945.525352,
+          "exclusive_ms": 945.525352
+        },
+        "stream:ri_j_metric_gemm": {
+          "calls": 4,
+          "inclusive_ms": 3.7297249999999993,
+          "exclusive_ms": 3.7297249999999993
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 321.13295500000004,
+          "exclusive_ms": 0.40558400000003303
+        },
+        "stream:transformed_three_center_generation": {
+          "calls": 8,
+          "inclusive_ms": 629.945434,
+          "exclusive_ms": 0.6442700000000059
+        },
+        "stream:tile_metric_gemm": {
+          "calls": 16,
+          "inclusive_ms": 1.762827,
+          "exclusive_ms": 1.762827
+        },
+        "stream:ri_k_gemm": {
+          "calls": 8,
+          "inclusive_ms": 1.0370810000000001,
+          "exclusive_ms": 1.0370810000000001
+        },
+        "stream:ri_k_occupied": {
+          "calls": 2,
+          "inclusive_ms": 311.189841,
+          "exclusive_ms": 0.37654900000001135
+        },
+        "stream:ri_k_occupied_gemm": {
+          "calls": 8,
+          "inclusive_ms": 0.558148,
+          "exclusive_ms": 0.558148
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": 614,
+      "observed_process_host_high_water_bytes": 604790784,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-96-valid/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-96-valid/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-tetramer-def2-svp-spherical",
+        "nbf": 96,
+        "naux": 96,
+        "energy": -304.7729549858992,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 96,
+        "metric_min_max": [
+          0.10102036582368622,
+          752.7269023992983
+        ],
+        "seed_checks": {
+          "commutator_max": 1.1155076862223723e-11,
+          "eigen_residual_max": 3.6708414086206176e-12,
+          "orthogonality_max": 1.532373786949424e-13,
+          "electron_trace_error": 7.105427357601002e-14,
+          "metric_idempotency_max": 1.000310945187266e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "0ab6cbb37b82d8c82567e75277da11ae798d4ec01b4afaeaf055ecfb970b91d8",
+        "reference_sha256": "1853f0340f503b2ded9d4b8a07bceed1a06ce5b813dee246034bbaf1018731a5"
+      },
+      "full_comparison_arrays": {
+        "bytes": 294912,
+        "sha256": "523e3e63069f3f3854af7e5604dfe0d9a62b4f09f5cee4e5cf10a057bd1de95f",
+        "retention": "Transient native J/K outputs; independent maximum errors cover every component, and exact inputs/runner are retained for reproduction."
+      }
+    },
+    {
+      "run": "resident-192",
+      "status": "completed",
+      "slurm_job": "9538",
+      "seconds": 1.2841281089931726,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 5.731176709426744e-14,
+          "electron_trace": 80.00000000000001
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.897464563,
+          "nbf": 192,
+          "naux": 192,
+          "rank": 40,
+          "value_plan_resident_bytes": 245826397,
+          "value_plan_peak_bytes": 249007097,
+          "streamed": false
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 0.017957015
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 0.004269289
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 0.001623128
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 0.000324991
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 0.003654886
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 0.00148788
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 8.881784197001252e-15
+        }
+      ],
+      "independent_errors": {
+        "density": 4.440892098500626e-16,
+        "j": 1.5347723092418164e-12,
+        "dense_k": 3.801403636316536e-13,
+        "occupied_k": 3.765876499528531e-13
+      },
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 36864,
+        "planner_auxiliary_tile": 192,
+        "executed_ao_rows": 192,
+        "executed_auxiliary_tile": 192
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        }
+      ],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 1101.181649,
+          "exclusive_ms": 23.090523000000076
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 152.788907,
+          "exclusive_ms": 152.788907
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 7.850505,
+          "exclusive_ms": 7.850505
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 889.513275,
+          "exclusive_ms": 16.80332300000009
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 96.448457,
+          "exclusive_ms": 96.448457
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 776.261495,
+          "exclusive_ms": 0.13120900000001257
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1,
+          "inclusive_ms": 774.383822,
+          "exclusive_ms": 774.383822
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 1.746464,
+          "exclusive_ms": 1.746464
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 17.905067000000003,
+          "exclusive_ms": 0.13948700000000128
+        },
+        "stream:ri_j_gemm": {
+          "calls": 4,
+          "inclusive_ms": 17.76558,
+          "exclusive_ms": 17.76558
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 7.329611,
+          "exclusive_ms": 0.4790359999999998
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 6.850574999999999,
+          "exclusive_ms": 6.850574999999999
+        },
+        "stream:ri_k_occupied": {
+          "calls": 2,
+          "inclusive_ms": 2.703761,
+          "exclusive_ms": 0.40459200000000006
+        },
+        "stream:ri_k_occupied_gemm": {
+          "calls": 4,
+          "inclusive_ms": 2.299169,
+          "exclusive_ms": 2.299169
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": 814,
+      "observed_process_host_high_water_bytes": 615821312,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-192/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-192/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-octamer-s4-def2-svp-spherical",
+        "nbf": 192,
+        "naux": 192,
+        "energy": -609.5876620703727,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 192,
+        "metric_min_max": [
+          0.09504632031548986,
+          1289.5078155068945
+        ],
+        "seed_checks": {
+          "commutator_max": 7.1918374033863586e-12,
+          "eigen_residual_max": 2.7950697312206785e-12,
+          "orthogonality_max": 1.7479591848007138e-13,
+          "electron_trace_error": 2.842170943040401e-14,
+          "metric_idempotency_max": 4.3520742565306136e-14
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "3b87f1b30107f77623dd74632c79babeb54803944ae474ff78a3631118e8cb77",
+        "reference_sha256": "bdf5428f65f0918712fd07bde07c12bfdddf5efc2f3e041a4f80a543e30f6979"
+      },
+      "full_comparison_arrays": {
+        "bytes": 1179648,
+        "sha256": "0c7689688020a6ceabf2b024a751903e02d19d8e864096703aed274e0a4cf404",
+        "retention": "Transient native J/K outputs; independent maximum errors cover every component, and exact inputs/runner are retained for reproduction."
+      }
+    },
+    {
+      "run": "streamed-192",
+      "status": "completed",
+      "slurm_job": "9538",
+      "seconds": 23.4589792850893,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 5.731176709426744e-14,
+          "electron_trace": 80.00000000000001
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.120844214,
+          "nbf": 192,
+          "naux": 192,
+          "rank": 40,
+          "value_plan_resident_bytes": 52364125,
+          "value_plan_peak_bytes": 55544825,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 1.499603458
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 4.993812713
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 4.990738374
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 1.443214811
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 5.015664308
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 5.019913966
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 8.881784197001252e-15
+        }
+      ],
+      "independent_errors": {
+        "density": 4.440892098500626e-16,
+        "j": 1.3109513474773848e-12,
+        "dense_k": 3.552713678800501e-13,
+        "occupied_k": 3.5349501104064984e-13
+      },
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 8192,
+        "planner_auxiliary_tile": 128,
+        "executed_ao_rows": 192,
+        "executed_auxiliary_tile": 28
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 14155776,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 49545216,
+          "equivalent_raw_tensor_passes": 7.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 49545216,
+          "equivalent_raw_tensor_passes": 7.0
+        },
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 14155776,
+          "equivalent_raw_tensor_passes": 2.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 49545216,
+          "equivalent_raw_tensor_passes": 7.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 49545216,
+          "equivalent_raw_tensor_passes": 7.0
+        }
+      ],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 23257.256256,
+          "exclusive_ms": 23.760072000000946
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 152.359478,
+          "exclusive_ms": 152.359478
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 7.749472,
+          "exclusive_ms": 7.749472
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 112.998598,
+          "exclusive_ms": 16.503462
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 96.495136,
+          "exclusive_ms": 96.495136
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 2942.2690000000002,
+          "exclusive_ms": 1.4595589999998992
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 236,
+          "inclusive_ms": 22914.97780299997,
+          "exclusive_ms": 22914.97780299997
+        },
+        "stream:ri_j_metric_gemm": {
+          "calls": 8,
+          "inclusive_ms": 4.6908129999999995,
+          "exclusive_ms": 4.6908129999999995
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 10008.547287000001,
+          "exclusive_ms": 0.8112789999995584
+        },
+        "stream:transformed_three_center_generation": {
+          "calls": 28,
+          "inclusive_ms": 20002.660422,
+          "exclusive_ms": 5.70743500000026
+        },
+        "stream:tile_metric_gemm": {
+          "calls": 196,
+          "inclusive_ms": 18.093811999999993,
+          "exclusive_ms": 18.093811999999993
+        },
+        "stream:ri_k_gemm": {
+          "calls": 28,
+          "inclusive_ms": 7.628942,
+          "exclusive_ms": 7.628942
+        },
+        "stream:ri_k_occupied": {
+          "calls": 2,
+          "inclusive_ms": 10009.572349,
+          "exclusive_ms": 0.9482549999993353
+        },
+        "stream:ri_k_occupied_gemm": {
+          "calls": 28,
+          "inclusive_ms": 6.070737999999999,
+          "exclusive_ms": 6.070737999999999
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": 624,
+      "observed_process_host_high_water_bytes": 625270784,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-192/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-192/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-octamer-s4-def2-svp-spherical",
+        "nbf": 192,
+        "naux": 192,
+        "energy": -609.5876620703727,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 192,
+        "metric_min_max": [
+          0.09504632031548986,
+          1289.5078155068945
+        ],
+        "seed_checks": {
+          "commutator_max": 7.1918374033863586e-12,
+          "eigen_residual_max": 2.7950697312206785e-12,
+          "orthogonality_max": 1.7479591848007138e-13,
+          "electron_trace_error": 2.842170943040401e-14,
+          "metric_idempotency_max": 4.3520742565306136e-14
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "3b87f1b30107f77623dd74632c79babeb54803944ae474ff78a3631118e8cb77",
+        "reference_sha256": "bdf5428f65f0918712fd07bde07c12bfdddf5efc2f3e041a4f80a543e30f6979"
+      },
+      "full_comparison_arrays": {
+        "bytes": 1179648,
+        "sha256": "1bd65b0da75fa11ca5472f0f799631b5abce4e988e65d33632d94be0c25e00ab",
+        "retention": "Transient native J/K outputs; independent maximum errors cover every component, and exact inputs/runner are retained for reproduction."
+      }
+    },
+    {
+      "run": "resident-384",
+      "status": "completed",
+      "slurm_job": "9538",
+      "seconds": 8.813650833908468,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 3.257869577585404e-13,
+          "electron_trace": 160.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 8.150685074,
+          "nbf": 384,
+          "naux": 384,
+          "rank": 80,
+          "value_plan_resident_bytes": 1882112749,
+          "value_plan_peak_bytes": 1890898313,
+          "streamed": false
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 0.018979872
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 0.053907546
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 0.016955707
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 0.001052239
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 0.055644622
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 0.018237895
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 1.0658141036401503e-14
+        }
+      ],
+      "independent_errors": {
+        "density": 8.881784197001252e-16,
+        "j": 2.8421709430404007e-12,
+        "dense_k": 3.4994229736184934e-13,
+        "occupied_k": 3.4638958368304884e-13
+      },
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 147456,
+        "planner_auxiliary_tile": 384,
+        "executed_ao_rows": 384,
+        "executed_auxiliary_tile": 384
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        }
+      ],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 8613.14787,
+          "exclusive_ms": 84.3171340000008
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 217.112864,
+          "exclusive_ms": 217.112864
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 23.095677,
+          "exclusive_ms": 23.095677
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 8127.456352,
+          "exclusive_ms": 16.359839000000648
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 98.878468,
+          "exclusive_ms": 98.878468
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 8012.218045,
+          "exclusive_ms": 0.13781199999993987
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1,
+          "inclusive_ms": 7986.554405,
+          "exclusive_ms": 7986.554405
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 25.525828,
+          "exclusive_ms": 25.525828
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 18.729654000000004,
+          "exclusive_ms": 0.139919000000005
+        },
+        "stream:ri_j_gemm": {
+          "calls": 4,
+          "inclusive_ms": 18.589734999999997,
+          "exclusive_ms": 18.589734999999997
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 108.497333,
+          "exclusive_ms": 1.409950000000002
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 107.08738299999999,
+          "exclusive_ms": 107.08738299999999
+        },
+        "stream:ri_k_occupied": {
+          "calls": 2,
+          "inclusive_ms": 33.938856,
+          "exclusive_ms": 1.7837350000000018
+        },
+        "stream:ri_k_occupied_gemm": {
+          "calls": 4,
+          "inclusive_ms": 32.155121,
+          "exclusive_ms": 32.155121
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": 2350,
+      "observed_process_host_high_water_bytes": 622354432,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-384/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-384/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-hexadecamer-2s4-def2-svp-spherical",
+        "nbf": 384,
+        "naux": 384,
+        "energy": -1219.1762188003197,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 384,
+        "metric_min_max": [
+          0.09370621943987813,
+          1699.0971217214687
+        ],
+        "seed_checks": {
+          "commutator_max": 3.951772242771767e-11,
+          "eigen_residual_max": 1.5425216659537e-11,
+          "orthogonality_max": 2.7481215545376025e-12,
+          "electron_trace_error": 8.526512829121202e-14,
+          "metric_idempotency_max": 1.112523539004845e-12
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "4dc1d561fdd97ba6951584bc5787902ec91b3118edb3d85cce1960087a4dc716",
+        "reference_sha256": "d559bb7cd28a9c708fde7ab47b91bc1c5eaa87c3cbee0411dc85b18ccbfcb2b1"
+      },
+      "full_comparison_arrays": {
+        "bytes": 4718592,
+        "sha256": "43812afbd9cd40121be2bba68d6ae7932574fb211a0df1aca8a6e10fa6cff31c",
+        "retention": "Transient native J/K outputs; independent maximum errors cover every component, and exact inputs/runner are retained for reproduction."
+      }
+    },
+    {
+      "run": "streamed-384",
+      "status": "timeout",
+      "slurm_job": "9538",
+      "seconds": 180.4114213010762,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 3.257869577585404e-13,
+          "electron_trace": 160.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.138235312,
+          "nbf": 384,
+          "naux": 384,
+          "rank": 80,
+          "value_plan_resident_bytes": 103203565,
+          "value_plan_peak_bytes": 111989129,
+          "streamed": true
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 15.96216467
+        }
+      ],
+      "independent_errors": "not_run",
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 8192,
+        "planner_auxiliary_tile": 128,
+        "executed_ao_rows": 384,
+        "executed_auxiliary_tile": 7
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 113246208,
+          "equivalent_raw_tensor_passes": 2.0
+        }
+      ],
+      "phases": {
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 218.108975,
+          "exclusive_ms": 218.108975
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 23.157406,
+          "exclusive_ms": 23.157406
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 114.940043,
+          "exclusive_ms": 16.135411000000005
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 98.804632,
+          "exclusive_ms": 98.804632
+        },
+        "stream:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 15961.10604,
+          "exclusive_ms": 3.142511000000013
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1268,
+          "inclusive_ms": 179581.51892599987,
+          "exclusive_ms": 179581.51892599987
+        },
+        "stream:ri_j_metric_gemm": {
+          "calls": 6,
+          "inclusive_ms": 4.331068,
+          "exclusive_ms": 4.331068
+        },
+        "stream:transformed_three_center_generation": {
+          "calls": 20,
+          "inclusive_ms": 156106.15070499998,
+          "exclusive_ms": 28.01769399999921
+        },
+        "stream:tile_metric_gemm": {
+          "calls": 1154,
+          "inclusive_ms": 173.48296499999972,
+          "exclusive_ms": 173.48296499999972
+        },
+        "stream:ri_k_gemm": {
+          "calls": 40,
+          "inclusive_ms": 20.270220000000002,
+          "exclusive_ms": 20.270220000000002
+        }
+      },
+      "pending": [
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 0,
+          "parent": -1,
+          "time_ns": 1836659407022774,
+          "elapsed_ms": 0.022813,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "host",
+          "name": "fixed_density_probe"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 126,
+          "parent": 0,
+          "time_ns": 1836675799076364,
+          "elapsed_ms": 4e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "ri_k"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 2387,
+          "parent": 126,
+          "time_ns": 1836831926443397,
+          "elapsed_ms": 3e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "transformed_three_center_generation"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 2496,
+          "parent": 2387,
+          "time_ns": 1836839651028470,
+          "elapsed_ms": 3e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "raw_three_center_generation"
+        }
+      ],
+      "peak_sampled_process_gpu_mib": 642,
+      "observed_process_host_high_water_bytes": 638087168,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-384/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-384/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-hexadecamer-2s4-def2-svp-spherical",
+        "nbf": 384,
+        "naux": 384,
+        "energy": -1219.1762188003197,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 384,
+        "metric_min_max": [
+          0.09370621943987813,
+          1699.0971217214687
+        ],
+        "seed_checks": {
+          "commutator_max": 3.951772242771767e-11,
+          "eigen_residual_max": 1.5425216659537e-11,
+          "orthogonality_max": 2.7481215545376025e-12,
+          "electron_trace_error": 8.526512829121202e-14,
+          "metric_idempotency_max": 1.112523539004845e-12
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": null,
+        "input_sha256": "4dc1d561fdd97ba6951584bc5787902ec91b3118edb3d85cce1960087a4dc716",
+        "reference_sha256": "d559bb7cd28a9c708fde7ab47b91bc1c5eaa87c3cbee0411dc85b18ccbfcb2b1"
+      }
+    },
+    {
+      "run": "resident-768",
+      "status": "completed",
+      "slurm_job": "9538",
+      "seconds": 107.58964621485211,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.38015582137527e-12,
+          "electron_trace": 320.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 104.227090596,
+          "nbf": 768,
+          "naux": 768,
+          "rank": 160,
+          "value_plan_resident_bytes": 14767123981,
+          "value_plan_peak_bytes": 14796485801,
+          "streamed": false
+        },
+        {
+          "operation": "j",
+          "sample": 0,
+          "seconds": 0.022365609
+        },
+        {
+          "operation": "dense",
+          "sample": 0,
+          "seconds": 0.868258139
+        },
+        {
+          "operation": "occupied",
+          "sample": 0,
+          "seconds": 0.210923054
+        },
+        {
+          "operation": "j",
+          "sample": 1,
+          "seconds": 0.005658978
+        },
+        {
+          "operation": "dense",
+          "sample": 1,
+          "seconds": 0.829030215
+        },
+        {
+          "operation": "occupied",
+          "sample": 1,
+          "seconds": 0.209760715
+        },
+        {
+          "operation": "dense_occupied_comparison",
+          "maximum_k_error": 1.7763568394002505e-14
+        }
+      ],
+      "independent_errors": {
+        "density": 4.440892098500626e-16,
+        "j": 4.163780431554187e-12,
+        "dense_k": 9.734435479913373e-13,
+        "occupied_k": 9.85878045867139e-13
+      },
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 589824,
+        "planner_auxiliary_tile": 768,
+        "executed_ao_rows": 768,
+        "executed_auxiliary_tile": 768
+      },
+      "completed_jk_work": [
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_j",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        },
+        {
+          "operation": "ri_k_occupied",
+          "logical_source_evaluations": 0,
+          "equivalent_raw_tensor_passes": 0.0
+        }
+      ],
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 107389.743037,
+          "exclusive_ms": 378.03648599999724
+        },
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 650.870525,
+          "exclusive_ms": 650.870525
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 113.077441,
+          "exclusive_ms": 113.077441
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 104113.83292,
+          "exclusive_ms": 18.092852000001585
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 100.356639,
+          "exclusive_ms": 100.356639
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 103995.383429,
+          "exclusive_ms": 0.14501699998800177
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1,
+          "inclusive_ms": 103587.459082,
+          "exclusive_ms": 103587.459082
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 407.77933,
+          "exclusive_ms": 407.77933
+        },
+        "stream:ri_j": {
+          "calls": 2,
+          "inclusive_ms": 24.386709,
+          "exclusive_ms": 0.18727800000000006
+        },
+        "stream:ri_j_gemm": {
+          "calls": 4,
+          "inclusive_ms": 24.199431,
+          "exclusive_ms": 24.199431
+        },
+        "stream:ri_k": {
+          "calls": 2,
+          "inclusive_ms": 1693.403874,
+          "exclusive_ms": 4.894786999999951
+        },
+        "stream:ri_k_gemm": {
+          "calls": 4,
+          "inclusive_ms": 1688.509087,
+          "exclusive_ms": 1688.509087
+        },
+        "stream:ri_k_occupied": {
+          "calls": 2,
+          "inclusive_ms": 416.135082,
+          "exclusive_ms": 15.429291000000035
+        },
+        "stream:ri_k_occupied_gemm": {
+          "calls": 4,
+          "inclusive_ms": 400.705791,
+          "exclusive_ms": 400.705791
+        }
+      },
+      "pending": [],
+      "peak_sampled_process_gpu_mib": 14514,
+      "observed_process_host_high_water_bytes": 705736704,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-768/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/resident-768/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-32mer-4s4-def2-svp-spherical",
+        "nbf": 768,
+        "naux": 768,
+        "energy": -2438.354141054296,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 768,
+        "metric_min_max": [
+          0.09304817858971055,
+          2399.4330289516
+        ],
+        "seed_checks": {
+          "commutator_max": 1.6087747246129418e-12,
+          "eigen_residual_max": 6.383810147170266e-12,
+          "orthogonality_max": 5.437206240799242e-12,
+          "electron_trace_error": 2.2737367544323206e-13,
+          "metric_idempotency_max": 2.6401103525586223e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851",
+        "input_sha256": "decb7090464088c8cd858036a8afdb0c7f47d3da1f0e65ce2ee4e5d30e8da6d4",
+        "reference_sha256": "34bfeca7c1a31fa72246b4588cfa1901539f76895e537b069ff04e946953e047"
+      },
+      "full_comparison_arrays": {
+        "bytes": 18874368,
+        "sha256": "b82b3656acd065c917b49e755643aceaa62c8b50f3c0e3416b3176dc588d7f1f",
+        "retention": "Transient native J/K outputs; independent maximum errors cover every component, and exact inputs/runner are retained for reproduction."
+      }
+    },
+    {
+      "run": "streamed-768",
+      "status": "timeout",
+      "slurm_job": "9538",
+      "seconds": 120.62041471200064,
+      "native_rows": [
+        {
+          "operation": "identity",
+          "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+          "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+        },
+        {
+          "operation": "seed_qualification",
+          "overlap_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.38015582137527e-12,
+          "electron_trace": 320.00000000000006
+        },
+        {
+          "operation": "setup",
+          "seconds": 0.22311839,
+          "nbf": 768,
+          "naux": 768,
+          "rank": 160,
+          "value_plan_resident_bytes": 303066637,
+          "value_plan_peak_bytes": 332428457,
+          "streamed": true
+        }
+      ],
+      "independent_errors": "not_run",
+      "failure_detail": null,
+      "k_shape": {
+        "planner_ao_pair_tile": 8192,
+        "planner_auxiliary_tile": 128,
+        "executed_ao_rows": 768,
+        "executed_auxiliary_tile": 1
+      },
+      "completed_jk_work": [],
+      "phases": {
+        "host:one_electron": {
+          "calls": 1,
+          "inclusive_ms": 646.771774,
+          "exclusive_ms": 646.771774
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 105.4547,
+          "exclusive_ms": 105.4547
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 117.475219,
+          "exclusive_ms": 17.403229999999994
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 100.071989,
+          "exclusive_ms": 100.071989
+        },
+        "stream:transformed_three_center_generation": {
+          "calls": 3,
+          "inclusive_ms": 100693.12372599999,
+          "exclusive_ms": 100693.12372599999
+        },
+        "stream:ri_k_gemm": {
+          "calls": 6,
+          "inclusive_ms": 4.157432,
+          "exclusive_ms": 4.157432
+        }
+      },
+      "pending": [
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 0,
+          "parent": -1,
+          "time_ns": 1836948753801204,
+          "elapsed_ms": 7e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "host",
+          "name": "fixed_density_probe"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 5,
+          "parent": 0,
+          "time_ns": 1836949948919338,
+          "elapsed_ms": 3e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "ri_k"
+        },
+        {
+          "schema": "vibeqc.df_progress",
+          "version": 1,
+          "id": 15,
+          "parent": 5,
+          "time_ns": 1837050646942483,
+          "elapsed_ms": 3e-05,
+          "event": "BEGIN",
+          "status": "started",
+          "execution": "stream",
+          "name": "transformed_three_center_generation"
+        }
+      ],
+      "peak_sampled_process_gpu_mib": 690,
+      "observed_process_host_high_water_bytes": 662794240,
+      "source": {
+        "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+        "git_dirty": false,
+        "git_status": [],
+        "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {},
+        "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+        "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+        "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+      },
+      "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+      "cuda_runtime_version": 12090,
+      "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+      "diagnostic_environment": {
+        "VIBEQC_DF_VALUE_MAPPING": "primitive",
+        "VIBEQC_DF_PROGRESS_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-768/progress.jsonl",
+        "VIBEQC_DF_TRACE": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/streamed-768/cuda.jsonl"
+      },
+      "input": {
+        "schema": "vibeqc.issue308.fixed-density-input.v1",
+        "case": "water-32mer-4s4-def2-svp-spherical",
+        "nbf": 768,
+        "naux": 768,
+        "energy": -2438.354141054296,
+        "engine": "PySCF",
+        "engine_version": "2.14.0",
+        "metric_relative_threshold": 1e-10,
+        "metric_rank": 768,
+        "metric_min_max": [
+          0.09304817858971055,
+          2399.4330289516
+        ],
+        "seed_checks": {
+          "commutator_max": 1.6087747246129418e-12,
+          "eigen_residual_max": 6.383810147170266e-12,
+          "orthogonality_max": 5.437206240799242e-12,
+          "electron_trace_error": 2.2737367544323206e-13,
+          "metric_idempotency_max": 2.6401103525586223e-13
+        },
+        "scope": "independently converged fixed D; not cold-start timing",
+        "checkpoint_sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851",
+        "input_sha256": "decb7090464088c8cd858036a8afdb0c7f47d3da1f0e65ce2ee4e5d30e8da6d4",
+        "reference_sha256": "34bfeca7c1a31fa72246b4588cfa1901539f76895e537b069ff04e946953e047"
+      }
+    }
+  ],
+  "qualification": {
+    "slurm_job": "9538",
+    "gpu_pytest": "57 passed in 111.49s",
+    "files": [
+      "tests/python/test_df_retry_eigen_cuda.py",
+      "tests/python/test_df_setup_eigen_cuda.py",
+      "tests/python/test_df_final_state_cuda.py",
+      "tests/python/test_df_occupied_cuda.py"
+    ],
+    "log_sha256": "1a0a7ae1f6b39c937ccd2c2f425d715ce61706a52cf7f2fbf9f478f6af95c337",
+    "native_source_commit": "4d515cf800bf75606098c968ba59ac8c3726be5c"
+  },
+  "archive": {
+    "path": "stage-evidence.zip",
+    "sha256": "454914f981bb332f6c27da2915453dfd29be33f46d663321a71f291a5d1a218f",
+    "bytes": 371312,
+    "restoration": "Every member reread and compared byte-for-byte."
+  },
+  "files": [
+    {
+      "path": "input-192/input.json",
+      "bytes": 900,
+      "sha256": "bbd45448e063afbce770164d7fd7a30db018aac105ceabc1ea664dd7f7f38ef1"
+    },
+    {
+      "path": "input-384/input.json",
+      "bytes": 901,
+      "sha256": "b94f52e4e0c0ae9b3893f56edf7707e9050c73b297a4339c06b4dc0f3fb71625"
+    },
+    {
+      "path": "input-768/input.json",
+      "bytes": 957,
+      "sha256": "51ebb1e6e97119823b5e7f8faf02014817018ea63b11411573d7d4e8f0652048"
+    },
+    {
+      "path": "input-96/input.json",
+      "bytes": 892,
+      "sha256": "0400858a9e0ce19c8b3531c009f93845050c6b6c1f32ddd40cfd9a50815ee35a"
+    },
+    {
+      "path": "reproduction/retention.py",
+      "bytes": 4998,
+      "sha256": "b789ad726af910ed749bea28b77ffdc9b8cd77aa00ab069a97d4590b33ab57d9"
+    },
+    {
+      "path": "reproduction/run-bounded.sh",
+      "bytes": 1648,
+      "sha256": "40a5549d5ea1d7b78b486cd382ab4019e3516325028672d31ce80f4321aa56a7"
+    },
+    {
+      "path": "resident-192/cuda.jsonl",
+      "bytes": 5082,
+      "sha256": "8f3cf5294549ecf551d726d75ee3aeaff71ec4dd9c39062d25639beb2c79548f"
+    },
+    {
+      "path": "resident-192/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "resident-192/native.jsonl",
+      "bytes": 961,
+      "sha256": "ba21cb944efa4261e1c8287e5a0d3849b1b127e2fe452f93d4cce1859741a5fc"
+    },
+    {
+      "path": "resident-192/progress.jsonl",
+      "bytes": 33570,
+      "sha256": "e0df10ce6a57cf198cbf3f99f1899336670761e6ac45a033c302bed64fc074ef"
+    },
+    {
+      "path": "resident-192/result.json",
+      "bytes": 42413,
+      "sha256": "74e2f244265c8cc1705182a3129bb9e467b059c701e46bde212370c9e8afcaa5"
+    },
+    {
+      "path": "resident-384/cuda.jsonl",
+      "bytes": 5094,
+      "sha256": "96a799ea000755167e24577d4f5f16dafcd533faa2331385e1a6420ac825580c"
+    },
+    {
+      "path": "resident-384/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "resident-384/native.jsonl",
+      "bytes": 959,
+      "sha256": "c82f9db89a46a95ce55ed6f666f305934850ebbfbc6053dba1137bca6bef9cad"
+    },
+    {
+      "path": "resident-384/progress.jsonl",
+      "bytes": 33546,
+      "sha256": "30328006201008c3cdab05ca10483da90215252e5395d2d4ec825e3b8a312a20"
+    },
+    {
+      "path": "resident-384/result.json",
+      "bytes": 45243,
+      "sha256": "b749c58968c6d4c0f51bb0ea6d3a0f3d935ad9096231a26cfa7936b128e9efac"
+    },
+    {
+      "path": "resident-768/cuda.jsonl",
+      "bytes": 5119,
+      "sha256": "5f104826429cb51ec9645ef0f5bfd25bfd7bed03253047f65e9b870f277a0abd"
+    },
+    {
+      "path": "resident-768/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "resident-768/native.jsonl",
+      "bytes": 971,
+      "sha256": "bc98458d591e35462f5ebf8f683d860deeb3ffe974c6659b63547581cea345dd"
+    },
+    {
+      "path": "resident-768/progress.jsonl",
+      "bytes": 33506,
+      "sha256": "0fa88e7553cd0a650ef856ab530115b2d5cec016d49407a6ad241523b142a6fd"
+    },
+    {
+      "path": "resident-768/result.json",
+      "bytes": 82646,
+      "sha256": "18f6867e1cb9bfe291ba7ffaa7fb357e87ceea2f974a0051308fd76db04bba0a"
+    },
+    {
+      "path": "resident-96/cuda.jsonl",
+      "bytes": 5065,
+      "sha256": "f3a24a26511b603f3cec2723a156f91a5c6fd7855d0663c445ef062acc4054ac"
+    },
+    {
+      "path": "resident-96/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "resident-96/native.jsonl",
+      "bytes": 982,
+      "sha256": "57ecf34e86f019c0df79f5e9d73bcbe88ae069c80b2b2645d1092a0ff5e708d5"
+    },
+    {
+      "path": "resident-96/progress.jsonl",
+      "bytes": 33587,
+      "sha256": "bb1453c4884ca5dcf3fc323830bec06c72fef71200fea49d0ebcaa5ccfed93f8"
+    },
+    {
+      "path": "resident-96/result.json",
+      "bytes": 41921,
+      "sha256": "c3deb68e8d4b3166a97fb931746b5f68a95c3c33243bd5150605555a555b5199"
+    },
+    {
+      "path": "streamed-192/cuda.jsonl",
+      "bytes": 60577,
+      "sha256": "0d11f8b6e745d48a2e348394464d5b23b70cf5d48bf0cb42d3c40ea17afa74eb"
+    },
+    {
+      "path": "streamed-192/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "streamed-192/native.jsonl",
+      "bytes": 963,
+      "sha256": "06af9248000b6de71ad28399d61e9ee9ad02c684ba043a312b87e7b9f3db19d5"
+    },
+    {
+      "path": "streamed-192/progress.jsonl",
+      "bytes": 533280,
+      "sha256": "a527add9eb77f82d151eede7b8abb481392d4c0999d8055a4db4a706c64c2b5b"
+    },
+    {
+      "path": "streamed-192/result.json",
+      "bytes": 471917,
+      "sha256": "710ba958f95bcf2e72b90c5cb003117fa0caac0be837de9762391b74d02bebcf"
+    },
+    {
+      "path": "streamed-384/cuda.jsonl",
+      "bytes": 20251,
+      "sha256": "73c669fdecb99b508e6b5be42526807c6365bf665d51b74fb63f8ba07fece0df"
+    },
+    {
+      "path": "streamed-384/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "streamed-384/native.jsonl",
+      "bytes": 562,
+      "sha256": "7153c6540f78d2f46d5ccbb5f74f015890cdc0ff16dc7acacf4f14ca644958fe"
+    },
+    {
+      "path": "streamed-384/progress.jsonl",
+      "bytes": 2375503,
+      "sha256": "c0af22c8d613500abd970ca1b7b80d9674d9e22a4e5f96ba0ffe00a763a0d4ff"
+    },
+    {
+      "path": "streamed-384/result.json",
+      "bytes": 2023996,
+      "sha256": "dc8bbbaa345ccb840ff69e07a5e76f50a1d750dae1d2254833bf2fdb52e8eaf5"
+    },
+    {
+      "path": "streamed-768/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "streamed-768/native.jsonl",
+      "bytes": 509,
+      "sha256": "88568c9fa1f230c72ed9fffbc28ff385cb53c8fb9d3111df567587d6ff90ed4d"
+    },
+    {
+      "path": "streamed-768/progress.jsonl",
+      "bytes": 16370,
+      "sha256": "3b598f1b9669d4ef4b958e12a091f6b2b2eb908ccb3f774a4fae8ff8032e0e6c"
+    },
+    {
+      "path": "streamed-768/result.json",
+      "bytes": 66822,
+      "sha256": "8d34d102d93c534bb6207a8e4674d6c1ad0d8ceb2b35875bd13fdae85e90fee8"
+    },
+    {
+      "path": "streamed-96-valid/cuda.jsonl",
+      "bytes": 12614,
+      "sha256": "f6181042dbf4b0d1594dbab84c1f1bf549ba6471773fed3b1683b6953c610453"
+    },
+    {
+      "path": "streamed-96-valid/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "streamed-96-valid/native.jsonl",
+      "bytes": 950,
+      "sha256": "930aa0a0769a82cbc6242c994bb16c8d6e3f834b8e25917c06660f21ad30e5a4"
+    },
+    {
+      "path": "streamed-96-valid/progress.jsonl",
+      "bytes": 90323,
+      "sha256": "3d8eaf1fbf3ab5a507752dc71f619bf5e6b51c29eafe853fd7f39c30db049a34"
+    },
+    {
+      "path": "streamed-96-valid/result.json",
+      "bytes": 93157,
+      "sha256": "2834b1b49f57a3c2c019355c3f95e8a92d5cebaebcd0f7d470d300018764041a"
+    },
+    {
+      "path": "streamed-96/measured-source.patch",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "streamed-96/native.jsonl",
+      "bytes": 348,
+      "sha256": "298c6a45306083075e5c95a4da45e8009a8d4ec464fe93e798c7abd37be794e8"
+    },
+    {
+      "path": "streamed-96/progress.jsonl",
+      "bytes": 2312,
+      "sha256": "8cbab8c137345969986b6fa037f0910853c5af7197dc63cc42f3c1c27bf64cdb"
+    },
+    {
+      "path": "streamed-96/result.json",
+      "bytes": 5497,
+      "sha256": "5f50377b93e86254d895080c38cd48857159002af67e1218b4451a8775087bbe"
+    }
+  ]
+}

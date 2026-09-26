@@ -1,0 +1,102 @@
+{
+  "base_commit": "dd7f9c9e2c16accbbbc1f23589f71b655b1c6450",
+  "scope": "16 measured scientific source/test files; documentation is outside the numerical overlay",
+  "files": [
+    {
+      "path": "include/vibeqc/vibeqc.h",
+      "measured_sha256": "bb17615b21c6a35cf4721d7addf0d28c25b42e8555f9227d227f670a39a9810f",
+      "git_blob_sha256": "bb17615b21c6a35cf4721d7addf0d28c25b42e8555f9227d227f670a39a9810f",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "python/vibeqc/ecp.py",
+      "measured_sha256": "b8eb48ea437a5bd9725609cc37db268919be24185125bf2578e0b506dffb8ccc",
+      "git_blob_sha256": "b8eb48ea437a5bd9725609cc37db268919be24185125bf2578e0b506dffb8ccc",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "python/vibeqc/resources_hf.py",
+      "measured_sha256": "25d1a89661b02f3e4f5c08bf8cd20d847689e15d33a4e194a7226d24bbc0b39b",
+      "git_blob_sha256": "25d1a89661b02f3e4f5c08bf8cd20d847689e15d33a4e194a7226d24bbc0b39b",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "python/vibeqc_compiler/integral/ecp_grid.py",
+      "measured_sha256": "58d319551f7bc6dcf976253eb34cf103fcd3b49cb85fb7633538f0fc5a5d54d2",
+      "git_blob_sha256": "58d319551f7bc6dcf976253eb34cf103fcd3b49cb85fb7633538f0fc5a5d54d2",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "python/vibeqc_compiler/integral/ecp_projector.py",
+      "measured_sha256": "5bea424473be88a5fa19fd65ae251d0e929d3086cade160d7611215d396da70f",
+      "git_blob_sha256": "5bea424473be88a5fa19fd65ae251d0e929d3086cade160d7611215d396da70f",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "python/vibeqc_compiler/integral/ir.py",
+      "measured_sha256": "980c2ada23a3dd8c552a9b34c87f142bd724e9fc0082b0ede6329d407d5fae4f",
+      "git_blob_sha256": "980c2ada23a3dd8c552a9b34c87f142bd724e9fc0082b0ede6329d407d5fae4f",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "src/api/c_api_ecp.cpp",
+      "measured_sha256": "65e9d62c87ae3c22a325ad7658e46487ac814cd10107e1c37a4f9ed8ba2215b4",
+      "git_blob_sha256": "65e9d62c87ae3c22a325ad7658e46487ac814cd10107e1c37a4f9ed8ba2215b4",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "src/integrals/ecp.cpp",
+      "measured_sha256": "d27d4fa563650b10b2cc76bb32ce099587a8dded8ff1a0007208596689adf564",
+      "git_blob_sha256": "d27d4fa563650b10b2cc76bb32ce099587a8dded8ff1a0007208596689adf564",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "src/integrals/ecp.hpp",
+      "measured_sha256": "9a5ae097bf76bc9421a46b8ead66d34de1e5d65f1faa0d3d1761cb963af830bf",
+      "git_blob_sha256": "9a5ae097bf76bc9421a46b8ead66d34de1e5d65f1faa0d3d1761cb963af830bf",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "src/integrals/ecp_cuda.cu",
+      "measured_sha256": "a23beee43a6ef3187480ae3f255a2f7abff7b2b769fe0a6eb771ff340d0e1a3e",
+      "git_blob_sha256": "a23beee43a6ef3187480ae3f255a2f7abff7b2b769fe0a6eb771ff340d0e1a3e",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "tests/native/test_ecp_capabilities.cpp",
+      "measured_sha256": "886bcc44728512ba0b59df966718af6d65e1aa5c5e901730cf6ec6d48540ccc8",
+      "git_blob_sha256": "886bcc44728512ba0b59df966718af6d65e1aa5c5e901730cf6ec6d48540ccc8",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "tests/native/test_ecp_projector.cpp",
+      "measured_sha256": "0370421eca174dbdbfe12c327cb8af8a46388601a90dd3e821267481baf25345",
+      "git_blob_sha256": "0370421eca174dbdbfe12c327cb8af8a46388601a90dd3e821267481baf25345",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "tests/python/test_ecp.py",
+      "measured_sha256": "91a0e782cd4e029097e43d0ebe71ff6775042d8d165a7f25f17d26a230709420",
+      "git_blob_sha256": "91a0e782cd4e029097e43d0ebe71ff6775042d8d165a7f25f17d26a230709420",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "tests/python/test_ecp_ir.py",
+      "measured_sha256": "71605ab0cdaf2884a9728f3a73fc775f05a7aca977fe72f6d90aeac8a6237ec1",
+      "git_blob_sha256": "71605ab0cdaf2884a9728f3a73fc775f05a7aca977fe72f6d90aeac8a6237ec1",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "tests/python/test_ecp_validation.py",
+      "measured_sha256": "170611d81a0c0776ec2f6c52d3c7e6d4991ea50ce30e1e96abde788e9f664bda",
+      "git_blob_sha256": "170611d81a0c0776ec2f6c52d3c7e6d4991ea50ce30e1e96abde788e9f664bda",
+      "lf_normalized_match": true
+    },
+    {
+      "path": "tests/python/test_ecp_f_projector.py",
+      "measured_sha256": "93edaa3a7019cce15bca4e4b6a60e743c458cb8400853af35b6b3ad32def3d04",
+      "git_blob_sha256": "93edaa3a7019cce15bca4e4b6a60e743c458cb8400853af35b6b3ad32def3d04",
+      "lf_normalized_match": true
+    }
+  ]
+}

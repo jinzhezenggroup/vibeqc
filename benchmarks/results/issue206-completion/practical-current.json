@@ -1,0 +1,85 @@
+{
+  "schema": "vibeqc.issue206.practical-auxiliary-current",
+  "version": 1,
+  "status": "current-identity-qualified",
+  "source_identity": "47d4c417aaa8f3ecaf61e62d96f9c0c54b5900cb20d99938abccac764d68dff3",
+  "library_sha256": "8d40c060e65dd0f3bb78209149e91de7da2b68f85ed16d349c58650b0365ad65",
+  "library_path": "/home/lhshen/vibeqc-206-completion/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+  "hardware": {
+    "name": "NVIDIA GeForce RTX 5090",
+    "official_profile": "sm_120",
+    "driver_version": 12080,
+    "toolkit_version": 12090,
+    "runtime_version": 12040,
+    "sm_count": 170
+  },
+  "software": {
+    "gpu4pyscf": "1.8.1",
+    "pyscf": "2.14.0",
+    "cupy": "14.2.0",
+    "numpy": "2.5.2"
+  },
+  "protocol": {
+    "repeats_per_engine": 5,
+    "properties": ["energy", "forces"],
+    "orbital_basis": "cc-pvdz",
+    "auxiliary_basis": "cc-pvdz-jkfit",
+    "density_fitting_relative_threshold": 1e-10,
+    "reference_gradient_tolerance": 1e-10,
+    "maximum_energy_error_hartree": 3e-11,
+    "maximum_force_error_hartree_per_bohr": 3e-11,
+    "warm_policy": "fixed post-cold engine-local density snapshot"
+  },
+  "cases": [
+    {
+      "case": "water-tetramer-def2-svp-spherical",
+      "method": "rhf",
+      "ao": 96,
+      "naux": 464,
+      "effective_rank": 464,
+      "condition_number": 5434793.529461506,
+      "orbital_basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+      "auxiliary_basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+      "peak_device_bytes": 195303979,
+      "peak_host_bytes": 38170638,
+      "cold_seconds": {"vibeqc": 0.5476550403982401, "gpu4pyscf": 12.884639399126172},
+      "warm_samples_seconds": {
+        "vibeqc": [0.08838058821856976, 0.08834035135805607, 0.08807925879955292, 0.08836960233747959, 0.08810392580926418],
+        "gpu4pyscf": [0.2572953999042511, 0.2565135210752487, 0.2568085677921772, 0.25642179697752, 0.25741068087518215]
+      },
+      "warm_median_seconds": {"vibeqc": 0.08834035135805607, "gpu4pyscf": 0.2568085677921772},
+      "ordinary_speedup": 2.907035843125588,
+      "maximum_energy_error_hartree": 2.5579538487363607e-12,
+      "maximum_force_error_hartree_per_bohr": 1.7124079931818414e-11,
+      "all_repeat_gate_passed": true,
+      "iterations": {"vibeqc": [2], "gpu4pyscf": [1]},
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/practical-current-r1/water-tetramer-def2-svp-spherical.json",
+      "raw_artifact_sha256": "dadb1c5d3edcd77d87561c1b3defcb906bcd3b71c9098880f617615b83104019"
+    },
+    {
+      "case": "oh-def2-svp-spherical-uhf",
+      "method": "uhf",
+      "ao": 19,
+      "naux": 93,
+      "effective_rank": 93,
+      "condition_number": 1696091.2373200064,
+      "orbital_basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+      "auxiliary_basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+      "peak_device_bytes": 5279855,
+      "peak_host_bytes": 1436878,
+      "cold_seconds": {"vibeqc": 0.24679228104650974, "gpu4pyscf": 12.80959546379745},
+      "warm_samples_seconds": {
+        "vibeqc": [0.020052470266819, 0.020264415070414543, 0.01986067183315754, 0.020031599327921867, 0.01990363374352455],
+        "gpu4pyscf": [0.19534155912697315, 0.19524230062961578, 0.19535548612475395, 0.1948971264064312, 0.1954833809286356]
+      },
+      "warm_median_seconds": {"vibeqc": 0.020031599327921867, "gpu4pyscf": 0.19534155912697315},
+      "ordinary_speedup": 9.751670644424696,
+      "maximum_energy_error_hartree": 8.384404281969182e-13,
+      "maximum_force_error_hartree_per_bohr": 3.9537262352951075e-12,
+      "all_repeat_gate_passed": true,
+      "iterations": {"vibeqc": [2], "gpu4pyscf": [1]},
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/practical-current-r1/oh-def2-svp-spherical-uhf.json",
+      "raw_artifact_sha256": "95ab32f53790115240a70ba1a87e705ea9cd19944449552e7dd8b6be2f3851c5"
+    }
+  ]
+}

@@ -1,0 +1,592 @@
+{
+  "attachments": [],
+  "backend_selected": "cuda",
+  "binary_sha256": "0e8d147118fcdee22b28db823f25ce8ede9ae07437b97942e868737d9ca71abb",
+  "block_errors": {
+    "boundary": {
+      "atol": 1e-08,
+      "max_absolute_error": 3.725290298461914e-09,
+      "max_scaled_error": 1.34601228609845e-08,
+      "passed": true,
+      "rms_error": 3.951220168179921e-10,
+      "rtol": 2e-06,
+      "shape": [
+        10,
+        10
+      ]
+    },
+    "changed_features": {
+      "atol": 1e-09,
+      "max_absolute_error": 1.4210854715202004e-14,
+      "max_scaled_error": 1.4418323090163404e-06,
+      "passed": true,
+      "rms_error": 4.4938668397781774e-15,
+      "rtol": 1e-10,
+      "shape": [
+        10
+      ]
+    },
+    "consumer": {
+      "atol": 1e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 1e-10,
+      "shape": [
+        10
+      ]
+    },
+    "typical": {
+      "atol": 1e-11,
+      "max_absolute_error": 3.8163916471489756e-16,
+      "max_scaled_error": 2.667346481920458e-05,
+      "passed": true,
+      "rms_error": 3.3657790975233674e-17,
+      "rtol": 1e-10,
+      "shape": [
+        10,
+        36
+      ]
+    }
+  },
+  "build_seconds": 0.015158395981416106,
+  "capability": {
+    "compiled": true,
+    "emitted": true,
+    "exact_exchange_evaluated": false,
+    "expression_hash": "1ec32414e17e51ebccc8d66e49122328031c7f88ecc5d08f111f663114e73f6e",
+    "functional": {
+      "components": [
+        [
+          "LDA_C_PW_MOD",
+          "1"
+        ]
+      ],
+      "derivative_orders": [
+        0,
+        1,
+        2
+      ],
+      "domain": "interior-v1: no clipping; see docs/xc_expressions.md",
+      "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
+      "exact_exchange": "0",
+      "expression_source_sha256": "38b1cb754d18059f418a5564957e97c6ab05228d189a2b7ca99d572658a882b8",
+      "features": [
+        "rho",
+        "sigma",
+        "tau"
+      ],
+      "identifier": "LDA_C_PW_MOD",
+      "ingredients": [
+        "rho"
+      ],
+      "license": "MPL-2.0",
+      "long_range_exchange": "0",
+      "range_omega": "0",
+      "source_manifest_sha256": "230cd37e89428f0d5df736f875608819ffdff526912dfaa58fcb7f80d163804c",
+      "spin": "unpolarized",
+      "version": "libxc-7.0.0/interior-v1"
+    },
+    "hartree_evaluated": false,
+    "identity": "5e7f61f08f3e3fb12ad9b24c85094f9e9953d5049822327ef4d08bb1531bfb5b",
+    "nuclear_energy_evaluated": false,
+    "promoted": false,
+    "public_dft": false,
+    "reason": "explicit XC kernel candidate; promotion requires downstream workflow evidence",
+    "represented": true,
+    "validated": true
+  },
+  "compilation": {
+    "reason": null,
+    "seconds": 3.0933725589420646
+  },
+  "device": {
+    "host": "node3",
+    "nvidia_smi": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05"
+  },
+  "dirty": false,
+  "feature_consumer_speedup": 3.7696291385588676,
+  "hardware": {
+    "probe": "nvidia-smi and native architecture check",
+    "reason": null,
+    "status": "pass"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "095333ec2faf24910f3393a356b8fc61d181ac3ae1367d5e3b31f42198adcf23",
+    "ir": "1ec32414e17e51ebccc8d66e49122328031c7f88ecc5d08f111f663114e73f6e",
+    "schedule": "5e7f61f08f3e3fb12ad9b24c85094f9e9953d5049822327ef4d08bb1531bfb5b",
+    "source": "7a225d7c77324f414c97da48cb21be8061373ba99cc3688a5054c54645202b0f"
+  },
+  "identity": "5e7f61f08f3e3fb12ad9b24c85094f9e9953d5049822327ef4d08bb1531bfb5b",
+  "inputs_hash": "1ec32414e17e51ebccc8d66e49122328031c7f88ecc5d08f111f663114e73f6e",
+  "memory": {
+    "allocated_bytes": 119040,
+    "device_capacity": 26880,
+    "host_capacity": 92160,
+    "observed_device_delta": 2097152,
+    "observed_prepare_device_delta": 2097152,
+    "peak_bytes": null,
+    "reason": "numeric capacity bounded; allocator/runtime high-water mark not independently profiled"
+  },
+  "metrics": {
+    "device_ms": 0.0,
+    "driver_version": 13000,
+    "input_ms": 1.9936959948390722,
+    "kernel_ms": 9.57107200101018,
+    "library_ms": 0.0,
+    "observed_device_delta": 2097152,
+    "output_ms": 4.220416007563472,
+    "owned_device_bytes": 26880,
+    "packing_ms": 0.0,
+    "prepare_device_delta": 2097152,
+    "provider_retained_bytes": 0,
+    "runtime_version": 12090
+  },
+  "performance": {
+    "reason": "no downstream SCF endpoint; reported ratios are feature-consumer observations only",
+    "status": "not-run"
+  },
+  "prepare_compile_wall_seconds": 0.013599838130176067,
+  "prepare_seconds": 0.0072990781627595425,
+  "reference_diagnostics": {
+    "boundary": {
+      "oracle": "Libxc 7.0.0",
+      "raw_libxc_error": {
+        "atol": 1e-08,
+        "max_absolute_error": 3.725290298461914e-09,
+        "max_scaled_error": 1.34601228609845e-08,
+        "passed": true,
+        "rms_error": 3.951220168179921e-10,
+        "rtol": 2e-06,
+        "shape": [
+          10,
+          10
+        ]
+      },
+      "reference_metadata": {
+        "arrays_sha256": "2a0381cfb858bd1305631db42bfd6d566c8969eb6fa0280a2f710327d38e0ca9",
+        "boundary_rationale": "Nearly polarized spin interpolation loses relative accuracy in Libxc's 1-z subtraction; large density and gradient ratios amplify high derivatives. Scale-aware gate applies only to named boundary fixtures; no clipping is applied by VibeQC.",
+        "boundary_tolerance": {
+          "atol": 1e-08,
+          "rtol": 2e-06
+        },
+        "codes": {
+          "GGA_C_PBE": "GGA_C_PBE",
+          "GGA_X_PBE": "GGA_X_PBE",
+          "LDA_C_PW": "LDA_C_PW",
+          "LDA_C_PW_MOD": "LDA_C_PW_MOD",
+          "LDA_X": "LDA_X",
+          "LDA_XC_PW": "LDA_X,LDA_C_PW",
+          "PBE": "GGA_X_PBE,GGA_C_PBE"
+        },
+        "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
+        "libxc": "7.0.0",
+        "numpy": "2.4.6",
+        "oracle": "Libxc 7.0.0",
+        "pyscf": "2.14.0",
+        "schema": 1,
+        "script_sha256": "887adec4b3f5210949c6793c91f66cd0f75307ec1395085ea8796c490cee26ee",
+        "typical_tolerance": {
+          "atol": 1e-11,
+          "rtol": 1e-10
+        }
+      }
+    },
+    "typical": {
+      "oracle": "Libxc 7.0.0",
+      "raw_libxc_error": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.8163916471489756e-16,
+        "max_scaled_error": 2.667346481920458e-05,
+        "passed": true,
+        "rms_error": 3.3657790975233674e-17,
+        "rtol": 1e-10,
+        "shape": [
+          10,
+          36
+        ]
+      },
+      "reference_metadata": {
+        "arrays_sha256": "2a0381cfb858bd1305631db42bfd6d566c8969eb6fa0280a2f710327d38e0ca9",
+        "boundary_rationale": "Nearly polarized spin interpolation loses relative accuracy in Libxc's 1-z subtraction; large density and gradient ratios amplify high derivatives. Scale-aware gate applies only to named boundary fixtures; no clipping is applied by VibeQC.",
+        "boundary_tolerance": {
+          "atol": 1e-08,
+          "rtol": 2e-06
+        },
+        "codes": {
+          "GGA_C_PBE": "GGA_C_PBE",
+          "GGA_X_PBE": "GGA_X_PBE",
+          "LDA_C_PW": "LDA_C_PW",
+          "LDA_C_PW_MOD": "LDA_C_PW_MOD",
+          "LDA_X": "LDA_X",
+          "LDA_XC_PW": "LDA_X,LDA_C_PW",
+          "PBE": "GGA_X_PBE,GGA_C_PBE"
+        },
+        "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
+        "libxc": "7.0.0",
+        "numpy": "2.4.6",
+        "oracle": "Libxc 7.0.0",
+        "pyscf": "2.14.0",
+        "schema": 1,
+        "script_sha256": "887adec4b3f5210949c6793c91f66cd0f75307ec1395085ea8796c490cee26ee",
+        "typical_tolerance": {
+          "atol": 1e-11,
+          "rtol": 1e-10
+        }
+      }
+    }
+  },
+  "residuals": {},
+  "resources": [
+    {
+      "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+      "registers": 26,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_1PKdPdmPi",
+      "registers": 12,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_0PKdPdmPi",
+      "registers": 98,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    }
+  ],
+  "revision": "ac7c15219acb1c8a5eab68d640cb4291d4089ec8",
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "device": "cuda",
+    "fast_compile": false,
+    "order": 2,
+    "points": 8192,
+    "repeats": 5,
+    "scope": "bounded feature-array consumer; no SCF/force endpoint",
+    "threads": 128,
+    "tile_points": 256,
+    "variant": "split"
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "spill_free": true,
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": null,
+      "scope": "fixed-feature upload/evaluation/download/consumption only",
+      "status": "pass"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "XC/LDA_C_PW_MOD/unpolarized/split",
+  "tier": "endpoint",
+  "timings": [
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 0,
+      "seconds": 0.024213630007579923,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 0,
+      "seconds": 0.006481315940618515,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 1,
+      "seconds": 0.006440145894885063,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 1,
+      "seconds": 0.02437487803399563,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 2,
+      "seconds": 0.024291238049045205,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 2,
+      "seconds": 0.006419406970962882,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 3,
+      "seconds": 0.006443933118134737,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 3,
+      "seconds": 0.024241964099928737,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 4,
+      "seconds": 0.024804248940199614,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            10
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "1eeb5ce29d2cf73cfb48e0b3f6a948c46a6fe85865d7a2531fa48e477b76c93c",
+      "repeat": 4,
+      "seconds": 0.006495513021945953,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    }
+  ],
+  "toolchain": {
+    "environment": {
+      "CPATH": "",
+      "LIBRARY_PATH": "",
+      "NVCC_APPEND_FLAGS": "",
+      "NVCC_CCBIN": "",
+      "NVCC_PREPEND_FLAGS": ""
+    },
+    "flags": [
+      "c++17",
+      "O3",
+      "shared",
+      "fPIC",
+      "--fmad=false",
+      "-I/home/jzzeng/codes/qc-xc-expressions/src/dft",
+      "-I/home/jzzeng/codes/qc-xc-expressions/src/tensor"
+    ],
+    "headers": {
+      "../../../../home/jzzeng/codes/qc-xc-expressions/src/dft/xc_runtime.cuh": "2df50a599bd0cdc33ae2aca48d29b06364283253f55d5d8fc338d3e5c04bcd55",
+      "../../../../home/jzzeng/codes/qc-xc-expressions/src/tensor/cuda_runtime.cuh": "363ea27949c7af9a817b9592c802d4b181914df4cff8139e477d082810beb220"
+    },
+    "host_compiler": "821af3c74506283c179ca413bb33e6b528805a4dd8a5c09df125e5ad560a9e89",
+    "host_version": "gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "libraries": [
+      "cublas"
+    ],
+    "schema": 1,
+    "source": "7a225d7c77324f414c97da48cb21be8061373ba99cc3688a5054c54645202b0f",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    },
+    "toolchain": {
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+      "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+    }
+  }
+}

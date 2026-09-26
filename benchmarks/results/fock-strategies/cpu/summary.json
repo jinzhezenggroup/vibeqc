@@ -1,0 +1,670 @@
+{
+  "accuracy_passed": true,
+  "baseline": "3da58410bb02a903ea6341a7caac0afc9314355b",
+  "candidate": "913fb20a25aab87363b19e9d788580230493b688",
+  "complete_endpoint_count": 40,
+  "complete_endpoint_median_ratio": 1.0076651185590006,
+  "complete_endpoint_ratio_range": [
+    0.9652641047937797,
+    1.0281708915484873
+  ],
+  "endpoints": [
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9895453294648554,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9940128657357519,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9860386015862835,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9914257769266586,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0099952024700536,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.7755575615628914e-17
+      },
+      "median_ratio": 0.9830324512264604,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.7755575615628914e-17
+      },
+      "median_ratio": 1.0158365076280333,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.7755575615628914e-17
+      },
+      "median_ratio": 1.021192401192639,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.3877787807814457e-16
+      },
+      "median_ratio": 0.9784399326806695,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.3877787807814457e-16
+      },
+      "median_ratio": 1.007516692252557,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0010043624126876,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0265559045953165,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.011285257042848,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9652641047937797,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0036722604342454,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.7755575615628914e-17
+      },
+      "median_ratio": 1.0067781760382717,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.7755575615628914e-17
+      },
+      "median_ratio": 1.0281708915484873,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 0.9977353443357907,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 1.0066659781553817,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 0.9854342246471007,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0122124237719041,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0023941025486993,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0013976403215479,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0164247048143298,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0129552243792292,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.1102230246251565e-15
+      },
+      "median_ratio": 1.008864006830051,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.6645352591003757e-15
+      },
+      "median_ratio": 1.012310556352803,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.6645352591003757e-15
+      },
+      "median_ratio": 1.0075343861755628,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.7763568394002505e-15
+      },
+      "median_ratio": 1.0091605083817934,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 3.774758283725532e-15
+      },
+      "median_ratio": 1.0076547843782586,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0153699978172634,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0220808303804507,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0080956376852142,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.016793496435036,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.007675452739743,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 8.881784197001252e-16
+      },
+      "median_ratio": 1.013104582475064,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.4424906541753444e-15
+      },
+      "median_ratio": 1.005984892647338,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.7763568394002505e-15
+      },
+      "median_ratio": 1.0056903018670718,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.2212453270876722e-15
+      },
+      "median_ratio": 1.0166114640322799,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cpu",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 3.3306690738754696e-15
+      },
+      "median_ratio": 1.016396009564119,
+      "spin": "uhf"
+    }
+  ],
+  "fixed_density": [
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "baseline_seconds": [
+        1.1035e-07,
+        1.08186e-07,
+        1.08148e-07,
+        1.08228e-07,
+        1.0814600000000001e-07,
+        1.0816599999999999e-07,
+        1.08148e-07,
+        1.0814600000000001e-07,
+        1.0816799999999999e-07
+      ],
+      "head_seconds": [
+        2.71178e-07,
+        2.6166e-07,
+        2.6127799999999997e-07,
+        2.6256e-07,
+        2.62462e-07,
+        2.625e-07,
+        2.6248e-07,
+        2.6250200000000003e-07,
+        2.6791e-07
+      ],
+      "maximum_absolute_error": 0.0,
+      "median_ratio": 2.4268254349795684,
+      "nbf": 2
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "baseline_seconds": [
+        1.9032399999999998e-07,
+        1.95174e-07,
+        1.90686e-07,
+        1.90466e-07,
+        1.90444e-07,
+        1.90926e-07,
+        1.90906e-07,
+        1.90906e-07,
+        1.90904e-07
+      ],
+      "head_seconds": [
+        2.3032000000000001e-07,
+        2.40838e-07,
+        2.302e-07,
+        2.3036e-07,
+        2.30198e-07,
+        2.28376e-07,
+        2.28376e-07,
+        2.3478600000000002e-07,
+        2.29276e-07
+      ],
+      "maximum_absolute_error": 0.0,
+      "median_ratio": 1.205841679587646,
+      "nbf": 2
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "baseline_seconds": [
+        6.0176408000000004e-05,
+        6.0182038e-05,
+        6.0180136e-05,
+        6.0017283999999995e-05,
+        6.004173e-05,
+        6.004658e-05,
+        6.0042774e-05,
+        5.9981414e-05,
+        6.0072972e-05
+      ],
+      "head_seconds": [
+        6.0816134e-05,
+        6.0741572e-05,
+        6.0790866e-05,
+        6.0729348e-05,
+        6.0742934e-05,
+        6.0758844e-05,
+        6.0738106e-05,
+        6.0805154e-05,
+        6.0736079999999995e-05
+      ],
+      "maximum_absolute_error": 0.0,
+      "median_ratio": 1.0115968969423403,
+      "nbf": 16
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "baseline_seconds": [
+        8.2111932e-05,
+        8.21381e-05,
+        8.2177256e-05,
+        8.3757442e-05,
+        8.2066344e-05,
+        8.237231e-05,
+        8.2429058e-05,
+        8.2432084e-05,
+        8.2485748e-05
+      ],
+      "head_seconds": [
+        8.2076042e-05,
+        8.237266799999999e-05,
+        8.2345856e-05,
+        8.251562e-05,
+        8.2745298e-05,
+        8.269185599999999e-05,
+        8.2764034e-05,
+        8.2830582e-05,
+        8.2728968e-05
+      ],
+      "maximum_absolute_error": 0.0,
+      "median_ratio": 1.0038792890474966,
+      "nbf": 16
+    }
+  ],
+  "interleaved_small_batch": {
+    "case": "H2 UHF DF four-item warm batch; 9 samples/selection/cycle; alternating baseline/candidate order",
+    "cycles": 6,
+    "median_ratio": 0.9998111758264019,
+    "ratio_range": [
+      0.9909322453359799,
+      1.0110935588212402
+    ]
+  },
+  "layout_diagnosis": "layout-diagnosis.json retains the pre-fix raw/provider and alignment-controlled measurements. The final source uses a local 32-byte function alignment hint; arithmetic/reduction order is unchanged.",
+  "maximum_energy_error": 0.0,
+  "maximum_force_error": 3.774758283725532e-15,
+  "study": "Same-path architecture overhead, without speedup promotion",
+  "timing_limitations": [
+    "Full endpoint workers ran sequentially per revision; they are a non-regression study, not a statistically promoted speedup.",
+    "The raw two-AO CPU dispatch takes fractions of a microsecond; assess its absolute increment alongside the complete endpoints.",
+    "No independent direct CUDA raw service exists at the baseline; standard exact CUDA HF is compared through complete fused endpoints.",
+    "Full endpoint peak-memory and compilation-cost budgets were not measured. Existing allocation and schedule diagnostics are retained in provenance.json."
+  ]
+}

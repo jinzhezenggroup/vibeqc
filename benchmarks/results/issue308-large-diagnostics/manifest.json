@@ -1,0 +1,1500 @@
+{
+  "schema": "vibeqc.issue308.large-diagnostics.v1",
+  "scope": "96-atom diagnostic failures, independent PySCF energy/full forces, fixed-work source scaling, and completed provider qualification. No converged VibeQC 96-atom endpoint.",
+  "case": {
+    "name": "water-32mer-4s4-def2-svp-spherical",
+    "atoms": 96,
+    "public_aos": 768,
+    "cartesian_aos": 800,
+    "orbital_basis": "def2-svp",
+    "auxiliary_basis": "def2-svp",
+    "geometry": "Synthetic 2x2 array of translated WATER27 S4 octamers, not an optimized 32-mer."
+  },
+  "attempts": [
+    {
+      "job": 9521,
+      "status": "terminated_diagnostic",
+      "scope": "28-GiB DF budget, GPU process allocation approximately 14680 MiB; no cold energy endpoint after more than 15 minutes. Earlier passing capture qualification in this allocation is retained in #325."
+    },
+    {
+      "job": 9526,
+      "status": "timed_out_diagnostic",
+      "scope": "100-second resident follow-up; 30/60-second stacks wait for resident three-center materialization, before SCF. Requested CUDA trace file was absent because the first traced operation did not complete."
+    },
+    {
+      "job": 9529,
+      "status": "completed_diagnostic",
+      "scope": "Fixed 24-by-24 raw source outputs in 24/192/768-AO systems; all values are bit-identical within each mapping. Default median 5.676801/5.7240365/5.8806915 ms; no molecular timing extrapolation."
+    },
+    {
+      "job": 9530,
+      "status": "failed_profiler",
+      "scope": "NVIDIA performance counter access denied with ERR_NVGPUCTRPERM; no hardware counter data obtained."
+    }
+  ],
+  "independent_reference": {
+    "engine": "PySCF 2.14.0",
+    "energy_hartree": -2438.354141054296,
+    "auxbasis_response": true,
+    "maximum_net_force": 7.045614092149322e-13,
+    "scope": "Physical reference only; CPU timings are not matched GPU performance measurements. Both complete independent SCF logs and the force reference checkpoint, density, overlap and forces are retained."
+  },
+  "qualification": {
+    "independent_fock": {
+      "pr": 323,
+      "source_commit": "dd138793e28ca4c3cda53df1e79c2695917a2284",
+      "job": 9527,
+      "native_cuda": 5,
+      "mixed_uhf": 4,
+      "python_cuda": 142,
+      "memcheck_cases": 3,
+      "prior_failures": "9513 failed 12 of 13 checks before fixture/provider repairs; 9518 passed 11 and failed two spherical mixed-UHF density comparisons. Tightening both comparison owners to density convergence 1e-12 resolved the latter without changing comparison thresholds."
+    },
+    "host_diis_retry": {
+      "pr": 326,
+      "source_commit": "6c5dc9b915b519aba937eac698589028fcd7fb07",
+      "job": 9528,
+      "native_cuda": 5,
+      "python_cuda": 57,
+      "forced_retry_cases": 12,
+      "memcheck_cases": 2,
+      "provenance": "Tests ran on the uncommitted source later committed unchanged; retained native identity and library SHA identify the exact tested source. Failure-limit tests deliberately exhaust one iteration and do not count as molecular convergence."
+    }
+  },
+  "limitations": [
+    "Original interrupted result.json files remain byte-identical and may say running; this manifest and interruption records supply terminal dispositions.",
+    "Host work, traces and debugger stops make large timings diagnostic. Fixed small-tile tests cannot establish large-tile occupancy or end-to-end parity.",
+    "The frozen native source resource report shows 254 value-kernel registers per thread. This alone does not establish register pressure as the performance root cause.",
+    "The later register-cap experiment is outside this evidence slice.",
+    "No completed VibeQC 96-atom energy or complete force endpoint, GPU4PySCF parity, or closure of #308/#310/#206 is claimed."
+  ],
+  "archives": {
+    "diagnostics": {
+      "path": "diagnostics.zip",
+      "bytes": 75463,
+      "sha256": "b9e4876e70aa15887ac7281da466798109611e7ef591584c24e46c48f5e621f0",
+      "members": 48,
+      "restoration": "Every member was restored and compared byte-for-byte.",
+      "files": [
+        {
+          "path": "vibeqc-308-96-atoms-resident-device-memory.csv",
+          "bytes": 72282,
+          "sha256": "492a62c28c987e716728790e7155011e816c286c0cdadb6ddd48851899798b17"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-job.log",
+          "bytes": 406,
+          "sha256": "4891fd581d8e59ef74297d38dda757ed584c64bb5503536af882ec81afcbd069"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-overlap-query.log",
+          "bytes": 74,
+          "sha256": "e91ba73e7ee1e0742a52abe24147cc0f87d2f1e962a025b31e4f336daa500552"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-probe.log",
+          "bytes": 18,
+          "sha256": "4be490a7ed8b27d2c813c10c3dca15a5af95289b3baf75e6d9bc716b62213bb8"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-probe.py",
+          "bytes": 4675,
+          "sha256": "97135cd4f5db0e67184cb8697ab193a6a95e0aa7698a95515022ef98e61345bf"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile-gpu.csv",
+          "bytes": 10676,
+          "sha256": "a8c22f26de5b2d8d733dc744c565fea0c668775ef09cf79aef958bd4c215cf3d"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile-job.log",
+          "bytes": 178,
+          "sha256": "db3faa06ea0606877fb88c6dd371939c7931a1fbfa5bb6e858af87ccde95ebec"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile-probe.log",
+          "bytes": 18,
+          "sha256": "4be490a7ed8b27d2c813c10c3dca15a5af95289b3baf75e6d9bc716b62213bb8"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile-probe.py",
+          "bytes": 4889,
+          "sha256": "482d68abaada0eca4c372bf834c1bd84eced03078450596b48b679b3cadbec9e"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile-stack-1.log",
+          "bytes": 12997,
+          "sha256": "03589418b4a7c2f59823040ea791cc01cb143842edc1c3053dc99cd0f9d56a6c"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile-stack-2.log",
+          "bytes": 12972,
+          "sha256": "c0439d21d1193be7f7109f3e48c07f312bb8c2c4c863b93c33388ed6df6b0c6d"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile.sh",
+          "bytes": 1421,
+          "sha256": "3e53b7131de9e450edeade02d29f4b9ade6b187aa03311f41bdd85781ec30a09"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile/geometry.json",
+          "bytes": 10211,
+          "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident-profile/result.json",
+          "bytes": 880,
+          "sha256": "f2dd852f6aec92c7a591cba3680372f6841294c8ba22b7d26a8a2fe11be1d602"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident.sh",
+          "bytes": 1594,
+          "sha256": "0cf2c8ad1792b3e9a1a87369a41e13bda00f8d4bcf5d56d345a21222ef5c08d3"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident/geometry.json",
+          "bytes": 10211,
+          "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident/interruption.json",
+          "bytes": 340,
+          "sha256": "8eed1db661446354f4174cd9419f96f7d6e31e211d7848c7b1a243649ace2eae"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-resident/result.json",
+          "bytes": 880,
+          "sha256": "fe675816722fa23e3e25aa5e7d9bf857312b8d74b7179953a86eb87947d76701"
+        },
+        {
+          "path": "vibeqc-308-retain-large-evidence.py",
+          "bytes": 10336,
+          "sha256": "561a6124f5717f130bf2e4ae686070a177022e64caa932aa0194a3a388473da0"
+        },
+        {
+          "path": "vibeqc-308-source-ncu-job.log",
+          "bytes": 720,
+          "sha256": "8bda405740fcb9cbba4e84794c221b5a043eb37df4b139f83a18f97f71510165"
+        },
+        {
+          "path": "vibeqc-308-source-ncu.sh",
+          "bytes": 544,
+          "sha256": "5e13816ef3076be8fce9327d376eff94ecc3825a572ed037823c32908a7c6336"
+        },
+        {
+          "path": "vibeqc-308-source-resources.txt",
+          "bytes": 138423,
+          "sha256": "495719a6e54149867b2962be81aeac8ba32a412d9665680505883e75a7514280"
+        },
+        {
+          "path": "vibeqc-308-source-scaling-job.log",
+          "bytes": 92,
+          "sha256": "369d18f8c08fc279b271c8a459229bcc105c93ab169299a9f48db5a30dcff446"
+        },
+        {
+          "path": "vibeqc-308-source-scaling-probe.cpp",
+          "bytes": 6628,
+          "sha256": "473dfcc91b1afb00037134c0d64b4c054b478946bc0d9126b2e1d647010d5cfe"
+        },
+        {
+          "path": "vibeqc-308-source-scaling.sh",
+          "bytes": 535,
+          "sha256": "a07da6333a2d0fd949a5fb0ee6ef12716102b22ac42f44927cdca6e2f2665283"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-auxiliary-1-raw.bin",
+          "bytes": 4608,
+          "sha256": "f4ddf089bca3c2b937644d6ecef435481b162f4fa67e94dfecd241500f78c958"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-auxiliary-1.json",
+          "bytes": 302,
+          "sha256": "b3cb8c43149f55376fcf4169d109ebfdcc62879914e106707c5ee29c211cbc72"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-auxiliary-32-raw.bin",
+          "bytes": 4608,
+          "sha256": "f4ddf089bca3c2b937644d6ecef435481b162f4fa67e94dfecd241500f78c958"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-auxiliary-32.json",
+          "bytes": 312,
+          "sha256": "9078bdeef9c8d3190aa394ec78845c36a808ff011b74ab9d7d54e6c8bc488f4c"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-auxiliary-8-raw.bin",
+          "bytes": 4608,
+          "sha256": "f4ddf089bca3c2b937644d6ecef435481b162f4fa67e94dfecd241500f78c958"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-auxiliary-8.json",
+          "bytes": 307,
+          "sha256": "09ae1a5e1e5272ae022ae960e54ca6f0d14de7cab0b3b06f32968d3a55edfce5"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-component-1-raw.bin",
+          "bytes": 4608,
+          "sha256": "f4ddf089bca3c2b937644d6ecef435481b162f4fa67e94dfecd241500f78c958"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-component-1.json",
+          "bytes": 299,
+          "sha256": "5cce0d0c52253dc79d768c04a4e7e0d152250e2a2bab975065206601433a3163"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-component-32-raw.bin",
+          "bytes": 4608,
+          "sha256": "f4ddf089bca3c2b937644d6ecef435481b162f4fa67e94dfecd241500f78c958"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-component-32.json",
+          "bytes": 313,
+          "sha256": "1a6207667e8f0dc7792fec7d9c476d134b8c6b34077384f8a4246a59ef094798"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-component-8-raw.bin",
+          "bytes": 4608,
+          "sha256": "f4ddf089bca3c2b937644d6ecef435481b162f4fa67e94dfecd241500f78c958"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-component-8.json",
+          "bytes": 306,
+          "sha256": "b7fa12baaec7601cf5af29d4850b9b19fbac124858bec3a5eda0453377b06559"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-primitive-1-raw.bin",
+          "bytes": 4608,
+          "sha256": "d12e44d9a9caa21ff38bf9524a72423c8a517c44e59ae0eea0a6c0b8e1762c2b"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-primitive-1.json",
+          "bytes": 293,
+          "sha256": "a938d2ad1a9a6a5b8f82363512be024a41c17c85cd1358d9063aec7f1d36484e"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-primitive-32-raw.bin",
+          "bytes": 4608,
+          "sha256": "d12e44d9a9caa21ff38bf9524a72423c8a517c44e59ae0eea0a6c0b8e1762c2b"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-primitive-32.json",
+          "bytes": 302,
+          "sha256": "2d88c9fb86421b9b57a11c19e6f1b7b5117314a3475bfb042965027775273b9c"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-primitive-8-raw.bin",
+          "bytes": 4608,
+          "sha256": "d12e44d9a9caa21ff38bf9524a72423c8a517c44e59ae0eea0a6c0b8e1762c2b"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/baseline-primitive-8.json",
+          "bytes": 297,
+          "sha256": "7953e0499887ad4b0e47b568ed701ab7f0648ea932c4aa74ce112842f8da1868"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/profile-primitive-32-raw.bin",
+          "bytes": 4608,
+          "sha256": "d12e44d9a9caa21ff38bf9524a72423c8a517c44e59ae0eea0a6c0b8e1762c2b"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/summary.json",
+          "bytes": 2014,
+          "sha256": "44d84c384513dec49ee175d88435228e19f6515c0879df376ca79b1661499a2e"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/water-1.txt",
+          "bytes": 1253,
+          "sha256": "4bd32926006c2037defe4a501ed90d20fcb0bdfd8a8ebf44827c781959ea2879"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/water-32.txt",
+          "bytes": 40347,
+          "sha256": "578b21fa8c0df124e7b26261b562909bafec6aeb147c6c1a72622a9277b91da0"
+        },
+        {
+          "path": "vibeqc-308-source-scaling/water-8.txt",
+          "bytes": 10057,
+          "sha256": "cd9cec74b6768090cf8badd418b4bd388f69b8da04b9f5b31ee05a4f33d78d0d"
+        }
+      ]
+    },
+    "qualification": {
+      "path": "qualification.zip",
+      "bytes": 426905,
+      "sha256": "1e11cf0f3f88fc0d27591d23a46513af670e6ad5e60f5a952ffcebb56edc33a7",
+      "members": 220,
+      "restoration": "Every member was restored and compared byte-for-byte.",
+      "files": [
+        {
+          "path": "earlier-failure-9513/evidence.zip",
+          "bytes": 57830,
+          "sha256": "303648984a6ebd86e86c8da62ad017ca3563b10ec3e6f35d59bd19564eab6f74"
+        },
+        {
+          "path": "earlier-failure-9513/manifest.json",
+          "bytes": 6750,
+          "sha256": "cb73a58614b7d9f1bd972a739820070a29be6b610e2178404406587a8aa85962"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-cpu-build.log",
+          "bytes": 4813,
+          "sha256": "f6dcf07634bcba7021e44fae02bb1c0b0d08870e583c3449f993eb7d65ca6dd3"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-cpu-native.log",
+          "bytes": 916,
+          "sha256": "c7a24edd73e96cbf24b7cc30409347e594b01ee89fc0739a5760f9dc1882c249"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-cpu-python.log",
+          "bytes": 191,
+          "sha256": "3e7a1d516d0a6be3d7ab0722055dcad90592e1bfc3cd5a561370799697103b7c"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-cuda-build.log",
+          "bytes": 5609,
+          "sha256": "4f56c6915ce906b85f833ae30ef8b812d7d1b4b96cb02e496a56b56568d3060c"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_empty_0/empty-beta.jsonl",
+          "bytes": 5003,
+          "sha256": "92e15d8a63f077a6d30ee596cdaf4c8f85feaf67534dbbc38a51ecc6fcf75dcd"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/0-cpu.jsonl",
+          "bytes": 6764,
+          "sha256": "1882c7f1668eb3b6e69ee412ae732e394056dc5bed44a48192b44b79ce23adae"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/0-device.jsonl",
+          "bytes": 10245,
+          "sha256": "007149d92b231a82b3b15e3762b557ed6a1df3a84e445cd82514e8b6f0750a8b"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/0-diagnostic.jsonl",
+          "bytes": 9471,
+          "sha256": "44fd4dc41cf23e74b2b394930a85129d09b139080c630f94ad1040896c6f1476"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/1-cpu.jsonl",
+          "bytes": 2330,
+          "sha256": "6dea407a6319918a668eecf81439e0d02dfafd5546069ae52277c788b18aba44"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/1-device.jsonl",
+          "bytes": 3372,
+          "sha256": "fdf20fc3696644a756e2c2d548efb98eb3b63a692cbb6671f524d93aec197cc9"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/1-diagnostic.jsonl",
+          "bytes": 2497,
+          "sha256": "e44c6170d0dd9fdd2a033fae0db2d67030ec9a42abd2b5182bdd70878c280a64"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/2-cpu.jsonl",
+          "bytes": 2322,
+          "sha256": "35223344c31114662d0e4296ad0a073ee67229b7999963c21b2525bfa9978223"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/2-device.jsonl",
+          "bytes": 3373,
+          "sha256": "4fcfa581a5a9249a9a5bfd69d39e5caa25289057a990be2d75dafba6c1eb2631"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr0/2-diagnostic.jsonl",
+          "bytes": 2521,
+          "sha256": "71e0b51d8632672caefe709732c44e6c2bfa270b36df20cadd0f5824266bc85c"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/0-cpu.jsonl",
+          "bytes": 20615,
+          "sha256": "16fbf897eb8965661beaa35d4fbb2124f79d60d79091947a3826410edd1f0d90"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/0-device.jsonl",
+          "bytes": 30668,
+          "sha256": "dabbe7ddf4fc06219a5340245c37b60a56c06204e5d0acea5cb2a61358a996a7"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/0-diagnostic.jsonl",
+          "bytes": 29842,
+          "sha256": "ead59ca2f628574c68b5f98806f49d8f188eca50323eaa0dfa685813d405d2cc"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/1-cpu.jsonl",
+          "bytes": 3553,
+          "sha256": "e7040d4516b2033d4644cf631de0410d27679737457d134a49212cc616390f8d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/1-device.jsonl",
+          "bytes": 5478,
+          "sha256": "92551017ba523c43c8276616a8155b3cb62b1f8dd42ba8c8710aca5b7a2f8810"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/1-diagnostic.jsonl",
+          "bytes": 4040,
+          "sha256": "4d7c094a355380e351644d82cf0c3c8faaca4db53a46f900de4895fe3051dd4b"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/2-cpu.jsonl",
+          "bytes": 3549,
+          "sha256": "905a9793b63a2f09b36554d8f4700aefb5f5dc37536192d537df59e3b82a974f"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/2-device.jsonl",
+          "bytes": 5439,
+          "sha256": "e94d19cb98762d7d8b49468066ea85c775eee100df35f5d7c5130232a4f97d21"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr1/2-diagnostic.jsonl",
+          "bytes": 4054,
+          "sha256": "70230e8d1a857393ddc946f5994232788061eb4287e2534b1f29aadc15a4a54a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/0-cpu.jsonl",
+          "bytes": 7071,
+          "sha256": "810975488596212b58f58ea36598292882ed7600d3090bc64513ae65f681ad3b"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/0-device.jsonl",
+          "bytes": 10759,
+          "sha256": "13320be728c86736dfda0ac88178f44dedd7faacda9b6e05718937b49e6cf625"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/0-diagnostic.jsonl",
+          "bytes": 10037,
+          "sha256": "f115e72bedf30802e142c6b05aca0476668dd834efd480fa6569930caa65d859"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/1-cpu.jsonl",
+          "bytes": 2334,
+          "sha256": "b5b9e34c9afb97db09f1846c18ddc5372dd5e2cd2a06cf78d3d6ee69985396d2"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/1-device.jsonl",
+          "bytes": 3415,
+          "sha256": "1dd800112ab2d493a339b8784b2b0073a4f1974c7c927ee20b19352f6e74a6be"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/1-diagnostic.jsonl",
+          "bytes": 2488,
+          "sha256": "40e1a8b3233a32c8548ecfb2795fcafeea065e64f91ad134cc66358173a6a91c"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/2-cpu.jsonl",
+          "bytes": 2343,
+          "sha256": "8f49f91c7adf2c57a82a221d16f9e00b555b9af652363ce8febe6e10649ad7b3"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/2-device.jsonl",
+          "bytes": 3426,
+          "sha256": "1cdbb33abeaf3847e22cc62eb41ed5b99f1b385e44bac748ecec084c0a13c03a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr10/2-diagnostic.jsonl",
+          "bytes": 2495,
+          "sha256": "4d3e6836deb740f9b3672f08522c30492a76b7055f0083163491724e9d40fabf"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr11/0-cpu.jsonl",
+          "bytes": 22611,
+          "sha256": "0b389621037f687a80a3090a63302d4900ca794044fdbb06dc7dce0fff3ef84a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr11/0-device.jsonl",
+          "bytes": 34003,
+          "sha256": "0d858674e66bfa7d53ebef067804574607c38c8116b4ce71ae9077aa8133951c"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr11/0-diagnostic.jsonl",
+          "bytes": 33249,
+          "sha256": "3fd09a0bfbeec26367719c29c1fe408547f9ee7d0a879d24c71c34ece300ee8a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/0-cpu.jsonl",
+          "bytes": 6724,
+          "sha256": "87421c862acb4d47ef417aac53af001a8f824943f819be1a41827aa43ed04137"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/0-device.jsonl",
+          "bytes": 10127,
+          "sha256": "f895e74891fdd47b88551d207c1df93967bcb3c6724f8bd91b6c52be3fdbcae9"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/0-diagnostic.jsonl",
+          "bytes": 9538,
+          "sha256": "9eabb9e6a4549337ad743ce580e272e4f6ca8653fed1a38b9444308f949ea6df"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/1-cpu.jsonl",
+          "bytes": 2281,
+          "sha256": "a166c4229236e5d0e3484aae7e23a37e5e865b46361a455b43e6cc6c5b9bb700"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/1-device.jsonl",
+          "bytes": 3368,
+          "sha256": "4f015f1347743d6a0808a31ae0caac6ff745b4c4798d698dda421ac12d5f9d82"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/1-diagnostic.jsonl",
+          "bytes": 2476,
+          "sha256": "91b7285b2e0d5767c05297be2d0027cab3a1302d69dd0de18738f34d17f0ac8e"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/2-cpu.jsonl",
+          "bytes": 2332,
+          "sha256": "133b6b3a0e2b5abaad9128dbd362b7fdb221067efc749a37dc5c457f9b02338b"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/2-device.jsonl",
+          "bytes": 3348,
+          "sha256": "49610186bd46dd7b0f8e13879bbab9649700e6d8409708440788b50495b0785d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr2/2-diagnostic.jsonl",
+          "bytes": 2466,
+          "sha256": "eb53764f81e3fb33c4a5b01c8f23a747c738063abdee6f1ad211d209ce7d5b0f"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/0-cpu.jsonl",
+          "bytes": 19246,
+          "sha256": "9b1c739888c887aabe7b2aac94781cadc8a3558b683169d0abd6056c54a8f216"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/0-device.jsonl",
+          "bytes": 28761,
+          "sha256": "4f4ea6be98453669b77e1c21bb4f930db4b6830bb34a0c61f16bba687dd74435"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/0-diagnostic.jsonl",
+          "bytes": 27765,
+          "sha256": "556c83259ba73063fcd491a4dbd341b83f332d79f3726d4befa0810c2c8c1084"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/1-cpu.jsonl",
+          "bytes": 3561,
+          "sha256": "b4168035a2dc946441d289a3b01dd5415f01bc6e3e0a81087618d2870e8c95ca"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/1-device.jsonl",
+          "bytes": 5420,
+          "sha256": "792a43bac6c6a2f0c2c4e2b3fadc307388c1f4aaeff76cbb023c0b12d61aa1e6"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/1-diagnostic.jsonl",
+          "bytes": 4050,
+          "sha256": "71ef751f2aa07fb42cb8fde707e2ddec2bde78c6da976e9f5a845573e8725906"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/2-cpu.jsonl",
+          "bytes": 3539,
+          "sha256": "10841744a18cb929264a9b69966d94aca9c854993a8dd7b7dcb47759d504941e"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/2-device.jsonl",
+          "bytes": 5422,
+          "sha256": "10d704f7c8c55ac582857a34f9f83d76b820c03cbe92296629b5fd0c4c038459"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr3/2-diagnostic.jsonl",
+          "bytes": 4044,
+          "sha256": "b297b5be47ed51415e2fd48deb84f499c7c2b39a755e36d8753b3514ed1e2707"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/0-cpu.jsonl",
+          "bytes": 7119,
+          "sha256": "1fbf6747b31db07441af28085a5e6e0834e16d9d0c544ff075953fa296fc0e19"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/0-device.jsonl",
+          "bytes": 10666,
+          "sha256": "23b165a5a90a2335f85756d376650135fce8e90591857a377d199a4b7f71bc39"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/0-diagnostic.jsonl",
+          "bytes": 10047,
+          "sha256": "222ef52cdb5b6fce0ad96376c1bb3a47def5aa8e078b20819c3836a415b9e279"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/1-cpu.jsonl",
+          "bytes": 2320,
+          "sha256": "47e06ebb40a37b9fb10355fd037ae15d1e5ec949f70928d2753f69866e85165f"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/1-device.jsonl",
+          "bytes": 3379,
+          "sha256": "aad659bf524c3c26ed03a96d5f75848ba5a380a77c09a6ee4ddd6dbe4a9ad178"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/1-diagnostic.jsonl",
+          "bytes": 2500,
+          "sha256": "7a132bf6cd887e96890b91eedb4809f06523b69b78e93d7711e36547931fea68"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/2-cpu.jsonl",
+          "bytes": 2310,
+          "sha256": "e0775abce3ddc94754974ca5a3755ac31a02d208d0e8d3116834233257c623f3"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/2-device.jsonl",
+          "bytes": 3365,
+          "sha256": "e23284bd03f039a5981943457d61c45ca63b0a68fd1ad7d32147f20e8d257788"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr4/2-diagnostic.jsonl",
+          "bytes": 2502,
+          "sha256": "9102a5fb7e7b419ea942e540e1f77dd2fa5594f7d1b632c8174ba10566bf4ef1"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/0-cpu.jsonl",
+          "bytes": 27564,
+          "sha256": "a21229577c7975ee39f86cae5c3e0c1c4780980bcbbd9730cddf5289a5ace390"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/0-device.jsonl",
+          "bytes": 41061,
+          "sha256": "8421d767cabea16f51b3dd7a35b04ae4bd390b67465688a34082886932cb9330"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/0-diagnostic.jsonl",
+          "bytes": 40202,
+          "sha256": "c7a70dc6ab31cc61166455f2d2f7fee9206095f9ad5d9ca835e1a902f17fc3bb"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/1-cpu.jsonl",
+          "bytes": 3552,
+          "sha256": "b1d58f5accc5f9eeaa1a31c8d2812b9f920248a075bdce3dd4764db86f57e83a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/1-device.jsonl",
+          "bytes": 5490,
+          "sha256": "0f12161dfe3e2122eb795f12befddd1d13f375cb8695c8580a3d2175b1698f3c"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/1-diagnostic.jsonl",
+          "bytes": 4094,
+          "sha256": "b731fc65c6d168a7c9eadef1ddd6b03f0193b06a6dd65242d4cdd1d8fce58a20"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/2-cpu.jsonl",
+          "bytes": 3547,
+          "sha256": "a8a6ad900be24be82f683c3c5b9d1485b9f7e5d8d47b4f65eef8eaa75d6b7653"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/2-device.jsonl",
+          "bytes": 5474,
+          "sha256": "cedf32943ff2ce107d8ef7f29e87433c2d281d3bc24b266f850427cb247e308d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr5/2-diagnostic.jsonl",
+          "bytes": 4066,
+          "sha256": "f47cfd03ecc0a33f4659d7ffda75ebae2614a8683589fd1cd03319dd12abeccb"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/0-cpu.jsonl",
+          "bytes": 6712,
+          "sha256": "7cd36b10f2190c8919a71c4902688a7c8a5bfb0d0f9662182dea2c703004457b"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/0-device.jsonl",
+          "bytes": 10243,
+          "sha256": "4f1961f8a123f961e542a30b7e5a3f646be9dd89a1139d1c330d85c07d57e9d5"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/0-diagnostic.jsonl",
+          "bytes": 9520,
+          "sha256": "0012943b28a27e8daba6bcc16ba1ee2b3cb17e9b4f24e0af6c5a8a6af4fc92a6"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/1-cpu.jsonl",
+          "bytes": 2344,
+          "sha256": "e5be5d71aca75c5c3359b4346086346dbcd8b334a1f00bdb6667ff1ce618996e"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/1-device.jsonl",
+          "bytes": 3381,
+          "sha256": "a9c3ad804099bfd3ec212797cd60f031236b249083d9a34fd42355f31ce84a3e"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/1-diagnostic.jsonl",
+          "bytes": 2515,
+          "sha256": "42b27b325e4df619b03c236732ec35e6e3852ec3894e3c672339129b15698764"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/2-cpu.jsonl",
+          "bytes": 2333,
+          "sha256": "75b30ab8dfdba77f5519b57d15b39c236b196be0726663521400755dabec0a12"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/2-device.jsonl",
+          "bytes": 3392,
+          "sha256": "a9c841080f406ccb459d5d67d7126bb20506c09437cdc9a1a5bfc81aa443cc6a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr6/2-diagnostic.jsonl",
+          "bytes": 2492,
+          "sha256": "2814d06a3e072409d4212a7e14f6a37a7af07de0609ffa257d38fd32179d801d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr7/0-cpu.jsonl",
+          "bytes": 28910,
+          "sha256": "f6a4cc53364290d006a047b23efa750f0ac7c4172127b021752ddf271bfa782e"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr7/0-device.jsonl",
+          "bytes": 43255,
+          "sha256": "69ae513d7c03a1ba8f2905b4490a4786eebe2043a14ee22b603578d580de402d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr7/0-diagnostic.jsonl",
+          "bytes": 42403,
+          "sha256": "f7ed54162070c14e2f71bb81bd96ec40850ca44b17d803e5b640c5de6c095cec"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/0-cpu.jsonl",
+          "bytes": 7139,
+          "sha256": "76438f485cadff93e6f05efd379c7a0a9a6f3700ec09230cbad8e6d4ef9c9e51"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/0-device.jsonl",
+          "bytes": 10806,
+          "sha256": "6eb378c263659a8c5fc32151a8f092f12cf40e8368446d00f73aa76f76a43e87"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/0-diagnostic.jsonl",
+          "bytes": 10054,
+          "sha256": "e850b407efa89d1923c978ed51bba0b49e3794e228bddb3a4069af7cfda8440d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/1-cpu.jsonl",
+          "bytes": 2308,
+          "sha256": "1babdf4d4c9f4920a430ca2d3b820e374289b0819d9274408b032e2e6b232928"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/1-device.jsonl",
+          "bytes": 3416,
+          "sha256": "e1553c37db0760d4ab17cffa15fdb31c47311ff4cfa55e015c0e28985ff5c65f"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/1-diagnostic.jsonl",
+          "bytes": 2505,
+          "sha256": "57a1b7f1935c1ed0241eb31decda66c3c912930196fef36c2ad25eeddc2c9554"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/2-cpu.jsonl",
+          "bytes": 2321,
+          "sha256": "a8bdddb4fd66fb8d4671da67b6d790144abe7b4e68800a23496259f5456b2fa8"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/2-device.jsonl",
+          "bytes": 3384,
+          "sha256": "4986a6109f466c9fc5e9f0e40d3e217231233cfd3ff9d69ab3da775f19514040"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr8/2-diagnostic.jsonl",
+          "bytes": 2480,
+          "sha256": "30825b9c4120a87e33adf12985a6e859932c2c5a593aa67222e62a7764f165c0"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/0-cpu.jsonl",
+          "bytes": 20564,
+          "sha256": "737e35d2df51581f5a86cb98ef2b13ff5ebda48fea186bf3745cd7d3627909d2"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/0-device.jsonl",
+          "bytes": 30854,
+          "sha256": "8eac9c60b2b83dbe9ffe2b73e1800a4ee284096240ccd31252c5c0bc73b24249"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/0-diagnostic.jsonl",
+          "bytes": 29968,
+          "sha256": "4a37835c44bf8b932178806cbe9de869bc214bb388a002334b2a25372c7b1995"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/1-cpu.jsonl",
+          "bytes": 3514,
+          "sha256": "9aab543461a9034c3c9d3d9f0a01118f6771bc5e05de786b454610756d0a49a1"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/1-device.jsonl",
+          "bytes": 5495,
+          "sha256": "62ef29e419c712960875940f9d6329d229f83b7c956c26cf969a730d5d50c98f"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/1-diagnostic.jsonl",
+          "bytes": 4023,
+          "sha256": "6793e772aa7f353a9d1449db5b9cfd3787bde70fdc0dbc0b8202ce86094e22e8"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/2-cpu.jsonl",
+          "bytes": 3528,
+          "sha256": "4752ccd8d998207cacd01a1b1a58f5e1ecb27fd57beaa342b1f5dce591be3c15"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/2-device.jsonl",
+          "bytes": 5495,
+          "sha256": "937b03c5e546b5d8adc6ae1997c29ce1fe39618a5723f442e4a4a3857b4cb32d"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-eigen-traces/test_independent_fitted_scf_pr9/2-diagnostic.jsonl",
+          "bytes": 4081,
+          "sha256": "7e0301f0379ee4c96d3790d0d24f53efcd1ed48b6aba389c4dab6e868e355c72"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-gpu-check.log",
+          "bytes": 264,
+          "sha256": "931932b42687f1afbf303c2b21ea2195974f162331c5edb8fec674874168d99a"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-gpu-check.sh",
+          "bytes": 2787,
+          "sha256": "97fdbb5504149412c09fea8e9ceedc82adc5a4ab47b0efd76f89ef59f422373b"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-gpu-selection.log",
+          "bytes": 17270,
+          "sha256": "567f6505d5294408e273e6ea62ee0c0d9dda6d094b5f3a1375951395888d1dcf"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-hooks-first.log",
+          "bytes": 1368,
+          "sha256": "be0036e99b06c3b278d2f0cfd45122dca52709c823d2e2818ad881e97d177154"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-hooks.log",
+          "bytes": 1204,
+          "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-native-identity.json",
+          "bytes": 393,
+          "sha256": "cc0eaad88f2aff3b01ba45aaba1aed472613e16c7113733b6e8851e47b5f90cc"
+        },
+        {
+          "path": "vibeqc-310-independent-seed-ownership.log",
+          "bytes": 99,
+          "sha256": "f31552d70249eaa50ce81008149595eaad2d9db8e69d7779355a91425366f800"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-composition.host.jsonl",
+          "bytes": 303375,
+          "sha256": "ea9eab1f77ef7bf81c23d17fff1fb03dfb518e52691cef0ae568daeaf513f82b"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/0-cpu.jsonl",
+          "bytes": 58670,
+          "sha256": "1493fe604383fee46a89c518b3025fad7f14217d0537171a288301ada0f900db"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/0-device.jsonl",
+          "bytes": 87543,
+          "sha256": "2f3e8049198a241e93d5964d9634a27981a853c4d6d9b23f5c17905fe3d7b195"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/0-diagnostic.jsonl",
+          "bytes": 86468,
+          "sha256": "142be826c2d422627d7795abf8b916682033fd4444ca4aa2bfada349f2196812"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/1-cpu.jsonl",
+          "bytes": 3573,
+          "sha256": "2c8fad6b5b14ef7392981e30218dc7a205192c210ed9ac6b700ada9421534282"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/1-device.jsonl",
+          "bytes": 5495,
+          "sha256": "190070dff4573d3c0fb20dc5aa2e554ea701e13da7e4fd2ff4812321a6986553"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/1-diagnostic.jsonl",
+          "bytes": 4044,
+          "sha256": "0af926223c683332f8a42b4df27468f9e64b882919778a71aef895669bea03ab"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/2-cpu.jsonl",
+          "bytes": 3507,
+          "sha256": "b3172b4e76f88d9966af021d5981eb9975c167225af14bf1da70d261b8a55866"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/2-device.jsonl",
+          "bytes": 5468,
+          "sha256": "00f01a81b41a36f313363a5da629fa90f0d31610383518eaff530f9ad83ee5fa"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr0/2-diagnostic.jsonl",
+          "bytes": 4055,
+          "sha256": "fa41e8102bb1445bb0d90fcac6afeaee469aca0023bd6a5bba6fb0689c7b6dd8"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/0-cpu.jsonl",
+          "bytes": 61310,
+          "sha256": "259e14d657cf215210bc30388d8aaaf48f29e09201fe30786e1b9e43b1e3f1b3"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/0-device.jsonl",
+          "bytes": 91721,
+          "sha256": "441f7593be55dd9553bc65361ebefd2b61e62bf5033ed15495d866ddd5cb1382"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/0-diagnostic.jsonl",
+          "bytes": 90876,
+          "sha256": "31b1ce72951edcebf9d056a253e6ca8eef91b84a01366a44392afd762f267599"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/1-cpu.jsonl",
+          "bytes": 3522,
+          "sha256": "6d9663cd2237ec49b69fc6246babee278187f1258d97edb8088823c498f2980f"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/1-device.jsonl",
+          "bytes": 5497,
+          "sha256": "089816de583b0f5d934b42f6cddec2249949c061ebaac109d10bde091fc0bab4"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/1-diagnostic.jsonl",
+          "bytes": 4047,
+          "sha256": "f033f34da1eaf26919242152620023e093ce5606253a25648296a37d354ff66d"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/2-cpu.jsonl",
+          "bytes": 3564,
+          "sha256": "a72f2f0c6fae58db8c452b587db7d2f523f0258494a659a14964a11cd7faf054"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/2-device.jsonl",
+          "bytes": 5463,
+          "sha256": "a78fb4315f23090f55101161e63d922a803200cca22a6f2266f62e431de32188"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr1/2-diagnostic.jsonl",
+          "bytes": 4046,
+          "sha256": "08bf6ffce7513b2f0e06ce19637a15710583f0da69a58244fa88b0a3d42115f2"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/0-cpu.jsonl",
+          "bytes": 49747,
+          "sha256": "02641b0e7c88ff56e997c35ba0df239fe964e4e64db448757225e60107fca37f"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/0-device.jsonl",
+          "bytes": 74182,
+          "sha256": "e97dc31331f44992e56efe82ece7c767a5002a1884686802b17f718cd8e512cc"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/0-diagnostic.jsonl",
+          "bytes": 73454,
+          "sha256": "dc7c2a3e06fb714c11c00ae5e5d3c3b99cc7669832c0bb4b0523778d67812cc8"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/1-cpu.jsonl",
+          "bytes": 3564,
+          "sha256": "305c9107129269db7766722c80691b0460660c786d2fa750ef847a9acad5c725"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/1-device.jsonl",
+          "bytes": 5445,
+          "sha256": "5128526fa8470becd86b5a1c24fdccb550ce183853ead7e1d3e5c22e838b26d2"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/1-diagnostic.jsonl",
+          "bytes": 4042,
+          "sha256": "7952f282f260f95bbfc92e444e1ee43c19294b8b5105ed85048a3e4d294e0e66"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/2-cpu.jsonl",
+          "bytes": 3552,
+          "sha256": "7c677c9236db21c3f5362966925dc5326af4dd5992fb8cae514ae2c06b4fb16a"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/2-device.jsonl",
+          "bytes": 5494,
+          "sha256": "cd407d317d2c267f6400f48630ad6fac59f80b5cd62c9e239b16487334bc4eaf"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr2/2-diagnostic.jsonl",
+          "bytes": 4040,
+          "sha256": "5b69d535191a84750bf5799b5b519b76815e4c9e05584717fabba104f201b2a0"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/0-cpu.jsonl",
+          "bytes": 50262,
+          "sha256": "e51fc13e8a5e3fecb789ba692da43a6af1050cae5cc7c8d83d34a3f0f3c5cff6"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/0-device.jsonl",
+          "bytes": 75223,
+          "sha256": "51488ab62507bb1123647f55acb465b4fe3113c46e2dc9999ce4430898547138"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/0-diagnostic.jsonl",
+          "bytes": 74572,
+          "sha256": "a4e73ece3256dceaea17640e48b60e3127bd0233360f2b3764b71538337ec3fd"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/1-cpu.jsonl",
+          "bytes": 3554,
+          "sha256": "f3e3a2ec201776e85056eeaff657168e6e49659f05462e7d314ef22434d31713"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/1-device.jsonl",
+          "bytes": 5445,
+          "sha256": "dbe5d89a3767c5aa020a66f1f62959ff70ebca483f7b3cbf105ddd6ebb684b63"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/1-diagnostic.jsonl",
+          "bytes": 4042,
+          "sha256": "2262d795956521627b29de608c3d8933ff18ce8be97e8ad32a6360b095817993"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/2-cpu.jsonl",
+          "bytes": 3518,
+          "sha256": "8699e277d9c87429e39aabc3804dd0c3ad09a88cced76270dcdcdd6402f3a931"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/2-device.jsonl",
+          "bytes": 5505,
+          "sha256": "80fa69a880aec339607589dbf1862f5c766cfee156ea3e926f6e4ae36bc0105b"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-eigen-traces/test_independent_fitted_scf_pr3/2-diagnostic.jsonl",
+          "bytes": 4047,
+          "sha256": "64ca196ccf171454413943e2ad617eff80a3336daf39b9336cbdba0a206788e4"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-check-resubmitted.log",
+          "bytes": 373,
+          "sha256": "2c1825f284d5500f7088187277e77fd2922355b9d90cb7371fef4837a24b1a8e"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-check.log",
+          "bytes": 193,
+          "sha256": "cc8cce368aa031a18e787c16b1a7f98c7592f8e07475626a3ac7a6d278898fc0"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-check.sh",
+          "bytes": 2865,
+          "sha256": "65fd792c83660c7d695792cd0b42d7ae39ed6d475ca9987f2a2e88e659e1b75c"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-composition.log",
+          "bytes": 109,
+          "sha256": "df5166e1cdc3c8b3a4b2b34df073586df1dc3dbbaae4fabe80f1b2932b310899"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-native.log",
+          "bytes": 718,
+          "sha256": "0b6bf0f347a4e227db4486268344ff46cf08b3f57b3bc77bcebf64eeb112e0cb"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-python.log",
+          "bytes": 192,
+          "sha256": "31456399db4bee65e8a35aba719c6b51c855e2cb687649bc4be086459fe533e7"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-gpu-selection.log",
+          "bytes": 124,
+          "sha256": "fbf2df240c965488a42397c2d379f09c2777ab0c55bba99ea79073862cccef11"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_empty_0/empty-beta.jsonl",
+          "bytes": 5014,
+          "sha256": "6ce4a0eabe4ca2643a886eed22398bcb480123d2fa69ce40b620aa728dd43525"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/0-cpu.jsonl",
+          "bytes": 6722,
+          "sha256": "16c92c9a34f7ec45420817946bbc6408794848af9bd7ec84a4fdeab8c8e73c55"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/0-device.jsonl",
+          "bytes": 10174,
+          "sha256": "426c798769b4c7b393b6898affb5d4a9c12f3ff1f8981afcb4e12c45132ae8a8"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/0-diagnostic.jsonl",
+          "bytes": 9480,
+          "sha256": "dd9f2ee3f5fcdb9822dc6572a6cc0392cc037e493226c1f3095da0bdafd3175e"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/1-cpu.jsonl",
+          "bytes": 2286,
+          "sha256": "91f750bada638efa9ee9651a77e8519ca45d52b684fac389018c23e31b61b3a0"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/1-device.jsonl",
+          "bytes": 3358,
+          "sha256": "dff2e2e3c182de47391bed71785663947b59a2f60636e430dd2cd02a638c1c7f"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/1-diagnostic.jsonl",
+          "bytes": 2494,
+          "sha256": "ca5bf8275eb4ebe09385ce79e1d6d90988bf9ed8147a102db59dc6f1a7ba2b5f"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/2-cpu.jsonl",
+          "bytes": 2321,
+          "sha256": "ee6e619e44bcbc7d0aadfdc1445373b80fa605cda90e3b71b54451ed329e8dda"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/2-device.jsonl",
+          "bytes": 3380,
+          "sha256": "36074df50095b7aa68fc97a13c76847389294a0a69d1043769d7968cba341213"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr0/2-diagnostic.jsonl",
+          "bytes": 2475,
+          "sha256": "bf40be43c821e56e3c43cb9e76f67615fd5e10005e9ea85ad7b2c1bc436e4637"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/0-cpu.jsonl",
+          "bytes": 19176,
+          "sha256": "125165a27ec4fcedb3ee22753c622d8bac42fb0a00b7ca800d156576d16d8ce6"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/0-device.jsonl",
+          "bytes": 28642,
+          "sha256": "e0b81b37388621d91cd015ef5a617038195067e089a584e13429a6098a68d6a0"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/0-diagnostic.jsonl",
+          "bytes": 27849,
+          "sha256": "b2fff2bb48cd4dfceb2c9e20d425b73ccad442ba0d67157d0332e69cb991abc4"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/1-cpu.jsonl",
+          "bytes": 3562,
+          "sha256": "02363ac0e143f2612b8ab21ccb48c2c97b742cb3814494e54805a94102ffc551"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/1-device.jsonl",
+          "bytes": 5429,
+          "sha256": "d12d7118a6a77763f31353b8c4a73dba9ba1ee182b261ab7f17f0890f3dc8c52"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/1-diagnostic.jsonl",
+          "bytes": 4019,
+          "sha256": "6a2e83bbe46eb7acaf60de4a11a26bcea835b6275666e0fc3b5d45fd8d92f936"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/2-cpu.jsonl",
+          "bytes": 3528,
+          "sha256": "01e51f3737e5682b8a14181cab0e9533a95ce1d83e489bd7596c45bf133b185e"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/2-device.jsonl",
+          "bytes": 5415,
+          "sha256": "3f0e13296c05776340685f40ec94d59cdb60bae35c09f78f9ff91e5bd7f4075c"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck-traces/test_independent_fitted_scf_pr1/2-diagnostic.jsonl",
+          "bytes": 4073,
+          "sha256": "b0e193e7ec11e33459c3083654acc4bd76bf5b57bac0a09d43bc2ca956b6d016"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-memcheck.log",
+          "bytes": 232,
+          "sha256": "268b152130b7e12cdb9d14a28b79c95e61caec844c3c72085f45d1bbffa9da0a"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-native-identity.json",
+          "bytes": 393,
+          "sha256": "da10368e534ae2bd63065432406b4ed1da6dc49f45d8f7315defc8d402ebe901"
+        },
+        {
+          "path": "vibeqc-310-independent-tight-seed-hooks.log",
+          "bytes": 1204,
+          "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+        },
+        {
+          "path": "vibeqc-310-iterative-cpu-build.log",
+          "bytes": 16212,
+          "sha256": "668215b395510a351cf8583bf78c73c90b834f3fef5b3c64a6318168de14dc5b"
+        },
+        {
+          "path": "vibeqc-310-iterative-cpu-configure.log",
+          "bytes": 462,
+          "sha256": "8cfcbe72f217e7d32dc9517f95469471d6fbed4409bb3890e595981b62640e9a"
+        },
+        {
+          "path": "vibeqc-310-iterative-cpu-native.log",
+          "bytes": 693,
+          "sha256": "c76d1e6d92f75bd53e08b35adab0fb82692abbe120ecc31868f2308a038892ea"
+        },
+        {
+          "path": "vibeqc-310-iterative-cuda-build.log",
+          "bytes": 27496,
+          "sha256": "651bc2bd585b391c26bcbd462766b67d3f50607e5cf6fedaa5e68740f969e8f1"
+        },
+        {
+          "path": "vibeqc-310-iterative-cuda-configure.log",
+          "bytes": 1047,
+          "sha256": "7b56d8175b270c631340e707d382bc0a722391dc1919a67f2988dba3eba10dba"
+        },
+        {
+          "path": "vibeqc-310-iterative-gpu-check.log",
+          "bytes": 108,
+          "sha256": "305d71d2117e33a47a8d97a541a0973bd85ecc6af49de1df9a9895d3ad83661d"
+        },
+        {
+          "path": "vibeqc-310-iterative-gpu-check.sh",
+          "bytes": 2097,
+          "sha256": "e804c461cdad055e739d084d84238bd11f0550054c6c989bc92129bf373dabdd"
+        },
+        {
+          "path": "vibeqc-310-iterative-gpu-native.log",
+          "bytes": 716,
+          "sha256": "69a25ff7709a4bd9aeabf95a21377b7ba6fc902ee015a5b8203f8f8f79eee1bf"
+        },
+        {
+          "path": "vibeqc-310-iterative-gpu-python.log",
+          "bytes": 111,
+          "sha256": "953f8951bf58566c50f4eb32246cd3c3a2dff5c7ae04dc617af62b6451d3f54d"
+        },
+        {
+          "path": "vibeqc-310-iterative-gpu-retry.log",
+          "bytes": 99,
+          "sha256": "7574f4fcbfe9bea424288c7f66d47cd4a1d3ffaea0c73c1c0cf74c797a3c403f"
+        },
+        {
+          "path": "vibeqc-310-iterative-hooks-first.log",
+          "bytes": 1263,
+          "sha256": "0337c6664e624a461f9352a20873736e694134e8b0181bc3a8253fa199bcd5db"
+        },
+        {
+          "path": "vibeqc-310-iterative-hooks.log",
+          "bytes": 1204,
+          "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+        },
+        {
+          "path": "vibeqc-310-iterative-memcheck-traces/test_diis_retry_provider_and_i0/retry-False.jsonl",
+          "bytes": 10577,
+          "sha256": "39b885d4e694b3e5842f49da8961771373e53d1cd13ce5d18edb436193b52662"
+        },
+        {
+          "path": "vibeqc-310-iterative-memcheck-traces/test_diis_retry_provider_and_i0/retry-True.jsonl",
+          "bytes": 9822,
+          "sha256": "4e2a541640ecc6bcc798ec7dbfbab540d8a400135b052257317f2b81a0cad94f"
+        },
+        {
+          "path": "vibeqc-310-iterative-memcheck-traces/test_diis_retry_provider_and_i1/retry-False.jsonl",
+          "bytes": 12648,
+          "sha256": "9db4ad4598d77bb10860b84e040b16bc819e27787ff23eb948e5bbfa2a581c6f"
+        },
+        {
+          "path": "vibeqc-310-iterative-memcheck-traces/test_diis_retry_provider_and_i1/retry-True.jsonl",
+          "bytes": 11234,
+          "sha256": "63174fb066e8c04183cbccdebffb1c315c42a59b979cde812e2fdfd508bc347d"
+        },
+        {
+          "path": "vibeqc-310-iterative-memcheck.log",
+          "bytes": 231,
+          "sha256": "9bb4ff18feff9becf2d18a5be40e765d8a7c351b5b6af46dbccaa5b326e2457c"
+        },
+        {
+          "path": "vibeqc-310-iterative-native-identity.json",
+          "bytes": 321,
+          "sha256": "1a9991c030f53e7a30aa74c0d8f229933c36ad4f66c8aad2f124f22850294f5e"
+        },
+        {
+          "path": "vibeqc-310-iterative-ownership-final.log",
+          "bytes": 99,
+          "sha256": "f31552d70249eaa50ce81008149595eaad2d9db8e69d7779355a91425366f800"
+        },
+        {
+          "path": "vibeqc-310-iterative-ownership.log",
+          "bytes": 99,
+          "sha256": "ac7c25693dfc563ad7109629a2bd23f552f2780ef9f81a003f17af0541800754"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i0/retry-False.jsonl",
+          "bytes": 3161,
+          "sha256": "33b8d35d49a28234869dece60237ff3f945e2246772ce3df98979a7691d59161"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i0/retry-True.jsonl",
+          "bytes": 3007,
+          "sha256": "5689c04000de55787b21c8ebfdcfcfe10abaf73444917718156b2f03f89990f7"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i1/retry-False.jsonl",
+          "bytes": 3681,
+          "sha256": "27506bde66712f7f8f315e08d0d014657c30827aff43ddd819cd52819f6b7f20"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i1/retry-True.jsonl",
+          "bytes": 3326,
+          "sha256": "8e8fe29e7d43d61818e415d4d3d87adc0a1e8e60535617bf41fbbf6a6a14de59"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i10/retry-False.jsonl",
+          "bytes": 10627,
+          "sha256": "5a3246efc9ac1600bf3535f438f9bf92eb59c1a0027b710dbd548474391b75a4"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i10/retry-True.jsonl",
+          "bytes": 9977,
+          "sha256": "cb47f931090aee949abbc2884bb5f591d1e145a1e4e7518d82b90ba0789d42ff"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i11/retry-False.jsonl",
+          "bytes": 12600,
+          "sha256": "61e26b73474376fe4e60b41a8cee6d35d60d8e75070a5abe145815bb031b17d0"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i11/retry-True.jsonl",
+          "bytes": 11311,
+          "sha256": "ad45331d6ba286ce114131592488ddbcf746b82eb8f4f62ca058c602d8c980bf"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i2/retry-False.jsonl",
+          "bytes": 3150,
+          "sha256": "a09b6e20c46e0385874dc7f24c23505cc0d686e0884f126aa2ebbb89e3e27bfe"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i2/retry-True.jsonl",
+          "bytes": 3013,
+          "sha256": "d045ebc27c403d1add71f7abac9617738e7125974b62abdd5f2dff931a06d54a"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i3/retry-False.jsonl",
+          "bytes": 3679,
+          "sha256": "7492ddf7b962f246bc71e96e8d76dd4f3496ee740c62b7d51d375f4f1bba9d34"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i3/retry-True.jsonl",
+          "bytes": 3328,
+          "sha256": "d363823a6f8f80ffdc6a3a044a2088a0338a1f96ac741a8c1d6076cf971cd3a0"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i4/retry-False.jsonl",
+          "bytes": 3494,
+          "sha256": "d5e7e9763ecbd54ef985962fb60f1e0d0bee7b93ff3d335adaeca0dcf15316e3"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i4/retry-True.jsonl",
+          "bytes": 3290,
+          "sha256": "4d0f3a54158178596b1fe0f8d29e8ec86ffdca1d33f4550ba99d30e1bd0339d6"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i5/retry-False.jsonl",
+          "bytes": 3974,
+          "sha256": "bf0db9e9fedb0eb7b03dceee1702f204273539b2037ae4f72907ed15e9875c42"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i5/retry-True.jsonl",
+          "bytes": 3677,
+          "sha256": "0d31615739bad9aa6caa0d77582132367ecedf8d9c22377fe4e0fa6c23567e1c"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i6/retry-False.jsonl",
+          "bytes": 3460,
+          "sha256": "8f6b3a13506f53cc0f02c6ff41717e00fabe0ebed0ac2471a0ac4f69b1a6cfb4"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i6/retry-True.jsonl",
+          "bytes": 3297,
+          "sha256": "08261caf254104c3fbf847a4ba7a9da8735fec38eb57afc5dde3fd6c1f0ef262"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i7/retry-False.jsonl",
+          "bytes": 3964,
+          "sha256": "2d07b011728d10e376862abbac96631718c2451e11e7ed3e6103701abc931ac5"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i7/retry-True.jsonl",
+          "bytes": 3644,
+          "sha256": "0af5560117cca1b480429636098c170a19dfb7b6c739e5a43662f341e2173d26"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i8/retry-False.jsonl",
+          "bytes": 10611,
+          "sha256": "70fbffaf1e33d37fa1d45d1f05f10a270458a9221a4a2d631a53d0b8d55e1306"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i8/retry-True.jsonl",
+          "bytes": 9978,
+          "sha256": "fa7997e49013f0ad82a9cdd21d0f472ac54e5c5d72bf23ecbdc5e8d7c575c4a7"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i9/retry-False.jsonl",
+          "bytes": 12640,
+          "sha256": "16c2e87564a19a6f16ed488d72095ecfdd19505c0d6660ec8a458d7d47d1341c"
+        },
+        {
+          "path": "vibeqc-310-iterative-traces/test_diis_retry_provider_and_i9/retry-True.jsonl",
+          "bytes": 11235,
+          "sha256": "57a4e036f6fc4bc8d9ac47a316ab6e39849e5f50a3199a07a2520c53b98a2835"
+        }
+      ]
+    },
+    "reference": {
+      "path": "reference.zip",
+      "bytes": 10748889,
+      "sha256": "c369a5128ed36987073f6364290d4be455213e00f54e9cea04873def6d1f8c07",
+      "members": 12,
+      "restoration": "Every member was restored and compared byte-for-byte.",
+      "files": [
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-energy-job.log",
+          "bytes": 866,
+          "sha256": "286b689e2cbc88370a996b2053b2a913cbc9015ff40500c4ba48d16eca8b8149"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-energy.py",
+          "bytes": 1546,
+          "sha256": "0d2ca2be4d56cee22f5665116f3871056cf4c3f9e82b8edfe168ea9ed42b1cbe"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-energy/pyscf.log",
+          "bytes": 23981,
+          "sha256": "98dc728a704a5f73cff8503fec7b27a0d299b4d0ed9ff3773146890f733fe86c"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-energy/result.json",
+          "bytes": 8575,
+          "sha256": "62d54e42b65b2bfe895063776382b59f184172799ce52c2b9024ac21ac698830"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces-job.log",
+          "bytes": 872,
+          "sha256": "0450613eeed4bdfbfdbf5336c4f6ab6bcf7396be79280f354cc5be5d0fe72613"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces.py",
+          "bytes": 2057,
+          "sha256": "529267d88d0e14f2941419e9995d3abbf97caf1ec6a41dbaba974d30a09126fc"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces/density.npy",
+          "bytes": 4718720,
+          "sha256": "a0a5464bfa334a4ab6326ac5a0c203a2c512b04d29b9e7e7188fd62bd85c7901"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces/forces.npy",
+          "bytes": 2432,
+          "sha256": "ab48e29e0125a5aeaaa76b24a436a1f99ed829d3857921fa566d28edd23def2f"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces/overlap.npy",
+          "bytes": 4718720,
+          "sha256": "416608a33594a7ea35604e7d688c9864a68b6a974137141d9cc2b79ae168d814"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces/pyscf.log",
+          "bytes": 31402,
+          "sha256": "c2727862868531a71986e2b1b741f4a407780825bb456840df9178a6dff14cb2"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces/result.json",
+          "bytes": 19529,
+          "sha256": "6ece68f2f971ca1ef8698d32422aa7318c1e936d492b4749fc9923a797ae8f40"
+        },
+        {
+          "path": "vibeqc-308-96-atoms-pyscf-forces/scf.chk",
+          "bytes": 4774408,
+          "sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851"
+        }
+      ]
+    }
+  }
+}

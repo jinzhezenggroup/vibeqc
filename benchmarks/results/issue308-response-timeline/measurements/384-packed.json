@@ -1,0 +1,584 @@
+{
+  "scope": "intrusive attribution",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "aos": 384,
+  "batch": 1,
+  "source_identity": "18e05cbb37015ef31a1d8cf5c195c7b3882c3a6d1fd68921adbca115440bf0f3",
+  "library_sha256": "59c54953dcba2ef4d51147fb32d4093919956619a8b432d509cb4996f245de25",
+  "library": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-response-timeline/qualified-v3/libvibeqc.so",
+  "git_head": "a57656a62f333a0990c963844a69bcef8b7c5b16",
+  "git_status": " M src/scf/cuda/df_derivatives.cu\n M src/scf/cuda/df_derivatives.cuh\n M src/scf/cuda/df_gradient_bridge.cu\n M src/scf/cuda/df_response_weights.cu\n M tests/python/test_df_derivatives_cuda.py\n M tests/python/test_df_response_weights_cuda.py\n?? benchmarks/df_response_timeline.py\n?? benchmarks/issue308_response_timeline.py\n?? benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.png\n?? build-mixed/\n?? docs/df_response_timeline.md\n?? tests/python/test_df_response_timeline.py\n?? uv.lock\n",
+  "runner_sha256": "b13e89a3fd28cd61152ba3ab2d2a0658a676f2d2adebd005a1631f5b545656c3",
+  "slurm_job_id": "9592",
+  "cuda_visible_devices": "0",
+  "controls": {
+    "VIBEQC_RESOURCE_CUDA_TEST": "1",
+    "VIBEQC_DF_DERIVATIVE_CUDA_TEST": "1",
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-response-timeline/qualified-v3/libvibeqc.so",
+    "VIBEQC_DF_RESPONSE_UPLOAD_PROBE": "packed"
+  },
+  "reference": "benchmarks/results/issue206-metric-gemv/measurements/384ao-b1-forces-blas.json",
+  "reference_sha256": "80d3a98eeb5f31df96b899d4292272c5c1dd05f5ab078abe253788e6d345ad44",
+  "scientific_settings": {
+    "case": "water-hexadecamer-2s4-def2-svp-spherical",
+    "ao_count": 384,
+    "batch_size": 1,
+    "method": "rhf",
+    "charge": 0,
+    "multiplicity": 1,
+    "basis_representation": "spherical",
+    "auxiliary_basis": "same as orbital basis",
+    "density_fitting_relative_threshold": 1e-10,
+    "density_tolerance": 1e-10,
+    "energy_tolerance": 1e-12,
+    "max_iterations": 100,
+    "vibeqc_screening_tolerance": 1e-12
+  },
+  "warm_start_policy": "fixed post-cold density, one untimed replay before measurement",
+  "samples": [
+    {
+      "seconds": 9.984830401837826,
+      "iterations": [
+        3
+      ],
+      "energies_hartree": [
+        -1219.1762188003188
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            1.3092122082579929e-05,
+            -0.010181732632486555,
+            -0.007359999582200657
+          ],
+          [
+            0.01225311535985139,
+            0.014816418503643822,
+            0.0019165209431960418
+          ],
+          [
+            -0.011852144131256546,
+            0.0009875283866416045,
+            0.008906094464357103
+          ],
+          [
+            -0.01038054264488032,
+            0.0005013755302553554,
+            0.007331953099735886
+          ],
+          [
+            0.0012931698347373802,
+            0.011639778963748581,
+            -0.008843581157236489
+          ],
+          [
+            0.01514506694989728,
+            -0.01252221421183922,
+            -0.0019544433849826006
+          ],
+          [
+            0.0004494354847637869,
+            0.005305922076274119,
+            -0.007253094850847908
+          ],
+          [
+            0.00348632712414322,
+            0.005215535661856306,
+            0.0066719944130367425
+          ],
+          [
+            -0.004344864973115104,
+            -0.00603565472418134,
+            -0.0029533943890574822
+          ],
+          [
+            -0.005106152728965577,
+            0.0007516615532057108,
+            0.00710744880313437
+          ],
+          [
+            -0.005201226767798669,
+            0.0034076532759706652,
+            -0.006485382053262154
+          ],
+          [
+            0.005909077753347258,
+            -0.004403345187157217,
+            0.0029645081569261923
+          ],
+          [
+            0.0053739539849514285,
+            -0.00045580759997859173,
+            0.006958666476905946
+          ],
+          [
+            -0.00606764621831735,
+            0.004305594907645447,
+            0.003188732175903928
+          ],
+          [
+            0.0052955347706310305,
+            -0.003413696612228365,
+            -0.0064534144241487875
+          ],
+          [
+            0.010383917142007471,
+            -0.0004372239684652853,
+            0.007304531680560482
+          ],
+          [
+            -0.014885571822904314,
+            0.01240725800996422,
+            -0.0020046920517294447
+          ],
+          [
+            -0.0013710783119685807,
+            -0.01155038787733692,
+            -0.008741095577759763
+          ],
+          [
+            0.0006332785322543778,
+            0.010379121940562078,
+            -0.007592959707323166
+          ],
+          [
+            -0.012578679715798772,
+            -0.015155980927329749,
+            0.0020443801435170413
+          ],
+          [
+            0.011530557958330669,
+            -0.0012992278692300864,
+            0.008870744026089466
+          ],
+          [
+            -0.0007247778953534518,
+            -0.0051527832298856975,
+            -0.007498433679590961
+          ],
+          [
+            -0.003618637818691165,
+            -0.005048397234582257,
+            0.006730161215141171
+          ],
+          [
+            0.004493884900358927,
+            0.005777363466789528,
+            -0.0028552447402088546
+          ],
+          [
+            -0.000633278623578534,
+            -0.01037912199933229,
+            -0.007592959710312076
+          ],
+          [
+            0.01257867977878273,
+            0.01515598099785727,
+            0.0020443801779727105
+          ],
+          [
+            -0.011530557977909065,
+            0.001299227865436055,
+            0.008870744040897102
+          ],
+          [
+            -0.010383917143218475,
+            0.0004372239728770312,
+            0.007304531731979311
+          ],
+          [
+            0.0013710783053228269,
+            0.011550387916777068,
+            -0.008741095599133306
+          ],
+          [
+            0.014885571849778805,
+            -0.012407258017085988,
+            -0.0020046920687974597
+          ],
+          [
+            0.000724777943475582,
+            0.00515278319399886,
+            -0.007498433676943631
+          ],
+          [
+            0.0036186377808290356,
+            0.005048397241473923,
+            0.006730161180711085
+          ],
+          [
+            -0.004493884906891045,
+            -0.005777363454308354,
+            -0.0028552447131586843
+          ],
+          [
+            -0.005373953966665534,
+            0.000455807668923523,
+            0.0069586664914486444
+          ],
+          [
+            -0.005295534740100175,
+            0.0034136965384717445,
+            -0.006453414415235171
+          ],
+          [
+            0.006067646167354932,
+            -0.004305594898254418,
+            0.0031887321397946287
+          ],
+          [
+            0.00510615275477209,
+            -0.000751661562307293,
+            0.007107448789274984
+          ],
+          [
+            -0.0059090777360752715,
+            0.004403345156829729,
+            0.002964508127529902
+          ],
+          [
+            0.0052012267458546695,
+            -0.0034076532559267217,
+            -0.006485382007208966
+          ],
+          [
+            0.010380542740802138,
+            -0.0005013756154379261,
+            0.0073319530956133
+          ],
+          [
+            -0.0151450670490457,
+            0.012522214248005096,
+            -0.001954443415114607
+          ],
+          [
+            -0.0012931698251737824,
+            -0.011639778964289976,
+            -0.008843581160133951
+          ],
+          [
+            -1.3092163360113417e-05,
+            0.010181732597301003,
+            -0.007359999604435244
+          ],
+          [
+            -0.01225311531954381,
+            -0.01481641844854283,
+            0.0019165209660333528
+          ],
+          [
+            0.011852144160048175,
+            -0.0009875283970657517,
+            0.008906094488632393
+          ],
+          [
+            -0.0004494355619932009,
+            -0.005305922096056791,
+            -0.007253094797843138
+          ],
+          [
+            -0.0034863270743065752,
+            -0.0052155356579801915,
+            0.00667199437035701
+          ],
+          [
+            0.004344864967912678,
+            0.006035654766311742,
+            -0.0029533944316747682
+          ]
+        ]
+      ],
+      "maximum_energy_error_hartree": 1.8189894035458565e-12,
+      "maximum_force_error_hartree_per_bohr": 1.0637457928397431e-10,
+      "metric": [
+        {
+          "bucket_id": 0,
+          "system_index": 0,
+          "effective_rank": 384,
+          "absolute_threshold": 1.699097121721467e-07,
+          "condition_number": 18132.17022183579,
+          "solver_device_workspace_bytes": 6423192,
+          "solver_host_workspace_bytes": 0,
+          "device_resident_bytes": 1937915779,
+          "peak_device_bytes": 2398506527,
+          "host_resident_bytes": 19923385,
+          "peak_host_bytes": 474094013,
+          "auxiliary_tile": 384,
+          "streamed": false
+        }
+      ],
+      "components": {
+        "groups": [
+          {
+            "execution": "stream",
+            "operation": "final_state_download",
+            "calls": 1,
+            "host_completion_ms": 0.708234,
+            "final_synchronization_ms": 0.004138,
+            "gpu_inclusive_ms": 0.692063987,
+            "host_exclusive_ms": {
+              "final_state_download": 0.704096
+            },
+            "gpu_exclusive_ms": {
+              "final_state_download": 0.692063987
+            },
+            "counter_sums": {
+              "final_state_download_bytes": 2362380
+            },
+            "counter_maxima": {
+              "final_state_download_bytes": 2362380
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_j",
+            "calls": 1,
+            "host_completion_ms": 0.672315,
+            "final_synchronization_ms": 0.546805,
+            "gpu_inclusive_ms": 0.616032004,
+            "host_exclusive_ms": {
+              "ri_j": 0.01298500000000001,
+              "ri_j_gemm": 0.112525
+            },
+            "gpu_exclusive_ms": {
+              "ri_j": 0.0011839860000000257,
+              "ri_j_gemm": 0.614848018
+            },
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_k",
+            "calls": 1,
+            "host_completion_ms": 58.830647,
+            "final_synchronization_ms": 58.719214,
+            "gpu_inclusive_ms": 58.8206062,
+            "host_exclusive_ms": {
+              "ri_k": 0.05137800000000001,
+              "ri_k_gemm": 0.060055
+            },
+            "gpu_exclusive_ms": {
+              "ri_k": 1.5373744999999985,
+              "ri_k_gemm": 57.2832317
+            },
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "force_response",
+            "calls": 1,
+            "host_completion_ms": 9398.96613,
+            "final_synchronization_ms": 0.004909,
+            "gpu_inclusive_ms": 9398.90039,
+            "host_exclusive_ms": {
+              "force_response": 1.0742409999984375,
+              "response_allocation_and_uploads": 1.766848,
+              "response_weights": 10.686333999999988,
+              "metric_inverse": 0.039476,
+              "coulomb_response": 1.1295939999999973,
+              "raw_value_prior_stream_wait": 6052.724601999996,
+              "raw_value_host_gather": 2867.5775040000035,
+              "raw_value_slice_upload": 62.41843299999983,
+              "coulomb_response_charge_dot": 7.186539000000006,
+              "coulomb_response_weights": 0.265738,
+              "exchange_response_matrix_products": 74.95067599999997,
+              "exchange_response_weights_and_metric": 46.137569000000035,
+              "exchange_response_metric_dot": 111.42280299999989,
+              "three_center_derivative_contraction": 0.158453,
+              "metric_frechet_response": 0.037612,
+              "metric_center_derivative_contraction": 0.018967,
+              "response_output_and_synchronization": 161.365831
+            },
+            "gpu_exclusive_ms": {
+              "force_response": 1.074377940100021,
+              "response_allocation_and_uploads": 1.76201606,
+              "response_weights": 47.21961357708096,
+              "metric_inverse": 0.257344007,
+              "coulomb_response": 5.056306530309939,
+              "raw_value_prior_stream_wait": 23.9438719667101,
+              "raw_value_host_gather": 2848.104448258004,
+              "raw_value_slice_upload": 243.3641921731994,
+              "coulomb_response_charge_dot": 2242.8191333099976,
+              "coulomb_response_weights": 0.25852799790000003,
+              "exchange_response_matrix_products": 530.0917758729983,
+              "exchange_response_weights_and_metric": 127.01756732869887,
+              "exchange_response_metric_dot": 167.70576175909332,
+              "three_center_derivative_contraction": 3155.314605,
+              "metric_frechet_response": 0.554656029,
+              "metric_center_derivative_contraction": 4.33321619,
+              "response_output_and_synchronization": 0.0229759999
+            },
+            "counter_sums": {
+              "atom_coordinates": 144,
+              "density_upload_bytes": 1179648,
+              "device_to_host_bytes": 1152,
+              "host_to_device_bytes": 4016747664,
+              "metric_derivative_weight_bytes": 1179648,
+              "metric_derivative_weights": 147456,
+              "raw_probe_gather_elements": 501940224,
+              "raw_probe_pinned_host_bytes": 1179648,
+              "raw_probe_prior_stream_drains": 3404,
+              "raw_value_cache_hits": 436,
+              "raw_value_reuse_bytes": 514326528,
+              "raw_value_upload_bytes": 4015521792,
+              "response_ao_matrix_products": 6144,
+              "response_auxiliary_blocks": 8,
+              "response_charge_dot_elements": 56623104,
+              "response_host_to_device_bytes": 0,
+              "response_metric_blas_dots": 147456,
+              "response_probe_total_device_bytes": 132174096,
+              "response_scratch_bytes": 132174096,
+              "stream_synchronizations": 3405,
+              "tensor_host_to_device_bytes": 4015521792,
+              "three_center_derivative_weight_bytes": 452984832,
+              "three_center_derivative_weights": 56623104
+            },
+            "counter_maxima": {
+              "atom_coordinates": 144,
+              "density_upload_bytes": 1179648,
+              "device_to_host_bytes": 1152,
+              "host_to_device_bytes": 4016747664,
+              "metric_derivative_weight_bytes": 1179648,
+              "metric_derivative_weights": 147456,
+              "raw_probe_gather_elements": 501940224,
+              "raw_probe_pinned_host_bytes": 1179648,
+              "raw_probe_prior_stream_drains": 3404,
+              "raw_value_cache_hits": 436,
+              "raw_value_reuse_bytes": 514326528,
+              "raw_value_upload_bytes": 4015521792,
+              "response_ao_matrix_products": 6144,
+              "response_auxiliary_blocks": 8,
+              "response_charge_dot_elements": 56623104,
+              "response_host_to_device_bytes": 0,
+              "response_metric_blas_dots": 147456,
+              "response_probe_total_device_bytes": 132174096,
+              "response_scratch_bytes": 132174096,
+              "stream_synchronizations": 3405,
+              "tensor_host_to_device_bytes": 4015521792,
+              "three_center_derivative_weight_bytes": 452984832,
+              "three_center_derivative_weights": 56623104
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          }
+        ],
+        "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+      },
+      "trace_sha256": "291dbb7cf6deb9ec65edc6fec9b58f3e0e43f697273f4ec78ec4a8ea1c8e836d",
+      "host_components": {
+        "exclusive_phases": {
+          "batch_execute": {
+            "calls": 1,
+            "wall_ms": 0.09704599999895436,
+            "cpu_ms": 0.09527899999920919
+          },
+          "run_rhf_density_fitting_cuda_bucket_impl": {
+            "calls": 1,
+            "wall_ms": 0.49699000000146043,
+            "cpu_ms": 0.4962520000117365
+          },
+          "prepare_item": {
+            "calls": 1,
+            "wall_ms": 1.007606,
+            "cpu_ms": 1.0074889999955872
+          },
+          "prepare_initial_frame": {
+            "calls": 1,
+            "wall_ms": 0.21770500000000004,
+            "cpu_ms": 0.21778899999702617
+          },
+          "overlap_cache_hit": {
+            "calls": 1,
+            "wall_ms": 0.001022,
+            "cpu_ms": 0.0008909999991146833
+          },
+          "initial_density": {
+            "calls": 1,
+            "wall_ms": 0.579608,
+            "cpu_ms": 0.5796270000004711
+          },
+          "device_scf_submission_wait": {
+            "calls": 1,
+            "wall_ms": 253.825762,
+            "cpu_ms": 253.7948820000011
+          },
+          "finalization": {
+            "calls": 1,
+            "wall_ms": 1.4762119999995775,
+            "cpu_ms": 1.4720589999942604
+          },
+          "final_state_read": {
+            "calls": 1,
+            "wall_ms": 0.955566,
+            "cpu_ms": 0.955752999999504
+          },
+          "final_state_fock_build": {
+            "calls": 1,
+            "wall_ms": 60.43371,
+            "cpu_ms": 60.43188299999969
+          },
+          "final_state_validation": {
+            "calls": 1,
+            "wall_ms": 155.304643,
+            "cpu_ms": 155.12072100000296
+          },
+          "final_state_weighted_density": {
+            "calls": 1,
+            "wall_ms": 9.829518,
+            "cpu_ms": 9.82919400000526
+          },
+          "final_state_reuse": {
+            "calls": 1,
+            "wall_ms": 0.000441,
+            "cpu_ms": 0.0004209999957538457
+          },
+          "force_response": {
+            "calls": 1,
+            "wall_ms": 6675.406355,
+            "cpu_ms": 6673.143934999828
+          },
+          "df_raw_value_host_gather": {
+            "calls": 3404,
+            "wall_ms": 2820.036782000001,
+            "cpu_ms": 2820.6905630001793
+          }
+        },
+        "roots": [
+          {
+            "root_id": 0,
+            "name": "batch_execute",
+            "reason": "unspecified",
+            "parent": -1,
+            "item": -1,
+            "nbf": 0,
+            "wall_ms": 9979.668966,
+            "cpu_ms": 9977.836738,
+            "finished": true,
+            "failed": false
+          }
+        ],
+        "reference_eigensolves": [],
+        "eigensolves_by_reason": {},
+        "device_eigensolves": [],
+        "device_eigensolves_by_reason": {},
+        "interpretation": "Reference eigensolve leaf rows count actual calls, including failures. Item indices are local to the enclosing native bucket; root and ancestor IDs disambiguate ragged buckets; fleet worker items use source ordering. Host phases are exclusive within a root only. Concurrent worker roots overlap the waiting endpoint, so summed wall phases are not elapsed endpoint time. CPU and wall clocks overlap and must not be added to each other or CUDA events. CPU clock is null where thread CPU timing is unavailable. Use separate clean endpoint timings."
+      },
+      "host_trace_sha256": "13bbdbf3d8bebb8d657c9f2481eb2ca7dd5aeaa3152f62583df85fb9c4893b87"
+    }
+  ],
+  "source_patch_sha256": "bdad697b2e6b4a6de271fea772690c4cc99d8e8ec5d7289acf257c9e063e6bc4",
+  "cold_iterations": [
+    20
+  ],
+  "prime_iterations": [
+    3
+  ]
+}

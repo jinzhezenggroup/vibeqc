@@ -1,0 +1,1329 @@
+{
+  "scope": "Derive Phase-A evidence from complete cells without pooling SCF branches.\n\nLogical operator counts combine executed eager traces with source-bound graph\nreplay counts. They are never kernel counts or inferred component timings.\nPartial files and intrusive diagnostics cannot supply clean sample medians.\n",
+  "cells": [
+    {
+      "source": ".artifacts/issue409/clean-warm/192-forces.json",
+      "sha256": "7d7e1a1b094477016133359d311914113d80fad938a296095134232d68a69917",
+      "phase": "warm",
+      "aos": 192,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.16565808979794383,
+        "packed": 0.13055378897115588
+      },
+      "packed_over_dense": 0.7880918410347162,
+      "paired_bootstrap_ratio_95": [
+        0.7821437618508084,
+        0.8035889314032544
+      ],
+      "work_distributions": {
+        "dense": {
+          "[3]": 7
+        },
+        "packed": {
+          "[3]": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 1.5006662579253316e-11,
+      "maximum_force_error": 4.68893656541125e-11,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 3
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 3,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 624,
+            "host_to_device_bytes": 56943456,
+            "raw_panel_columns": 16,
+            "raw_panel_event_synchronizations": 10,
+            "raw_panel_host_cache_hits": 180,
+            "raw_panel_host_gather_elements": 7077888,
+            "raw_panel_pinned_host_bytes": 9439232,
+            "raw_value_cache_hits": 384,
+            "raw_value_reuse_bytes": 113246208,
+            "raw_value_upload_bytes": 56623104,
+            "response_ao_matrix_products": 384,
+            "response_density_blas_products": 384,
+            "response_metric_blas_dots": 36864,
+            "tensor_host_to_device_bytes": 56623104
+          },
+          "journal": ".artifacts/issue409/clean-warm/192-forces.diagnostic-0-dense.journal.jsonl",
+          "journal_sha256": "55bbe0b2c0e0cf23d61e64b99b47e432fbc2e77dd1f42b8618cf803050bd19bb",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 3
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 3,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 624,
+            "host_to_device_bytes": 320352,
+            "raw_packed_unpacked_elements": 7077888,
+            "raw_packed_value_reused_bytes": 28459008,
+            "raw_value_cache_hits": 384,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 113246208,
+            "response_ao_matrix_products": 384,
+            "response_density_blas_products": 384,
+            "response_metric_blas_dots": 36864,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": ".artifacts/issue409/clean-warm/192-forces.diagnostic-0-packed.journal.jsonl",
+          "journal_sha256": "e3e3751f57237e4209b898528a119348aefac37bda407a1f1caa1e52b5f6b4d9",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/clean-warm/384-forces.json",
+      "sha256": "fc0736686c8d28ad8133454d45e5681c28098eeaa351e387f27bac228099d536",
+      "phase": "warm",
+      "aos": 384,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.6930524348281324,
+        "packed": 1.8208312110509723
+      },
+      "packed_over_dense": 2.627263276987857,
+      "paired_bootstrap_ratio_95": [
+        2.563066933482157,
+        2.6428009420651657
+      ],
+      "work_distributions": {
+        "dense": {
+          "[3]": 7
+        },
+        "packed": {
+          "[3]": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 3.410605131648481e-11,
+      "maximum_force_error": 8.444494409287628e-11,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 3
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 3,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 1200,
+            "host_to_device_bytes": 1232032,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 17,
+            "raw_value_reused_bytes": 452984832,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 768,
+            "response_borrowed_jk_bytes": 1358954496,
+            "response_density_blas_products": 768,
+            "response_metric_blas_dots": 147456,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": ".artifacts/issue409/clean-warm/384-forces.diagnostic-0-dense.journal.jsonl",
+          "journal_sha256": "cef6e4362c7b990cae8eef49fede2f696309ab4046b920d26049de98465cfc50",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 3
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 3,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 1200,
+            "host_to_device_bytes": 1232032,
+            "raw_packed_unpacked_elements": 501940224,
+            "raw_packed_value_reused_bytes": 227082240,
+            "raw_value_cache_hits": 436,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 514326528,
+            "response_ao_matrix_products": 6144,
+            "response_density_blas_products": 6144,
+            "response_metric_blas_dots": 147456,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": ".artifacts/issue409/clean-warm/384-forces.diagnostic-0-packed.journal.jsonl",
+          "journal_sha256": "2114783cd4f231d30c8711ae7053717aa7c0a81ad7474f5f0a2106f8f4c19899",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/clean-warm/768-forces.json",
+      "sha256": "ed60914a1197c332bb79958b5144c57b2a79f25ae59a909d6f18dc23aab44e28",
+      "phase": "warm",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 2.5481164059601724,
+        "packed": 3.2163677038624883
+      },
+      "packed_over_dense": 1.2622530494836275,
+      "paired_bootstrap_ratio_95": [
+        1.2573369770806688,
+        1.2705540844823282
+      ],
+      "work_distributions": {
+        "dense": {
+          "[3]": 7
+        },
+        "packed": {
+          "[6]": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 9.049472282640636e-11,
+      "maximum_force_error": 1.6199520457699235e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 4
+          },
+          "eager_operations": {
+            "ri_j": 4,
+            "ri_k": 0,
+            "ri_k_occupied": 4,
+            "compact_eigensolve": 4,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2352,
+            "host_to_device_bytes": 4823328,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 17,
+            "raw_value_reused_bytes": 3623878656,
+            "raw_value_upload_bytes": 0,
+            "response_borrowed_jk_bytes": 10871635968,
+            "response_final_projection_retained_bytes": 754974720,
+            "response_final_projection_reused": 1,
+            "response_occupied_projected_bytes": 157286400,
+            "response_occupied_projected_elements": 19660800,
+            "response_occupied_projection_blas_calls": 3,
+            "response_occupied_projection_flops": 61303947264,
+            "response_occupied_projection_products": 3,
+            "response_occupied_rank": 160,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": ".artifacts/issue409/clean-warm/768-forces.diagnostic-0-dense.journal.jsonl",
+          "journal_sha256": "d92854b7b8726d3f26bf532c045b686d50da645cd67e010be47b0d7675af2124",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 6,
+          "logical_operators": {
+            "J": 7,
+            "K": 7,
+            "eigensystems_including_density_seed": 7
+          },
+          "eager_operations": {
+            "ri_j": 7,
+            "ri_k": 0,
+            "ri_k_occupied": 7,
+            "compact_eigensolve": 7,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2352,
+            "host_to_device_bytes": 4823328,
+            "raw_packed_value_reused_bytes": 1814298624,
+            "raw_value_owner_identity": 19,
+            "response_borrowed_jk_bytes": 1962934272,
+            "response_final_projection_retained_bytes": 754974720,
+            "response_final_projection_reused": 1,
+            "response_occupied_projected_bytes": 157286400,
+            "response_occupied_projected_elements": 19660800,
+            "response_occupied_projection_blas_calls": 3,
+            "response_occupied_projection_flops": 61303947264,
+            "response_occupied_projection_products": 3,
+            "response_occupied_rank": 160,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": ".artifacts/issue409/clean-warm/768-forces.diagnostic-0-packed.journal.jsonl",
+          "journal_sha256": "dc305220962dd8d99e2906b0316d26af605b7b2345f3acaf9f17f379bc64b203",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/clean-warm/96-forces.json",
+      "sha256": "7d3687438134ad03b9fe8b3ff258faac4b5ca44ef4a1576ade35b8d2a75af41d",
+      "phase": "warm",
+      "aos": 96,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.10885083395987749,
+        "packed": 0.10552693298086524
+      },
+      "packed_over_dense": 0.9694637068170057,
+      "paired_bootstrap_ratio_95": [
+        0.9595077336585286,
+        0.9715326099753815
+      ],
+      "work_distributions": {
+        "dense": {
+          "[2]": 7
+        },
+        "packed": {
+          "[2]": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 8.355982572538778e-12,
+      "maximum_force_error": 1.1986973913469257e-11,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 288,
+            "host_to_device_bytes": 7163184,
+            "raw_value_cache_hits": 192,
+            "raw_value_reuse_bytes": 14155776,
+            "raw_value_upload_bytes": 7077888,
+            "response_ao_matrix_products": 192,
+            "response_density_scalar_products": 192,
+            "response_metric_blas_dots": 9216,
+            "tensor_host_to_device_bytes": 7077888
+          },
+          "journal": ".artifacts/issue409/clean-warm/96-forces.diagnostic-0-dense.journal.jsonl",
+          "journal_sha256": "8d3544147d28da6177b3af0d60ae8e4e5e218cf79abec59187daca2c3c7ea01a",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 288,
+            "host_to_device_bytes": 85296,
+            "raw_packed_unpacked_elements": 884736,
+            "raw_packed_value_reused_bytes": 3575808,
+            "raw_value_cache_hits": 192,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 14155776,
+            "response_ao_matrix_products": 192,
+            "response_density_scalar_products": 192,
+            "response_metric_blas_dots": 9216,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": ".artifacts/issue409/clean-warm/96-forces.diagnostic-0-packed.journal.jsonl",
+          "journal_sha256": "6c86fd1d44aa5aba962a0d976b00f9c52dbcceb1d7bb6c56cc37fd320e6f1c75",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/clean-warm/384-energy.json",
+      "sha256": "e9bada271940e09111b739bf60f70e16a81e30405d53e61f7355c732e477acf8",
+      "phase": "warm",
+      "aos": 384,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.28420322109013796,
+        "packed": 0.26992406509816647
+      },
+      "packed_over_dense": 0.9497572337948882,
+      "paired_bootstrap_ratio_95": [
+        0.9324186865520917,
+        0.9903174079300655
+      ],
+      "work_distributions": {
+        "dense": {
+          "[3]": 7
+        },
+        "packed": {
+          "[3]": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 3.410605131648481e-11,
+      "maximum_force_error": 0,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 3
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 3,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {},
+          "journal": ".artifacts/issue409/clean-warm/384-energy.diagnostic-0-dense.journal.jsonl",
+          "journal_sha256": "997191ba7f0f0c9ca94cbc66084cddfed1dd42e36cdb3180f379e82f17d9343d",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 3
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 3,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {},
+          "journal": ".artifacts/issue409/clean-warm/384-energy.diagnostic-0-packed.journal.jsonl",
+          "journal_sha256": "3e4c702d377feed2b844f41cdc9b254f3d40f12595add20b376295c0282afb83",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/clean-warm/768-energy.json",
+      "sha256": "82ef353feb8e5b4d5e542783aa138ccce2730ee2b50f3cd8c51e7272211cff0a",
+      "phase": "warm",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 1.0139748370274901,
+        "packed": 1.6760975399520248
+      },
+      "packed_over_dense": 1.6529971738406992,
+      "paired_bootstrap_ratio_95": [
+        1.6489083582313606,
+        1.6549829186133025
+      ],
+      "work_distributions": {
+        "dense": {
+          "[3]": 7
+        },
+        "packed": {
+          "[6]": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 9.049472282640636e-11,
+      "maximum_force_error": 0,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 3,
+          "logical_operators": {
+            "J": 4,
+            "K": 4,
+            "eigensystems_including_density_seed": 4
+          },
+          "eager_operations": {
+            "ri_j": 4,
+            "ri_k": 0,
+            "ri_k_occupied": 4,
+            "compact_eigensolve": 4,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {},
+          "journal": ".artifacts/issue409/clean-warm/768-energy.diagnostic-0-dense.journal.jsonl",
+          "journal_sha256": "8dddff63368637b0be42dbb21679894016d2b6c5ad8be88ad26374e68d712583",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 6,
+          "logical_operators": {
+            "J": 7,
+            "K": 7,
+            "eigensystems_including_density_seed": 7
+          },
+          "eager_operations": {
+            "ri_j": 7,
+            "ri_k": 0,
+            "ri_k_occupied": 7,
+            "compact_eigensolve": 7,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {},
+          "journal": ".artifacts/issue409/clean-warm/768-energy.diagnostic-0-packed.journal.jsonl",
+          "journal_sha256": "a0004a4b10f75c6eb45106d587cc47ecfe1bdc67aad0695dd266ce7eb2f81de9",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/rebuild-v2/384-changed-clean.json",
+      "sha256": "e0ff57da898553f792a25d748b5c4abd24c88e1e0ff74ca292525d45f29c0c0e",
+      "phase": "changed",
+      "aos": 384,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 9.606932915048674,
+        "packed": 11.256079175975174
+      },
+      "packed_over_dense": 1.1716620981440615,
+      "paired_bootstrap_ratio_95": [
+        1.1703237838089258,
+        1.171821838887133
+      ],
+      "work_distributions": {
+        "dense": {
+          "12": 7
+        },
+        "packed": {
+          "12": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 3.5925040720030665e-11,
+      "maximum_force_error": 1.0691770125498268e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 12,
+          "logical_operators": {
+            "J": 13,
+            "K": 13,
+            "eigensystems_including_density_seed": 12
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 12,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 1152,
+            "host_to_device_bytes": 1232032,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 59,
+            "raw_value_reused_bytes": 452984832,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 768,
+            "response_borrowed_jk_bytes": 1358954496,
+            "response_density_blas_products": 768,
+            "response_metric_blas_dots": 147456,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/384-changed-clean.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "dc0ad7143c183aba618702024e25be96e00761b9d13e6e9c94e437062a891f87",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 12,
+          "logical_operators": {
+            "J": 13,
+            "K": 13,
+            "eigensystems_including_density_seed": 12
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 12,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 1152,
+            "host_to_device_bytes": 1232032,
+            "raw_packed_unpacked_elements": 501940224,
+            "raw_packed_value_reused_bytes": 227082240,
+            "raw_value_cache_hits": 436,
+            "raw_value_owner_identity": 63,
+            "raw_value_reuse_bytes": 514326528,
+            "response_ao_matrix_products": 6144,
+            "response_density_blas_products": 6144,
+            "response_metric_blas_dots": 147456,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/384-changed-clean.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "b6c47831227fc1c21505f3e07fe9723e02ad6931664fdd2151fdac072e7cba30",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/rebuild-v2/384-cold-clean.json",
+      "sha256": "d2012b6fe0f6f0f222a7f9402eaf913a713080eb692402b34463f84ad95a76ca",
+      "phase": "cold",
+      "aos": 384,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 10.135832240106538,
+        "packed": 11.948631648905575
+      },
+      "packed_over_dense": 1.178850573475946,
+      "paired_bootstrap_ratio_95": [
+        1.1747395409083656,
+        1.1798166565907713
+      ],
+      "work_distributions": {
+        "dense": {
+          "20": 7
+        },
+        "packed": {
+          "18": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 3.410605131648481e-11,
+      "maximum_force_error": 1.0192430753563908e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 20,
+          "logical_operators": {
+            "J": 21,
+            "K": 21,
+            "eigensystems_including_density_seed": 20
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 20,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 1152,
+            "host_to_device_bytes": 1232032,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 31,
+            "raw_value_reused_bytes": 452984832,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 768,
+            "response_borrowed_jk_bytes": 1358954496,
+            "response_density_blas_products": 768,
+            "response_metric_blas_dots": 147456,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/384-cold-clean.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "db7cb86cb778f38ac98f87673ef4e59709991ba5c829060e0b61aba5340f228a",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 18,
+          "logical_operators": {
+            "J": 22,
+            "K": 22,
+            "eigensystems_including_density_seed": 18
+          },
+          "eager_operations": {
+            "ri_j": 4,
+            "ri_k": 4,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 18,
+          "finalization": {
+            "final_fock_evaluations": 4,
+            "final_eigen_solves": 3,
+            "final_density_updates": 3,
+            "final_candidate_rejections": 3
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 1152,
+            "host_to_device_bytes": 1232032,
+            "raw_packed_unpacked_elements": 501940224,
+            "raw_packed_value_reused_bytes": 227082240,
+            "raw_value_cache_hits": 436,
+            "raw_value_owner_identity": 33,
+            "raw_value_reuse_bytes": 514326528,
+            "response_ao_matrix_products": 6144,
+            "response_density_blas_products": 6144,
+            "response_metric_blas_dots": 147456,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/384-cold-clean.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "4dea01524562033281dd51751f466fb8393529c8cd2464adc9947a6982aa058a",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/rebuild-v2/768-changed-clean.json",
+      "sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c",
+      "phase": "changed",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 86.35796527005732,
+        "packed": 191.51121619297192
+      },
+      "packed_over_dense": 2.2176439150005556,
+      "paired_bootstrap_ratio_95": [
+        2.2172818135904957,
+        2.2201427509828835
+      ],
+      "work_distributions": {
+        "dense": {
+          "9": 7
+        },
+        "packed": {
+          "9": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 5.866240826435387e-11,
+      "maximum_force_error": 1.7779832402371742e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 9,
+          "logical_operators": {
+            "J": 16,
+            "K": 16,
+            "eigensystems_including_density_seed": 10
+          },
+          "eager_operations": {
+            "ri_j": 16,
+            "ri_k": 6,
+            "ri_k_occupied": 10,
+            "compact_eigensolve": 10,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 7,
+            "final_eigen_solves": 6,
+            "final_density_updates": 6,
+            "final_candidate_rejections": 6
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4820256,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 3,
+            "raw_value_reused_bytes": 3623878656,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 1536,
+            "response_borrowed_jk_bytes": 10871635968,
+            "response_density_blas_products": 1536,
+            "response_metric_blas_dots": 589824,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/768-changed-clean.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "57cd86038e5484f2345e050c00f9d3d5d356332c83f8ad661796d87210db9058",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 9,
+          "logical_operators": {
+            "J": 16,
+            "K": 16,
+            "eigensystems_including_density_seed": 10
+          },
+          "eager_operations": {
+            "ri_j": 16,
+            "ri_k": 6,
+            "ri_k_occupied": 10,
+            "compact_eigensolve": 10,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 7,
+            "final_eigen_solves": 6,
+            "final_density_updates": 6,
+            "final_candidate_rejections": 6
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4811024,
+            "raw_packed_unpacked_elements": 35326918656,
+            "raw_packed_value_reused_bytes": 1814298624,
+            "raw_value_cache_hits": 778,
+            "raw_value_owner_identity": 7,
+            "raw_value_reuse_bytes": 3671064576,
+            "response_ao_matrix_products": 118272,
+            "response_density_scalar_products": 118272,
+            "response_metric_blas_dots": 589824,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-768-changed-diagnostics/768-changed-clean.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "b5977e15cb48c2c443b238b372adacc895cf999b3d561d8996b49dd80ae2e5e1",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ],
+      "diagnostic_companion": {
+        "scope": "Original seven clean pairs plus separate diagnostics; no new or pooled clean samples.",
+        "clean_original_sha256": "184b3373c20b97cf96d6c38d01bee00011c9bed428edf0db14460de86019e07c",
+        "diagnostic_original_sha256": "671ef30186b28310a3e75b9db77db3e5b57b2dcc7456d2feff14d2d5750e7a4f",
+        "diagnostic_campaign_sha256": "49ca8ebacaf36c50fe55a39482506f21b0addf4bdc2819b73965e62901e5d7f4",
+        "clean_slurm_job_id": "9845",
+        "diagnostic_slurm_job_id": "9851",
+        "diagnostic_runner_sha256": "337932ab18ea628940c8779b446b5faae443cde5cf23f690d7b9c74c0a302403",
+        "diagnostic_iterations_observed_in_clean": {
+          "dense": true,
+          "packed": true
+        }
+      }
+    },
+    {
+      "source": ".artifacts/issue409/rebuild-v2/768-cold-clean.json",
+      "sha256": "95bcb1bd3a21fe98ba9d993fafb6c30e82f80a64c34c1a1ddde33df48ef88778",
+      "phase": "cold",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 85.68592209904455,
+        "packed": 82.76805499778129
+      },
+      "packed_over_dense": 0.9659469486960707,
+      "paired_bootstrap_ratio_95": [
+        0.9651797621368345,
+        0.9667619126816382
+      ],
+      "work_distributions": {
+        "dense": {
+          "23": 7
+        },
+        "packed": {
+          "24": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 9.231371222995222e-11,
+      "maximum_force_error": 1.584444762892101e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 23,
+          "logical_operators": {
+            "J": 26,
+            "K": 26,
+            "eigensystems_including_density_seed": 24
+          },
+          "eager_operations": {
+            "ri_j": 26,
+            "ri_k": 2,
+            "ri_k_occupied": 24,
+            "compact_eigensolve": 24,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 3,
+            "final_eigen_solves": 2,
+            "final_density_updates": 2,
+            "final_candidate_rejections": 1
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4820256,
+            "raw_value_bulk_uploads": 0,
+            "raw_value_owner_identity": 31,
+            "raw_value_reused_bytes": 3623878656,
+            "raw_value_upload_bytes": 0,
+            "response_ao_matrix_products": 1536,
+            "response_borrowed_jk_bytes": 10871635968,
+            "response_density_blas_products": 1536,
+            "response_metric_blas_dots": 589824,
+            "response_metric_blas_gemms": 1,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-cold-clean.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "eb023039ee01b02ff0d89902d19c426747f37c9774c254c9cecf82340fd2080c",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 24,
+          "logical_operators": {
+            "J": 25,
+            "K": 25,
+            "eigensystems_including_density_seed": 25
+          },
+          "eager_operations": {
+            "ri_j": 25,
+            "ri_k": 0,
+            "ri_k_occupied": 25,
+            "compact_eigensolve": 25,
+            "scf_seed_iteration": 1
+          },
+          "graph_replays": 0,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 2304,
+            "host_to_device_bytes": 4823328,
+            "raw_packed_value_reused_bytes": 1814298624,
+            "raw_value_owner_identity": 33,
+            "response_borrowed_jk_bytes": 1962934272,
+            "response_final_projection_retained_bytes": 754974720,
+            "response_final_projection_reused": 1,
+            "response_occupied_projected_bytes": 157286400,
+            "response_occupied_projected_elements": 19660800,
+            "response_occupied_projection_blas_calls": 3,
+            "response_occupied_projection_flops": 61303947264,
+            "response_occupied_projection_products": 3,
+            "response_occupied_rank": 160,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/rebuild-v2/768-cold-clean.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "ac31190756ad1b67031d742cd57e085a3d0bf0aff47e8ac1dfed362947487d42",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.json",
+      "sha256": "51b9c214be69005d1ea3c7720d65a7e4d5bab906ee596fd783cb6a63e22f4cc2",
+      "phase": "warm",
+      "aos": 24,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.019747868180274963,
+        "packed": 0.018764723790809512
+      },
+      "packed_over_dense": 0.9502151634550884,
+      "paired_bootstrap_ratio_95": [
+        0.9458732947771727,
+        0.9560518025937611
+      ],
+      "work_distributions": {
+        "dense": {
+          "2": 7
+        },
+        "packed": {
+          "2": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 1.7195134205394424e-12,
+      "maximum_force_error": 2.864588184714467e-10,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 72,
+            "host_to_device_bytes": 546376,
+            "raw_value_cache_hits": 232,
+            "raw_value_reuse_bytes": 1069056,
+            "raw_value_upload_bytes": 534528,
+            "response_ao_matrix_products": 232,
+            "response_density_scalar_products": 232,
+            "response_metric_blas_dots": 13456,
+            "tensor_host_to_device_bytes": 534528
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "c3062c0082bb085bee5912a99e63359596783c38bf62a061a7dbc900806e02f5",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 72,
+            "host_to_device_bytes": 11848,
+            "raw_packed_unpacked_elements": 66816,
+            "raw_packed_value_reused_bytes": 278400,
+            "raw_value_cache_hits": 232,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 1069056,
+            "response_ao_matrix_products": 232,
+            "response_density_scalar_products": 232,
+            "response_metric_blas_dots": 13456,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-def2-svp-spherical-measure.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "2661d77bf36d06eb68a5d3307979545e0501d71e6640a5f8c3c88c79a79e4f01",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.json",
+      "sha256": "a3dff6cd9d635edc3aec3ac42be7f236ab850f9d7b25e5f93c09bc34e7d2dc00",
+      "phase": "warm",
+      "aos": 96,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 0.5686638569459319,
+        "packed": 0.5528631720226258
+      },
+      "packed_over_dense": 0.9722143675383814,
+      "paired_bootstrap_ratio_95": [
+        0.9679353245465679,
+        0.9739124754384029
+      ],
+      "work_distributions": {
+        "dense": {
+          "2": 7
+        },
+        "packed": {
+          "2": 7
+        }
+      },
+      "same_scf_updates": true,
+      "maximum_energy_error": 8.071765478234738e-12,
+      "maximum_force_error": 3.6300346357293067e-09,
+      "diagnostic_work": [
+        {
+          "policy": "dense",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 288,
+            "host_to_device_bytes": 34312432,
+            "raw_value_cache_hits": 928,
+            "raw_value_reuse_bytes": 68419584,
+            "raw_value_upload_bytes": 34209792,
+            "response_ao_matrix_products": 928,
+            "response_density_scalar_products": 928,
+            "response_metric_blas_dots": 215296,
+            "tensor_host_to_device_bytes": 34209792
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.diagnostic-dense.journal.jsonl",
+          "journal_sha256": "21dc68ac42a6290ee3827fd4042882bde34d09d05aa7a04bb8a447f1d23fa21e",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        },
+        {
+          "policy": "packed",
+          "iterations": 2,
+          "logical_operators": {
+            "J": 3,
+            "K": 3,
+            "eigensystems_including_density_seed": 2
+          },
+          "eager_operations": {
+            "ri_j": 1,
+            "ri_k": 1,
+            "ri_k_occupied": 0,
+            "compact_eigensolve": 0,
+            "scf_seed_iteration": 0
+          },
+          "graph_replays": 2,
+          "finalization": {
+            "final_fock_evaluations": 1,
+            "final_eigen_solves": 0,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "force_dataflow": {
+            "device_to_host_bytes": 288,
+            "host_to_device_bytes": 102640,
+            "raw_packed_unpacked_elements": 4276224,
+            "raw_packed_value_reused_bytes": 17283072,
+            "raw_value_cache_hits": 928,
+            "raw_value_owner_identity": 19,
+            "raw_value_reuse_bytes": 68419584,
+            "response_ao_matrix_products": 928,
+            "response_density_scalar_products": 928,
+            "response_metric_blas_dots": 215296,
+            "tensor_host_to_device_bytes": 0
+          },
+          "journal": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.diagnostic-packed.journal.jsonl",
+          "journal_sha256": "6ac43c3ce6f4b6dfeb0a77fad943ee6ebe871ea185d8b1974c8526976abc0357",
+          "graph_body_source": "src/scf/cuda/df_rhf_scf.cpp",
+          "graph_body_source_sha256": "bfc0c2250988458a12a0ec90ee06f56c631641669a416868d03ed1785c5faa06"
+        }
+      ]
+    },
+    {
+      "source": ".artifacts/issue409/constrained-clean/768-12GiB-forces.json",
+      "sha256": "340b7139671c27695878f2cc2e2dbf0b48822bc5984da09949a9908c0f2774a6",
+      "phase": "warm",
+      "aos": 768,
+      "pairs": 7,
+      "medians_seconds": {
+        "dense": 162.02327695814893,
+        "packed": 65.02855966193601
+      },
+      "packed_over_dense": 0.40135319370643935,
+      "paired_bootstrap_ratio_95": [
+        0.4010232372457141,
+        0.4017569295853055
+      ],
+      "work_distributions": {
+        "dense": {
+          "[5]": 7
+        },
+        "packed": {
+          "[6]": 7
+        }
+      },
+      "same_scf_updates": false,
+      "maximum_energy_error": 9.049472282640636e-11,
+      "maximum_force_error": 1.9849531393556497e-10,
+      "diagnostic_work": []
+    }
+  ],
+  "incomplete": [
+    {
+      "source": ".artifacts/issue409/unequal-v2/water-hexadecamer-2s4-def2-svp-spherical-measure.json",
+      "failure": "AssertionError({'policy': 'dense', 'repeat': -1, 'seconds': 112.59982304717414, 'iterations': 20, 'convergence': [{'converged': True, 'iterations': 20, 'basis_metadata': {'orbital': {'name': 'explicit-shells', 'role': 'orbital', 'mathematical_identity': 'bb724fa8b675b84741094e34fedd7fedbada8a1a8b91918256244d9cfb78f413', 'basis_identity': 'bb724fa8b675b84741094e34fedd7fedbada8a1a8b91918256244d9cfb78f413', 'representation': 'spherical', 'provenance': {'source': 'explicit native Shell input', 'version': '1', 'license': 'caller-supplied', 'checksum': 'bb724fa8b675b84741094e34fedd7fedbada8a1a8b91918256244d9cfb78f413'}, 'electrons': {'atomic_numbers': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'nuclear_charges': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'ecp_core_electrons': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 'ionic_charge': 0, 'electron_count': 160, 'multiplicity': 1, 'nalpha': 80, 'nbeta': 80}, 'shell_count': 192, 'primitive_count': 512}, 'auxiliary': {'name': 'explicit-shells', 'role': 'auxiliary', 'mathematical_identity': '0ff894482c8a92f7e54aa661b7202390c39798584dc94ad9d47c072abbdfec6a', 'basis_identity': '0ff894482c8a92f7e54aa661b7202390c39798584dc94ad9d47c072abbdfec6a', 'representation': 'spherical', 'provenance': {'source': 'explicit native Shell input', 'version': '1', 'license': 'caller-supplied', 'checksum': '0ff894482c8a92f7e54aa661b7202390c39798584dc94ad9d47c072abbdfec6a'}, 'electrons': {'atomic_numbers': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'nuclear_charges': (8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1), 'ecp_core_electrons': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 'ionic_charge': 0, 'electron_count': 160, 'multiplicity': 1, 'nalpha': 80, 'nbeta': 80}, 'shell_count': 672, 'primitive_count': 672}, 'model_identity': '029bfcc9c0312ce42956ceb12c218431ff9c5003879cc57ccf5e09d4efaef95a'}, 'energy_change_hartree': 4.547473508864641e-13, 'density_rms': 6.180360012185939e-12, 'warm_start_used': False, 'warm_start_fallback': False, 'final_residuals': {'energy_change_hartree': 4.547473508864641e-13, 'density_rms': 6.180360012185939e-12, 'orbital_gradient_norm': None}, 'warm_start': {'used': False, 'fallback': False}}], 'energy_hartree': -1216.662861871048, 'forces_hartree_per_bohr': [[-0.001028048048193497, -0.01668085572625427, -0.010860033573234932], [0.016433469991855527, 0.015520519877524014, -0.00015302551321261755], [-0.012923783646905369, 0.0016115195553737785, 0.009636766642955171], [-0.016974732613366853, 0.001271144416961293, 0.010456953703003107], [0.0018099670947710608, 0.012623117540194087, -0.009501830182488806], [0.015728049493453116, -0.016592981774486062, 0.0002474928756461985], [0.004244226942561505, 0.016244538312286703, -0.013812328259812143], [0.004381216472726443, -0.0001387525408685915, 0.018613964068160297], [-0.011448982808446808, -0.014504313476444973, -0.0039846453873441596], [-0.016153091547671552, 0.0043840410808110705, 0.013656546833086756], [0.00015566058310650884, 0.004363919564866137, -0.01847249365421164], [0.014493053047124413, -0.01149004198759954, 0.00403003050353861], [0.0163271646097348, -0.004315076170543461, 0.013628714079132354], [-0.014615893044652276, 0.011529428528329864, 0.004091233541610511], [-0.00013692927879078672, -0.0043742516660904875, -0.01845287790699954], [0.01675603551884069, -0.0012334510821771956, 0.010446545605510647], [-0.01554469932391932, 0.016472450738058912, 0.0002717469147358897], [-0.0017454913827097632, -0.012628101208008446, -0.009497086335815414], [0.0013387681948940767, 0.016876302607128812, -0.010610055699203232], [-0.01661434623324133, -0.015698343441035045, -0.00018691830806623753], [0.01259885497393069, -0.001778846277508067, 0.009527061604117685], [-0.004652724656122349, -0.016162297661963042, -0.014017710298480165], [-0.004276267263158729, 0.0001019844867675188, 0.018910961832754425], [0.011623090299062715, 0.01454228952032643, -0.003969012732279838], [-0.0013387648291174202, -0.01687631166337974, -0.010610059161387552], [0.016614346129698507, 0.015698350069885778, -0.00018691744687812073], [-0.01259885772040919, 0.0017788487168647594, 0.009527065064099088], [-0.016756045815447686, 0.0012334490077235175, 0.010446555011192783], [0.0017454941620037444, 0.012628110841297134, -0.009497095577531598], [0.015544705081677435, -0.016472456978359883, 0.0002717458139921041], [0.0046527198746250725, 0.016162286193819788, -0.014017721741926144], [0.004276267936977807, -0.00010198361444593175, 0.018910969348730457], [-0.011623085111133675, -0.01454227880258274, -0.0039690088960757505], [-0.01632717210608746, 0.004315082109947813, 0.013628707566667635], [0.00013692912096505093, 0.0043742517845237515, -0.0184528707890589], [0.014615901130039313, -0.011529437872609072, 0.004091231554338799], [0.0161530861806337, -0.004384037713392714, 0.013656547005524329], [-0.014493046746210889, 0.011490039600134293, 0.0040300269627642354], [-0.00015565974718978137, -0.0043639185137434745, -0.01847249125773698], [0.016974736392580576, -0.0012711448326699311, 0.010456958340501954], [-0.01572805270650102, 0.01659298381935292, 0.0002474914063381582], [-0.001809967215529104, -0.012623120004409046, -0.009501832058908404], [0.0010280516735547164, 0.01668085710778688, -0.010860031224911672], [-0.01643347396438161, -0.015520522197824835, -0.00015302611237272385], [0.012923780976834493, -0.0016115185030643373, 0.00963676485787836], [-0.004244235111865868, -0.016244550283107846, -0.013812334021985761], [-0.004381217811557032, 0.00013875480180171155, 0.01861397149523946], [0.011448992844128349, 0.014504323707221487, -0.003984646482427149]], 'maximum_energy_error': 3.979039320256561e-10, 'maximum_force_error': 1.3003958328552945e-08, 'rms_force_error': 3.92789558737656e-09, 'force_sum': [-6.829061621749233e-12, -3.5802801695572484e-12, 9.169527116770215e-12], 'metric': [{'bucket_id': 0, 'system_index': 0, 'effective_rank': 1856, 'absolute_threshold': 7.463230027563506e-08, 'condition_number': 11155409.7341553, 'solver_device_workspace_bytes': 112381080, 'solver_host_workspace_bytes': 0, 'device_resident_bytes': 2832104749, 'peak_device_bytes': 2972058569, 'host_resident_bytes': 19924490, 'peak_host_bytes': 136448939, 'auxiliary_tile': 128, 'streamed': False}]})",
+      "counts": {
+        "dense": 0,
+        "packed": 0
+      }
+    }
+  ]
+}

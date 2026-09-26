@@ -1,0 +1,827 @@
+{
+  "python": "3.11.16",
+  "numpy": "2.2.6",
+  "pyscf": "2.14.0",
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "library_sha256": "a75e8e329e818ca2378aa9882d5c7207e5ca5eea61bea4421ff9b73ed65e57cc",
+  "driver_sha256": "782193e6d72b4044d2ac0fab36e882bef2904e9a9505db597d3f47e73f4bba5d",
+  "timing_scope": "synchronous complete energy+forces; every sample checked; first call is not process-cold",
+  "repeats": 3,
+  "cases": [
+    {
+      "label": "9ao-rhf",
+      "nao": 9,
+      "atoms_bohr": [
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.2
+          ]
+        ]
+      ],
+      "moved_atoms_bohr": [
+        [
+          "Na",
+          [
+            0.14300000000000002,
+            -0.22699999999999998,
+            0.18100000000000002
+          ]
+        ],
+        [
+          "H",
+          [
+            0.411,
+            0.213,
+            3.229
+          ]
+        ]
+      ],
+      "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+      "samples": [
+        {
+          "stage": "first_call",
+          "ms": 790.9609819762409,
+          "energy": -0.6828014773229056,
+          "energy_error": 1.5543122344752192e-15,
+          "force_error": 5.533837277305054e-13,
+          "iterations": 8
+        },
+        {
+          "stage": "prepared_initial",
+          "ms": 700.2241397276521,
+          "energy": -0.6828014773229056,
+          "energy_error": 1.5543122344752192e-15,
+          "force_error": 5.533767888366015e-13,
+          "iterations": 8
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 541.4477488957345,
+          "energy": -0.6828014773229061,
+          "energy_error": 1.9984014443252818e-15,
+          "force_error": 7.346172281597063e-12,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 541.1897469311953,
+          "energy": -0.6828014773229061,
+          "energy_error": 1.9984014443252818e-15,
+          "force_error": 4.046346591124461e-12,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 541.4674477651715,
+          "energy": -0.6828014773229063,
+          "energy_error": 2.220446049250313e-15,
+          "force_error": 2.2158594403798304e-12,
+          "iterations": 1
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6828014773229061,
+          "energy_error": 1.9984014443252818e-15,
+          "force_error": 1.3283193989188646e-12,
+          "iterations": 1
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 695.061206817627,
+          "energy": -0.683559201373154,
+          "energy_error": 3.1086244689504383e-15,
+          "force_error": 1.4328787809048116e-10,
+          "iterations": 7
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6828014773229059,
+          "energy_error": 1.7763568394002505e-15,
+          "force_error": 2.613529531680925e-10,
+          "iterations": 7
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 694.426329806447,
+          "energy": -0.6835592013731535,
+          "energy_error": 2.6645352591003757e-15,
+          "force_error": 1.4328768076568577e-10,
+          "iterations": 7
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6828014773229063,
+          "energy_error": 2.220446049250313e-15,
+          "force_error": 2.6135289071804735e-10,
+          "iterations": 7
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 695.1866000890732,
+          "energy": -0.6835592013731537,
+          "energy_error": 2.886579864025407e-15,
+          "force_error": 1.4328769594451618e-10,
+          "iterations": 7
+        },
+        {
+          "stage": "budgeted",
+          "ms": 697.3275127820671,
+          "energy": -0.6828014773229056,
+          "energy_error": 1.5543122344752192e-15,
+          "force_error": 5.533976055183132e-13,
+          "iterations": 8
+        },
+        {
+          "stage": "batch2",
+          "ms": 1393.2863669469953,
+          "energy": -0.6828014773229056,
+          "energy_error": 1.5543122344752192e-15,
+          "force_error": 5.534739333512562e-13,
+          "iterations": 8
+        },
+        {
+          "stage": "batch2",
+          "ms": 1393.2863669469953,
+          "energy": -0.6835592013731535,
+          "energy_error": 2.6645352591003757e-15,
+          "force_error": 1.184455311609156e-12,
+          "iterations": 8
+        }
+      ],
+      "timings": {
+        "first_call": {
+          "median_ms": 790.9609819762409,
+          "samples_ms": [
+            790.9609819762409
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 541.4477488957345,
+          "samples_ms": [
+            541.4477488957345,
+            541.1897469311953,
+            541.4674477651715
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 695.061206817627,
+          "samples_ms": [
+            695.061206817627,
+            694.426329806447,
+            695.1866000890732
+          ]
+        },
+        "budgeted": {
+          "median_ms": 697.3275127820671,
+          "samples_ms": [
+            697.3275127820671
+          ]
+        },
+        "batch2": {
+          "median_ms": 1393.2863669469953,
+          "samples_ms": [
+            1393.2863669469953,
+            1393.2863669469953
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 6196928,
+        "device": 5704624,
+        "pinned": 0,
+        "pageable": 6196928,
+        "device:0": 5704624
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 5704624,
+        "live_bytes": 73064,
+        "peak_bytes": 5194952,
+        "allocations": 25,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      }
+    },
+    {
+      "label": "9ao-uhf",
+      "nao": 9,
+      "atoms_bohr": [
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.2
+          ]
+        ]
+      ],
+      "moved_atoms_bohr": [
+        [
+          "Na",
+          [
+            0.14300000000000002,
+            -0.22699999999999998,
+            0.18100000000000002
+          ]
+        ],
+        [
+          "H",
+          [
+            0.411,
+            0.213,
+            3.229
+          ]
+        ]
+      ],
+      "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+      "samples": [
+        {
+          "stage": "first_call",
+          "ms": 697.0795150846243,
+          "energy": -0.45612095397964525,
+          "energy_error": 6.661338147750939e-16,
+          "force_error": 4.649058915617843e-16,
+          "iterations": 2
+        },
+        {
+          "stage": "prepared_initial",
+          "ms": 693.0516040883958,
+          "energy": -0.45612095397964525,
+          "energy_error": 6.661338147750939e-16,
+          "force_error": 4.649058915617843e-16,
+          "iterations": 2
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 541.6767103597522,
+          "energy": -0.45612095397964514,
+          "energy_error": 7.771561172376096e-16,
+          "force_error": 5.273559366969494e-16,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 541.0246727988124,
+          "energy": -0.45612095397964536,
+          "energy_error": 5.551115123125783e-16,
+          "force_error": 6.106226635438361e-16,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 541.4048722013831,
+          "energy": -0.4561209539796456,
+          "energy_error": 3.3306690738754696e-16,
+          "force_error": 5.412337245047638e-16,
+          "iterations": 1
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.45612095397964547,
+          "energy_error": 4.440892098500626e-16,
+          "force_error": 5.828670879282072e-16,
+          "iterations": 1
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 694.82437428087,
+          "energy": -0.45729080763799546,
+          "energy_error": 1.887379141862766e-15,
+          "force_error": 3.7491813473233826e-10,
+          "iterations": 6
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.4561209539796458,
+          "energy_error": 1.1102230246251565e-16,
+          "force_error": 3.3054070504995314e-10,
+          "iterations": 6
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 694.7173872031271,
+          "energy": -0.45729080763799523,
+          "energy_error": 1.6653345369377348e-15,
+          "force_error": 3.7491663419653154e-10,
+          "iterations": 6
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.4561209539796459,
+          "energy_error": 0.0,
+          "force_error": 3.305406946416123e-10,
+          "iterations": 6
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 693.6983149498701,
+          "energy": -0.45729080763799557,
+          "energy_error": 1.9984014443252818e-15,
+          "force_error": 3.749166584826602e-10,
+          "iterations": 6
+        },
+        {
+          "stage": "budgeted",
+          "ms": 694.285451900214,
+          "energy": -0.45612095397964525,
+          "energy_error": 6.661338147750939e-16,
+          "force_error": 4.649058915617843e-16,
+          "iterations": 2
+        },
+        {
+          "stage": "batch2",
+          "ms": 1391.481967177242,
+          "energy": -0.45612095397964525,
+          "energy_error": 6.661338147750939e-16,
+          "force_error": 4.579669976578771e-16,
+          "iterations": 2
+        },
+        {
+          "stage": "batch2",
+          "ms": 1391.481967177242,
+          "energy": -0.45729080763799523,
+          "energy_error": 1.6653345369377348e-15,
+          "force_error": 5.828670879282072e-16,
+          "iterations": 2
+        }
+      ],
+      "timings": {
+        "first_call": {
+          "median_ms": 697.0795150846243,
+          "samples_ms": [
+            697.0795150846243
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 541.4048722013831,
+          "samples_ms": [
+            541.6767103597522,
+            541.0246727988124,
+            541.4048722013831
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 694.7173872031271,
+          "samples_ms": [
+            694.82437428087,
+            694.7173872031271,
+            693.6983149498701
+          ]
+        },
+        "budgeted": {
+          "median_ms": 694.285451900214,
+          "samples_ms": [
+            694.285451900214
+          ]
+        },
+        "batch2": {
+          "median_ms": 1391.481967177242,
+          "samples_ms": [
+            1391.481967177242,
+            1391.481967177242
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 6238400,
+        "device": 5739776,
+        "pinned": 0,
+        "pageable": 6238400,
+        "device:0": 5739776
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 5739776,
+        "live_bytes": 90640,
+        "peak_bytes": 5212528,
+        "allocations": 25,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      }
+    },
+    {
+      "label": "16ao-rhf",
+      "nao": 16,
+      "atoms_bohr": [
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.2
+          ]
+        ]
+      ],
+      "moved_atoms_bohr": [
+        [
+          "Na",
+          [
+            0.14300000000000002,
+            -0.22699999999999998,
+            0.18100000000000002
+          ]
+        ],
+        [
+          "H",
+          [
+            0.411,
+            0.213,
+            3.229
+          ]
+        ]
+      ],
+      "basis_identity": "a234760889109528ec831133c82582f8128f755ffeee55a72004efd677c41820",
+      "samples": [
+        {
+          "stage": "first_call",
+          "ms": 9059.447695035487,
+          "energy": -0.682817787110203,
+          "energy_error": 1.7763568394002505e-15,
+          "force_error": 1.094463006334756e-09,
+          "iterations": 8
+        },
+        {
+          "stage": "prepared_initial",
+          "ms": 9145.623008720577,
+          "energy": -0.682817787110203,
+          "energy_error": 1.7763568394002505e-15,
+          "force_error": 1.0944629785791804e-09,
+          "iterations": 8
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 7817.015970591456,
+          "energy": -0.6828177871102039,
+          "energy_error": 2.6645352591003757e-15,
+          "force_error": 5.041069159328337e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 8008.334026206285,
+          "energy": -0.6828177871102039,
+          "energy_error": 2.6645352591003757e-15,
+          "force_error": 5.041070685884996e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 8096.927855163813,
+          "energy": -0.6828177871102037,
+          "energy_error": 2.4424906541753444e-15,
+          "force_error": 1.2209585426026237e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6828177871102039,
+          "energy_error": 2.6645352591003757e-15,
+          "force_error": 7.440525279234222e-11,
+          "iterations": 1
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 9224.815774243325,
+          "energy": -0.6835709885751862,
+          "energy_error": 2.6645352591003757e-15,
+          "force_error": 2.6765523825078574e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6828177871102041,
+          "energy_error": 2.886579864025407e-15,
+          "force_error": 2.3717721536753444e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 9186.438550706953,
+          "energy": -0.683570988575186,
+          "energy_error": 2.4424906541753444e-15,
+          "force_error": 2.6765507171733205e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6828177871102041,
+          "energy_error": 2.886579864025407e-15,
+          "force_error": 2.371772986342613e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 9115.353320725262,
+          "energy": -0.683570988575186,
+          "energy_error": 2.4424906541753444e-15,
+          "force_error": 2.676550300839686e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "budgeted",
+          "ms": 8927.740384358913,
+          "energy": -0.682817787110203,
+          "energy_error": 1.7763568394002505e-15,
+          "force_error": 1.0944630340903316e-09,
+          "iterations": 8
+        },
+        {
+          "stage": "batch2",
+          "ms": 17250.551733653992,
+          "energy": -0.682817787110203,
+          "energy_error": 1.7763568394002505e-15,
+          "force_error": 1.0944629785791804e-09,
+          "iterations": 8
+        },
+        {
+          "stage": "batch2",
+          "ms": 17250.551733653992,
+          "energy": -0.683570988575186,
+          "energy_error": 2.4424906541753444e-15,
+          "force_error": 1.0753468601687466e-09,
+          "iterations": 8
+        }
+      ],
+      "timings": {
+        "first_call": {
+          "median_ms": 9059.447695035487,
+          "samples_ms": [
+            9059.447695035487
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 8008.334026206285,
+          "samples_ms": [
+            7817.015970591456,
+            8008.334026206285,
+            8096.927855163813
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 9186.438550706953,
+          "samples_ms": [
+            9224.815774243325,
+            9186.438550706953,
+            9115.353320725262
+          ]
+        },
+        "budgeted": {
+          "median_ms": 8927.740384358913,
+          "samples_ms": [
+            8927.740384358913
+          ]
+        },
+        "batch2": {
+          "median_ms": 17250.551733653992,
+          "samples_ms": [
+            17250.551733653992,
+            17250.551733653992
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 11824576,
+        "device": 11771712,
+        "pinned": 0,
+        "pageable": 11824576,
+        "device:0": 11771712
+      },
+      "device_ledger": {
+        "device": 0,
+        "limit_bytes": 11771712,
+        "live_bytes": 585392,
+        "peak_bytes": 9230944,
+        "allocations": 25,
+        "rejected_allocations": 0,
+        "owner": "hf",
+        "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+      }
+    },
+    {
+      "label": "29ao-rhf-fallback",
+      "nao": 29,
+      "atoms_bohr": [
+        [
+          "Na",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.2
+          ]
+        ]
+      ],
+      "moved_atoms_bohr": [
+        [
+          "Na",
+          [
+            0.14300000000000002,
+            -0.22699999999999998,
+            0.18100000000000002
+          ]
+        ],
+        [
+          "H",
+          [
+            0.411,
+            0.213,
+            3.229
+          ]
+        ]
+      ],
+      "basis_identity": "84afd85e38013928171bc856bedc5c7a3f5fffacecd74224c2a64aa91f5b004e",
+      "samples": [
+        {
+          "stage": "first_call",
+          "ms": 2033.776355907321,
+          "energy": -0.683356552646273,
+          "energy_error": 3.774758283725532e-15,
+          "force_error": 2.4364118361708265e-10,
+          "iterations": 9
+        },
+        {
+          "stage": "prepared_initial",
+          "ms": 1952.7284186333418,
+          "energy": -0.6833565526462737,
+          "energy_error": 4.440892098500626e-15,
+          "force_error": 2.4364103790031066e-10,
+          "iterations": 9
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 1147.3128702491522,
+          "energy": -0.6833565526462739,
+          "energy_error": 4.6629367034256575e-15,
+          "force_error": 4.371615569542797e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 1146.5701558627188,
+          "energy": -0.6833565526462748,
+          "energy_error": 5.551115123125783e-15,
+          "force_error": 2.994944570122726e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "prepared_warm",
+          "ms": 1146.8303599394858,
+          "energy": -0.6833565526462735,
+          "energy_error": 4.218847493575595e-15,
+          "force_error": 2.1524353133184349e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6833565526462737,
+          "energy_error": 4.440892098500626e-15,
+          "force_error": 1.7301712840200878e-10,
+          "iterations": 1
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 1875.404944177717,
+          "energy": -0.6841155364646776,
+          "energy_error": 8.43769498715119e-15,
+          "force_error": 2.3834970802605326e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6833565526462733,
+          "energy_error": 3.9968028886505635e-15,
+          "force_error": 2.685646149913623e-11,
+          "iterations": 8
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 1884.0305479243398,
+          "energy": -0.684115536464678,
+          "energy_error": 8.881784197001252e-15,
+          "force_error": 2.3835003415406675e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "restore",
+          "ms": 0.0,
+          "energy": -0.6833565526462733,
+          "energy_error": 3.9968028886505635e-15,
+          "force_error": 2.6856350476833768e-11,
+          "iterations": 8
+        },
+        {
+          "stage": "changed_geometry",
+          "ms": 1874.6159859001637,
+          "energy": -0.6841155364646769,
+          "energy_error": 7.771561172376096e-15,
+          "force_error": 2.3835003415406675e-10,
+          "iterations": 8
+        },
+        {
+          "stage": "batch2",
+          "ms": 3563.269409816712,
+          "energy": -0.6833565526462744,
+          "energy_error": 5.10702591327572e-15,
+          "force_error": 2.4364119749487045e-10,
+          "iterations": 9
+        },
+        {
+          "stage": "batch2",
+          "ms": 3563.269409816712,
+          "energy": -0.6841155364646778,
+          "energy_error": 8.659739592076221e-15,
+          "force_error": 2.2104673647049822e-10,
+          "iterations": 9
+        }
+      ],
+      "timings": {
+        "first_call": {
+          "median_ms": 2033.776355907321,
+          "samples_ms": [
+            2033.776355907321
+          ]
+        },
+        "prepared_warm": {
+          "median_ms": 1146.8303599394858,
+          "samples_ms": [
+            1147.3128702491522,
+            1146.5701558627188,
+            1146.8303599394858
+          ]
+        },
+        "changed_geometry": {
+          "median_ms": 1875.404944177717,
+          "samples_ms": [
+            1875.404944177717,
+            1884.0305479243398,
+            1874.6159859001637
+          ]
+        },
+        "batch2": {
+          "median_ms": 3563.269409816712,
+          "samples_ms": [
+            3563.269409816712,
+            3563.269409816712
+          ]
+        }
+      },
+      "resource_peak_bytes": {
+        "host": 0,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 0
+      }
+    }
+  ]
+}

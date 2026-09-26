@@ -1,0 +1,672 @@
+{
+  "schema": "vibeqc.issue308.scf-ledger.v1",
+  "scope": "Diagnostic native RHF energy with physical export and a 28 GiB DF subbudget, not public global-resource acceptance or clean performance. Seeded timing is not cold timing. Native force W and complete forces remain untested; W checks derive W from C/epsilon.",
+  "source": {
+    "git_head": "4d515cf800bf75606098c968ba59ac8c3726be5c",
+    "git_dirty": false,
+    "git_status": [],
+    "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "untracked_sha256": {},
+    "repository": "/home/jzzeng/codes/vibeqc-issue-308-followup",
+    "native_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0.1.0",
+    "native_library_sha256": "30010c925eb3621fea5d93861838739b1d9d25d365774cf8aad786fe8d71600b"
+  },
+  "native_source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+  "binary_verification": "Native output records the loaded absolute path and source identity. The measured fixed-D library with matching path/identity was frozen and hash-verified before rebuilding. SCF launcher did not record a separate launch-time binary hash.",
+  "frozen_library": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-frozen-4d515cf/libvibeqc.so.0.1.0",
+  "probe_sha256": "a8bbe2b53f95f085bafc1da7fae04e23f2dc82fdc9f32c410042070cdd3b5b89",
+  "build": "Release; CUDA 12.9.1; sm_120; fast compile OFF; stable-shards; complete CMakeCache retained.",
+  "hardware_from_fixed_density_job": {
+    "driver": "NVIDIA GeForce RTX 5090, 580.95.05",
+    "cuda_runtime_version": 12090,
+    "cuda_visible_devices": "0"
+  },
+  "diagnostic_environment": {
+    "VIBEQC_DF_VALUE_MAPPING": "primitive",
+    "VIBEQC_DF_PROGRESS_TRACE": "per-mode/progress.jsonl",
+    "VIBEQC_DF_TRACE": "per-mode/cuda.jsonl",
+    "VIBEQC_DF_HOST_TRACE": "per-mode/host.jsonl"
+  },
+  "input": {
+    "schema": "vibeqc.issue308.fixed-density-input.v1",
+    "case": "water-32mer-4s4-def2-svp-spherical",
+    "nbf": 768,
+    "naux": 768,
+    "energy": -2438.354141054296,
+    "engine": "PySCF",
+    "engine_version": "2.14.0",
+    "metric_relative_threshold": 1e-10,
+    "metric_rank": 768,
+    "metric_min_max": [
+      0.09304817858971055,
+      2399.4330289516
+    ],
+    "seed_checks": {
+      "commutator_max": 1.6087747246129418e-12,
+      "eigen_residual_max": 6.383810147170266e-12,
+      "orthogonality_max": 5.437206240799242e-12,
+      "electron_trace_error": 2.2737367544323206e-13,
+      "metric_idempotency_max": 2.6401103525586223e-13
+    },
+    "scope": "independently converged fixed D; not cold-start timing",
+    "checkpoint_sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851",
+    "input_sha256": "decb7090464088c8cd858036a8afdb0c7f47d3da1f0e65ce2ee4e5d30e8da6d4",
+    "reference_sha256": "34bfeca7c1a31fa72246b4588cfa1901539f76895e537b069ff04e946953e047"
+  },
+  "runs": [
+    {
+      "mode": "seeded",
+      "loaded_identity": {
+        "operation": "identity",
+        "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+        "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+      },
+      "disposition": {
+        "slurm_job": "9540",
+        "exit_status": 0,
+        "scope": "native production RHF energy with physical export; fixed 28 GiB DF subbudget, not a global-resource acceptance"
+      },
+      "endpoint": {
+        "operation": "seeded",
+        "seconds": 111.174076517,
+        "converged": true,
+        "iterations": 3,
+        "energy": -2438.354141054259,
+        "density_rms": 3.567452728790714e-15
+      },
+      "errors": {
+        "density_vs_pyscf_max": 2.1849744236135393e-12,
+        "overlap_vs_pyscf_max": 9.992007221626409e-16,
+        "physical_fock_vs_pyscf_jk_max": 4.757083615913871e-12,
+        "eigen_residual_max": 5.666578317686799e-13,
+        "orthogonality_max": 3.0628386112063755e-14,
+        "electron_trace_error": 4.547473508864641e-13,
+        "idempotency_max": 1.865174681370263e-14,
+        "commutator_max": 2.1305179842556754e-13,
+        "canonical_density_max": 0.0,
+        "derived_energy_weighted_equation_max": 1.6697754290362354e-12,
+        "energy_vs_pyscf": 3.728928277269006e-11,
+        "energy_reconstruction": 9.094947017729282e-12
+      },
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 112181.414658,
+          "exclusive_ms": 334.74520299998403
+        },
+        "host:one_electron": {
+          "calls": 2,
+          "inclusive_ms": 1186.780023,
+          "exclusive_ms": 1186.780023
+        },
+        "host:run_rhf_density_fitting_cuda_impl": {
+          "calls": 1,
+          "inclusive_ms": 111173.936379,
+          "exclusive_ms": 405.55568300001323
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 108.647776,
+          "exclusive_ms": 108.647776
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 103871.284915,
+          "exclusive_ms": 17.245206000006874
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 98.75218,
+          "exclusive_ms": 98.75218
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 103755.287529,
+          "exclusive_ms": 0.1596459999855142
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1,
+          "inclusive_ms": 103347.326438,
+          "exclusive_ms": 103347.326438
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 407.801445,
+          "exclusive_ms": 407.801445
+        },
+        "stream:production_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 289.949384,
+          "exclusive_ms": 0.0852429999999913
+        },
+        "host:production_eigensystem": {
+          "calls": 1,
+          "inclusive_ms": 289.864141,
+          "exclusive_ms": 9.191170000000056
+        },
+        "stream:workspace_setup": {
+          "calls": 1,
+          "inclusive_ms": 0.360298,
+          "exclusive_ms": 0.360298
+        },
+        "stream:host_to_device": {
+          "calls": 1,
+          "inclusive_ms": 0.357954,
+          "exclusive_ms": 0.357954
+        },
+        "host:device_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 17.610056,
+          "exclusive_ms": 0.022642999999998636
+        },
+        "stream:device_eigensolve": {
+          "calls": 1,
+          "inclusive_ms": 17.587413,
+          "exclusive_ms": 17.587413
+        },
+        "stream:device_to_host": {
+          "calls": 1,
+          "inclusive_ms": 0.416927,
+          "exclusive_ms": 0.416927
+        },
+        "host:eigenframe_validation": {
+          "calls": 1,
+          "inclusive_ms": 261.927736,
+          "exclusive_ms": 261.927736
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 2680.455262,
+          "exclusive_ms": 0.08507299999973839
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 2680.370189,
+          "exclusive_ms": 106.88245600000027
+        },
+        "graph_capture:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 20.653801,
+          "exclusive_ms": 0.06648700000000218
+        },
+        "graph_capture:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 20.587314,
+          "exclusive_ms": 20.587314
+        },
+        "graph_capture:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.40844,
+          "exclusive_ms": 0.28261000000000003
+        },
+        "graph_capture:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.12583,
+          "exclusive_ms": 0.12583
+        },
+        "stream:ri_j": {
+          "calls": 4,
+          "inclusive_ms": 18.039997,
+          "exclusive_ms": 0.31326700000000063
+        },
+        "stream:ri_j_gemm": {
+          "calls": 8,
+          "inclusive_ms": 17.72673,
+          "exclusive_ms": 17.72673
+        },
+        "stream:ri_k": {
+          "calls": 4,
+          "inclusive_ms": 3374.454256,
+          "exclusive_ms": 9.288025999999832
+        },
+        "stream:ri_k_gemm": {
+          "calls": 8,
+          "inclusive_ms": 3365.16623,
+          "exclusive_ms": 3365.16623
+        },
+        "host:compact_iteration_readback": {
+          "calls": 3,
+          "inclusive_ms": 0.09645400000000001,
+          "exclusive_ms": 0.09645400000000001
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 3303.996412,
+          "exclusive_ms": 9.383507999999892
+        },
+        "host:final_state_read": {
+          "calls": 1,
+          "inclusive_ms": 7.676698,
+          "exclusive_ms": 3.279897
+        },
+        "stream:final_state_download": {
+          "calls": 1,
+          "inclusive_ms": 4.396801,
+          "exclusive_ms": 4.396801
+        },
+        "host:final_state_fock_build": {
+          "calls": 1,
+          "inclusive_ms": 848.611363,
+          "exclusive_ms": 8.446147999999994
+        },
+        "host:final_state_validation": {
+          "calls": 1,
+          "inclusive_ms": 1411.714527,
+          "exclusive_ms": 1411.714527
+        },
+        "host:final_state_reuse": {
+          "calls": 1,
+          "inclusive_ms": 0.045907,
+          "exclusive_ms": 0.045907
+        },
+        "host:reference_export": {
+          "calls": 1,
+          "inclusive_ms": 1026.564409,
+          "exclusive_ms": 1026.564409
+        }
+      },
+      "compact_device_iterations": 3,
+      "retry_iterations": 0,
+      "final_physical_fock_builds": 1,
+      "graph_host_replays": 0,
+      "graph_construction_attempts": 1,
+      "reference_eigensolves": {},
+      "host_dispatched_device_eigensolves": {
+        "overlap": {
+          "calls": 1,
+          "failed_calls": 0,
+          "wall_ms": 17.60126,
+          "cpu_ms": 17.600638000004665
+        }
+      },
+      "host_peak_rss_bytes": 860626944,
+      "gpu_peak_bytes": null,
+      "memory_scope": "SCF probe retained process host high water only. Fixed-D GPU sampled peak is a separate run.",
+      "array_sha256": "ac1b2a60d3c51e6baca3a9046b147fe534cb82b17b56b69d7fd64f7b8f679f3a",
+      "array_retention": {
+        "full": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/scf-seeded-768/arrays.bin",
+        "sample": "first 24 rows of D/S/H/F/C plus all epsilon; float64 little endian"
+      }
+    },
+    {
+      "mode": "cold",
+      "loaded_identity": {
+        "operation": "identity",
+        "source_identity": "0794d1cd4ea24b0a28130ae03c7f058eda8114497d2c5704035fe20fed1d36c8",
+        "library": "/home/jzzeng/codes/vibeqc-issue-308-followup/build/cuda/libvibeqc.so.0"
+      },
+      "disposition": {
+        "slurm_job": "9540",
+        "exit_status": 0,
+        "scope": "native production RHF energy with physical export; fixed 28 GiB DF subbudget, not a global-resource acceptance"
+      },
+      "endpoint": {
+        "operation": "cold",
+        "seconds": 290.577878304,
+        "converged": true,
+        "iterations": 48,
+        "energy": -2438.3541410542584,
+        "density_rms": 9.596677436089644e-16
+      },
+      "errors": {
+        "density_vs_pyscf_max": 2.2162827129079687e-12,
+        "overlap_vs_pyscf_max": 9.992007221626409e-16,
+        "physical_fock_vs_pyscf_jk_max": 4.707345624410664e-12,
+        "eigen_residual_max": 9.769962616701378e-14,
+        "orthogonality_max": 3.0130574684567035e-14,
+        "electron_trace_error": 2.8421709430404007e-13,
+        "idempotency_max": 2.7533531010703882e-14,
+        "commutator_max": 1.341149413747189e-13,
+        "canonical_density_max": 4.440892098500626e-16,
+        "derived_energy_weighted_equation_max": 2.4868995751603507e-13,
+        "energy_vs_pyscf": 3.774403012357652e-11,
+        "energy_reconstruction": 1.0459189070388675e-11
+      },
+      "phases": {
+        "host:fixed_density_probe": {
+          "calls": 1,
+          "inclusive_ms": 291569.400659,
+          "exclusive_ms": 342.31245199998375
+        },
+        "host:one_electron": {
+          "calls": 2,
+          "inclusive_ms": 1150.32358,
+          "exclusive_ms": 1150.32358
+        },
+        "host:run_rhf_density_fitting_cuda_impl": {
+          "calls": 1,
+          "inclusive_ms": 290577.450326,
+          "exclusive_ms": 488.67394599999534
+        },
+        "host:source_setup": {
+          "calls": 1,
+          "inclusive_ms": 102.434235,
+          "exclusive_ms": 102.434235
+        },
+        "host:df_plan_setup": {
+          "calls": 1,
+          "inclusive_ms": 104099.174875,
+          "exclusive_ms": 17.336323000010452
+        },
+        "host:metric_factorization": {
+          "calls": 1,
+          "inclusive_ms": 98.439242,
+          "exclusive_ms": 98.439242
+        },
+        "stream:resident_three_center_materialization": {
+          "calls": 1,
+          "inclusive_ms": 103983.39931,
+          "exclusive_ms": 0.16210899999714456
+        },
+        "stream:raw_three_center_generation": {
+          "calls": 1,
+          "inclusive_ms": 103575.4619,
+          "exclusive_ms": 103575.4619
+        },
+        "stream:resident_metric_transform": {
+          "calls": 1,
+          "inclusive_ms": 407.775301,
+          "exclusive_ms": 407.775301
+        },
+        "stream:production_eigensolve": {
+          "calls": 52,
+          "inclusive_ms": 20973.152554,
+          "exclusive_ms": 7.7702680000002715
+        },
+        "host:production_eigensystem": {
+          "calls": 52,
+          "inclusive_ms": 20965.382286000004,
+          "exclusive_ms": 608.1573539999999
+        },
+        "stream:workspace_setup": {
+          "calls": 52,
+          "inclusive_ms": 1.67702,
+          "exclusive_ms": 1.67702
+        },
+        "stream:host_to_device": {
+          "calls": 52,
+          "inclusive_ms": 37.120290999999995,
+          "exclusive_ms": 37.120290999999995
+        },
+        "host:device_eigensolve": {
+          "calls": 52,
+          "inclusive_ms": 1010.9514650000001,
+          "exclusive_ms": 1.4098459999999946
+        },
+        "stream:device_eigensolve": {
+          "calls": 52,
+          "inclusive_ms": 1009.5416189999999,
+          "exclusive_ms": 1009.5416189999999
+        },
+        "stream:device_to_host": {
+          "calls": 52,
+          "inclusive_ms": 21.846128999999994,
+          "exclusive_ms": 21.846128999999994
+        },
+        "host:eigenframe_validation": {
+          "calls": 52,
+          "inclusive_ms": 19171.086124999994,
+          "exclusive_ms": 19171.086124999994
+        },
+        "stream:generalized_transform": {
+          "calls": 51,
+          "inclusive_ms": 76.672064,
+          "exclusive_ms": 76.672064
+        },
+        "stream:coefficient_backtransform": {
+          "calls": 51,
+          "inclusive_ms": 37.871838000000004,
+          "exclusive_ms": 37.871838000000004
+        },
+        "host:device_scf_submission_wait": {
+          "calls": 1,
+          "inclusive_ms": 86557.736164,
+          "exclusive_ms": 0.04570699999749195
+        },
+        "host:compact_rhf_scf": {
+          "calls": 1,
+          "inclusive_ms": 86557.690457,
+          "exclusive_ms": 3289.33582800001
+        },
+        "graph_capture:ri_j": {
+          "calls": 1,
+          "inclusive_ms": 18.21765,
+          "exclusive_ms": 0.05768099999999876
+        },
+        "graph_capture:ri_j_gemm": {
+          "calls": 2,
+          "inclusive_ms": 18.159969,
+          "exclusive_ms": 18.159969
+        },
+        "graph_capture:ri_k": {
+          "calls": 1,
+          "inclusive_ms": 0.376149,
+          "exclusive_ms": 0.285125
+        },
+        "graph_capture:ri_k_gemm": {
+          "calls": 2,
+          "inclusive_ms": 0.091024,
+          "exclusive_ms": 0.091024
+        },
+        "stream:ri_j": {
+          "calls": 151,
+          "inclusive_ms": 680.1894219999997,
+          "exclusive_ms": 10.991495999999998
+        },
+        "stream:ri_j_gemm": {
+          "calls": 302,
+          "inclusive_ms": 669.1979260000002,
+          "exclusive_ms": 669.1979260000002
+        },
+        "stream:ri_k": {
+          "calls": 151,
+          "inclusive_ms": 127331.11323599992,
+          "exclusive_ms": 351.49031800000046
+        },
+        "stream:ri_k_gemm": {
+          "calls": 302,
+          "inclusive_ms": 126979.62291799992,
+          "exclusive_ms": 126979.62291799992
+        },
+        "host:compact_iteration_readback": {
+          "calls": 100,
+          "inclusive_ms": 3.157505999999998,
+          "exclusive_ms": 3.157505999999998
+        },
+        "host:diis_retry": {
+          "calls": 1,
+          "inclusive_ms": 89943.70003,
+          "exclusive_ms": 1.5048450000031153
+        },
+        "host:diis_retry_iteration": {
+          "calls": 48,
+          "inclusive_ms": 89942.195185,
+          "exclusive_ms": 28346.87093799999
+        },
+        "host:finalization": {
+          "calls": 1,
+          "inclusive_ms": 8185.739664,
+          "exclusive_ms": 11.307167999999365
+        },
+        "host:final_state_fock_build": {
+          "calls": 3,
+          "inclusive_ms": 2654.2734060000003,
+          "exclusive_ms": 10.6170800000001
+        },
+        "host:strict_final_correction": {
+          "calls": 2,
+          "inclusive_ms": 1708.887245,
+          "exclusive_ms": 909.321643
+        },
+        "host:final_state_validation": {
+          "calls": 2,
+          "inclusive_ms": 2785.7758409999997,
+          "exclusive_ms": 2785.7758409999997
+        },
+        "host:final_state_corrected": {
+          "calls": 1,
+          "inclusive_ms": 0.048502,
+          "exclusive_ms": 0.048502
+        },
+        "host:reference_export": {
+          "calls": 1,
+          "inclusive_ms": 1025.447502,
+          "exclusive_ms": 1025.447502
+        }
+      },
+      "compact_device_iterations": 100,
+      "retry_iterations": 48,
+      "final_physical_fock_builds": 3,
+      "graph_host_replays": 0,
+      "graph_construction_attempts": 1,
+      "reference_eigensolves": {},
+      "host_dispatched_device_eigensolves": {
+        "overlap": {
+          "calls": 1,
+          "failed_calls": 0,
+          "wall_ms": 17.550004,
+          "cpu_ms": 17.54942200000187
+        },
+        "core_guess": {
+          "calls": 1,
+          "failed_calls": 0,
+          "wall_ms": 18.927647,
+          "cpu_ms": 18.92520199999126
+        },
+        "fallback": {
+          "calls": 48,
+          "failed_calls": 0,
+          "wall_ms": 936.775285,
+          "cpu_ms": 936.5784549997898
+        },
+        "final_fock": {
+          "calls": 2,
+          "failed_calls": 0,
+          "wall_ms": 37.036666,
+          "cpu_ms": 37.03269099997897
+        }
+      },
+      "host_peak_rss_bytes": 867921920,
+      "gpu_peak_bytes": null,
+      "memory_scope": "SCF probe retained process host high water only. Fixed-D GPU sampled peak is a separate run.",
+      "array_sha256": "243cf351a6573cf3b9662661c02a55e22a57edb61e625a0c4cb4dad7a3d66749",
+      "array_retention": {
+        "full": "/home/jzzeng/codes/vibeqc-issue-308-followup/.artifacts/issue308-stage/scf-cold-768/arrays.bin",
+        "sample": "first 24 rows of D/S/H/F/C plus all epsilon; float64 little endian"
+      }
+    }
+  ],
+  "archive": {
+    "path": "scf-evidence.zip",
+    "sha256": "999b99a8c326cdfd2b79f72c9a4e97c2ccd1ac93449ba52f280baefc7e6d6e9c",
+    "bytes": 1641021,
+    "restoration": "Every selected member reread and compared byte-for-byte."
+  },
+  "files": [
+    {
+      "path": "reproduction/CMakeCache.txt",
+      "bytes": 37681,
+      "sha256": "2473dd96fce69391c780ecaed5643238d217bc832477d0d3e31ee0bc8d9c2d82"
+    },
+    {
+      "path": "reproduction/retain_scf_ledger.py",
+      "bytes": 6538,
+      "sha256": "749ca9f789b112b2d3f9948ce636db6a91388d7bdc79ab1165ece456ccbc3442"
+    },
+    {
+      "path": "reproduction/run-scf-seeds.sh",
+      "bytes": 987,
+      "sha256": "dc1b8026408ce1f2fc567573dff7873627dea6e2c8db1c4b75036585835ae38a"
+    },
+    {
+      "path": "reproduction/scf-seed-probe.cpp",
+      "bytes": 12714,
+      "sha256": "fd2c039eaccd2b12038b73ccccfb9f1b47e51fab698e07b74acdfaa7e843e416"
+    },
+    {
+      "path": "reproduction/validate_scf_state.py",
+      "bytes": 2736,
+      "sha256": "907c168ac18627be12d21a50637c0b432be126076fe56861e0269c2a85b139b6"
+    },
+    {
+      "path": "scf-cold-768/cuda.jsonl",
+      "bytes": 237415,
+      "sha256": "f0d0f16ee3ce72f5fa20d4c47049c288eee7ddfc7f9bfa4160f92fada50da283"
+    },
+    {
+      "path": "scf-cold-768/disposition.json",
+      "bytes": 158,
+      "sha256": "1b083c6021ed4899836685a7e50cb39e76d01a71099a0ba971775b74d8160753"
+    },
+    {
+      "path": "scf-cold-768/first-24-rows.npz",
+      "bytes": 744862,
+      "sha256": "542b5a06672c1d5a4ebbca92a0e4e071b403ed7af2a11187bf0b8f030bd7fbe2"
+    },
+    {
+      "path": "scf-cold-768/host.jsonl",
+      "bytes": 37476,
+      "sha256": "39450365931367433ad98e003868e5f62e8db564ec98d83661c6241274e755f1"
+    },
+    {
+      "path": "scf-cold-768/native.jsonl",
+      "bytes": 640,
+      "sha256": "9c2309e5bee2dc3c92812c347287ba7b558e2eb3e568400cdcc43bd9c323d785"
+    },
+    {
+      "path": "scf-cold-768/progress-summary.json",
+      "bytes": 1695574,
+      "sha256": "ec8de4a834cf19bd1994d99ce75dd64c49562c83a7ae63453bf3b4744d6ae37a"
+    },
+    {
+      "path": "scf-cold-768/progress.jsonl",
+      "bytes": 1855420,
+      "sha256": "6a7dabcda8d529c78fabca2a911ca74eb303bb5a2e86a5608e200cae6da8de43"
+    },
+    {
+      "path": "scf-cold-768/state-validation.json",
+      "bytes": 42136,
+      "sha256": "dac62d2c86de7c4315db9d40f3d9e2a362262696bd58f07d27845df84d6c12d0"
+    },
+    {
+      "path": "scf-seeded-768/cuda.jsonl",
+      "bytes": 8494,
+      "sha256": "ebe6ac29f2220e274a69c74d67f3f0b37764d2c295ce6bfc421bcaf48f9ca1d9"
+    },
+    {
+      "path": "scf-seeded-768/disposition.json",
+      "bytes": 158,
+      "sha256": "1b083c6021ed4899836685a7e50cb39e76d01a71099a0ba971775b74d8160753"
+    },
+    {
+      "path": "scf-seeded-768/first-24-rows.npz",
+      "bytes": 744862,
+      "sha256": "54d00b28483b9b541561939c542d597b2ff94fcafa909bca989997f90200119e"
+    },
+    {
+      "path": "scf-seeded-768/host.jsonl",
+      "bytes": 2283,
+      "sha256": "3f2aeb576a2f1371b4afbab07daee24928f12dac030e13a833ed0073b3df0d8f"
+    },
+    {
+      "path": "scf-seeded-768/native.jsonl",
+      "bytes": 656,
+      "sha256": "0591d1d3a66c558063925b89bea4520c7c218f8a7485d46abc5b6d95753ee5c5"
+    },
+    {
+      "path": "scf-seeded-768/progress-summary.json",
+      "bytes": 67851,
+      "sha256": "cacd1c9e7b4fcc5635543d0ea226d4f9ad528c9861559e8bd26a48a6a183b703"
+    },
+    {
+      "path": "scf-seeded-768/progress.jsonl",
+      "bytes": 69127,
+      "sha256": "ea3748e50d1ab15bf428637a36b6d66733cc26c7bf7cbf3969277087edb371b1"
+    },
+    {
+      "path": "scf-seeded-768/state-validation.json",
+      "bytes": 5754,
+      "sha256": "9ac9faf61a20e06eec9d85d78ba5df9974a6f50f3c3ba78e678b95e4a70ecfd4"
+    }
+  ]
+}

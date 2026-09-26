@@ -1,0 +1,33 @@
+{
+  "scientific_commit": "cdb0ef995f44cf84e903282e8251f192036bc480",
+  "source_identity": "cd951b7aac4ac45cb9346c2f786799336de4b2f7356c956644f458c09015409b",
+  "files": {
+    "src/scf/cuda_rhf.cu": "5ece5b09c8c2b49b6dcaa63b71ffb32ac930e682c0e7bf29b4516dc9b0cf394e",
+    "src/scf/cuda/weighted_eri.cuh": "d391200ee45bf5f37a68b70c6024e7b3faa903642809ee59c4683cea4abe038d",
+    "src/scf/cuda_weighted_eri.hpp": "76bca7628554d01b8a315fb16c2c555c204c29b5c7c2ede3ebb06d44a87bc999",
+    "tools/vibeqc_codegen/weighted_eri.py": "c4a37de251c225d1f1f19d08e6124e5400e8bdf72e07747a6874ed3ea07c9d2e",
+    "tools/vibeqc_codegen/weighted_eri_cuda.py": "6f7ecf4e9ac3a3485cb6485c57b1caf25121ae2c685a49f56c867f8801cc1ce3",
+    "tools/validate_weighted_eri.py": "7298ebda704ada35b9e671a263472edb04499e7d075d3dbfdfb33140ef7f059d",
+    "tools/validate_weighted_eri_endpoints.py": "4645e490fb70ce234cd3dd6eedb13c159c8c898079a7506523aa85b1758ca8ac",
+    "build/cuda-release/generated/weighted_eri.cuh": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c",
+    "build/cuda-release/CMakeFiles/vibeqc.dir/src/scf/cuda_rhf.cu.o": "266368312d0190e3624cf7823beb0d2c2e9a3194dc1ae6e994267f60bf8e8758",
+    "build/cuda-release/libvibeqc.so": "82583ea5312899a38adadd2b7e5487f022b0f809d3fa3d24da566deefa419fed"
+  },
+  "native_main_object_compile_seconds": [
+    1238.469,
+    1237.139
+  ],
+  "baseline_main_object_compile_seconds": 1239.761,
+  "build": {
+    "cuda": "12.9.86",
+    "architecture": "sm_120",
+    "release": true,
+    "fast_compile": false,
+    "split_compile_threads": 1,
+    "aot": true
+  },
+  "max_libcint_error": 9.992007221626409e-14,
+  "max_finest_fd_error": 1.8429237316763825e-08,
+  "max_cross_schedule_error": 3.0050103030920816e-12,
+  "decision": "retain handwritten psss default; generated candidate remains opt-in"
+}

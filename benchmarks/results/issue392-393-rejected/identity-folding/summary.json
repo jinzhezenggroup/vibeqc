@@ -1,0 +1,96 @@
+{
+  "384": {
+    "variants": {
+      "baseline": {
+        "seconds": [0.9161820288281888, 0.925523079931736, 0.9329828119371086, 0.914992752019316, 0.9219331860076636],
+        "median_seconds": 0.9219331860076636,
+        "maximum_energy_error": 2.0463630789890885e-12,
+        "maximum_force_error": 7.298330993374402e-11,
+        "component_derivative_ms": [199.256577, 198.014465],
+        "post_call_resident_bytes": [8426356736, 8426356736],
+        "class_kernel_total_ms": 204.204762,
+        "folding_work": {
+          "public_weight_loads": 56623104,
+          "expansion_term_products": 40680576,
+          "folding_shared_atomics": 40680576,
+          "folding_direct_stores": 0,
+          "folding_register_values": 0
+        }
+      },
+      "identity": {
+        "seconds": [0.925506244879216, 0.9259967010002583, 0.9264138599392027, 0.9319090971257538, 0.9166983258910477],
+        "median_seconds": 0.9259967010002583,
+        "maximum_energy_error": 2.0463630789890885e-12,
+        "maximum_force_error": 7.298597446900312e-11,
+        "component_derivative_ms": [203.973083, 198.27562],
+        "post_call_resident_bytes": [8426356736, 8426356736],
+        "class_kernel_total_ms": 199.109911,
+        "folding_work": {
+          "public_weight_loads": 56623104,
+          "expansion_term_products": 40680576,
+          "folding_shared_atomics": 26528768,
+          "folding_direct_stores": 0,
+          "folding_register_values": 14151808
+        },
+        "endpoint_ratio_to_baseline": 1.0044076024751765,
+        "paired_numerical_differences": {"energies_hartree": 0.0, "forces_hartree_per_bohr": 3.907985046680551e-14}
+      }
+    },
+    "warm_density_sha256": {"density_0": "3985f3aaa44108759dcb1488b4880301ee0bfe4ec7b9142126170a8a436d3a9c"},
+    "scientific_work": {
+      "shell_triples_visited": 3557376,
+      "shell_triples_nonzero": 3557376,
+      "shell_primitive_products": 21976064,
+      "shell_public_weights_consumed": 56623104,
+      "shell_public_weights_nonzero": 28520448,
+      "shell_cartesian_component_products": 122438784
+    }
+  },
+  "768": {
+    "variants": {
+      "baseline": {
+        "seconds": [5.329130415106192, 5.328563750023022, 5.330372098134831, 5.315228030085564, 5.330959270009771],
+        "median_seconds": 5.329130415106192,
+        "maximum_energy_error": 3.9108272176235914e-11,
+        "maximum_force_error": 1.3574863455545483e-10,
+        "component_derivative_ms": [1308.563611, 1305.7412477],
+        "post_call_resident_bytes": [21252538368, 21252538368],
+        "class_kernel_total_ms": 1303.554184,
+        "folding_work": {
+          "public_weight_loads": 226787328,
+          "expansion_term_products": 322970112,
+          "folding_shared_atomics": 322970112,
+          "folding_direct_stores": 0,
+          "folding_register_values": 0
+        }
+      },
+      "identity": {
+        "seconds": [5.33997015398927, 5.327315683010966, 5.324528620811179, 5.336781559046358, 5.329528938047588],
+        "median_seconds": 5.329528938047588,
+        "maximum_energy_error": 3.9108272176235914e-11,
+        "maximum_force_error": 1.3575041091229423e-10,
+        "component_derivative_ms": [1292.1137657, 1291.9988629],
+        "post_call_resident_bytes": [21252538368, 21252538368],
+        "class_kernel_total_ms": 1295.120763,
+        "folding_work": {
+          "public_weight_loads": 226787328,
+          "expansion_term_products": 322970112,
+          "folding_shared_atomics": 210407424,
+          "folding_direct_stores": 0,
+          "folding_register_values": 112562688
+        },
+        "endpoint_ratio_to_baseline": 1.0000747819832418,
+        "paired_numerical_differences": {"energies_hartree": 0.0, "forces_hartree_per_bohr": 5.3290705182007514e-14}
+      }
+    },
+    "warm_density_sha256": {"density_0": "638cf6ad1d0f08bc29198c739c7237c4fcbc24d35bc8e69e58f2c2dfe720fd33"},
+    "scientific_work": {
+      "shell_triples_visited": 28385280,
+      "shell_triples_nonzero": 28385280,
+      "shell_primitive_products": 175132672,
+      "shell_public_weights_consumed": 226787328,
+      "shell_public_weights_nonzero": 226787328,
+      "shell_cartesian_component_products": 973859328
+    }
+  }
+}

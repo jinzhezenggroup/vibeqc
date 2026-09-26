@@ -1,0 +1,132 @@
+{
+  "checks": [
+    {
+      "path": ".artifacts/candidate-v6/regression-tests.log",
+      "sha256": "396e13d2e9ba50503e9f4f9f01e01f2fc1e78a6b7c010a428f248e6e5027fd0e",
+      "conclusions": [
+        "91 passed in 78.00s (0:01:17)"
+      ]
+    },
+    {
+      "path": ".artifacts/candidate-v6/native-lifecycle.log",
+      "sha256": "cfbc0d61545c885a7a7814d2123192088b9d4f64e50342c2467c4e26f6207bc4",
+      "conclusions": []
+    },
+    {
+      "path": ".artifacts/candidate-v6/cpu-native-tests.log",
+      "sha256": "117daea6089cc673695a2da21c21aaf8f2a4290cfae1b86c79758591e96e7625",
+      "conclusions": [
+        " 1/30 Test  #1: vibeqc_fock_build_tests ................   Passed    0.00 sec",
+        " 2/30 Test  #2: vibeqc_ecp_projector_tests .............   Passed    0.00 sec",
+        " 3/30 Test  #3: vibeqc_fock_provider_tests .............   Passed    0.09 sec",
+        " 4/30 Test  #4: vibeqc_fock_api_tests ..................   Passed    0.00 sec",
+        " 5/30 Test  #5: vibeqc_native_tests ....................   Passed    0.03 sec",
+        " 6/30 Test  #6: vibeqc_final_state_tests ...............   Passed    0.00 sec",
+        " 7/30 Test  #7: vibeqc_ks_final_state_tests ............   Passed    0.00 sec",
+        " 8/30 Test  #8: vibeqc_eigen_frame_tests ...............   Passed    0.00 sec",
+        " 9/30 Test  #9: vibeqc_initial_density_tests ...........   Passed    0.00 sec",
+        "10/30 Test #10: vibeqc_mp2_contract_tests ..............   Passed    0.01 sec",
+        "11/30 Test #11: vibeqc_scf_proposal_tests ..............   Passed    0.07 sec",
+        "12/30 Test #12: vibeqc_batch_tests .....................   Passed    0.14 sec",
+        "13/30 Test #13: vibeqc_cpp_api_tests ...................   Passed    0.56 sec",
+        "14/30 Test #14: vibeqc_cartesian_integral_tests ........   Passed    0.03 sec",
+        "15/30 Test #15: vibeqc_density_fitting_tests ...........   Passed    0.16 sec",
+        "16/30 Test #16: vibeqc_density_factor_tests ............   Passed    0.00 sec",
+        "17/30 Test #17: vibeqc_cuda_eigensolver_policy_tests ...   Passed    0.00 sec",
+        "18/30 Test #18: vibeqc_uhf_tests .......................   Passed    0.03 sec",
+        "19/30 Test #19: vibeqc_spherical_tests .................   Passed    2.13 sec",
+        "20/30 Test #20: vibeqc_basis_contract_tests ............   Passed    0.01 sec",
+        "21/30 Test #21: vibeqc_grid_tests ......................   Passed    0.00 sec",
+        "22/30 Test #22: vibeqc_dft_tests .......................   Passed    0.75 sec",
+        "23/30 Test #23: vibeqc_xc_point_tests ..................   Passed    0.00 sec",
+        "24/30 Test #24: vibeqc_uks_state_tests .................   Passed    2.26 sec",
+        "25/30 Test #25: vibeqc_dft_api_tests ...................   Passed    2.09 sec",
+        "26/30 Test #26: vibeqc_scf_diagnostic_tests ............   Passed    0.98 sec",
+        "27/30 Test #27: vibeqc_dft_density_source_tests ........   Passed    0.77 sec",
+        "28/30 Test #28: vibeqc_uks_tests .......................   Passed    2.26 sec",
+        "29/30 Test #29: vibeqc_mixed_precision_tests ...........   Passed    0.00 sec",
+        "30/30 Test #30: vibeqc_precision_policy_tests ..........   Passed    0.01 sec",
+        "100% tests passed, 0 tests failed out of 30"
+      ]
+    },
+    {
+      "path": ".artifacts/final/cpu-python-tests-fixed.log",
+      "sha256": "da8eeae564f2dc5efec8b69655f8bd8bdde86d53ee66ce242d9db883b40b3140",
+      "conclusions": [
+        "48 passed, 1 skipped in 7.29s"
+      ]
+    },
+    {
+      "path": ".artifacts/final-v9/occupied-tests-matched-basis.log",
+      "sha256": "79e0290384741f591d1664cdf548a8c2b97f441abaea01b0d14647ca9b100e1a",
+      "conclusions": [
+        "6 passed in 2.57s"
+      ]
+    },
+    {
+      "path": ".artifacts/final-v9/sanitizer-cold.log",
+      "sha256": "44a3f2cf378fce314777bd07785e6d29b881f70153d757ee375a426891090201",
+      "conclusions": [
+        "========= ERROR SUMMARY: 0 errors",
+        "========= ERROR SUMMARY: 0 errors"
+      ]
+    },
+    {
+      "path": ".artifacts/final-v9/pre-commit-final.log",
+      "sha256": "1e8a1f36cd5a804c25f69deb0127eeab46ff4168a2e19605722a170209431cd9",
+      "conclusions": [
+        "trim trailing whitespace.......................................................Passed",
+        "fix end of files...............................................................Passed",
+        "check json.....................................................................Passed",
+        "check for added large files....................................................Passed",
+        "check for merge conflicts......................................................Passed",
+        "Check tracked evidence retention and review size...............................Passed",
+        "Check scientific compiler dependency directions................................Passed",
+        "Check native CUDA ownership inventory and source anchors.......................Passed",
+        "Check shared SCF dependency directions.........................................Passed",
+        "ruff (legacy alias)............................................................Passed",
+        "ruff format....................................................................Passed",
+        "clang-format...................................................................Passed"
+      ]
+    },
+    {
+      "path": ".artifacts/final-v10/qualification.log",
+      "sha256": "2875d6fedd95e4b15e3ff6bb906530c5e89a1b04d7c9031d3dc07b11a5c182ef",
+      "conclusions": [
+        "7 focused CUDA tests passed; native factor lifecycle passed; final occupied/auto 768-AO gates passed"
+      ]
+    },
+    {
+      "path": ".artifacts/review-v11/reference-tests.log",
+      "sha256": "5a84374e2bf56ac6fe7000d91cc2e0abfa514170dff2262561fe2a60f4c4e4cb",
+      "conclusions": [
+        "20 CPU reference-contract tests passed, including all four retained workloads, mismatched metadata, broadcastable arrays and non-finite values"
+      ]
+    },
+    {
+      "path": ".artifacts/review-v11/qualification.log",
+      "sha256": "3f2edb963cec84ea3596569054d55e259f9c47b13f8ca2bd924270802d8124c6",
+      "conclusions": [
+        "8 CUDA response tests passed; selector launch initially failed because the frozen library lacked its SONAME symlink, corrected before remaining checks"
+      ]
+    },
+    {
+      "path": ".artifacts/review-v11/qualification-remaining.log",
+      "sha256": "038535d8f09236c4e482765f2e347d61322672e1d187a242e73396fa3548ad8b",
+      "conclusions": [
+        "Selector qualification test passed; native malformed-token and RHF/UHF lifecycle checks passed; Compute Sanitizer: 0 errors; benchmark exposed tuple/list metadata serialization mismatch, fixed before the endpoint rerun"
+      ]
+    },
+    {
+      "path": ".artifacts/review-v11/endpoint.log",
+      "sha256": "502b842e7101d588886732fd0ebfc3025339e4f22154774791c3ff1f310d6fc6",
+      "conclusions": [
+        "96-AO dense/occupied complete endpoint passed strict independent-reference gates with the corrected metadata serialization"
+      ]
+    }
+  ],
+  "strict_gates": {
+    "energy_hartree": 1e-09,
+    "force_hartree_per_bohr": 1e-08
+  }
+}

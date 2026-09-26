@@ -1,0 +1,836 @@
+{
+  "measured_revision": "db6f65bd96df7dc6f2eae6e7fc8eb766829d1027",
+  "cpu": {
+    "passed": 162,
+    "seconds": 9.21,
+    "files": [
+      "test_density_source.py",
+      "test_density_cuda_plan.py",
+      "test_grid_prepared.py",
+      "test_xc_contractions_native.py",
+      "test_grid_cpu.py"
+    ],
+    "log": {
+      "sha256": "d89c1b05271db36dfe63acc37832ae14b54aa4c5f0b7b99252d6b1c6eb182d0a",
+      "bytes": 260,
+      "transient_path": ".artifacts/density-cpu-tests.txt"
+    }
+  },
+  "gpu": {
+    "passed": 116,
+    "seconds": 14.7,
+    "files": [
+      "test_density_cuda.py",
+      "test_grid_cuda.py"
+    ],
+    "log": {
+      "sha256": "2dfd3fca2ffbf797edb1da5d5b9aa813052eaa2391e7fae80673a3acf6a97cff",
+      "bytes": 181,
+      "transient_path": ".artifacts/density-gpu-tests.txt"
+    }
+  },
+  "sanitizer_version": "2025.2.1.0 (build 35969825) (public-release)",
+  "memcheck": {
+    "passed": 100,
+    "reported_errors": 0,
+    "seconds": 4.49,
+    "log": {
+      "sha256": "cb50d391c2d9158f02c0a170b7d838e3586682dda56e026f3ec725723ff4bbf4",
+      "bytes": 242,
+      "transient_path": ".artifacts/density-memcheck.txt"
+    }
+  },
+  "initcheck": {
+    "passed": 100,
+    "reported_errors": 0,
+    "isolation": "one pytest node per process inside one finite Slurm job",
+    "allocation": {
+      "slurm_job_id": "9393",
+      "cuda_visible_devices": "0"
+    },
+    "cases": [
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[7-1-h2]",
+        "exit_code": 0,
+        "seconds": 1.0611300191376358,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[7-1-water]",
+        "exit_code": 0,
+        "seconds": 1.0579801958519965,
+        "zero_errors": true,
+        "log_sha256": "ce4be199835a46b63429c049f7afb3a7ef46f55c7734c0ff50bb12959ea790ac"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[7-1-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.0762090818025172,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[7-1-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.0770020820200443,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[7-1-diffuse]",
+        "exit_code": 0,
+        "seconds": 1.0675565991550684,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[7-1-tight]",
+        "exit_code": 0,
+        "seconds": 1.0515509210526943,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[13-3-h2]",
+        "exit_code": 0,
+        "seconds": 1.0298087340779603,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[13-3-water]",
+        "exit_code": 0,
+        "seconds": 1.0201500428374857,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[13-3-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.0259804700035602,
+        "zero_errors": true,
+        "log_sha256": "3eab5ea0fb3537e1018bd1c56aa15fce274eca5924dc4189c1f4b1e6e1e54411"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[13-3-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.0180394898634404,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[13-3-diffuse]",
+        "exit_code": 0,
+        "seconds": 1.0357166500762105,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_native_routes_match_independent_features_with_partial_tiles[13-3-tight]",
+        "exit_code": 0,
+        "seconds": 1.022888237144798,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients0]",
+        "exit_code": 0,
+        "seconds": 0.9904127509798855,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients1]",
+        "exit_code": 0,
+        "seconds": 0.994782781926915,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients2]",
+        "exit_code": 0,
+        "seconds": 0.995317755965516,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients3]",
+        "exit_code": 0,
+        "seconds": 0.9919602749869227,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients4]",
+        "exit_code": 0,
+        "seconds": 1.0025616220664233,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients5]",
+        "exit_code": 0,
+        "seconds": 1.0209194959606975,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients6]",
+        "exit_code": 0,
+        "seconds": 1.0295102309901267,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients7]",
+        "exit_code": 0,
+        "seconds": 1.000985372113064,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients8]",
+        "exit_code": 0,
+        "seconds": 0.9946835020091385,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients9]",
+        "exit_code": 0,
+        "seconds": 0.9952292770612985,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients10]",
+        "exit_code": 0,
+        "seconds": 0.9924404139164835,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients11]",
+        "exit_code": 0,
+        "seconds": 1.0001016398891807,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients12]",
+        "exit_code": 0,
+        "seconds": 1.0223908938933164,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients13]",
+        "exit_code": 0,
+        "seconds": 1.0113359079696238,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts0-ingredients14]",
+        "exit_code": 0,
+        "seconds": 1.0175825539045036,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients0]",
+        "exit_code": 0,
+        "seconds": 0.9653068899642676,
+        "zero_errors": true,
+        "log_sha256": "abdb074a1653ca3882a9e5041d362cb4e830fc22acad01c7dc84ff107ae509c8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients1]",
+        "exit_code": 0,
+        "seconds": 1.0103416237980127,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients2]",
+        "exit_code": 0,
+        "seconds": 0.9980277859140188,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients3]",
+        "exit_code": 0,
+        "seconds": 0.9528866792097688,
+        "zero_errors": true,
+        "log_sha256": "5a0a738a0f90a813c1c95960e379a2d516198ca2f0a1016d76ff18a9410c053c"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients4]",
+        "exit_code": 0,
+        "seconds": 0.9828700821381062,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients5]",
+        "exit_code": 0,
+        "seconds": 0.9847116901073605,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients6]",
+        "exit_code": 0,
+        "seconds": 0.9892560848966241,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients7]",
+        "exit_code": 0,
+        "seconds": 1.0158188550267369,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients8]",
+        "exit_code": 0,
+        "seconds": 0.9870151218492538,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients9]",
+        "exit_code": 0,
+        "seconds": 0.9850515509024262,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients10]",
+        "exit_code": 0,
+        "seconds": 1.0228269689250737,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients11]",
+        "exit_code": 0,
+        "seconds": 0.9978568989317864,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients12]",
+        "exit_code": 0,
+        "seconds": 0.9570688810199499,
+        "zero_errors": true,
+        "log_sha256": "abdb074a1653ca3882a9e5041d362cb4e830fc22acad01c7dc84ff107ae509c8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients13]",
+        "exit_code": 0,
+        "seconds": 0.9941610100213438,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_requested_features_and_empty_spin_channels[counts1-ingredients14]",
+        "exit_code": 0,
+        "seconds": 0.9534008638001978,
+        "zero_errors": true,
+        "log_sha256": "5a0a738a0f90a813c1c95960e379a2d516198ca2f0a1016d76ff18a9410c053c"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_local_maps_keep_all_occupied_columns_and_cross_terms",
+        "exit_code": 0,
+        "seconds": 1.064979090122506,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_current_stamp_fallback_capacity_and_changed_density",
+        "exit_code": 0,
+        "seconds": 1.0171212798450142,
+        "zero_errors": true,
+        "log_sha256": "3cc2c50a5f38e33050ae8f542a56a1c1b6bbe49e5ea7e7d7a96c50d8f49946a8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_two_independent_owners_can_replay_concurrently",
+        "exit_code": 0,
+        "seconds": 1.0758262481540442,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_unavailable_factors_execute_the_original_signed_density[negative]",
+        "exit_code": 0,
+        "seconds": 1.0211658880580217,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_unavailable_factors_execute_the_original_signed_density[complex]",
+        "exit_code": 0,
+        "seconds": 0.9593740759883076,
+        "zero_errors": true,
+        "log_sha256": "abdb074a1653ca3882a9e5041d362cb4e830fc22acad01c7dc84ff107ae509c8"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_unavailable_factors_execute_the_original_signed_density[response]",
+        "exit_code": 0,
+        "seconds": 0.9929704489186406,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_unavailable_factors_execute_the_original_signed_density[missing]",
+        "exit_code": 0,
+        "seconds": 0.9916550600901246,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_source_topology_and_failed_upload_cannot_publish_stale_features",
+        "exit_code": 0,
+        "seconds": 1.0174520830623806,
+        "zero_errors": true,
+        "log_sha256": "daf766f7c1194953e48a8bf7d2473b2fbfacfd1ea1ab9be1ddff0493ec043c81"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_pruned_features_cannot_borrow_full_feature_task_abi",
+        "exit_code": 0,
+        "seconds": 0.9614174198359251,
+        "zero_errors": true,
+        "log_sha256": "c62a5663fb353007047bf0faccea81ab54e0b8aba6918de80c51bce8486a902f"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-LDA_XC_PW-h2]",
+        "exit_code": 0,
+        "seconds": 1.086244764039293,
+        "zero_errors": true,
+        "log_sha256": "3f6cde964816b215ed4e0faf5b879cb6121ccb0cf50fbec9263be5fb25cc90d6"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-LDA_XC_PW-water]",
+        "exit_code": 0,
+        "seconds": 1.119783166097477,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-LDA_XC_PW-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1072130091488361,
+        "zero_errors": true,
+        "log_sha256": "3eab5ea0fb3537e1018bd1c56aa15fce274eca5924dc4189c1f4b1e6e1e54411"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-LDA_XC_PW-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1204113499261439,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-PBE-h2]",
+        "exit_code": 0,
+        "seconds": 1.0906558639835566,
+        "zero_errors": true,
+        "log_sha256": "3f6cde964816b215ed4e0faf5b879cb6121ccb0cf50fbec9263be5fb25cc90d6"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-PBE-water]",
+        "exit_code": 0,
+        "seconds": 1.1225387239828706,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-PBE-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1131428480148315,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-unpolarized-PBE-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1188276561442763,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-LDA_XC_PW-h2]",
+        "exit_code": 0,
+        "seconds": 1.088194479001686,
+        "zero_errors": true,
+        "log_sha256": "3f6cde964816b215ed4e0faf5b879cb6121ccb0cf50fbec9263be5fb25cc90d6"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-LDA_XC_PW-water]",
+        "exit_code": 0,
+        "seconds": 1.1217089348938316,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-LDA_XC_PW-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1032325229607522,
+        "zero_errors": true,
+        "log_sha256": "3eab5ea0fb3537e1018bd1c56aa15fce274eca5924dc4189c1f4b1e6e1e54411"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-LDA_XC_PW-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1197056479286402,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-PBE-h2]",
+        "exit_code": 0,
+        "seconds": 1.0874942671507597,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-PBE-water]",
+        "exit_code": 0,
+        "seconds": 1.127582767046988,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-PBE-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.118950751144439,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-total-polarized-PBE-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1268018509726971,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-LDA_XC_PW-h2]",
+        "exit_code": 0,
+        "seconds": 1.0947605669498444,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-LDA_XC_PW-water]",
+        "exit_code": 0,
+        "seconds": 1.1203129200730473,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-LDA_XC_PW-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1099365048576146,
+        "zero_errors": true,
+        "log_sha256": "3eab5ea0fb3537e1018bd1c56aa15fce274eca5924dc4189c1f4b1e6e1e54411"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-LDA_XC_PW-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1080342920031399,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-PBE-h2]",
+        "exit_code": 0,
+        "seconds": 1.0890853239689022,
+        "zero_errors": true,
+        "log_sha256": "3f6cde964816b215ed4e0faf5b879cb6121ccb0cf50fbec9263be5fb25cc90d6"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-PBE-water]",
+        "exit_code": 0,
+        "seconds": 1.1289523791056126,
+        "zero_errors": true,
+        "log_sha256": "c34f63560f01ae88b79da276cfcb8549b022cea0e43269c3cd178e2640e11086"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-PBE-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1134260690305382,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[134217728-spin-polarized-PBE-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1257612679619342,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-LDA_XC_PW-h2]",
+        "exit_code": 0,
+        "seconds": 1.0884251100942492,
+        "zero_errors": true,
+        "log_sha256": "3f6cde964816b215ed4e0faf5b879cb6121ccb0cf50fbec9263be5fb25cc90d6"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-LDA_XC_PW-water]",
+        "exit_code": 0,
+        "seconds": 1.1209411339368671,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-LDA_XC_PW-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1093606718350202,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-LDA_XC_PW-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.016855841036886,
+        "zero_errors": true,
+        "log_sha256": "34afb772721f4836641e5a623421b92017f44c94b60d3f7ac30f2ed30bd8ff91"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-PBE-h2]",
+        "exit_code": 0,
+        "seconds": 1.0935510289855301,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-PBE-water]",
+        "exit_code": 0,
+        "seconds": 1.1116477521136403,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-PBE-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1117397889029235,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-unpolarized-PBE-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1187095190398395,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-LDA_XC_PW-h2]",
+        "exit_code": 0,
+        "seconds": 1.0917835820000619,
+        "zero_errors": true,
+        "log_sha256": "3f6cde964816b215ed4e0faf5b879cb6121ccb0cf50fbec9263be5fb25cc90d6"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-LDA_XC_PW-water]",
+        "exit_code": 0,
+        "seconds": 1.1217049059923738,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-LDA_XC_PW-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.115007156971842,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-LDA_XC_PW-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1230687990318984,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-PBE-h2]",
+        "exit_code": 0,
+        "seconds": 1.0959157680626959,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-PBE-water]",
+        "exit_code": 0,
+        "seconds": 1.126697249012068,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-PBE-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.110299389110878,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-total-polarized-PBE-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1212805141694844,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-LDA_XC_PW-h2]",
+        "exit_code": 0,
+        "seconds": 1.0893467550631613,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-LDA_XC_PW-water]",
+        "exit_code": 0,
+        "seconds": 1.0251039189752191,
+        "zero_errors": true,
+        "log_sha256": "ff8e8f3b3c397f5e3438105ada096937c1c262caea40a2f943dc9a2105a835bd"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-LDA_XC_PW-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1139186518266797,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-LDA_XC_PW-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.119863668922335,
+        "zero_errors": true,
+        "log_sha256": "fa8b964231bfa7d9e9d261282468ed1688fb2e46adcd9f1252d6204cd5859e67"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-PBE-h2]",
+        "exit_code": 0,
+        "seconds": 1.0949076670221984,
+        "zero_errors": true,
+        "log_sha256": "e26f01e8188cdd927786d77856d57a31e2f5063c7bc86aad26bc0e8342f46c63"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-PBE-water]",
+        "exit_code": 0,
+        "seconds": 1.1312363450415432,
+        "zero_errors": true,
+        "log_sha256": "c34f63560f01ae88b79da276cfcb8549b022cea0e43269c3cd178e2640e11086"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-PBE-f_cartesian]",
+        "exit_code": 0,
+        "seconds": 1.1191111369989812,
+        "zero_errors": true,
+        "log_sha256": "74aab29f4e3ae00eead8b3aeabbb4633fa5cdc71eace02368fb520e6db88e0da"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_same_grid_xc_energy_potential_and_composed_budgets[268435456-spin-polarized-PBE-f_spherical]",
+        "exit_code": 0,
+        "seconds": 1.1305762401316315,
+        "zero_errors": true,
+        "log_sha256": "c34f63560f01ae88b79da276cfcb8549b022cea0e43269c3cd178e2640e11086"
+      },
+      {
+        "nodeid": "tests/python/test_density_cuda.py::test_xc_density_direction_uses_the_current_orbitals",
+        "exit_code": 0,
+        "seconds": 1.168563042068854,
+        "zero_errors": true,
+        "log_sha256": "ba282bedb0ba4c5ea8dfe760ecc006b6bf33ba0a8baa359385f1daad8162c6b5"
+      }
+    ]
+  },
+  "negative_result": {
+    "scope": "full initcheck suite in one process, reproduced twice",
+    "status": "resource_guard_rejected_before_fourth_test_execution",
+    "observed_provider_allocation_delta_bytes": 102760448,
+    "allowed_provider_bytes": 100663296,
+    "reported_sanitizer_errors": 0,
+    "tests_completed_before_rejection": 3,
+    "logs": [
+      {
+        "sha256": "7485562279599f76c1ef2ee74a4ee5fe33c0c1c661fc1b5df8401af6a9921802",
+        "bytes": 2673,
+        "transient_path": ".artifacts/density-initcheck.txt"
+      },
+      {
+        "sha256": "4ed03fbbbd167c9fd77750d9be64b96732f70c024a017e8655ae531ab3176764",
+        "bytes": 2673,
+        "transient_path": ".artifacts/density-initcheck-final.txt"
+      }
+    ],
+    "resolution": "All 100 nodes pass in separate processes with the original allowance; regular GPU regression and benchmark also pass unchanged. Instrumented long-lived-process allocation observation is not a production numeric-memory measurement. No provider guard was relaxed."
+  },
+  "reproduction": {
+    "scheduler": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:10:00"
+    ],
+    "environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VIBEQC_LIBRARY": "build/cpu/libvibeqc.so",
+      "VIBEQC_GRID_CUDA_TEST": "1",
+      "VIBEQC_NVCC": "/group/software/cuda-12.9.1/bin/nvcc"
+    },
+    "memcheck": [
+      "/group/software/cuda-12.9.1/bin/compute-sanitizer",
+      "--tool",
+      "memcheck",
+      "--error-exitcode",
+      "99",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/python/test_density_cuda.py",
+      "-q",
+      "--maxfail=1"
+    ],
+    "initcheck_template": [
+      "/group/software/cuda-12.9.1/bin/compute-sanitizer",
+      "--tool",
+      "initcheck",
+      "--error-exitcode",
+      "99",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "<each recorded nodeid in its own process>",
+      "-q",
+      "--maxfail=1"
+    ],
+    "device_visibility": "Preserve CUDA_VISIBLE_DEVICES assigned by Slurm."
+  },
+  "cuda_ownership": {
+    "generated_capability": "shared through-f/order-three AO and requested D/C density bilinears/sigma",
+    "scientific": {
+      "before": 54,
+      "after": 89,
+      "added": 41,
+      "removed": 6
+    },
+    "runtime": {
+      "before": 332,
+      "after": 447,
+      "added": 123,
+      "removed": 8
+    },
+    "legacy_production_path_removed": false,
+    "retained_duplicate_reason": "none"
+  }
+}

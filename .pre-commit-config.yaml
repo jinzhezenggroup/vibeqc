@@ -1,0 +1,74 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+# Preserve exact upstream bytes for vendored source trees with provenance manifests.
+exclude: ^(upstream/|src/xtb/native/|cmake/3rdparty/implib/)
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Source reconstruction patches contain significant diff context markers.
+        exclude: ^benchmarks/results/.*\.patch$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=1024", "--enforce-all"]
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+  - repo: local
+    hooks:
+      - id: evidence-retention
+        # Check staged evidence content in addition to the hard file-size cap.
+        name: Check tracked evidence retention and review size
+        entry: python3 tools/evidence.py check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: public-method-manifest
+        name: Check generated public method metadata
+        entry: python3 tools/generate_method_manifest.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: compiler-structure
+        name: Check scientific compiler dependency directions
+        entry: python3 tools/check_compiler_structure.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: cuda-ownership
+        name: Check native CUDA ownership inventory and source anchors
+        entry: python3 tools/report_cuda_ownership.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: scf-structure
+        name: Check shared SCF dependency directions
+        entry: python3 tools/check_scf_structure.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: electronic-structure-boundaries
+        name: Check cross-method electronic-structure boundaries
+        entry: python3 tools/check_electronic_structure_boundaries.py
+        language: system
+        pass_filenames: false
+        always_run: true
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.8
+    hooks:
+      # Generated parameter Python is byte-for-byte qualified against its source.
+      - id: ruff
+        args: ["--fix"]
+        types_or: [python, pyi, jupyter]
+        exclude: ^python/vibeqc_compiler/method/_generated_parameters\.py$
+      - id: ruff-format
+        types_or: [python, pyi, jupyter]
+        exclude: ^python/vibeqc_compiler/method/_generated_parameters\.py$
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v23.1.1
+    hooks:
+      - id: clang-format
+        types_or: [c++, c, cuda]

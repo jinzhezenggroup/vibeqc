@@ -1,0 +1,266 @@
+{
+  "source": {
+    "revision": "b9df84f3fdee2fc8ddf4236a6f238bac3bb71409",
+    "dirty": true
+  },
+  "native_source_identity": "8a1d46496e4fce283ee2087643607e0c21002cba50de0e607aeea5dcf68ffd5f",
+  "build": {
+    "type": "Release",
+    "cuda": "12.9.1",
+    "architecture": "120",
+    "aot_shells": false,
+    "fast_compile": false,
+    "host_numerical_threads": 1,
+    "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "python_packages": {
+      "numpy": "2.5.3",
+      "pytest": "9.1.1",
+      "pyscf": "2.14.0"
+    }
+  },
+  "files": {
+    ".artifacts/issue408/verified/libvibeqc.so": {
+      "sha256": "c955e692fe687c6c999fa07e9a2f247a5340943bb0cb56bbf356db5c67929044",
+      "bytes": 162197248
+    },
+    ".artifacts/issue408/verified/source.patch": {
+      "sha256": "2753424261235c882b64a0d01d635e20aff0f423d7637ffe07fc46b08b71a3a0",
+      "bytes": 88784
+    },
+    "benchmarks/df_policy_endpoint.py": {
+      "sha256": "9bbd641c34fb2ff3ec38ce341b0b6ca4c9d00c8da1dfc4b0bc75567954364557",
+      "bytes": 21997
+    },
+    "build/cuda/vibeqc_df_final_validation_tests": {
+      "sha256": "709bda8595d929db69f2e1994593b19b6489e83256f98d7fbd80ac218fb23e05",
+      "bytes": 135808
+    },
+    "build/cuda/vibeqc_df_final_snapshot_tests": {
+      "sha256": "9141d06791bff48dfb8162b031d4c86330fc5066c84e15c31d3892125dab292a",
+      "bytes": 90160
+    },
+    "build/cpu/libvibeqc.so": {
+      "sha256": "637417b568f246f1721042a5bbda8684dfc5a0f7c79d486f6f748aedc0bc191c",
+      "bytes": 1218032
+    }
+  },
+  "earlier_snapshot_binary": {
+    "sha256": "9906dd18c761a8580000c7c57e6498d56624b3e6cc6fcc36dc609e8193b9dbad",
+    "bytes": 90160
+  },
+  "cpu_model": "AMD EPYC 7K62 48-Core Processor",
+  "scheduler": {
+    "accounting": "Slurm accounting storage is disabled; job IDs come from srun logs and exit codes from the completed local srun processes.",
+    "jobs": {
+      "9802": {
+        "exit_code": 0,
+        "purpose": "sanitizers and independent Fock/minimal direct regression; 129 opt-in skips recorded"
+      },
+      "9803": {
+        "exit_code": 0,
+        "purpose": "all eight clean endpoint comparisons"
+      },
+      "9804": {
+        "exit_code": 0,
+        "purpose": "separate warm memory sampling"
+      },
+      "9805": {
+        "exit_code": 0,
+        "purpose": "9 native GPU suites, 127 molecular checks and final retained-frame memcheck/initcheck"
+      },
+      "9806": {
+        "exit_code": 0,
+        "purpose": "29 explicit Direct/DF one-electron derivative regression cases"
+      }
+    }
+  },
+  "tests": {
+    "cpu_native": {
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build/cpu",
+        "--output-on-failure"
+      ],
+      "passed": 30,
+      "exit_code": 0,
+      "log": {
+        "local_path": ".artifacts/issue408/ctest-cpu-v3.log",
+        "sha256": "1fc7f64f5a7cbb3de806a3781bd9bbc4f88f4fa7e1c06b8473e2353edfe72d04",
+        "bytes": 3710
+      }
+    },
+    "cpu_python": {
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/python/test_df_policy_endpoint.py",
+        "tests/python/test_df_component_ledger.py",
+        "tests/python/test_df_resources.py",
+        "tests/python/test_hf_resources.py",
+        "tests/python/test_df_final_projection.py",
+        "tests/python/test_df_policy.py"
+      ],
+      "passed": 83,
+      "exit_code": 0,
+      "log": {
+        "local_path": ".artifacts/issue408/pytest-cpu-v3.log",
+        "sha256": "2f05c5d2b9de8304e1296e77979a020c00a4f87040e9a67f83bfc74196ab802b",
+        "bytes": 190
+      },
+      "skipped": 1
+    },
+    "cuda_final_state": {
+      "command": [
+        "srun",
+        "--partition=main",
+        "--gres=gpu:5090:1",
+        "--nodes=1",
+        "--ntasks=1",
+        "--time=00:15:00",
+        "bash",
+        ".artifacts/issue408/gpu-tests-v3.sh"
+      ],
+      "passed": 127,
+      "exit_code": 0,
+      "log": {
+        "local_path": ".artifacts/issue408/gpu-tests-v3.log",
+        "sha256": "af0b0cdec79cf3f43b5d1256d48c1100975aade467f2586c239df2aff278dde5",
+        "bytes": 1759
+      },
+      "sanitizer_zero_error_runs": 2,
+      "native_suites": 9
+    },
+    "cuda_direct_and_sanitizers": {
+      "command": [
+        "srun",
+        "--partition=main",
+        "--gres=gpu:5090:1",
+        "--nodes=1",
+        "--ntasks=1",
+        "--time=00:15:00",
+        "bash",
+        ".artifacts/issue408/sanitize-and-direct-v3.sh"
+      ],
+      "passed": 15,
+      "exit_code": 0,
+      "log": {
+        "local_path": ".artifacts/issue408/sanitize-and-direct-v3.log",
+        "sha256": "167544ed816391e2032b80c2b15b62c1503fe51e7b8c5e1f37f6f9c19fb2af4e",
+        "bytes": 594
+      },
+      "skipped": 129,
+      "skip_reason": "The standalone grid-density and one-electron derivative opt-in gates were not enabled in this invocation. The relevant unchanged Direct/DF derivative matrix is run separately with its explicit opt-in; the unrelated grid-density suite is outside this change.",
+      "sanitizer_zero_error_runs": 3
+    },
+    "cuda_direct_matrix": {
+      "command": [
+        "srun",
+        "--partition=main",
+        "--gres=gpu:5090:1",
+        "--nodes=1",
+        "--ntasks=1",
+        "--time=00:20:00",
+        "bash",
+        ".artifacts/issue408/direct-matrix.sh"
+      ],
+      "passed": 29,
+      "exit_code": 0,
+      "log": {
+        "local_path": ".artifacts/issue408/direct-matrix.log",
+        "sha256": "831b0db6228258a8b1d3ac04dfbbf88bd0b4b2a0bfec46dd209dff4c778e9d07",
+        "bytes": 1453
+      }
+    }
+  },
+  "hardware": "NVIDIA GeForce RTX 5090, 580.95.05, 32607 MiB, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8",
+  "decision": {
+    "status": "accepted",
+    "scope": "performance",
+    "reason": "All scientific gates pass; all eight matched five-repeat warm comparisons improve with identical frozen input density and matching SCF work (two iterations at 96 AO; three at 192/384/768 AO). Separate memory and diagnostic records retain their measurement limitations."
+  },
+  "environment": {
+    "PYTHONPATH": "python:.",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "VIBEQC_RESOURCE_CUDA_TEST": "1 for GPU tests only",
+    "CUDA_VISIBLE_DEVICES": "Assigned by Slurm; never overridden",
+    "python": "Python 3.13.9",
+    "VIBEQC_ONE_ELECTRON_DERIVATIVE_CUDA_TEST": "1 for the explicit derivative matrix job"
+  },
+  "retained_reproduction": {
+    "reproduction/benchmarks.sh": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/benchmarks.sh",
+      "sha256": "dfcfc95d7011ca797b8f63cc8ed33132ce38fac79bdf043a639ec3c2717f8e85",
+      "bytes": 1617
+    },
+    "reproduction/collect.py": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/collect.py",
+      "sha256": "35a01639b4b0862dea404b97db91c65ab792cf7e52cbd97fc2b468733d727f01",
+      "bytes": 8383
+    },
+    "reproduction/measured-benchmarks-v3.sh": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/measured-benchmarks-v3.sh",
+      "sha256": "dadfe6db72b221655faad218773caaf032c0dbb71ca2279ac1981cd09838c1c5",
+      "bytes": 1754
+    },
+    "reproduction/measured-direct-matrix.sh": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/measured-direct-matrix.sh",
+      "sha256": "7840607d5acd9ba20091b0d898507069f2832e6c8f03784fd8a3b15374603f8f",
+      "bytes": 470
+    },
+    "reproduction/measured-gpu-tests-v3.sh": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/measured-gpu-tests-v3.sh",
+      "sha256": "245481bfb1ffe94d30c666fd5ff32edd6323897aff17cb08c2d752416d2fd131",
+      "bytes": 1244
+    },
+    "reproduction/measured-sanitize-and-direct-v3.sh": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/measured-sanitize-and-direct-v3.sh",
+      "sha256": "cf88ab394b265b5f842974e9b9d3be311b1e43d17425cce5e5be0c93156af468",
+      "bytes": 897
+    },
+    "reproduction/measured-warm-memory-v3.py": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/measured-warm-memory-v3.py",
+      "sha256": "656523a973a15269c260878fa392f26eded0e3797e497725788781882f8eb4ea",
+      "bytes": 6957
+    },
+    "reproduction/measured-warm-memory-v3.sh": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/measured-warm-memory-v3.sh",
+      "sha256": "17591d3b9fbcd66b81e10d021da9f6696885d3a2ea559f7178145eb099adf91c",
+      "bytes": 539
+    },
+    "reproduction/metadata.patch": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/metadata.patch",
+      "sha256": "7782cdf740362c8bda92429a06f0014f8495a3ed7b500514b732c439f8acead8",
+      "bytes": 8410
+    },
+    "reproduction/source.patch": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/source.patch",
+      "sha256": "2753424261235c882b64a0d01d635e20aff0f423d7637ffe07fc46b08b71a3a0",
+      "bytes": 88784
+    },
+    "reproduction/support.patch": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/support.patch",
+      "sha256": "d36c4caaafdb49275624546aec1c2bb2c8d39bcf79da63000a32d15b62926551",
+      "bytes": 15460
+    },
+    "reproduction/warm_memory.py": {
+      "local_path": "benchmarks/results/issue408-device-validation/reproduction/warm_memory.py",
+      "sha256": "0f0a3d1c1c0202f75bf368a660fc381acec89389185a5a43ae31c6591c19b50b",
+      "bytes": 7373
+    }
+  },
+  "repository_checks": {
+    "exit_code": 0,
+    "log_sha256": "7ab6dd449b65ef0c81479e2aa4b881f71ab52b83563bd2e5a08107432447e265",
+    "checks": [
+      "formatting",
+      "evidence retention and 1 MiB per-file cap",
+      "CUDA ownership",
+      "SCF dependency direction",
+      "scientific compiler dependency direction"
+    ]
+  }
+}

@@ -1,0 +1,306 @@
+{
+  "schema_version": 2,
+  "methods": [
+    {
+      "name": "rhf",
+      "symbol": "RHF",
+      "abi_id": 1,
+      "family": "hartree_fock",
+      "provider": "hf",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "uhf",
+      "symbol": "UHF",
+      "abi_id": 2,
+      "family": "hartree_fock",
+      "provider": "hf",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "wb97m-v",
+      "symbol": "WB97M_V",
+      "abi_id": 3,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "aliases": [
+        "wb97m-v-rks"
+      ],
+      "compiler_method": "WB97M-V",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "rccsd(t)",
+      "symbol": "RCCSD_T",
+      "abi_id": 4,
+      "family": "coupled_cluster",
+      "provider": "rccsdt",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true,
+      "aliases": [
+        "ccsd(t)"
+      ]
+    },
+    {
+      "name": "mp2",
+      "symbol": "MP2",
+      "abi_id": 5,
+      "family": "perturbation",
+      "provider": "mp2",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "lda-rks",
+      "symbol": "LDA_RKS",
+      "abi_id": 6,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "LDA_XC_PW",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "pbe-rks",
+      "symbol": "PBE_RKS",
+      "abi_id": 7,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "PBE",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "lda-uks",
+      "symbol": "LDA_UKS",
+      "abi_id": 8,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "LDA_XC_PW",
+      "spin": "polarized"
+    },
+    {
+      "name": "pbe-uks",
+      "symbol": "PBE_UKS",
+      "abi_id": 9,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "PBE",
+      "spin": "polarized"
+    },
+    {
+      "name": "r2scan-rks",
+      "symbol": "R2SCAN_RKS",
+      "abi_id": 10,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "R2SCAN",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "r2scan-uks",
+      "symbol": "R2SCAN_UKS",
+      "abi_id": 11,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "R2SCAN",
+      "spin": "polarized"
+    },
+    {
+      "name": "rccsd",
+      "symbol": "RCCSD",
+      "abi_id": 12,
+      "family": "coupled_cluster",
+      "provider": "rccsd",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe0-rks",
+      "symbol": "PBE0_RKS",
+      "abi_id": 13,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "PBE0",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "pbe0-uks",
+      "symbol": "PBE0_UKS",
+      "abi_id": 14,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "PBE0",
+      "spin": "polarized"
+    },
+    {
+      "name": "gfn2-xtb",
+      "symbol": "GFN2_XTB",
+      "abi_id": 15,
+      "family": "semiempirical",
+      "provider": "xtb",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": false,
+      "aliases": [
+        "gfn2"
+      ]
+    },
+    {
+      "name": "b3lyp-rks",
+      "symbol": "B3LYP_RKS",
+      "abi_id": 16,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "B3LYP",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "b3lyp-uks",
+      "symbol": "B3LYP_UKS",
+      "abi_id": 17,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "B3LYP",
+      "spin": "polarized"
+    },
+    {
+      "name": "pbe-d4-rks",
+      "symbol": "PBE_D4_RKS",
+      "abi_id": 18,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "PBE-D4(BJ-EEQ-ATM)",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "wb97m-v-uks",
+      "symbol": "WB97M_V_UKS",
+      "abi_id": 19,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "WB97M-V",
+      "spin": "polarized"
+    },
+    {
+      "name": "m06-2x-rks",
+      "symbol": "M06_2X_RKS",
+      "abi_id": 20,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "M06-2X",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "m06-2x-uks",
+      "symbol": "M06_2X_UKS",
+      "abi_id": 21,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "M06-2X",
+      "spin": "polarized"
+    },
+    {
+      "name": "mn15-rks",
+      "symbol": "MN15_RKS",
+      "abi_id": 22,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "MN15",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "mn15-uks",
+      "symbol": "MN15_UKS",
+      "abi_id": 23,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "MN15",
+      "spin": "polarized"
+    }
+  ]
+}

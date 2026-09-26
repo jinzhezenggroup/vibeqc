@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_fock_accumulation.cuh",
+  "role": "runtime",
+  "subsystem": "direct_integrals",
+  "reason": "Compatibility include forwarding retained native task/runtime code to the compiler-generated Direct-Fock scatter contraction.",
+  "regions": []
+}

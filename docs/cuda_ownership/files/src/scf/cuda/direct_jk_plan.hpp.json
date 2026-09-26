@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_jk_plan.hpp",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Opaque direct J/K provider allocation layout; owns no integral equations.",
+  "regions": []
+}

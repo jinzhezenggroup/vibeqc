@@ -1,0 +1,247 @@
+{
+  "archive_bytes": 306496,
+  "archive_sha256": "c45c759e5b5aa3efd182090e1c6236110f07e2ffd53d4931faa7136ef3a605fe",
+  "files": [
+    {
+      "bytes": 321326,
+      "path": "192b1/energy/host-192ao-b1.json",
+      "sha256": "f282f80577106a2978ac8909cd09c21a1e390f2d9a59ab7578c52470e8a1326c"
+    },
+    {
+      "bytes": 2122,
+      "path": "192b1/energy/manifest.json",
+      "sha256": "0ba41ea55f38e6a39749d183883ea3b37e7d6ac08b24b00e5ca645d9086ab893"
+    },
+    {
+      "bytes": 461308,
+      "path": "192b1/force/host-192ao-b1.json",
+      "sha256": "db15f852431220163a402e4117a44d2d01f9eb26b4049d6be85994b3163ff4c7"
+    },
+    {
+      "bytes": 2137,
+      "path": "192b1/force/manifest.json",
+      "sha256": "759c07b8e264322eaed0592c15d045f4727665801461759e80a9e2e8aa8668b8"
+    },
+    {
+      "bytes": 506050,
+      "path": "192b1/profiled/host-192ao-b1.json",
+      "sha256": "a59a939e9c8176420db7af47ca0fe6f739f35ef266113523f70b9704cddc7557"
+    },
+    {
+      "bytes": 2125,
+      "path": "192b1/profiled/manifest.json",
+      "sha256": "4b35337e1080d44cfadf4cbc7b48f5f8ff1df2fdf8b3f11bd8c07a7e5ed168ae"
+    },
+    {
+      "bytes": 100070,
+      "path": "192b1/raw-traces.json",
+      "sha256": "64120eeb7353d9432707c81d1a12043b82b3d211f656b2484ce5aa8e50e9f275"
+    },
+    {
+      "bytes": 250002,
+      "path": "96b1/energy/host-96ao-b1.json",
+      "sha256": "886f78212f85b5b9c03f800a776693e71aec00e074cefd23395c31047aef99b9"
+    },
+    {
+      "bytes": 2116,
+      "path": "96b1/energy/manifest.json",
+      "sha256": "8e98c6b28798a905f2a58e83c31d9631494dfb8f5fba23f54d65fabac6b93988"
+    },
+    {
+      "bytes": 320451,
+      "path": "96b1/force/host-96ao-b1.json",
+      "sha256": "f1050b8a1ac9c65b60765d0b09289e25f91eefd612bdbb054d3575055a07b109"
+    },
+    {
+      "bytes": 2131,
+      "path": "96b1/force/manifest.json",
+      "sha256": "0133353ac94451501136c51af42f2a608201f667953a7f82a02e155de5c08f30"
+    },
+    {
+      "bytes": 434414,
+      "path": "96b1/profiled/host-96ao-b1.json",
+      "sha256": "63ce01840ff0c66408bc1456f6058ad0f51d3b7f04eab52d311cb499e404d84d"
+    },
+    {
+      "bytes": 2119,
+      "path": "96b1/profiled/manifest.json",
+      "sha256": "97fdb7d25f8a75bacb45c2328d8dc4f0571f1a6fe659d09ad1e94a7dad207fc1"
+    },
+    {
+      "bytes": 100599,
+      "path": "96b1/raw-traces.json",
+      "sha256": "a8a41fff7b1c9938402f19585695ea0df64994735dc2e93e9d46c9662a3c41a4"
+    },
+    {
+      "bytes": 927161,
+      "path": "96b4/energy/host-96ao-b4.json",
+      "sha256": "a45b5ed53bd116435785bfba4611296d0b5fa962fa5ee66aeb51ed218b0030b1"
+    },
+    {
+      "bytes": 2116,
+      "path": "96b4/energy/manifest.json",
+      "sha256": "ed154eab122bd7f89ddb361a6ce2d2c75a51671e704d265599a5bcb24fdcb258"
+    },
+    {
+      "bytes": 1208429,
+      "path": "96b4/force/host-96ao-b4.json",
+      "sha256": "abdcd8107daf12ee29a146faacfdeba831194597b5f2834292af892f6fbdb9d2"
+    },
+    {
+      "bytes": 2131,
+      "path": "96b4/force/manifest.json",
+      "sha256": "d6540f1e3e787535934b2a90e5d5cb85245f8641adc2d955841b0efb9ae842ac"
+    },
+    {
+      "bytes": 1226400,
+      "path": "96b4/profiled/host-96ao-b4.json",
+      "sha256": "65f935e282a7c33ec75fb13384b0b6b458af3463412e49f4b7704c37afd7db08"
+    },
+    {
+      "bytes": 2119,
+      "path": "96b4/profiled/manifest.json",
+      "sha256": "773962570636933f200fcc2b65203e5cc20fb898fdb276b8419786f92c5b47ae"
+    },
+    {
+      "bytes": 272676,
+      "path": "96b4/raw-traces.json",
+      "sha256": "caace0516e0f92a2eb1ffa04efc1618c6805b526fff267578ad8d773c9d0c957"
+    },
+    {
+      "bytes": 69473,
+      "path": "components/results.json",
+      "sha256": "4306194d38b8e6cf6779e59a4add9f0c295868dafb3ecf92aaec99de6dfe38d1"
+    },
+    {
+      "bytes": 2789,
+      "path": "components/water-octamer-s4-def2-svp-spherical-0-energy.host.jsonl",
+      "sha256": "acdf150598259fd1958dbc828d589bcede0a4ab8e246a2066da9d47f8794a0f1"
+    },
+    {
+      "bytes": 5750,
+      "path": "components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "ef6455b774043e9763dbb612e6cdb601789290d0e248aa8e48878bda9f72680a"
+    },
+    {
+      "bytes": 2967,
+      "path": "components/water-octamer-s4-def2-svp-spherical-0-force.host.jsonl",
+      "sha256": "2b7744767ebfb93203825837d9b51583db9796f57f9da438ac6e19edcf37e91f"
+    },
+    {
+      "bytes": 107557,
+      "path": "components/water-octamer-s4-def2-svp-spherical-0-force.jsonl",
+      "sha256": "c54091561d45d08cc8676bb1bd92a40ad11692def997270f87b9e7f54d158373"
+    },
+    {
+      "bytes": 2808,
+      "path": "components/water-tetramer-def2-svp-spherical-0-energy.host.jsonl",
+      "sha256": "2fccdafe0219ee4041fa1d5c9433d74c6c283b1abc14c779a54027068ae0b53f"
+    },
+    {
+      "bytes": 5721,
+      "path": "components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "ca779e8437e0dd4247968a7b9a85abea6f83806d3c5241960019c266b3584f20"
+    },
+    {
+      "bytes": 2985,
+      "path": "components/water-tetramer-def2-svp-spherical-0-force.host.jsonl",
+      "sha256": "240d5e6fb56af6be4c363a0824b39832b78f815fdf3074c36bc7f7afba3cd665"
+    },
+    {
+      "bytes": 57702,
+      "path": "components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "15511c39cc05b214fe521f52724ae6ca501152e61f564cfe64d2d78ff61c2d12"
+    },
+    {
+      "bytes": 46151,
+      "path": "historical-failures/test-expectations.log",
+      "sha256": "81b785bd9155c3922257d98dcc0ac12d43e5c0343cdd142fe3a1d85aaf5d4b0f"
+    },
+    {
+      "bytes": 1072,
+      "path": "historical-failures/underestimated-workspace.log",
+      "sha256": "030688b370b32e279a3abb02990491304cbec749533e86ef1946523cc5240a31"
+    },
+    {
+      "bytes": 1069,
+      "path": "historical-failures/uninitialized-handle.log",
+      "sha256": "84ffd3968b73058eca864db3b469a97b374a93c9478f5badc984d0177f60c456"
+    },
+    {
+      "bytes": 1871,
+      "path": "reproduction.sh",
+      "sha256": "7e098f4fcb2c95576e23d8dbce8a9ea3578762c87996b307c1253a01b4d36860"
+    },
+    {
+      "bytes": 3238,
+      "path": "validation/cpu-native.log",
+      "sha256": "8954c9109abd3d423980b1b332a574c10ad5b9b7fc5d4c16de6037aa5621a867"
+    },
+    {
+      "bytes": 272,
+      "path": "validation/cpu-protocol.log",
+      "sha256": "4fd4b9ae7158a52fbabaf14f9cb89a900a71142040002484997e027d10359145"
+    },
+    {
+      "bytes": 612,
+      "path": "validation/gpu-memcheck.log",
+      "sha256": "f87a8fceeaa60f63de9f41e8c9218007b2ab827fbaec320280e83cdadd01d3e0"
+    },
+    {
+      "bytes": 725,
+      "path": "validation/gpu-native.log",
+      "sha256": "2b913a9972f66d3c50ece1e03ac3fd92b5bb11840b4ecc7f4cf69981a7847c87"
+    },
+    {
+      "bytes": 181,
+      "path": "validation/gpu-python.log",
+      "sha256": "f0ed9ddd00ff90e64887f4ee81b2e0b964c56cff71c048b4c7ceac764bfff449"
+    },
+    {
+      "bytes": 1736,
+      "path": "validation/native-and-cpu-recheck.sh",
+      "sha256": "80393cf78211b808288a5bba7950f803f0d3385b20cc764954eaea98d614a162"
+    },
+    {
+      "bytes": 895,
+      "path": "validation/python-and-memcheck.sh",
+      "sha256": "29769954eff334daa29d67253b75093dcb7a6fdb29266867d5e64347720bbc8f"
+    },
+    {
+      "bytes": 1016,
+      "path": "validation/query-workspace.cpp",
+      "sha256": "637923b64428dd7ff77b2274af7bed5a04254649b98ac968fed1a5b5d3a2a239"
+    },
+    {
+      "bytes": 905,
+      "path": "validation/workspace-queries.jsonl",
+      "sha256": "122267bf1afa4368740936f4431d7bd254c7ea3c4504856dcad156fc9eea2716"
+    }
+  ],
+  "historical_attempts": [
+    {
+      "log": "historical-failures/uninitialized-handle.log",
+      "resolution": "Metric setup prematurely destroyed the borrowed cuSOLVER handle; fixed by retaining ownership through teardown.",
+      "source_commit": "e72815f9e22bf870252ba3498145d478bcf1a02a"
+    },
+    {
+      "log": "historical-failures/underestimated-workspace.log",
+      "resolution": "The original fixed workspace allowance was smaller than actual CUDA 12.9 small-matrix queries; fixed by measured admission and tiny-budget rejection tests.",
+      "source_commit": "3055015c67c379a86461369f2b3f054d316b5605"
+    },
+    {
+      "log": "historical-failures/test-expectations.log",
+      "resolution": "Recovery assertions compared changed geometry with the restored original; common-ledger expectations omitted the added workspace. Native scientific checks already passed in this attempt.",
+      "source_commit": "a1a3780366e2e7a108c975b62bbf681acc202703"
+    }
+  ],
+  "native_library_sha256": "09f1a635178c58af38a577104f202dad5273ab62f6488e3cab60ed23f22a8bc6",
+  "native_scientific_source_identity": "d86926b7ec187afae724935196fcdd9b6e4727fca64f6599afceaa1c55fc6a48",
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "fe37d85426e4f1e001669e7ad418d9c14ba309af",
+  "validation_sources": {
+    "cpu_native_cpu_protocol_gpu_native": "a1a3780366e2e7a108c975b62bbf681acc202703",
+    "gpu_python_and_memcheck": "fe37d85426e4f1e001669e7ad418d9c14ba309af",
+    "note": "The final commit changes Python resource admission and test expectations; native numerical implementation is unchanged."
+  }
+}

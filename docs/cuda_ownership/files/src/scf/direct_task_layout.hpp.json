@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/direct_task_layout.hpp",
+  "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

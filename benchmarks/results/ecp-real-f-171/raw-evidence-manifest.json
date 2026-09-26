@@ -1,0 +1,147 @@
+{
+  "qualification_base_commit": "0ed06a35a0fb13535920b5ba5a6045bb92fa4afd",
+  "merge_target_at_finalization": "e215b30685f8a36ef0cc5772c9166837527f64a2",
+  "retention": "Raw logs and binaries remain outside Git on the qualification host; this committed manifest binds their exact bytes.",
+  "files": [
+    {
+      "path": "cpu-ctest-list.log",
+      "bytes": 79,
+      "sha256": "0fa7924bfb649731b122642cfa20cb3d45840ea0f53610d1a8a428dfb38f13c0"
+    },
+    {
+      "path": "cpu-ctest.log",
+      "bytes": 361,
+      "sha256": "52b40187f2849dd65dc04cf1ed783ef883e5fa0c31c3ce12d378b3e505945164"
+    },
+    {
+      "path": "cpu-endpoints.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cpu-endpoints.json",
+      "bytes": 8957,
+      "sha256": "8b377ea578cff7c40616aba27d8f765461b7b5a2fccc7770101d00485cbc3ba7"
+    },
+    {
+      "path": "cpu-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-endpoints.time",
+      "bytes": 33,
+      "sha256": "edbf1cebf2107477d5ea1cfb2b08dc17e05b4129337ea1845dfbeb8f96b665fb"
+    },
+    {
+      "path": "cpu-tests.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cpu-tests.log",
+      "bytes": 945,
+      "sha256": "da2a332c2f4382ffc41eabdb4c47fa370cfa5d9e7f219555ac9fea57522475ce"
+    },
+    {
+      "path": "cpu-tests.time",
+      "bytes": 33,
+      "sha256": "3df68a6b5508a19845a47828d6b3d54ac516573c0b2e5c4e5575de964ef35b76"
+    },
+    {
+      "path": "cuda-ctest-list.log",
+      "bytes": 119,
+      "sha256": "a63f067dd105a039f1e7500acfdc83e09e94bae186d657223c6c7e6257fcc6d4"
+    },
+    {
+      "path": "cuda-ctest.log",
+      "bytes": 478,
+      "sha256": "fe73fd68554774e06bb87f0fb8d6a4325ee5b94b93bc4a6b06e552e3e32bce4e"
+    },
+    {
+      "path": "cuda-endpoints.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-endpoints.json",
+      "bytes": 9430,
+      "sha256": "ebf2079d3a4be7e2ee56e8e64c84545b39341e6655baaf96ac35ebc17e749c6d"
+    },
+    {
+      "path": "cuda-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-endpoints.time",
+      "bytes": 31,
+      "sha256": "20cb713ba681c7d5d92ecbc53b090a97c4476f6a0bc3bd2217e3c550edf244ec"
+    },
+    {
+      "path": "cuda-memcheck.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-memcheck.log",
+      "bytes": 1008,
+      "sha256": "9688b81636320c1b5ab903a0f461cee8d947a122e4a0745c986ce2bda8100a02"
+    },
+    {
+      "path": "cuda-tests.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-tests.log",
+      "bytes": 946,
+      "sha256": "7f38f2b2e5e192c8f031ebf3845aa6d4a9880b0a9f7d412379acdcb847056424"
+    },
+    {
+      "path": "cuda-tests.time",
+      "bytes": 31,
+      "sha256": "fb75c6ed223d513da55a349cff62a5772cab0e3dcbf5b0189480384f6288132c"
+    },
+    {
+      "path": "ecp-ir-validation.log",
+      "bytes": 99,
+      "sha256": "512559f34c1e7b347ad5e3f42a7616fdf8e4ea12d0104d16fbe1d95d89f9a5f0"
+    },
+    {
+      "path": "gpu-before-tests.log",
+      "bytes": 60,
+      "sha256": "fce517d221a52c06814230ed6a97ccdd310f63e404a235c5d0919922dc63f7a2"
+    },
+    {
+      "path": "ruff-format.log",
+      "bytes": 26,
+      "sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938"
+    },
+    {
+      "path": "ruff.log",
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "path": "cpu-library",
+      "bytes": 1250136,
+      "sha256": "7dff77e0eea8e1d37f6f0987a280fd114bfee32cfe5c3eda154beb31cfc4f76e"
+    },
+    {
+      "path": "cuda-library",
+      "bytes": 167786000,
+      "sha256": "01ec1a4864e660e3c9621061f8490e31e03dab0faf30a97a81daaa127939d8f2"
+    },
+    {
+      "path": "cpu-generated-ecp-header",
+      "bytes": 35716,
+      "sha256": "18eaccbc1d8a0e4f03659fdff6d55dfa254c5a9b0c32b7f55593c0ab18f9a112"
+    },
+    {
+      "path": "cuda-generated-ecp-header",
+      "bytes": 35716,
+      "sha256": "18eaccbc1d8a0e4f03659fdff6d55dfa254c5a9b0c32b7f55593c0ab18f9a112"
+    }
+  ]
+}

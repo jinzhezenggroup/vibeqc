@@ -1,0 +1,924 @@
+{
+  "families": {
+    "cg01": {
+      "owner": "cg01",
+      "reason": "Reviewed retained large evidence for CG01 protocol evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/cg01/README.md"
+    },
+    "cuda-ownership": {
+      "owner": "cuda-ownership",
+      "reason": "Reviewed retained large evidence for CUDA ownership retirement evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/cuda-ownership/README.md"
+    },
+    "density-candidates": {
+      "owner": "density-candidates",
+      "reason": "Reviewed retained large evidence for Registered D/C candidates and larger workloads (#235 / #303). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/density-candidates/README.md"
+    },
+    "density-sources-gpu": {
+      "owner": "density-sources-gpu",
+      "reason": "Reviewed retained large evidence for Bounded GPU density sources (#235 B / #297). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/density-sources-gpu/README.md"
+    },
+    "df-final-occupied-endpoint-20260926": {
+      "owner": "DF complete-endpoint qualification",
+      "reason": "Consolidated exact measured scalar samples, independent oracle arrays and grouped semantic work counters; replaces per-size companions without dropping observations. Historical intermediate runs remain in Git.",
+      "review_document": "benchmarks/results/df-final-occupied-endpoint-20260926/README.md"
+    },
+    "df-one-step-warm-20260926": {
+      "owner": "DF complete-endpoint qualification",
+      "reason": "Consolidated exact measured scalar samples, independent oracle arrays and grouped semantic work counters; replaces per-size companions without dropping observations. Historical intermediate runs remain in Git.",
+      "review_document": "benchmarks/results/df-one-step-warm-20260926/README.md"
+    },
+    "ecp-consumers-171": {
+      "owner": "ecp-consumers-171",
+      "reason": "Reviewed retained large evidence for Generated ECP AO and fixed-weight consumers. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/ecp-consumers-171/README.md"
+    },
+    "ecp-policy-171": {
+      "owner": "ecp-policy-171",
+      "reason": "Reviewed retained large evidence for ECP generated admission policy qualification. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/ecp-policy-171/README.md"
+    },
+    "ecp-projector-171": {
+      "owner": "ecp-projector-171",
+      "reason": "Reviewed retained large evidence for Generated scalar ECP radial/projector migration. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/ecp-projector-171/README.md"
+    },
+    "ecp-real-f-171": {
+      "owner": "ecp-real-f-171",
+      "reason": "Reviewed retained large evidence for Real LANL2DZ Au f-projector qualification. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/ecp-real-f-171/README.md"
+    },
+    "fock-strategies": {
+      "owner": "fock-strategies",
+      "reason": "Reviewed retained large evidence for Independent Fock provider production comparison. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/fock-strategies/README.md"
+    },
+    "generated-df-values-142": {
+      "owner": "generated-df-values-142",
+      "reason": "Reviewed retained large evidence for Generated DF value promotion (#142). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/generated-df-values-142/README.md"
+    },
+    "issue206-device-response": {
+      "owner": "issue206-device-response",
+      "reason": "Reviewed retained large evidence for Device response weights for retained DF values (#206). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue206-device-response/README.md"
+    },
+    "issue206-metric-gemv": {
+      "owner": "issue206-metric-gemv",
+      "reason": "Reviewed retained large evidence for FP64 cuBLAS metric response dots (#206). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue206-metric-gemv/README.md"
+    },
+    "issue206-stable-response": {
+      "owner": "issue206-stable-response",
+      "reason": "Reviewed retained large evidence for Full-rank response and physical force-state evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue206-stable-response/README.md"
+    },
+    "issue283-host-response": {
+      "owner": "issue283-host-response",
+      "reason": "Reviewed retained large evidence for Host DF response traversal (#283). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue283-host-response/README.md"
+    },
+    "issue308-768ao-response": {
+      "owner": "issue308-768ao-response",
+      "reason": "Reviewed retained large evidence for Fix the 768-AO response scaling cliff. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue308-768ao-response/README.md"
+    },
+    "issue308-device-diis": {
+      "owner": "issue308-device-diis",
+      "reason": "Reviewed retained large evidence for Cold CUDA DF DIIS and complete 768-AO forces (#308). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue308-device-diis/README.md"
+    },
+    "issue377-379-df": {
+      "owner": "issue377-379-df",
+      "reason": "Reviewed retained large evidence for Occupied DF execution and compact source qualification (#377–379). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue377-379-df/README.md"
+    },
+    "issue394-deferred": {
+      "owner": "issue394-deferred",
+      "reason": "Reviewed retained large evidence for Deferred SSS Rys prototype. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue394-deferred/README.md"
+    },
+    "issue404-407-df": {
+      "owner": "issue404-407-df",
+      "reason": "Reviewed retained large evidence for DF tuning, screening and final-projection evidence (#404–407). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue404-407-df/README.md"
+    },
+    "issue404-combined-rys": {
+      "owner": "issue404-combined-rys",
+      "reason": "Reviewed retained large evidence for Combined low-angular Rys endpoint qualification (#404). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue404-combined-rys/README.md"
+    },
+    "issue409-packed-values": {
+      "owner": "issue409-packed-values",
+      "reason": "Reviewed retained large evidence for Exact packed DF values: scoped Phase-A qualification. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/issue409-packed-values/README.md"
+    },
+    "local-autotune-136": {
+      "owner": "local-autotune-136",
+      "reason": "Reviewed retained large evidence for User-local autotuning acceptance (#136). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/local-autotune-136/README.md"
+    },
+    "local-spaces-182": {
+      "owner": "local-spaces-182",
+      "reason": "Reviewed retained large evidence for Restricted local-space evidence (#182). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/local-spaces-182/README.md"
+    },
+    "one-electron-values-rtx5090": {
+      "owner": "one-electron-values-rtx5090",
+      "reason": "Reviewed retained large evidence for Generated one-electron CUDA values. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "docs/developer/one_electron_codegen.md"
+    },
+    "posthf-147": {
+      "owner": "posthf-147",
+      "reason": "Reviewed retained large evidence for CG10: owned RHF references and bounded MO providers. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/posthf-147/README.md"
+    },
+    "rccsd-148-c": {
+      "owner": "rccsd-148-c",
+      "reason": "Reviewed retained large evidence for RCCSD C: CPU solver and complete small-system endpoints. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/rccsd-148-c/README.md"
+    },
+    "rccsd-149-a": {
+      "owner": "rccsd-149-a",
+      "reason": "Reviewed retained large evidence for RCCSD fixed-amplitude GPU evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/rccsd-149-a/README.md"
+    },
+    "retention-238": {
+      "owner": "retention-238",
+      "reason": "Reviewed retained large evidence for Evidence retention audit. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/retention-238/README.md"
+    },
+    "retention-checkout": {
+      "owner": "retention-checkout",
+      "reason": "Reviewed retained large evidence for Historical benchmark checkout snapshot. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/retention-checkout/README.md"
+    },
+    "scf-direct-native-rtx5090": {
+      "owner": "scf-direct-native-rtx5090",
+      "reason": "Reviewed retained large evidence for Direct-native extraction validation. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/scf-direct-native-rtx5090/README.md"
+    },
+    "scf-proposals-186": {
+      "owner": "scf-proposals-186",
+      "reason": "Reviewed retained large evidence for SCF proposal baseline evidence (#186). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/scf-proposals-186/README.md"
+    },
+    "spatial-density-sources": {
+      "owner": "spatial-density-sources",
+      "reason": "Reviewed retained large evidence for Prepared spatial density sources (#235 C1 / #299). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/spatial-density-sources/README.md"
+    },
+    "spatial-tasks": {
+      "owner": "spatial-tasks",
+      "reason": "Reviewed retained large evidence for Bounded spatial AO task evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/spatial-tasks/README.md"
+    },
+    "tensor-cuda-146": {
+      "owner": "tensor-cuda-146",
+      "reason": "Reviewed retained large evidence for CG09: prepared FP64 TensorIR CUDA evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/tensor-cuda-146/README.md"
+    },
+    "tensor-resource-scheduler-508": {
+      "owner": "tensor-resource-scheduler-508",
+      "reason": "Reviewed retained large evidence for TensorIR resource-aware scheduler qualification (#508). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/tensor-resource-scheduler-508/README.md"
+    },
+    "weighted-eri-144": {
+      "owner": "weighted-eri-144",
+      "reason": "Reviewed retained large evidence for Weighted ERI derivative gates (#144). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/weighted-eri-144/README.md"
+    },
+    "xc-contractions": {
+      "owner": "xc-contractions",
+      "reason": "Reviewed retained large evidence for Native CPU XC contraction evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "review_document": "benchmarks/results/xc-contractions/README.md"
+    }
+  },
+  "files": [
+    {
+      "bytes": 145857,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cg01",
+      "path": "benchmarks/results/cg01/capabilities.json",
+      "role": "decision-or-audit-record",
+      "sha256": "1bc9dd514c7396fb9a3dd6a637a654fd6617c6bb00a55858c0c445412d143a2d"
+    },
+    {
+      "bytes": 905438,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/df/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "1a3ac7b04a7a337b1be1203fc528932c3adac4dc9d17f5b13443d17e8a122e26"
+    },
+    {
+      "bytes": 163067,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/df/raw-source.json",
+      "role": "scientific-record",
+      "sha256": "5c483f8bd0140336c40fd12a09f921c9af76964ffd4d14d55b7c0897cd169183"
+    },
+    {
+      "bytes": 270744,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/df/rejected-inventory-run.json.gz",
+      "role": "scientific-record",
+      "sha256": "579d1edae2916632ca67eeba09be97003abea88e0cf13a922f0e993ac7b0f91c"
+    },
+    {
+      "bytes": 866324,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/df/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "2936b59346c82f0c9805bbc143485b57c9c8298251ae6c190a9eed67501b086c"
+    },
+    {
+      "bytes": 155087,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/df/validation.json",
+      "role": "decision-or-audit-record",
+      "sha256": "8d78b766ceb1eedf6bfa7338808a2647e89a96b023d3cd7ed19f06f09ee9ded6"
+    },
+    {
+      "bytes": 857058,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/one-electron/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "b00ae5c560de2f80a9ce6bf0c883d99386475eec37e15a92b65d6b0f586c6a7c"
+    },
+    {
+      "bytes": 989114,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/one-electron/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "b272c454b4c2caa2d435497292ae92213502ee0659d1d0142409d7a0c736bdb4"
+    },
+    {
+      "bytes": 529884,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/oh_diffuse.json",
+      "role": "scientific-record",
+      "sha256": "e444f8ca70bd3ed4b01a42e676c415cd6521457684cd81b2021f415968b9803f"
+    },
+    {
+      "bytes": 675599,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/water4_svp.json",
+      "role": "scientific-record",
+      "sha256": "605de339af49386c972f934cbfcfd49d370026b72606300cf73b95cf1930862c"
+    },
+    {
+      "bytes": 272398,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/water8_svp.json",
+      "role": "scientific-record",
+      "sha256": "f73ebe1231a4809378bfdb73d5a0a57b950f39e6e9e894bf302171469c8994e5"
+    },
+    {
+      "bytes": 530246,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/water_svp.json",
+      "role": "scientific-record",
+      "sha256": "407abcfa4e844fd1362c67a1afae92205f5200bd13e6f76f4b757e4541acbe94"
+    },
+    {
+      "bytes": 856635,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "e63f42f606c60fa8d1717bafef8e25e64ead952b466b2291a367d9be56417f2d"
+    },
+    {
+      "bytes": 396572,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/co2_tzvp.npz",
+      "role": "reference-input",
+      "sha256": "8ea913c0e662945a1229972783c0ab1423cd441bf01429d61343435b41665c6f"
+    },
+    {
+      "bytes": 475350,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water4_svp.npz",
+      "role": "reference-input",
+      "sha256": "72a9be35a2b0edca1d772a797b0ca2ee86e1e329c2c3adeae4ce1865b6977d1d"
+    },
+    {
+      "bytes": 295040,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water8_svp/LDA_XC_PW_potential.npy",
+      "role": "reference-input",
+      "sha256": "06df78eb0bf140c863ed9f2afa3e5a7ec49d7eec5ade6426640a1ebe0d65a0e7"
+    },
+    {
+      "bytes": 295040,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water8_svp/PBE_potential.npy",
+      "role": "reference-input",
+      "sha256": "050e3c053d60bd31fdd428f8ef1d98d83de311c4c171e24b971667d70cc53bcd"
+    },
+    {
+      "bytes": 589952,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water8_svp/density_spin.npy",
+      "role": "reference-input",
+      "sha256": "147b127d91be96d0096a4306df786ced1b4ce25df011d04c050fde1b39a2653a"
+    },
+    {
+      "bytes": 589952,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water8_svp/points.npy",
+      "role": "reference-input",
+      "sha256": "8160e20563861e90f9102c981ad0ce006a54cf8e0a0397e12ad03e6076ed3d79"
+    },
+    {
+      "bytes": 393344,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water8_svp/sample_jets.npy",
+      "role": "reference-input",
+      "sha256": "fc6fb902b9d568b7da47a7a8953597545392a281881f403a13adcf42e8ebc3c9"
+    },
+    {
+      "bytes": 196736,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water8_svp/weights.npy",
+      "role": "reference-input",
+      "sha256": "d83095e047374f6329fa226309688215dfcabe9ac9190e8fe8210a5436d83707"
+    },
+    {
+      "bytes": 135945,
+      "classification": "test-reference-input",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/inputs/water_tzvp.npz",
+      "role": "reference-input",
+      "sha256": "ab9acbda4ea2a153f59f7da75863640529de36c4948b952862dddec596d6eab7"
+    },
+    {
+      "bytes": 162740,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/native/verification.json",
+      "role": "scientific-record",
+      "sha256": "ab6f3595c9c053d173404bf2725fa14d08ea288a1042c1f870a8e722d37c4c7c"
+    },
+    {
+      "bytes": 1016476,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-sources-gpu",
+      "path": "benchmarks/results/density-sources-gpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "b6bdb078bf5506a501435b056d892941eeae82d28efe2a50fb169de737a862e8"
+    },
+    {
+      "path": "benchmarks/results/df-final-occupied-endpoint-20260926/receipt.json",
+      "family": "df-final-occupied-endpoint-20260926",
+      "bytes": 324689,
+      "sha256": "709b72edc673227844ed7ad0a38fe8c572e1d0ebbe39dadf36005fbf95e5d88a",
+      "classification": "required-compact-accepted-evidence",
+      "role": "Independent final-K/root ablations and all diagnostic counters, reconstructed losslessly from split companions."
+    },
+    {
+      "path": "benchmarks/results/df-one-step-warm-20260926/references.json",
+      "family": "df-one-step-warm-20260926",
+      "bytes": 229005,
+      "sha256": "6342a524e0658e1a59394ccd085d5c418bdd0655937b44a5c75f0163e8702814",
+      "classification": "required-compact-accepted-evidence",
+      "role": "All direct/DF independent original/moved force arrays and 144 reference timing/work observations."
+    },
+    {
+      "path": "benchmarks/results/df-one-step-warm-20260926/work.json",
+      "family": "df-one-step-warm-20260926",
+      "bytes": 202052,
+      "sha256": "729c2687009cdd6e197dce27ea02507cc5cb4b2367b3cf56d2a59902d1f228f3",
+      "classification": "required-compact-accepted-evidence",
+      "role": "All grouped semantic work counters for eight DF workloads; profiler launch arrays remain ignored."
+    },
+    {
+      "bytes": 485607,
+      "classification": "required-compact-accepted-evidence",
+      "family": "ecp-consumers-171",
+      "path": "benchmarks/results/ecp-consumers-171/raw-evidence.zip",
+      "role": "legacy-evidence-archive",
+      "sha256": "628ddb41f9654f211a527c728ebf5f7f25f883e6ac5ecb5f4345e3909838839c"
+    },
+    {
+      "bytes": 163839,
+      "classification": "required-compact-accepted-evidence",
+      "family": "ecp-policy-171",
+      "path": "benchmarks/results/ecp-policy-171/baseline-source-identity.json",
+      "role": "source-provenance",
+      "sha256": "b6d64658b7af26627a3eb91da6d0186b7223259bc70daca7a310c3d89c05d0fb"
+    },
+    {
+      "bytes": 164181,
+      "classification": "required-compact-accepted-evidence",
+      "family": "ecp-policy-171",
+      "path": "benchmarks/results/ecp-policy-171/candidate-source-identity.json",
+      "role": "source-provenance",
+      "sha256": "8b714e66cc0efb7a41d5bafcf20aef88cd2a2cadfdf987427104419a38daa71a"
+    },
+    {
+      "bytes": 164181,
+      "classification": "required-compact-accepted-evidence",
+      "family": "ecp-policy-171",
+      "path": "benchmarks/results/ecp-policy-171/compatibility/candidate-source-identity.json",
+      "role": "source-provenance",
+      "sha256": "76342f9fc7c4486428d813fee960699c637a7842e9a17f688d8ff89b2991ce16"
+    },
+    {
+      "bytes": 142575,
+      "classification": "required-compact-accepted-evidence",
+      "family": "ecp-projector-171",
+      "path": "benchmarks/results/ecp-projector-171/review-qualification/raw-evidence.zip",
+      "role": "legacy-evidence-archive",
+      "sha256": "4e8c5cad08e424fdd1690af316277b5ee833288b7d0b5332629c5422be6c6960"
+    },
+    {
+      "bytes": 152798,
+      "classification": "required-compact-accepted-evidence",
+      "family": "ecp-real-f-171",
+      "path": "benchmarks/results/ecp-real-f-171/source-identity.json",
+      "role": "source-provenance",
+      "sha256": "ee05ceb98b288ff5724daa5be0ea83bd912f6e64e2330534863e2e3f18e68fa5"
+    },
+    {
+      "bytes": 442955,
+      "classification": "required-compact-accepted-evidence",
+      "family": "fock-strategies",
+      "path": "benchmarks/results/fock-strategies/cpu/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "0c5f67870e3ce6bece9b5d72e168630f223ad0dad65b158ec5b154471778e311"
+    },
+    {
+      "bytes": 403808,
+      "classification": "required-compact-accepted-evidence",
+      "family": "fock-strategies",
+      "path": "benchmarks/results/fock-strategies/cuda/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "7ea10df0b8c9616ede66380bcb010af55b4bc40f30152561ab15142cccfc8d56"
+    },
+    {
+      "bytes": 391121,
+      "classification": "required-compact-accepted-evidence",
+      "family": "generated-df-values-142",
+      "path": "benchmarks/results/generated-df-values-142/endpoints.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "544255203a137fa646e65b0304ccecf820ba8b56ac1511c8b8a8c651007a4e05"
+    },
+    {
+      "bytes": 577110,
+      "classification": "required-compact-accepted-evidence",
+      "family": "generated-df-values-142",
+      "path": "benchmarks/results/generated-df-values-142/isolated.json",
+      "role": "scientific-record",
+      "sha256": "8fc91a883b9fe2ca723f84cc6a1b9a49bb30f45902e0d9a8bcebe1d9cde6f18a"
+    },
+    {
+      "bytes": 162452,
+      "classification": "required-compact-accepted-evidence",
+      "family": "generated-df-values-142",
+      "path": "benchmarks/results/generated-df-values-142/promotion.json",
+      "role": "decision-or-audit-record",
+      "sha256": "5b9d20f364e6a02d3eb80b6aef4fd2f04b16a95754b9f3463b5155074acc1745"
+    },
+    {
+      "bytes": 444945,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-device-response",
+      "path": "benchmarks/results/issue206-device-response/summary.json",
+      "role": "decision-or-audit-record",
+      "sha256": "102788881db492a5454326fcde8f4cf6a38cbaee290cd31e36f3384482e48368"
+    },
+    {
+      "bytes": 142797,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-metric-gemv",
+      "path": "benchmarks/results/issue206-metric-gemv/direct-gate/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "role": "scientific-record",
+      "sha256": "257b3a976fc8f73675bd0cb25c6be79913b25c85fb0abf3dd5ccf73ed53fd134"
+    },
+    {
+      "bytes": 166345,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-metric-gemv",
+      "path": "benchmarks/results/issue206-metric-gemv/measurements/192ao-b4-forces-blas.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "502d55783e90f97419d96ab93491873653a74594fa94201a262cc7bbeec474a2"
+    },
+    {
+      "bytes": 166398,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-metric-gemv",
+      "path": "benchmarks/results/issue206-metric-gemv/measurements/192ao-b4-forces-serial.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "61b865a38908cbcfcc224f8bfb7870fc8b2296c746a489deed6c9d08bed0a59e"
+    },
+    {
+      "bytes": 267196,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-metric-gemv",
+      "path": "benchmarks/results/issue206-metric-gemv/measurements/384ao-b4-forces-blas.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "4afc40f038cc07ff8fc22a7ef52d73ea948ffb84bc0329a9666b052d33609e37"
+    },
+    {
+      "bytes": 311536,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-metric-gemv",
+      "path": "benchmarks/results/issue206-metric-gemv/summary.json",
+      "role": "decision-or-audit-record",
+      "sha256": "cd1221cbef74564eaa89943c405f0110f43c05418a2c8c094464ecaf9307a714"
+    },
+    {
+      "bytes": 202268,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue206-stable-response",
+      "path": "benchmarks/results/issue206-stable-response/warm-summary.json",
+      "role": "decision-or-audit-record",
+      "sha256": "aa10acfff00e4f6f44bce0b569bd6e90b05996f581d0b88657453f15872acfc5"
+    },
+    {
+      "bytes": 143684,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue283-host-response",
+      "path": "benchmarks/results/issue283-host-response/raw-evidence.zip",
+      "role": "legacy-evidence-archive",
+      "sha256": "d088e049eb6761a5f92bc441f12533ad6b3cf0d90841f3eda0223c7f41c58ca9"
+    },
+    {
+      "bytes": 214024,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue308-768ao-response",
+      "path": "benchmarks/results/issue308-768ao-response/default-768ao.json",
+      "role": "scientific-record",
+      "sha256": "0a7ab932cdf48f3b6e5d6929ac767a2be5950b792cbbe459fa49e223564951af"
+    },
+    {
+      "bytes": 213974,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue308-768ao-response",
+      "path": "benchmarks/results/issue308-768ao-response/preparation-only-768ao.json",
+      "role": "scientific-record",
+      "sha256": "63603bfcfd8c6de348daf290ee578bf4c53ad961fba213f755fed7d7cae0bc73"
+    },
+    {
+      "bytes": 213986,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue308-768ao-response",
+      "path": "benchmarks/results/issue308-768ao-response/previous-768ao.json",
+      "role": "scientific-record",
+      "sha256": "513e1cdcae226283a51d7722f1d672b335e8a2995757bc20a06ca233472f9842"
+    },
+    {
+      "bytes": 233916,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue308-device-diis",
+      "path": "benchmarks/results/issue308-device-diis/summary.json",
+      "role": "decision-or-audit-record",
+      "sha256": "b24b5d2f2b0e930706374c0fb768188fdcc4c78162d2f04e9f456d292d06b463"
+    },
+    {
+      "bytes": 139337,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue377-379-df",
+      "path": "benchmarks/results/issue377-379-df/gpu4pyscf/water-32mer-4s4-def2-svp-spherical.json",
+      "role": "scientific-record",
+      "sha256": "33164661464fc63b15e277d97755053cec3188f7063e0219624a41676b955aa6"
+    },
+    {
+      "bytes": 944957,
+      "classification": "test-reference-input",
+      "family": "issue377-379-df",
+      "path": "benchmarks/results/issue377-379-df/inputs/768-occupied-coefficients.npz",
+      "role": "reference-input",
+      "sha256": "9eca543c2e88db47b30f11dd29ca6c20fcd691a836a2593a82da04ade69da8a2"
+    },
+    {
+      "bytes": 220035,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue377-379-df",
+      "path": "benchmarks/results/issue377-379-df/source-validation.json",
+      "role": "decision-or-audit-record",
+      "sha256": "4d17816ba58e37f9498471a10de40a6a87558e981d2403c1664cadfbf4705483"
+    },
+    {
+      "bytes": 219056,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue394-deferred",
+      "path": "benchmarks/results/issue394-deferred/prototype.patch",
+      "role": "source-provenance",
+      "sha256": "f3c2185c9df50b0a28aea9c84f53522a0044fcb0db105b2b9424e10d0a2e3a67"
+    },
+    {
+      "bytes": 153158,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue404-407-df",
+      "path": "benchmarks/results/issue404-407-df/384-404.json",
+      "role": "scientific-record",
+      "sha256": "e2f5728f31e23805bbc1f2fd3b3ecc52486eaf68b82abe2c46d385b74f36c1e1"
+    },
+    {
+      "bytes": 226206,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue404-407-df",
+      "path": "benchmarks/results/issue404-407-df/768-404.json",
+      "role": "scientific-record",
+      "sha256": "1ba17b6d525922968c5af89e5667fdc6ffedac9d54e8e04111d39719ea4444b9"
+    },
+    {
+      "bytes": 131267,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue404-combined-rys",
+      "path": "benchmarks/results/issue404-combined-rys/summary.json",
+      "role": "decision-or-audit-record",
+      "sha256": "c584f057cea4a1b5e4ac898ed3c9af5d03ee90131ad73551f5d1bb49948a99a8"
+    },
+    {
+      "bytes": 246001,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue409-packed-values",
+      "path": "benchmarks/results/issue409-packed-values/reproduction/source.patch",
+      "role": "source-provenance",
+      "sha256": "2f6a66c2df15c8f8f3bbd543b9e6281bcc22840d87ccbe13ab26d06fef077474"
+    },
+    {
+      "bytes": 135548,
+      "classification": "required-compact-accepted-evidence",
+      "family": "issue409-packed-values",
+      "path": "benchmarks/results/issue409-packed-values/storage-dataflow.json",
+      "role": "scientific-record",
+      "sha256": "4bedbcfff686580f9beab77a224d97610587cb51c256a6e5e531dbe441f5fc2c"
+    },
+    {
+      "bytes": 369045,
+      "classification": "required-compact-accepted-evidence",
+      "family": "local-autotune-136",
+      "path": "benchmarks/results/local-autotune-136/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "e4c284f632a4752830ec490acb02d20d063f6a1b96d0e52cfffa6dc943291fa7"
+    },
+    {
+      "bytes": 276817,
+      "classification": "required-compact-accepted-evidence",
+      "family": "local-spaces-182",
+      "path": "benchmarks/results/local-spaces-182/report.json",
+      "role": "decision-or-audit-record",
+      "sha256": "3caf68447d26bfa614c9bb43ff123d03f34259285b05955c9025a95d0e16ec7f"
+    },
+    {
+      "bytes": 148102,
+      "classification": "required-compact-accepted-evidence",
+      "family": "one-electron-values-rtx5090",
+      "path": "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json",
+      "role": "scientific-record",
+      "sha256": "025d97701a9c47aacf436214beb3ead641e4938f2a0ca7464823d47e32f9f7b5"
+    },
+    {
+      "bytes": 148094,
+      "classification": "required-compact-accepted-evidence",
+      "family": "one-electron-values-rtx5090",
+      "path": "benchmarks/results/one-electron-values-rtx5090/sp8-b3-thread.json",
+      "role": "scientific-record",
+      "sha256": "5caca21fb3c48a5e185821603750cf6041331c0f9e67f35255f61f25dc9f3780"
+    },
+    {
+      "bytes": 291958,
+      "classification": "required-compact-accepted-evidence",
+      "family": "posthf-147",
+      "path": "benchmarks/results/posthf-147/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "6f7ad361e827ce83df319a0a21f957dd7d9d277571e4d5212b90af466a37591f"
+    },
+    {
+      "bytes": 217567,
+      "classification": "required-compact-accepted-evidence",
+      "family": "rccsd-148-c",
+      "path": "benchmarks/results/rccsd-148-c/raw-evidence.zip",
+      "role": "legacy-evidence-archive",
+      "sha256": "bd6879e101dc3a47e6ec4bd517014859a95f13033d85a4a01447fc91da6007f4"
+    },
+    {
+      "bytes": 373652,
+      "classification": "required-compact-accepted-evidence",
+      "family": "rccsd-149-a",
+      "path": "benchmarks/results/rccsd-149-a/raw-evidence.zip",
+      "role": "legacy-evidence-archive",
+      "sha256": "dee1ead19fb45abeb7f07934c9b642dd9dbd8716a9634469285a2cadd56e0a72"
+    },
+    {
+      "bytes": 382561,
+      "classification": "required-compact-accepted-evidence",
+      "family": "retention-238",
+      "path": "benchmarks/results/retention-238/migration.json",
+      "role": "scientific-record",
+      "sha256": "0350f91c92ec350a5b9527b5989a5ee1f10e1e1c0d338adf39e1dd94ba1af7d7"
+    },
+    {
+      "bytes": 230258,
+      "classification": "required-compact-accepted-evidence",
+      "family": "retention-checkout",
+      "path": "benchmarks/results/retention-checkout/snapshot.manifest.json",
+      "role": "decision-or-audit-record",
+      "sha256": "5ad6280ff0a55a61f5ed714e5f44491388ca42894616fae925aa229e7b7a5176"
+    },
+    {
+      "bytes": 212557,
+      "classification": "required-compact-accepted-evidence",
+      "family": "scf-direct-native-rtx5090",
+      "path": "benchmarks/results/scf-direct-native-rtx5090/integration.json",
+      "role": "scientific-record",
+      "sha256": "3785fd439d8422889297b8b4d0d6fd9ab347aa79ace1af4187e120904d0b24a1"
+    },
+    {
+      "bytes": 167238,
+      "classification": "required-compact-accepted-evidence",
+      "family": "scf-direct-native-rtx5090",
+      "path": "benchmarks/results/scf-direct-native-rtx5090/validation.json",
+      "role": "decision-or-audit-record",
+      "sha256": "af85685a1e73345ce5baa046faf84a86f1be88c473eb07cbb4d6b9b4d2fcdffd"
+    },
+    {
+      "bytes": 513581,
+      "classification": "required-compact-accepted-evidence",
+      "family": "scf-proposals-186",
+      "path": "benchmarks/results/scf-proposals-186/report.json",
+      "role": "decision-or-audit-record",
+      "sha256": "e67a2b0115276bb00bc4d9d9c537a13f420af0c9ad82088ee3fbf8a14c286f87"
+    },
+    {
+      "bytes": 274013,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/f_cartesian.json",
+      "role": "scientific-record",
+      "sha256": "a7944b53500dfa7582bbd774b67c915430ea585a835b6d29922b5372a42bf148"
+    },
+    {
+      "bytes": 273999,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/f_spherical.json",
+      "role": "scientific-record",
+      "sha256": "843b9615ebbb26f38c3ca0a707bbc14b88e1e7b90df1692a1309717b5384307a"
+    },
+    {
+      "bytes": 273253,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/h2.json",
+      "role": "scientific-record",
+      "sha256": "837d47d9e51fd8feb845dce854d188ee31bb2b1e328a4e2d75126f0c4d9ce656"
+    },
+    {
+      "bytes": 275395,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/water.json",
+      "role": "scientific-record",
+      "sha256": "710069221adbac5f55d151548f0e6ebf102816d1d89e971c5a0c98ad6ebcdf6d"
+    },
+    {
+      "bytes": 819312,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "fedb67edad733b727d150fde69df2a8087c074a25e77e96ef24a7a134909669f"
+    },
+    {
+      "bytes": 235106,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "48b3a4b60f2d764394dbefaf66f72e7264432b0ea322de10b8512d63ccb328ff"
+    },
+    {
+      "bytes": 222075,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cpu/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "09eb03e46d8de4be8f06abdbab51bcf54ed2a006f31c42e6a541e0c4a694e9f1"
+    },
+    {
+      "bytes": 363155,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cuda/dense-comparison-samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "a3a3196d28a6bc6cfe01c70d7432a7cf4b185518fddcd22462b8910594f8bf1a"
+    },
+    {
+      "bytes": 214821,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cuda/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "56afac2991be967e6f729c3f8ca7d9e6dfeb32e016e8ebfd491c868f9c1ad663"
+    },
+    {
+      "bytes": 274093,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cuda/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "78050dcdb56f14dfbe98cc77736f25f3d7cc62a14a1122c6780d548761c40ccf"
+    },
+    {
+      "bytes": 420030,
+      "classification": "required-compact-accepted-evidence",
+      "family": "tensor-cuda-146",
+      "path": "benchmarks/results/tensor-cuda-146/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "11b24caedec603ff7f91e3aa5df6dc54b068c61b145cfbb5e5821849589c5964"
+    },
+    {
+      "bytes": 169698,
+      "classification": "required-compact-accepted-evidence",
+      "family": "tensor-resource-scheduler-508",
+      "path": "benchmarks/results/tensor-resource-scheduler-508/qualification.json",
+      "role": "decision-or-audit-record",
+      "sha256": "39414917b758b0c50da615b231fb4736c2b95fd5d43b2c05e95ce69a40dc71aa"
+    },
+    {
+      "bytes": 177463,
+      "classification": "required-compact-accepted-evidence",
+      "family": "weighted-eri-144",
+      "path": "benchmarks/results/weighted-eri-144/endpoints.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "ccbf6dd63600d111015879194c1bae05cef12bad5e874cf8570af54dfebacdd7"
+    },
+    {
+      "bytes": 888930,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "135f97ee7f879449980d1aa42354805087be727796c32ce4f90f6c697636f068"
+    },
+    {
+      "bytes": 496810,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/f_cartesian.json",
+      "role": "scientific-record",
+      "sha256": "e492b31d7580fc4f991d817164c4c3bac9561c3c0796dcc4dce986eec1bfafb4"
+    },
+    {
+      "bytes": 496794,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/f_spherical.json",
+      "role": "scientific-record",
+      "sha256": "a8868daded9482c4ad312dcd651cb109766f4ed298be27218a4203b2216f2a07"
+    },
+    {
+      "bytes": 495628,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/h2.json",
+      "role": "scientific-record",
+      "sha256": "469b9d50a932107811bee78bb6c7a97695fff0eac63e1a6c4fcdb388e95d6378"
+    },
+    {
+      "bytes": 508607,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/separated_f.json",
+      "role": "scientific-record",
+      "sha256": "b8dc889d4bdf179c85f543160993c662776a29aa9e62f83ab0eef5c9b424610e"
+    },
+    {
+      "bytes": 183204,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "fcbd00dbd2680e566d4f7c7cbbe7c6c89b140712afeb3b3237d864d8e77c5b93"
+    }
+  ],
+  "schema": "vibeqc.legacy-large-evidence-review.v1",
+  "scope": "Retained current-tree benchmark evidence at or above the review threshold; storage review only, not scientific re-acceptance.",
+  "threshold_bytes": 131072
+}

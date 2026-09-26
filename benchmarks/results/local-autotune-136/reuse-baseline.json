@@ -1,0 +1,45 @@
+{
+  "backend": [
+    "cuda"
+  ],
+  "cold_iterations": [
+    15
+  ],
+  "converged": true,
+  "energies": [
+    -75.96221113002998
+  ],
+  "forces": [
+    [
+      [
+        -0.0,
+        3.4072408523072584e-15,
+        0.018111149206027168
+      ],
+      [
+        -0.0,
+        0.011045558941239495,
+        -0.009055574603015076
+      ],
+      [
+        -0.0,
+        -0.01104555894124407,
+        -0.009055574603005056
+      ]
+    ]
+  ],
+  "iterations": [
+    1
+  ],
+  "profile": {
+    "identity": "sm_120",
+    "kernels": [],
+    "rejected": [
+      "local profiles explicitly disabled"
+    ],
+    "source": "official"
+  },
+  "profiling_reason": null,
+  "seconds": 0.10869430494494736,
+  "work": []
+}

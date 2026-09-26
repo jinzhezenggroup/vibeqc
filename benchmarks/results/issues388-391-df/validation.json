@@ -1,0 +1,177 @@
+{
+  "scope": "Final frozen runtime unless explicitly marked. Routine logs remain untracked; these hashes identify the checked local outputs.",
+  "runtime_patch_sha256": "18e8949fbd159301ac8e27fe63c206f393f367bd2710523c5a99025066db2f06",
+  "native_cuda": {
+    "passed": 4,
+    "executables": [
+      "vibeqc_density_fitting_tests",
+      "vibeqc_df_occupied_response_tests",
+      "vibeqc_df_shell_pairs_tests",
+      "vibeqc_cuda_diis_tests"
+    ],
+    "slurm_job": 9713,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/final-carry-ablations.log",
+      "sha256": "14fdb25176a8f7e93550f3beeb94f7ab94c9e852fdb667c5e4d1da2a19b1c3e4",
+      "bytes": 2914
+    },
+    "detail": "All four commands completed before endpoint ablations. The later job exit is the retained expected-iteration guard rejection, not a native test failure."
+  },
+  "python_cuda": {
+    "passed": 150,
+    "seconds": 134.51,
+    "slurm_job": 9715,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/profile-final.log",
+      "sha256": "dd359434a94a3dcd2e36b4b409bf2c471cdb2beb3f548b403eef06692ea26748",
+      "bytes": 40918
+    }
+  },
+  "compute_sanitizer": {
+    "tool": "memcheck",
+    "error_exitcode": 99,
+    "slurm_job": 9715,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/profile-final.log",
+      "sha256": "dd359434a94a3dcd2e36b4b409bf2c471cdb2beb3f548b403eef06692ea26748",
+      "bytes": 40918
+    },
+    "runs": [
+      {
+        "suite": "native DIIS with independent long-double circular-history oracle",
+        "errors": 0
+      },
+      {
+        "suite": "packed ragged and batched full response, RHF/UHF",
+        "passed": 4,
+        "seconds": 81.6,
+        "errors": 0
+      },
+      {
+        "suite": "raw-view owner/model binding and replay",
+        "passed": 3,
+        "seconds": 2.41,
+        "errors": 0
+      }
+    ]
+  },
+  "compiler_libcint_oracle": {
+    "passed": 128,
+    "seconds": 8.92,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/center-compiler-tests.log",
+      "sha256": "4cc7cd723b5204dc3489e584d93fabbd23b6f492ef083aa100af4bbdc425f79f",
+      "bytes": 180
+    },
+    "scope": "Final derivative mathematics; no compiler changes after this run."
+  },
+  "checkpoint_diis_retry": {
+    "passed": 97,
+    "skipped": 2,
+    "seconds": 39.42,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/fixed-tests.log",
+      "sha256": "28bde599feba8600f95c7e161aed86019cb02398985e37260d7f069950d18981",
+      "bytes": 391
+    },
+    "scope": "Fixed circular-history DIIS and checkpoint implementation; unchanged by later dense panel carry fix."
+  },
+  "benchmark_policy_reference": {
+    "passed": 21,
+    "seconds": 6.79,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/policy-tests.log",
+      "sha256": "01c1ec44570dbe2c65abc9551fce0b080801502de5bcad12e1d26c7e7a9feb21",
+      "bytes": 99
+    }
+  },
+  "structure_ownership": {
+    "passed": 73,
+    "seconds": 3.37,
+    "log": {
+      "artifact_path": ".artifacts/issues388-391/final-structure-tests.log",
+      "sha256": "f5d74a08bfcc2a2c539a8593fbefd387db65aa47c8b83059f6cbb62b47447ab1",
+      "bytes": 179
+    }
+  },
+  "negative_results": [
+    {
+      "name": "baseline source-capacity assertion",
+      "log": {
+        "artifact_path": ".artifacts/issues388-391/baseline/native-tests.log",
+        "sha256": "84b3151e4a35418236092487f13c40ff8eccf706c6d3e7b09f2d52612b718195",
+        "bytes": 83
+      },
+      "reason": "Test incorrectly required actual source allocation to equal the conservative shape-only bound; it fails on baseline too. Test now requires a positive allocation no larger than capacity."
+    },
+    {
+      "name": "early circular-history DIIS candidate",
+      "log": {
+        "artifact_path": ".artifacts/issues388-391/diis-regression-before-2.log",
+        "sha256": "763c9e76ee23819171eeca886bc147a8c1561c9b8c118c86905c8ca674f80e40",
+        "bytes": 111
+      },
+      "reason": "Poisoned retired/wrapped-history oracle caught physical-slot prefix assumption; fixed before accepted measurements."
+    },
+    {
+      "name": "hardware counters unavailable",
+      "errors": [
+        "ERR_NVGPUCTRPERM"
+      ],
+      "log": {
+        "artifact_path": ".artifacts/issues388-391/final/profiles/ncu.txt",
+        "sha256": "e45b1b3fc3733fc5e5ca17133493e768b71d3bdb94572c760aef2534c3e8acdd",
+        "bytes": 424
+      }
+    }
+  ],
+  "numerical_gates": {
+    "independent_energy_absolute_hartree": 1e-09,
+    "independent_force_max_absolute_hartree_per_bohr": 1e-08,
+    "scf_energy_hartree": 1e-12,
+    "scf_density_rms": 1e-10,
+    "metric_relative_cutoff": 1e-10,
+    "screening_tolerance": 1e-12
+  },
+  "final_repository_checks": {
+    "precommit": "all applicable hooks passed",
+    "log_sha256": "7ab6dd449b65ef0c81479e2aa4b881f71ab52b83563bd2e5a08107432447e265",
+    "compiler_modules": 160,
+    "shared_scf_modules": 213,
+    "cuda_ownership_files": 176,
+    "diff_check": "passed excluding preserved reconstruction-patch context lines, as in the repository whitespace hook",
+    "evidence_retention": "passed on staged bytes"
+  },
+  "review_corrections": {
+    "scope": "Post-qualification telemetry correction for nbf <= 32 only; frozen 384/768 measurements remain unchanged.",
+    "runtime_patch_from_ff7c9cb_sha256": "33ce6cee33410e77350d328e2018b3d63ea4a2814402aa65835154058d87180d",
+    "jacobi_workspace_check": [
+      {
+        "batch_size": 1,
+        "queried_bytes": [
+          17384
+        ],
+        "retained_bytes": [
+          17384
+        ],
+        "solve_records": 1
+      },
+      {
+        "batch_size": 4,
+        "queried_bytes": [
+          44864
+        ],
+        "retained_bytes": [
+          44864
+        ],
+        "solve_records": 1
+      }
+    ],
+    "gpu_command": "srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --cpus-per-task=4 --time=00:05:00 bash -lc <review-workspace.py>",
+    "log_sha256": "6efda6cce4923c9a14349ca69c35ef5e0406e586aa34ab671841498848212807",
+    "library_sha256": "3f16d6c1fbbba8d743eeb91d05f32e584289a677c09d87f0f99486d898266964",
+    "profile_preflight": "Reports all six missing DIIS host/memory artifacts before creating outputs; complete synthetic inputs succeed.",
+    "profile_reduction": "All 14 existing reduced profile records exactly match the retained parsed values.",
+    "reproduction_shell_syntax": "bash -n passed"
+  }
+}

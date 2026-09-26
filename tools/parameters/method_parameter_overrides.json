@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "d3_data_identity": {
+    "table_sha256": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+    "radii_sha256": "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+  },
+  "d4_runtime_defaults": {
+    "ga": 3,
+    "gc": 2,
+    "profile": "standard",
+    "reference_model": "eeq",
+    "charge_model": "eeq2019",
+    "cn_cutoff": 30,
+    "pair_cutoff": 60,
+    "atm_cutoff": 40,
+    "charge_cn_cutoff": 25,
+    "table_sha256": "f0caaa42a0604d2d0c429e34eb84f5078769058ab02cccc55ae492746c6bc34c",
+    "charge_parameter_sha256": "02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a"
+  },
+  "d4_profile_overrides": {
+    "r2scan-3c": {
+      "name": "r2SCAN-3c",
+      "ga": 2,
+      "gc": 1,
+      "profile": "r2scan3c"
+    }
+  },
+  "local_d4": [
+    {
+      "name": "GFN2-xTB",
+      "cpp_symbol": "kGfn2D4",
+      "python_spec": false,
+      "parameters": {
+        "s6": 1,
+        "s8": 2.7,
+        "s9": 5,
+        "a1": 0.52,
+        "a2": 5,
+        "cn_cutoff": 30,
+        "pair_cutoff": 50,
+        "atm_cutoff": 25,
+        "ga": 3,
+        "gc": 2
+      },
+      "provenance": {
+        "source": "xTBloom",
+        "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+      }
+    }
+  ],
+  "gcp": [
+    {
+      "name": "r2SCAN-3c",
+      "cpp_symbol": "kR2scan3cGcp",
+      "parameters": {
+        "basis": "def2-mTZVPP",
+        "sigma": 1,
+        "eta": 1.315,
+        "eta_spec": 1.15,
+        "alpha": 0.941,
+        "beta": 1.4636,
+        "damping_scale": 4,
+        "damping_exponent": 6,
+        "damping": true,
+        "parameter_sha256": "3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
+        "implementation_sha256": "c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
+        "vdw_radii_sha256": "3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575",
+        "data_sha256": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2",
+        "source": "dftd3/simple-dftd3",
+        "source_revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+        "license": "LGPL-3.0-or-later",
+        "profile": "r2scan3c",
+        "supported_atomic_numbers": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ]
+      },
+      "provenance": {
+        "source": "dftd3/simple-dftd3",
+        "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+      }
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "archive_sha256": "13b7bb6182bf5f74496db58b900ff294d6f5ad15125860fd0779a0914a96efa0",
+  "files": [
+    {
+      "bytes": 4760,
+      "path": "archive-final-df-integration.py",
+      "sha256": "b04db138fa0ab0e8fbffe2ad522bb757345d3cb187f005c4779de10b0ac9ae02"
+    },
+    {
+      "bytes": 179,
+      "path": "df-final-integrated-force-matrix.log",
+      "sha256": "7d16ccb24cfbfc163bdb7823f4ef9038a677eec8458cf36e82a132b2ca93d0b8"
+    },
+    {
+      "bytes": 103569,
+      "path": "df-final-integrated-force-matrix/192ao-b1.json",
+      "sha256": "a788b1e45a17e2709200a51925a0d678494a72e32142ff51af149bafd7ae8f9a"
+    },
+    {
+      "bytes": 1196,
+      "path": "df-final-integrated-force-matrix/192ao-b1.log",
+      "sha256": "a315db16554ec1e5cc66e9056a7c4ddacb047639bbde0e71744c22dfef6c9bdb"
+    },
+    {
+      "bytes": 382892,
+      "path": "df-final-integrated-force-matrix/192ao-b4.json",
+      "sha256": "66c59b0610ca8ea30c76070028043dd97baa8b6a141fb81434b7f5adc6a694ca"
+    },
+    {
+      "bytes": 1261,
+      "path": "df-final-integrated-force-matrix/192ao-b4.log",
+      "sha256": "08a0fc2cb558aeca56965aff0ec1db22184692c4b8aded64a60b44463a102402"
+    },
+    {
+      "bytes": 69700,
+      "path": "df-final-integrated-force-matrix/96ao-b1.json",
+      "sha256": "67fd74e760213050874efe51a5b2d6162d6e572403fc635c30c482b2ca401969"
+    },
+    {
+      "bytes": 1189,
+      "path": "df-final-integrated-force-matrix/96ao-b1.log",
+      "sha256": "fdd9a971d93ef53f9f555dbba21c95ee66ce0f02c83f84132733bc264d426bcb"
+    },
+    {
+      "bytes": 246419,
+      "path": "df-final-integrated-force-matrix/96ao-b4.json",
+      "sha256": "ecb9ba887f980394f6824c8973368a852db1d2aa02be3b0916e6a7c6c1f99f80"
+    },
+    {
+      "bytes": 1251,
+      "path": "df-final-integrated-force-matrix/96ao-b4.log",
+      "sha256": "01a5169f4f18567f8b185e92b3f77e303ce923ab6c70b888b1b4e9be5532c2e4"
+    },
+    {
+      "bytes": 6122,
+      "path": "df-final-integrated-force-matrix/manifest.json",
+      "sha256": "7e35980d60c209ced3de6154d01852d9c6f9c7aeac9f39983532c074487ec94c"
+    },
+    {
+      "bytes": 2190,
+      "path": "df-final-integration-build.log",
+      "sha256": "71bbec72bbc47b9cc26793264515a8d282477b2dc3588177fb8cacf045d04608"
+    },
+    {
+      "bytes": 718,
+      "path": "df-final-integration-gpu-tests.log",
+      "sha256": "cd4d6334f323c3cb635d3bcf582d67b6a299253d927160cc9e3ab8674592852e"
+    },
+    {
+      "bytes": 1204,
+      "path": "df-final-integration-hooks.log",
+      "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+    },
+    {
+      "bytes": 190,
+      "path": "df-final-integration-host-tests.log",
+      "sha256": "fec6865a411dd6e48f1567e54d6dd0bd98fa77d0279b9f14c0224448c7b578ba"
+    },
+    {
+      "bytes": 37780,
+      "path": "df-final-integration-runtime/CMakeCache.txt",
+      "sha256": "ccb05166d567b31bf2b3f3c7cc3b0ff52ea3b7d78686b2dd1da4be59c53042d1"
+    },
+    {
+      "bytes": 145,
+      "path": "df-final-integration-runtime/identity.json",
+      "sha256": "a6dcf3bce5ae6eb212c78f2699c00300a08e4fa9d479bed25c574fcf7b1b15b4"
+    },
+    {
+      "bytes": 144550,
+      "path": "df-final-integration-runtime/integration.patch",
+      "sha256": "d8a29e4872a48bbe84abf81dd3c186a676f6315692a9736cf35caf89030acace"
+    }
+  ],
+  "schema": "vibeqc.evidence-archive.v1"
+}

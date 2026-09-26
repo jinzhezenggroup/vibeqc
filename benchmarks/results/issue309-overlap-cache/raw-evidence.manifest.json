@@ -1,0 +1,70 @@
+{
+  "archive_bytes": 157446,
+  "archive_sha256": "b814ac1788b12992a9c0d13aae6483eca3ee1b572d2deb5c4baaa140a595fb1d",
+  "files": [
+    {
+      "bytes": 249909,
+      "path": "combined/energy.json",
+      "sha256": "2ab3c22014a7dc065009956f9d14100247aa3d52bb6de1b66c6b382692bd1bbd"
+    },
+    {
+      "bytes": 320370,
+      "path": "combined/force.json",
+      "sha256": "01f7f5e90cf61cdaa67f11e1a7d9cc324148ce0c3b8e379fe033d1355adce481"
+    },
+    {
+      "bytes": 476626,
+      "path": "combined/profiled.json",
+      "sha256": "7e8f51522e6c28cb92d709ac2c307fae364dd129b2dd7f013f874b8fe000a20a"
+    },
+    {
+      "bytes": 102962,
+      "path": "combined/raw-traces.json",
+      "sha256": "4f823ddc69b9322bc5ed844e39871c59545fda64cc9653f08646cb4cfa8a27d5"
+    },
+    {
+      "bytes": 249889,
+      "path": "lazy-core/energy.json",
+      "sha256": "f6bfa59868e8252360a0d1a6592993571a24993084c53178435c8a7d4714c34c"
+    },
+    {
+      "bytes": 320388,
+      "path": "lazy-core/force.json",
+      "sha256": "794c07be0aebcb2da845785a3b4882eb1113359aa5133393897835150f68d522"
+    },
+    {
+      "bytes": 484691,
+      "path": "lazy-core/profiled.json",
+      "sha256": "22d80a488974dc92cc16fdc0bc7e4f05f153fab8d2a219fd27d1b35888c4451b"
+    },
+    {
+      "bytes": 102800,
+      "path": "lazy-core/raw-traces.json",
+      "sha256": "82e4d87bed7ed92fcb8a6f1e3b3e2a65d734663ab477176f42e31e142396cb0a"
+    },
+    {
+      "bytes": 249913,
+      "path": "overlap-cache/energy.json",
+      "sha256": "f8cafcdf321bd9360b001dbadd026cddbe1062540b308f5dda32f5852f4c657e"
+    },
+    {
+      "bytes": 320355,
+      "path": "overlap-cache/force.json",
+      "sha256": "e6e51963a634510555952d35284ba8eff92d1e70566a9f5f27fef899bfdea679"
+    },
+    {
+      "bytes": 494737,
+      "path": "overlap-cache/profiled.json",
+      "sha256": "dc3737ef05e464ef80c56effc3a956e0c3352e2f98dcaf05bd929f143b03ff9c"
+    },
+    {
+      "bytes": 108785,
+      "path": "overlap-cache/raw-traces.json",
+      "sha256": "944af565c15a5f171d6a35aa8556b112614154ad914c05ff2f95a1ac589979f0"
+    }
+  ],
+  "native_library_sha256": "2a0a2af39f9b42887d138a966cc32a5eb3ba10df019a658883d5a43ca0eecbda",
+  "native_scientific_source_identity": "60c8eab129c85d7a5cb853d4104e0cb96d8d84c9ffbc86d5b34571405df6b41a",
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "909a081fedb5126e123b61e6bec841b2c480bf36"
+}

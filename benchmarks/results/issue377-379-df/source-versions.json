@@ -1,0 +1,51 @@
+[
+  {
+    "version": "master",
+    "base_commit": "f23e0412474aa7774266555ee62a971b8780f91c",
+    "library_sha256": "2ce5a54bd2f7e64ce0dc6ae9da69a9efd28ddfd32e3de2435a42c9e751bc98f3",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "role": "comparison / negative evidence"
+  },
+  {
+    "version": "candidate-v3",
+    "base_commit": "f23e0412474aa7774266555ee62a971b8780f91c",
+    "library_sha256": "56b1e5882b2e6398142465e4e904cd93079b2ea84fdf7f608ca9fc3496375683",
+    "patch_sha256": "890183e14903b1fbd6da3a10a9f158de7a22693564d221e014772beff0816676",
+    "role": "comparison / negative evidence"
+  },
+  {
+    "version": "candidate-v4",
+    "base_commit": "f23e0412474aa7774266555ee62a971b8780f91c",
+    "library_sha256": "74d534f8a01534e871ad00a4e6a1b4605be97feec60ad65a5ebbff15eb57ac4b",
+    "patch_sha256": "6339efa5229a30590a113d29ad6f4410a296ede117c0e643038197ccb2701918",
+    "role": "comparison / negative evidence"
+  },
+  {
+    "version": "candidate-v6",
+    "base_commit": "f23e0412474aa7774266555ee62a971b8780f91c",
+    "library_sha256": "817a9663bf6669537aec26db982cb7a36bd4c2b2622ea254afff3a7aa8ecd452",
+    "patch_sha256": "dbdd7a885f646ef002fad554692399b69447fc732b6d730211f3c0651146de5a",
+    "role": "comparison / negative evidence"
+  },
+  {
+    "version": "final-v9",
+    "base_commit": "f23e0412474aa7774266555ee62a971b8780f91c",
+    "library_sha256": "87c2e3c71179aa491d31f7dbfe7d04a45c94726c8c857467a58ffc1e7806d148",
+    "patch_sha256": "7956994cb359a251c14b6366861da89784feddda95f5df9c0485425bdac4e999",
+    "role": "main qualification; same measured execution as final-v10"
+  },
+  {
+    "version": "final-v10",
+    "base_commit": "4be1c3a1a8189d804dce925a6585696072bb5a96",
+    "library_sha256": "f37aa91b7f5b77e22799c53f6e2e773fd953057d7d5f53edf5bb24405a32e66a",
+    "patch_sha256": "223684d322eb2814765ba0f7975ce436399f5dbfa73906433ef88cecf4307cef",
+    "role": "precedence fix; same measured valid-token execution as review-v11"
+  },
+  {
+    "version": "review-v11",
+    "base_commit": "4f3f2dcd1da80aac392ccdfc7834027eef8baa08",
+    "library_sha256": "5195dd40e59df3b38e27f2419bd0134aab746f9e31af5df5cc4ed6227c9a6dc6",
+    "patch_sha256": "0f834b30bad2608e3922e9a73db4e4b7b7a73b8d3bb26ae8dc55788134d6ebfb",
+    "role": "review follow-up: bound automatic token occupancy indexing; valid-token measured execution unchanged"
+  }
+]

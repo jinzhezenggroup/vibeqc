@@ -1,0 +1,278 @@
+{
+  "files": [
+    {
+      "path": "direct/campaign.json",
+      "bytes": 21280,
+      "sha256": "7658b215e31eb6e6fa6da5f11046aba1e77c7aa382042a599a493cb4ed1702e5",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/manifest.json",
+      "original_sha256": "7658b215e31eb6e6fa6da5f11046aba1e77c7aa382042a599a493cb4ed1702e5"
+    },
+    {
+      "path": "direct/original-gate-summary.json",
+      "bytes": 3492,
+      "sha256": "64c74b7419e0a38ff1117e5149df30c54bbea3a609d4470f29601221e408c53b",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/summary.json",
+      "original_sha256": "64c74b7419e0a38ff1117e5149df30c54bbea3a609d4470f29601221e408c53b"
+    },
+    {
+      "path": "direct/water-tetramer-def2-svp-spherical-b1-none.json",
+      "bytes": 73420,
+      "sha256": "123e8867193c9ce11875db6531767dea776ec6dba4fb217b8814fa609f347827",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.json",
+      "original_sha256": "123e8867193c9ce11875db6531767dea776ec6dba4fb217b8814fa609f347827"
+    },
+    {
+      "path": "direct/water-tetramer-def2-svp-spherical-b1-none.progress.jsonl",
+      "bytes": 28929,
+      "sha256": "cd418731b2f3c64ee1b0af31fa50a1c6a9914b4ddadcdb310a70857b46ea302d",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b1-none.progress.jsonl",
+      "original_sha256": "cd418731b2f3c64ee1b0af31fa50a1c6a9914b4ddadcdb310a70857b46ea302d"
+    },
+    {
+      "path": "direct/water-tetramer-def2-svp-spherical-b4-none.json",
+      "bytes": 247082,
+      "sha256": "f9c0a0c6d40688ba2250e6712725d363aa0e2ea969bdb5f371e178c07d5ecdc5",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.json",
+      "original_sha256": "f9c0a0c6d40688ba2250e6712725d363aa0e2ea969bdb5f371e178c07d5ecdc5"
+    },
+    {
+      "path": "direct/water-tetramer-def2-svp-spherical-b4-none.progress.jsonl",
+      "bytes": 100920,
+      "sha256": "88fdeae358511f15b49ae7cacba122e55998c071ace396f76ec684350589f285",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-tetramer-def2-svp-spherical-b4-none.progress.jsonl",
+      "original_sha256": "88fdeae358511f15b49ae7cacba122e55998c071ace396f76ec684350589f285"
+    },
+    {
+      "path": "direct/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "bytes": 109919,
+      "sha256": "952bd57688bb13ef730d1e8c3920cb8f80f2375de3d1e959d2833b8901dfce6a",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.json",
+      "original_sha256": "952bd57688bb13ef730d1e8c3920cb8f80f2375de3d1e959d2833b8901dfce6a"
+    },
+    {
+      "path": "direct/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
+      "bytes": 41334,
+      "sha256": "1584e0e8ba48075bb302395f3d00656e470d05bbe3cc473053b302a2e7da9d5d",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
+      "original_sha256": "1584e0e8ba48075bb302395f3d00656e470d05bbe3cc473053b302a2e7da9d5d"
+    },
+    {
+      "path": "direct/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "bytes": 393930,
+      "sha256": "ede7300677a7668f1d3f4d2b1a252a80d0914f840d0f617c0ad8c7640f560988",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.json",
+      "original_sha256": "ede7300677a7668f1d3f4d2b1a252a80d0914f840d0f617c0ad8c7640f560988"
+    },
+    {
+      "path": "direct/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
+      "bytes": 151054,
+      "sha256": "39e3b9e9d9a2207fee26fc5ac1d7c434b64c4553048d65b5861c0987b94e5238",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-direct-matrix/matrix/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
+      "original_sha256": "39e3b9e9d9a2207fee26fc5ac1d7c434b64c4553048d65b5861c0987b94e5238"
+    },
+    {
+      "path": "build/configuration.json",
+      "bytes": 5760,
+      "sha256": "b1c692ebff323454084f0b0c1a2dda7d62f3c1ca6aad116a53a31bca30ccbcc1"
+    },
+    {
+      "path": "validation/native-tests.json",
+      "bytes": 8215,
+      "sha256": "eb387f81f5a4dd7cc9e06007270c39ae810c91d8817e08981608582083e9736b",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/aot-native-tests/summary.json",
+      "original_sha256": "eb387f81f5a4dd7cc9e06007270c39ae810c91d8817e08981608582083e9736b"
+    },
+    {
+      "path": "validation/mp2-optin.json",
+      "bytes": 757,
+      "sha256": "2de9fed526b60e22a062cf48b3076d2948155429edcdb5ce03cb027f95c10670"
+    },
+    {
+      "path": "stock-384/384-stock.json",
+      "bytes": 98436,
+      "sha256": "626f40d11b71e7fa5326bd63537eb7e6be8f707b9bd617f5d300ea3ce517fb9d",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/384-stock.json",
+      "original_sha256": "626f40d11b71e7fa5326bd63537eb7e6be8f707b9bd617f5d300ea3ce517fb9d"
+    },
+    {
+      "path": "stock-384/manifest.json",
+      "bytes": 2527,
+      "sha256": "4b6e7dd2763460d8897fbdb5ff19dcb3add4da8303c282797329670005a32563",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/manifest.json",
+      "original_sha256": "4b6e7dd2763460d8897fbdb5ff19dcb3add4da8303c282797329670005a32563"
+    },
+    {
+      "path": "stock-384/384-stock_cuda_gpu_mem_time_sum.csv",
+      "bytes": 367,
+      "sha256": "f95ce7393dec24317353adb0274b52bffb48b21200b4de1c94d6ddd9e8c87373",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/384-stock_cuda_gpu_mem_time_sum.csv",
+      "original_sha256": "f95ce7393dec24317353adb0274b52bffb48b21200b4de1c94d6ddd9e8c87373"
+    },
+    {
+      "path": "stock-384/account.json",
+      "bytes": 7323,
+      "sha256": "56cb64abce91e981cc2681ae08a8c2bcbef8e41e644421317ca9712164b242dc",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/account.json",
+      "original_sha256": "56cb64abce91e981cc2681ae08a8c2bcbef8e41e644421317ca9712164b242dc"
+    },
+    {
+      "path": "stock-384/384-stock_cuda_gpu_mem_size_sum.csv",
+      "bytes": 344,
+      "sha256": "18043451eda91ca997b8a8349acb788712c6c3b7254ae7e5cb966a37eb33c4d4",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/384-stock_cuda_gpu_mem_size_sum.csv",
+      "original_sha256": "18043451eda91ca997b8a8349acb788712c6c3b7254ae7e5cb966a37eb33c4d4"
+    },
+    {
+      "path": "stock-384/384-stock_nvtx_sum.csv",
+      "bytes": 2178,
+      "sha256": "6cb4f7c90d1fc4dc94777c897ebd875563d06b96f794c0eb4d14800f88b20ef9",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/384-stock_nvtx_sum.csv",
+      "original_sha256": "6cb4f7c90d1fc4dc94777c897ebd875563d06b96f794c0eb4d14800f88b20ef9"
+    },
+    {
+      "path": "stock-384/384-stock_cuda_gpu_kern_sum.csv",
+      "bytes": 27503,
+      "sha256": "edff7651caf99b1749ed55e76e30c2e228d31c50e1bf5300a15f6308d4484fd4",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/384-stock_cuda_gpu_kern_sum.csv",
+      "original_sha256": "edff7651caf99b1749ed55e76e30c2e228d31c50e1bf5300a15f6308d4484fd4"
+    },
+    {
+      "path": "stock-384/384-stock_cuda_api_sum.csv",
+      "bytes": 1422,
+      "sha256": "90776a9ae95cee35551530bbc12c113c3e76c0e894ef5a9312f2d21ce597a739",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-384/384-stock_cuda_api_sum.csv",
+      "original_sha256": "90776a9ae95cee35551530bbc12c113c3e76c0e894ef5a9312f2d21ce597a739"
+    },
+    {
+      "path": "reproduction/run-stock-384.py.txt",
+      "bytes": 4427,
+      "sha256": "ec0158ec6b4dabb2b52589fe3e39981ae522a5cb44e1c31aef5f90b1158f2ea3",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/run-stock-384.py",
+      "original_sha256": "ec0158ec6b4dabb2b52589fe3e39981ae522a5cb44e1c31aef5f90b1158f2ea3"
+    },
+    {
+      "path": "reproduction/account-stock-384.py.txt",
+      "bytes": 3585,
+      "sha256": "1d91ba6eabf7539d9a2ac07efd4fc61887956020f544c3e1fdef8ac33fcf5b01",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/account-stock-384.py",
+      "original_sha256": "1d91ba6eabf7539d9a2ac07efd4fc61887956020f544c3e1fdef8ac33fcf5b01"
+    },
+    {
+      "path": "stock-768/manifest.json",
+      "bytes": 2515,
+      "sha256": "f96cf16f23a98de260fd33c8312f210c8a3f961cce1e73f960adeadaefb20f6e",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/manifest.json",
+      "original_sha256": "f96cf16f23a98de260fd33c8312f210c8a3f961cce1e73f960adeadaefb20f6e"
+    },
+    {
+      "path": "stock-768/768-stock.json",
+      "bytes": 118266,
+      "sha256": "25fed34c63c01b6b4bfeb1d47f6d98a6d953b5248115f4e517cbbaf75d659fab",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/768-stock.json",
+      "original_sha256": "25fed34c63c01b6b4bfeb1d47f6d98a6d953b5248115f4e517cbbaf75d659fab"
+    },
+    {
+      "path": "stock-768/768-stock_cuda_gpu_kern_sum.csv",
+      "bytes": 28022,
+      "sha256": "b601f1af5bbd042cb6971daaffd762cfeaf5f01f9fe271f1074e19c8df80f465",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/768-stock_cuda_gpu_kern_sum.csv",
+      "original_sha256": "b601f1af5bbd042cb6971daaffd762cfeaf5f01f9fe271f1074e19c8df80f465"
+    },
+    {
+      "path": "stock-768/account.json",
+      "bytes": 8052,
+      "sha256": "48a7281fcc40c4bb4bcd7e3b545e58fd7bf65a8a65bcf2da99fe198eb834e2aa",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/account.json",
+      "original_sha256": "48a7281fcc40c4bb4bcd7e3b545e58fd7bf65a8a65bcf2da99fe198eb834e2aa"
+    },
+    {
+      "path": "stock-768/768-stock_cuda_gpu_mem_size_sum.csv",
+      "bytes": 347,
+      "sha256": "80f52a02ee6ddcade4839aaa9608d6310586db3f3edba8b7fb5b2d40c10afac5",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/768-stock_cuda_gpu_mem_size_sum.csv",
+      "original_sha256": "80f52a02ee6ddcade4839aaa9608d6310586db3f3edba8b7fb5b2d40c10afac5"
+    },
+    {
+      "path": "stock-768/768-stock_cuda_api_sum.csv",
+      "bytes": 1498,
+      "sha256": "9d8513dc460ec75e515d28f3daf94d38b5edd5ae7aad06d8e5e3b18245ad29e3",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/768-stock_cuda_api_sum.csv",
+      "original_sha256": "9d8513dc460ec75e515d28f3daf94d38b5edd5ae7aad06d8e5e3b18245ad29e3"
+    },
+    {
+      "path": "stock-768/768-stock_nvtx_sum.csv",
+      "bytes": 2240,
+      "sha256": "c4ddf05ef5f1183caaf426a2ed362fd3763cbe3750c0300cbe8389344715bf55",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/768-stock_nvtx_sum.csv",
+      "original_sha256": "c4ddf05ef5f1183caaf426a2ed362fd3763cbe3750c0300cbe8389344715bf55"
+    },
+    {
+      "path": "stock-768/768-stock_cuda_gpu_mem_time_sum.csv",
+      "bytes": 371,
+      "sha256": "20ef58b49cd351bd1a2da158cc80bbc2e8759b7b31a8c37f72cf0ab2a746800f",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/stock-diagnostic-768/768-stock_cuda_gpu_mem_time_sum.csv",
+      "original_sha256": "20ef58b49cd351bd1a2da158cc80bbc2e8759b7b31a8c37f72cf0ab2a746800f"
+    },
+    {
+      "path": "reproduction/run-stock-768.py.txt",
+      "bytes": 4421,
+      "sha256": "ac1b06b1940ba991aee05edf01d48e89bd856fb0aca26bb70782fe591db94302",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/run-stock-768.py",
+      "original_sha256": "ac1b06b1940ba991aee05edf01d48e89bd856fb0aca26bb70782fe591db94302"
+    },
+    {
+      "path": "reproduction/account-stock-768.py.txt",
+      "bytes": 4561,
+      "sha256": "de8c7de751e52c30c3023afae34a72e0a3de5b319500833dc89317da1c4c8c21",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/account-stock-768.py",
+      "original_sha256": "de8c7de751e52c30c3023afae34a72e0a3de5b319500833dc89317da1c4c8c21"
+    },
+    {
+      "path": "reproduction/run-aot-direct.py.txt",
+      "bytes": 4252,
+      "sha256": "41d819de9888d10c4286ecb3a86a37cb46d18829611f96ddccdc6dfc6610ccba",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/run-aot-direct.py",
+      "original_sha256": "41d819de9888d10c4286ecb3a86a37cb46d18829611f96ddccdc6dfc6610ccba"
+    },
+    {
+      "path": "reproduction/run-native-aot.py.txt",
+      "bytes": 2516,
+      "sha256": "82da5114f270c0767f32ae4ae78a4e5c2fb753b89984d72cfea52b3ffcb3f621",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/run-native-aot.py",
+      "original_sha256": "82da5114f270c0767f32ae4ae78a4e5c2fb753b89984d72cfea52b3ffcb3f621"
+    },
+    {
+      "path": "reproduction/retain-aot-stock.py.txt",
+      "bytes": 9512,
+      "sha256": "830bb9a41010d2794e5ea7b6e8ce3d59fbd600ba6f4b08958a72dbd254bc1da3",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/retain-aot-stock.py",
+      "original_sha256": "830bb9a41010d2794e5ea7b6e8ce3d59fbd600ba6f4b08958a72dbd254bc1da3"
+    },
+    {
+      "path": "reproduction/compare_gpu4pyscf_batch.py.txt",
+      "bytes": 40895,
+      "sha256": "efea113b3538ece5d9a1e88bc1f63156d04cb7159d2f58b5b298d3de21b895ea",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/benchmarks/results/issue206-direct-diagnosis/reproduction/compare_gpu4pyscf_batch.py.txt",
+      "original_sha256": "efea113b3538ece5d9a1e88bc1f63156d04cb7159d2f58b5b298d3de21b895ea"
+    },
+    {
+      "path": "reproduction/real_molecule_gate.py.txt",
+      "bytes": 7284,
+      "sha256": "d86e4880f20036dd943621389fef072de67ee9768971df0e1633997d9d6ad7fc",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue206-direct-fix/benchmarks/results/issue206-direct-diagnosis/reproduction/real_molecule_gate.py.txt",
+      "original_sha256": "d86e4880f20036dd943621389fef072de67ee9768971df0e1633997d9d6ad7fc"
+    },
+    {
+      "path": "reproduction/stock-warm-diagnostics.py.txt",
+      "bytes": 13562,
+      "sha256": "e33e009b0adb91302e4fb732cd0e6b835265636d9213fecdde3f5d90a659929c",
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/stock-warm-diagnostics.py",
+      "original_sha256": "e33e009b0adb91302e4fb732cd0e6b835265636d9213fecdde3f5d90a659929c"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 10335,
+      "sha256": "5f257026c73b21aabd6428a06c7fc9f0caabf31aa03bebbb955529f0103ab1aa"
+    }
+  ]
+}

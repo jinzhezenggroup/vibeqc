@@ -1,0 +1,595 @@
+{
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "aos": 384,
+  "scope": "clean endpoint",
+  "native_source_identity": "2e69ab646f77ec2b05fb8a3ec83eb290009fc28d33ed790d4a84bc62234c7244",
+  "source_patch_sha256": "774ff0d6ebb1b18331b8cabfadd5b4f955e8540cda12338de2a5fb15f9e909f7",
+  "runner_sha256": "cb080238600e54bcbc43b5093e457b1dff7ae60825c907be1ead10cfa9d254cc",
+  "controls": {"VIBEQC_RESOURCE_CUDA_TEST": "1", "VIBEQC_DF_EXCHANGE": "occupied", "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue399/.artifacts/issue399/v1/libvibeqc.so", "VIBEQC_DF_SEED_EXCHANGE": "factor", "VIBEQC_DF_FINAL_EXCHANGE": "dense"},
+  "scientific_settings": {
+    "basis": "def2-svp",
+    "basis_representation": "spherical",
+    "auxiliary_basis": "same as orbital basis",
+    "metric_relative_threshold": 1e-10,
+    "method": "rhf",
+    "energy_tolerance": 1e-12,
+    "density_tolerance": 1e-10,
+    "max_iterations": 100,
+    "screening_tolerance": 1e-12,
+    "geometries_bohr": [
+      [
+        "O",
+        [-5.68695864870603, -0.20484690774673242, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [-6.934741636687752, -1.600195106413849, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [-4.339681395600782, -0.5864673877860689, -3.923524987977727]
+      ],
+      [
+        "O",
+        [-9.653477530875584, -3.7616719744228218, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [-10.03509801091492, -5.108949227528069, 3.923524987977727]
+      ],
+      [
+        "H",
+        [-11.0488257295427, -2.5138889864410987, 2.8921348693023314]
+      ],
+      [
+        "O",
+        [-13.112343224611836, -0.048330934070813764, 2.648657577077294]
+      ],
+      [
+        "H",
+        [-13.553997598721192, 0.049814690267797695, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [-12.092024916334609, 1.4495033628879794, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [-9.400299689058038, -3.663712601482984, -2.648657577077294]
+      ],
+      [
+        "H",
+        [-9.49844531339665, -4.105366975592342, -0.8661927624563385]
+      ],
+      [
+        "H",
+        [-10.89813398601683, -2.6433942932057577, -2.9564098944273542]
+      ],
+      [
+        "O",
+        [-9.496961557199665, 3.663712601482984, -2.648657577077294]
+      ],
+      [
+        "H",
+        [-7.999127260240872, 2.6433942932057577, -2.9564098944273542]
+      ],
+      [
+        "H",
+        [-9.398815932861053, 4.105366975592342, -0.8661927624563385]
+      ],
+      [
+        "O",
+        [-9.243783715382119, 3.7616719744228218, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [-7.848435516715002, 2.5138889864410987, 2.8921348693023314]
+      ],
+      [
+        "H",
+        [-8.862163235342782, 5.108949227528069, 3.923524987977727]
+      ],
+      [
+        "O",
+        [-13.210302597551673, 0.20484690774673242, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [-11.96251960956995, 1.600195106413849, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [-14.557579850656921, 0.5864673877860689, -3.923524987977727]
+      ],
+      [
+        "O",
+        [-5.784918021645867, 0.048330934070813764, 2.648657577077294]
+      ],
+      [
+        "H",
+        [-5.343263647536509, -0.049814690267797695, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [-6.805236329923094, -1.4495033628879794, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [13.210302597551673, -0.20484690774673242, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [11.96251960956995, -1.600195106413849, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [14.557579850656921, -0.5864673877860689, -3.923524987977727]
+      ],
+      [
+        "O",
+        [9.243783715382119, -3.7616719744228218, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [8.862163235342782, -5.108949227528069, 3.923524987977727]
+      ],
+      [
+        "H",
+        [7.848435516715002, -2.5138889864410987, 2.8921348693023314]
+      ],
+      [
+        "O",
+        [5.784918021645867, -0.048330934070813764, 2.648657577077294]
+      ],
+      [
+        "H",
+        [5.343263647536509, 0.049814690267797695, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [6.805236329923094, 1.4495033628879794, 2.9564098944273542]
+      ],
+      [
+        "O",
+        [9.496961557199665, -3.663712601482984, -2.648657577077294]
+      ],
+      [
+        "H",
+        [9.398815932861053, -4.105366975592342, -0.8661927624563385]
+      ],
+      [
+        "H",
+        [7.999127260240872, -2.6433942932057577, -2.9564098944273542]
+      ],
+      [
+        "O",
+        [9.400299689058038, 3.663712601482984, -2.648657577077294]
+      ],
+      [
+        "H",
+        [10.89813398601683, 2.6433942932057577, -2.9564098944273542]
+      ],
+      [
+        "H",
+        [9.49844531339665, 4.105366975592342, -0.8661927624563385]
+      ],
+      [
+        "O",
+        [9.653477530875584, 3.7616719744228218, 2.7688817211501036]
+      ],
+      [
+        "H",
+        [11.0488257295427, 2.5138889864410987, 2.8921348693023314]
+      ],
+      [
+        "H",
+        [10.03509801091492, 5.108949227528069, 3.923524987977727]
+      ],
+      [
+        "O",
+        [5.68695864870603, 0.20484690774673242, -2.7688817211501036]
+      ],
+      [
+        "H",
+        [6.934741636687752, 1.600195106413849, -2.8921348693023314]
+      ],
+      [
+        "H",
+        [4.339681395600782, 0.5864673877860689, -3.923524987977727]
+      ],
+      [
+        "O",
+        [13.112343224611836, 0.048330934070813764, 2.648657577077294]
+      ],
+      [
+        "H",
+        [13.553997598721192, -0.049814690267797695, 0.8661927624563385]
+      ],
+      [
+        "H",
+        [12.092024916334609, -1.4495033628879794, 2.9564098944273542]
+      ]
+    ]
+  },
+  "git_head": "1c3f2ab8d6df6f06bee526b89a807511ef726301",
+  "library_sha256": "d5636ddcd48bd129417a3fd0fe536637fb897c22e1c8a738619f6e6ea2de9f2b",
+  "slurm_job_id": "9763",
+  "cuda_visible_devices": "0",
+  "control": "VIBEQC_DF_SEED_EXCHANGE",
+  "policies": ["dense", "factor"],
+  "policy_controls": {},
+  "warm_policy": "one frozen post-cold density, prime every policy transition",
+  "measured_properties": ["energy"],
+  "expected_iterations": 3,
+  "cold_controls": {},
+  "samples": [
+    {
+      "policy": "dense",
+      "scope": "clean endpoint",
+      "repeat": 0,
+      "seconds": 0.3795493401121348,
+      "prime_seconds": 1.9625097701791674,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.8479371082626365e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 4.547473508864641e-13, "density_rms": 1.8479371082626365e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.1762188003188],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "factor",
+      "scope": "clean endpoint",
+      "repeat": 0,
+      "seconds": 0.34934479696676135,
+      "prime_seconds": 0.3478908899705857,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 9.094947017729282e-13,
+          "density_rms": 1.846892621413931e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 1.846892621413931e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.176218800319],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "factor",
+      "scope": "clean endpoint",
+      "repeat": 1,
+      "seconds": 0.3492282151710242,
+      "prime_seconds": 0.34938370203599334,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 9.094947017729282e-13,
+          "density_rms": 1.846892621413931e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 1.846892621413931e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.176218800319],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "dense",
+      "scope": "clean endpoint",
+      "repeat": 1,
+      "seconds": 0.37976896204054356,
+      "prime_seconds": 0.3797061799559742,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.8479371082626365e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 4.547473508864641e-13, "density_rms": 1.8479371082626365e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.1762188003188],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "dense",
+      "scope": "clean endpoint",
+      "repeat": 2,
+      "seconds": 0.3798231449909508,
+      "prime_seconds": 0.3797838590107858,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.8479371082626365e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 4.547473508864641e-13, "density_rms": 1.8479371082626365e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.1762188003188],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "factor",
+      "scope": "clean endpoint",
+      "repeat": 2,
+      "seconds": 0.3496858801227063,
+      "prime_seconds": 0.3493121569044888,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 9.094947017729282e-13,
+          "density_rms": 1.846892621413931e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 1.846892621413931e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.176218800319],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "factor",
+      "scope": "clean endpoint",
+      "repeat": 3,
+      "seconds": 0.3492086490150541,
+      "prime_seconds": 0.34934542095288634,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 9.094947017729282e-13,
+          "density_rms": 1.846892621413931e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 1.846892621413931e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.176218800319],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "dense",
+      "scope": "clean endpoint",
+      "repeat": 3,
+      "seconds": 0.37982552987523377,
+      "prime_seconds": 0.3798187170177698,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.8479371082626365e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 4.547473508864641e-13, "density_rms": 1.8479371082626365e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.1762188003188],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "dense",
+      "scope": "clean endpoint",
+      "repeat": 4,
+      "seconds": 0.379733795998618,
+      "prime_seconds": 0.3798857359215617,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 4.547473508864641e-13,
+          "density_rms": 1.8479371082626365e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 4.547473508864641e-13, "density_rms": 1.8479371082626365e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.1762188003188],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    },
+    {
+      "policy": "factor",
+      "scope": "clean endpoint",
+      "repeat": 4,
+      "seconds": 0.349296998931095,
+      "prime_seconds": 0.3492053239606321,
+      "prime_iterations": [3],
+      "iterations": [3],
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 3,
+          "energy_change_hartree": 9.094947017729282e-13,
+          "density_rms": 1.846892621413931e-13,
+          "warm_start_used": true,
+          "warm_start_fallback": false,
+          "final_residuals": {"energy_change_hartree": 9.094947017729282e-13, "density_rms": 1.846892621413931e-13, "orbital_gradient_norm": null},
+          "warm_start": {"used": true, "fallback": false}
+        }
+      ],
+      "energies_hartree": [-1219.176218800319],
+      "forces_hartree_per_bohr": null,
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": null,
+      "metric": [
+        {"bucket_id": 0, "system_index": 0, "effective_rank": 384, "absolute_threshold": 1.699097121721467e-07, "condition_number": 18132.17022183579, "solver_device_workspace_bytes": 6423192, "solver_host_workspace_bytes": 0, "device_resident_bytes": 1940275087, "peak_device_bytes": 2400865835, "host_resident_bytes": 19923441, "peak_host_bytes": 474094069, "auxiliary_tile": 384, "streamed": false}
+      ]
+    }
+  ],
+  "prepare_seconds": 0.008233717177063227,
+  "warm_checkpoint_restore": {
+    "schema_version": 1,
+    "bytes": 1185945,
+    "manifest_identity": "b516c5341615a9e29db5981be5879ced766c38070848405c59745a529162a3df",
+    "read_seconds": 15.8614813440945,
+    "items": [
+      {
+        "index": 0,
+        "compatibility": "warm_start_compatible",
+        "reason": "geometry or numerical controls differ",
+        "restored_fields": ["density"],
+        "rejected_fields": [],
+        "source_status": 0,
+        "source_model_identity": "9884a770f5276e26503a7f17802ed0cc80a7d8b1a1503394c2db36ff2e3407ce"
+      }
+    ],
+    "target_verification": "executed",
+    "validation_backend": "cpu_source_overlap",
+    "target_results": [
+      {"index": 0, "converged": true, "status": 0, "energy": -1219.176218800319, "density_rms": 1.846892621413931e-13, "restart_origin": "persistent_restart"}
+    ]
+  },
+  "cold_seconds": null,
+  "complete_cold_seconds": null,
+  "cold_convergence": null,
+  "initialization": "checkpoint replay",
+  "initialization_seconds": 9.050894047133625,
+  "initialization_convergence": [
+    {
+      "converged": true,
+      "iterations": 3,
+      "energy_change_hartree": 4.547473508864641e-13,
+      "density_rms": 1.8479371082626365e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "final_residuals": {"energy_change_hartree": 4.547473508864641e-13, "density_rms": 1.8479371082626365e-13, "orbital_gradient_norm": null},
+      "warm_start": {"used": true, "fallback": false}
+    }
+  ],
+  "warm_checkpoint_sha256": "6086ddb3a156c2501a763e927a04822a626ab77b3c81de69439aa4b58c0aedda",
+  "warm_density_sha256": {"density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"},
+  "reference_sha256": "cbd546f66d0b1001a805c33ec90e79eadff492d382a52ae57fb65261eccf90ad",
+  "original_json_sha256": "5cf674da0fcd276696f71f4f72ed819ff5515d300521c905e961f38a7dba8746",
+  "original_json_bytes": 117668,
+  "basis_metadata": {
+    "orbital": {
+      "name": "def2-svp",
+      "role": "orbital",
+      "mathematical_identity": "c24d0fbe7443fc60ccdce94896d42e8eea5bd735714ba85b79ff3d61303a9cbf",
+      "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+      "representation": "spherical",
+      "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+      "electrons": {
+        "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+        "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+        "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "ionic_charge": 0,
+        "electron_count": 160,
+        "multiplicity": 1,
+        "nalpha": 80,
+        "nbeta": 80
+      },
+      "shell_count": 192,
+      "primitive_count": 352
+    },
+    "auxiliary": {
+      "name": "def2-svp",
+      "role": "auxiliary",
+      "mathematical_identity": "c24d0fbe7443fc60ccdce94896d42e8eea5bd735714ba85b79ff3d61303a9cbf",
+      "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+      "representation": "spherical",
+      "provenance": {"source": "vibeqc/data/basis_pack.json; Basis Set Exchange", "version": "Basis Set Exchange 0.11", "license": "BSD-3-Clause", "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c"},
+      "electrons": {
+        "atomic_numbers": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+        "nuclear_charges": [8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1, 8, 1, 1],
+        "ecp_core_electrons": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "ionic_charge": 0,
+        "electron_count": 160,
+        "multiplicity": 1,
+        "nalpha": 80,
+        "nbeta": 80
+      },
+      "shell_count": 192,
+      "primitive_count": 352
+    },
+    "model_identity": "fc3aacb1f94ed54b9015fdaad7ecc0a477fc031bc897532937918ec907cfff45"
+  }
+}

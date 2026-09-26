@@ -1,0 +1,15 @@
+{
+  "libvibeqc.so": {
+    "bytes": 205297872,
+    "sha256": "518054273aeff308c3981c815da5e8f6d8fbe85f6f5d759200f65e007230e2c2"
+  },
+  "source.patch": {
+    "bytes": 43898,
+    "sha256": "02944c0ec4633b711813caa61f6ac8fe1db2c10b0c43b156b6a6b59c0fd5639e"
+  },
+  "generated_df_shell_derivatives.cuh": {
+    "bytes": 56942,
+    "sha256": "e29856d48b92371c98e70aaf094888442db3f9f911d2dd18c2cd327bdf04df18"
+  },
+  "source_patch_base": "23091a4575c3b2bf9288ae00bb173935a51364c3"
+}

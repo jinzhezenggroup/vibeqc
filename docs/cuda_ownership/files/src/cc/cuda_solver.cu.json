@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/cuda_solver.cu",
+  "reason": "Native bounded RCCSD iteration ownership, DIIS, residual reductions and transfer control; physical CC energy/residual/Jacobi equations are emitted from the shared TensorIR.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

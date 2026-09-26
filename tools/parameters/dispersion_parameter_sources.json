@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "simple_dftd3": {
+    "repository": "dftd3/simple-dftd3",
+    "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+    "path": "assets/parameters.toml",
+    "snapshot": "upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/simple-dftd3-41d5a07.parameters.toml",
+    "sha256": "b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645",
+    "license": "LGPL-3.0-or-later"
+  },
+  "dftd4": {
+    "repository": "dftd4/dftd4",
+    "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
+    "path": "assets/parameters.toml",
+    "snapshot": "upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4/dftd4-82fbaf4.parameters.toml",
+    "sha256": "8254bfc673e763f7589b9be20506438b202a59ce795dc175d6ea9ba623e23e1f",
+    "license": "LGPL-3.0-or-later"
+  }
+}

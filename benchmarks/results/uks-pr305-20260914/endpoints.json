@@ -1,0 +1,493 @@
+{
+  "environment": {
+    "numpy": "2.5.3",
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "python": "3.13.9",
+    "threads": {
+      "MKL_NUM_THREADS": null,
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    },
+    "vibeqc_library": "/home/jzzeng/codes/vibeqc-review-305-20260913/build/cpu/libvibeqc.so"
+  },
+  "gates": {
+    "absolute_energy_error_hartree": 1e-08,
+    "physical_residual_rms": 1e-09
+  },
+  "limitations": [
+    "small STO-3G H2 and OH endpoints only",
+    "fixed GridSpec-v1 quadrature; no grid-convergence claim",
+    "CPU conventional-J energy only",
+    "no gradients, density fitting, prepared batches, CUDA or performance claim"
+  ],
+  "passed": true,
+  "rows": [
+    {
+      "absolute_energy_error_hartree": 1.0336176359260207e-13,
+      "case": "h2_minus_doublet",
+      "charge": -1,
+      "grid": {
+        "identity": "97d8913b2fa3d199814c15858b423875160f7235bf5f31d7ea091b1325ff13d3",
+        "point_count": 49152,
+        "points_sha256": "9be73c27dd1c6315acec9da8b2ddcb0d13aa1d056f8371f13cc9a6c2f77b5c32",
+        "weights_sha256": "31a6caef2261674a3c9d71dab03e3ac8fe46a2ebaae9d991ea6b4e1cc6baefdc"
+      },
+      "independent": {
+        "angular_momenta": [
+          0,
+          0
+        ],
+        "converged": true,
+        "energy_hartree": -0.44581926551501294,
+        "history": [
+          {
+            "density_change_norm": 2.558058378067056,
+            "energy_hartree": -0.44581926551501383,
+            "iteration": 1,
+            "orbital_gradient_norm": 6.106226635438361e-16
+          },
+          {
+            "density_change_norm": 1.5700924586837751e-15,
+            "energy_hartree": -0.44581926551501294,
+            "iteration": 2,
+            "orbital_gradient_norm": 3.885780586188048e-16
+          }
+        ],
+        "initial_guess": "minao",
+        "iterations": 2,
+        "libxc": "7.0.0",
+        "physical_residual_rms": 8.330285907980746e-17,
+        "pyscf": "2.14.0",
+        "spin_square": [
+          0.7500000000000009,
+          2.000000000000001
+        ],
+        "symmetry": null
+      },
+      "method": "lda-uks",
+      "multiplicity": 2,
+      "native": {
+        "converged": true,
+        "density_change_rms": 2.7012891923534065e-11,
+        "energy_change_hartree": 5.10702591327572e-15,
+        "energy_hartree": -0.4458192655151163,
+        "executed_backend": "cpu_reference",
+        "iterations": 13,
+        "physical_residual_rms": 1.333571447776945e-11
+      },
+      "passed": true,
+      "spin_occupations": [
+        2,
+        1
+      ]
+    },
+    {
+      "absolute_energy_error_hartree": 1.3444800828210646e-13,
+      "case": "h2_minus_doublet",
+      "charge": -1,
+      "grid": {
+        "identity": "97d8913b2fa3d199814c15858b423875160f7235bf5f31d7ea091b1325ff13d3",
+        "point_count": 49152,
+        "points_sha256": "9be73c27dd1c6315acec9da8b2ddcb0d13aa1d056f8371f13cc9a6c2f77b5c32",
+        "weights_sha256": "31a6caef2261674a3c9d71dab03e3ac8fe46a2ebaae9d991ea6b4e1cc6baefdc"
+      },
+      "independent": {
+        "angular_momenta": [
+          0,
+          0
+        ],
+        "converged": true,
+        "energy_hartree": -0.499082884738003,
+        "history": [
+          {
+            "density_change_norm": 2.558058378067056,
+            "energy_hartree": -0.49908288473800344,
+            "iteration": 1,
+            "orbital_gradient_norm": 5.551115123125783e-16
+          },
+          {
+            "density_change_norm": 1.0205600981444537e-15,
+            "energy_hartree": -0.49908288473800344,
+            "iteration": 2,
+            "orbital_gradient_norm": 1.1102230246251565e-16
+          }
+        ],
+        "initial_guess": "minao",
+        "iterations": 2,
+        "libxc": "7.0.0",
+        "physical_residual_rms": 6.495375496784839e-17,
+        "pyscf": "2.14.0",
+        "spin_square": [
+          0.7500000000000009,
+          2.000000000000001
+        ],
+        "symmetry": null
+      },
+      "method": "pbe-uks",
+      "multiplicity": 2,
+      "native": {
+        "converged": true,
+        "density_change_rms": 1.7769757889489087e-11,
+        "energy_change_hartree": 1.212363542890671e-13,
+        "energy_hartree": -0.49908288473813744,
+        "executed_backend": "cpu_reference",
+        "iterations": 12,
+        "physical_residual_rms": 8.775424831408907e-12
+      },
+      "passed": true,
+      "spin_occupations": [
+        2,
+        1
+      ]
+    },
+    {
+      "absolute_energy_error_hartree": 2.4091839634365897e-14,
+      "case": "h2_plus_fully_polarized",
+      "charge": 1,
+      "grid": {
+        "identity": "10b46f4375c31ceb6994cf3a282f21b02ba57c192fd9dbadd5d73faa41b0c494",
+        "point_count": 49152,
+        "points_sha256": "9be73c27dd1c6315acec9da8b2ddcb0d13aa1d056f8371f13cc9a6c2f77b5c32",
+        "weights_sha256": "31a6caef2261674a3c9d71dab03e3ac8fe46a2ebaae9d991ea6b4e1cc6baefdc"
+      },
+      "independent": {
+        "angular_momenta": [
+          0,
+          0
+        ],
+        "converged": true,
+        "energy_hartree": -0.5158472306782153,
+        "history": [
+          {
+            "density_change_norm": 0.782505907158786,
+            "energy_hartree": -0.5158472306782153,
+            "iteration": 1,
+            "orbital_gradient_norm": 2.220446049250313e-16
+          },
+          {
+            "density_change_norm": 0.0,
+            "energy_hartree": -0.5158472306782153,
+            "iteration": 2,
+            "orbital_gradient_norm": 2.220446049250313e-16
+          }
+        ],
+        "initial_guess": "minao",
+        "iterations": 2,
+        "libxc": "7.0.0",
+        "physical_residual_rms": 6.798699777552591e-17,
+        "pyscf": "2.14.0",
+        "spin_square": [
+          0.75,
+          2.0
+        ],
+        "symmetry": null
+      },
+      "method": "lda-uks",
+      "multiplicity": 2,
+      "native": {
+        "converged": true,
+        "density_change_rms": 3.152427400121712e-16,
+        "energy_change_hartree": 5.551115123125783e-16,
+        "energy_hartree": -0.5158472306782393,
+        "executed_backend": "cpu_reference",
+        "iterations": 2,
+        "physical_residual_rms": 2.7755575615628914e-16
+      },
+      "passed": true,
+      "spin_occupations": [
+        1,
+        0
+      ]
+    },
+    {
+      "absolute_energy_error_hartree": 1.0580368803303486e-09,
+      "case": "h2_plus_fully_polarized",
+      "charge": 1,
+      "grid": {
+        "identity": "10b46f4375c31ceb6994cf3a282f21b02ba57c192fd9dbadd5d73faa41b0c494",
+        "point_count": 49152,
+        "points_sha256": "9be73c27dd1c6315acec9da8b2ddcb0d13aa1d056f8371f13cc9a6c2f77b5c32",
+        "weights_sha256": "31a6caef2261674a3c9d71dab03e3ac8fe46a2ebaae9d991ea6b4e1cc6baefdc"
+      },
+      "independent": {
+        "angular_momenta": [
+          0,
+          0
+        ],
+        "converged": true,
+        "energy_hartree": -0.5408741059490542,
+        "history": [
+          {
+            "density_change_norm": 0.782505907158786,
+            "energy_hartree": -0.5408741059490544,
+            "iteration": 1,
+            "orbital_gradient_norm": 0.0
+          },
+          {
+            "density_change_norm": 3.554447978966673e-16,
+            "energy_hartree": -0.5408741059490546,
+            "iteration": 2,
+            "orbital_gradient_norm": 4.440892098500626e-16
+          }
+        ],
+        "initial_guess": "minao",
+        "iterations": 2,
+        "libxc": "7.0.0",
+        "physical_residual_rms": 8.777083671441753e-17,
+        "pyscf": "2.14.0",
+        "spin_square": [
+          0.75,
+          2.0
+        ],
+        "symmetry": null
+      },
+      "method": "pbe-uks",
+      "multiplicity": 2,
+      "native": {
+        "converged": true,
+        "density_change_rms": 0.0,
+        "energy_change_hartree": 5.551115123125783e-16,
+        "energy_hartree": -0.540874107007091,
+        "executed_backend": "cpu_reference",
+        "iterations": 2,
+        "physical_residual_rms": 9.614813431917819e-17
+      },
+      "passed": true,
+      "spin_occupations": [
+        1,
+        0
+      ]
+    },
+    {
+      "absolute_energy_error_hartree": 9.947598300641403e-14,
+      "case": "oh_doublet",
+      "charge": 0,
+      "grid": {
+        "identity": "d01a2473f943df8fb7b7ba25185e5f7f5213d77a74ce2f9844e1c01bbab6c0c8",
+        "point_count": 49152,
+        "points_sha256": "8ea2f199c10bfb9c6a330253b1ffa6d93bbe8e4bac605614b1827effa21d1add",
+        "weights_sha256": "681af2d8ee90406047b5623dbf8cacf7aa4f2cf9df748e5f4cf96719e5846f91"
+      },
+      "independent": {
+        "angular_momenta": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "converged": true,
+        "energy_hartree": -74.06768139171665,
+        "history": [
+          {
+            "density_change_norm": 1.1828074278591125,
+            "energy_hartree": -74.04156696847313,
+            "iteration": 1,
+            "orbital_gradient_norm": 0.17097474317372896
+          },
+          {
+            "density_change_norm": 1.5256834416170502,
+            "energy_hartree": -74.05319882665613,
+            "iteration": 2,
+            "orbital_gradient_norm": 0.1327747427916747
+          },
+          {
+            "density_change_norm": 1.4358231362342606,
+            "energy_hartree": -74.06767596892031,
+            "iteration": 3,
+            "orbital_gradient_norm": 0.0020271383338461707
+          },
+          {
+            "density_change_norm": 1.4142250234588114,
+            "energy_hartree": -74.06768130002575,
+            "iteration": 4,
+            "orbital_gradient_norm": 0.00025615035024573993
+          },
+          {
+            "density_change_norm": 1.4142137941998656,
+            "energy_hartree": -74.06768139084333,
+            "iteration": 5,
+            "orbital_gradient_norm": 2.660842442332872e-05
+          },
+          {
+            "density_change_norm": 1.4142135647492824,
+            "energy_hartree": -74.06768139171612,
+            "iteration": 6,
+            "orbital_gradient_norm": 5.008072869782912e-07
+          },
+          {
+            "density_change_norm": 1.4142135623749268,
+            "energy_hartree": -74.06768139171662,
+            "iteration": 7,
+            "orbital_gradient_norm": 5.697776203011663e-09
+          },
+          {
+            "density_change_norm": 1.4142135623730956,
+            "energy_hartree": -74.06768139171662,
+            "iteration": 8,
+            "orbital_gradient_norm": 2.7389826064144974e-09
+          },
+          {
+            "density_change_norm": 1.4142135623730956,
+            "energy_hartree": -74.06768139171662,
+            "iteration": 9,
+            "orbital_gradient_norm": 1.8042309472928649e-09
+          },
+          {
+            "density_change_norm": 1.4142135623730956,
+            "energy_hartree": -74.06768139171665,
+            "iteration": 10,
+            "orbital_gradient_norm": 2.063126568397435e-09
+          },
+          {
+            "density_change_norm": 4.210859630983644e-09,
+            "energy_hartree": -74.06768139171665,
+            "iteration": 11,
+            "orbital_gradient_norm": 1.1445660906830141e-11
+          }
+        ],
+        "initial_guess": "minao",
+        "iterations": 11,
+        "libxc": "7.0.0",
+        "physical_residual_rms": 1.114388000363824e-12,
+        "pyscf": "2.14.0",
+        "spin_square": [
+          0.75087012397967,
+          2.0008699347830383
+        ],
+        "symmetry": "C2v"
+      },
+      "method": "lda-uks",
+      "multiplicity": 2,
+      "native": {
+        "converged": true,
+        "density_change_rms": 7.718360664850165e-11,
+        "energy_change_hartree": 9.947598300641403e-14,
+        "energy_hartree": -74.06768139171675,
+        "executed_backend": "cpu_reference",
+        "iterations": 17,
+        "physical_residual_rms": 3.3556426989024015e-11
+      },
+      "passed": true,
+      "spin_occupations": [
+        5,
+        4
+      ]
+    },
+    {
+      "absolute_energy_error_hartree": 3.268496584496461e-13,
+      "case": "oh_doublet",
+      "charge": 0,
+      "grid": {
+        "identity": "d01a2473f943df8fb7b7ba25185e5f7f5213d77a74ce2f9844e1c01bbab6c0c8",
+        "point_count": 49152,
+        "points_sha256": "8ea2f199c10bfb9c6a330253b1ffa6d93bbe8e4bac605614b1827effa21d1add",
+        "weights_sha256": "681af2d8ee90406047b5623dbf8cacf7aa4f2cf9df748e5f4cf96719e5846f91"
+      },
+      "independent": {
+        "angular_momenta": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "converged": true,
+        "energy_hartree": -74.56865898003959,
+        "history": [
+          {
+            "density_change_norm": 1.1839280979363862,
+            "energy_hartree": -74.54337650223893,
+            "iteration": 1,
+            "orbital_gradient_norm": 0.1680772293199486
+          },
+          {
+            "density_change_norm": 0.5584395565891218,
+            "energy_hartree": -74.55521531207005,
+            "iteration": 2,
+            "orbital_gradient_norm": 0.1272357555065738
+          },
+          {
+            "density_change_norm": 0.24086130701515782,
+            "energy_hartree": -74.56865117878492,
+            "iteration": 3,
+            "orbital_gradient_norm": 0.0023923347842884114
+          },
+          {
+            "density_change_norm": 0.0064807242019262285,
+            "energy_hartree": -74.56865874096584,
+            "iteration": 4,
+            "orbital_gradient_norm": 0.0003774455454413419
+          },
+          {
+            "density_change_norm": 0.00131008584267144,
+            "energy_hartree": -74.56865897712352,
+            "iteration": 5,
+            "orbital_gradient_norm": 4.375908192592388e-05
+          },
+          {
+            "density_change_norm": 0.0001570323895840462,
+            "energy_hartree": -74.56865898003603,
+            "iteration": 6,
+            "orbital_gradient_norm": 1.3741271725499673e-06
+          },
+          {
+            "density_change_norm": 6.154968587922556e-06,
+            "energy_hartree": -74.56865898003957,
+            "iteration": 7,
+            "orbital_gradient_norm": 1.2627606513430264e-08
+          },
+          {
+            "density_change_norm": 1.2752882205642403e-08,
+            "energy_hartree": -74.56865898003959,
+            "iteration": 8,
+            "orbital_gradient_norm": 6.06326869328587e-09
+          },
+          {
+            "density_change_norm": 4.022018942193925e-09,
+            "energy_hartree": -74.56865898003956,
+            "iteration": 9,
+            "orbital_gradient_norm": 3.99220787294247e-09
+          },
+          {
+            "density_change_norm": 7.672078983059982e-09,
+            "energy_hartree": -74.56865898003956,
+            "iteration": 10,
+            "orbital_gradient_norm": 4.677030532630388e-11
+          }
+        ],
+        "initial_guess": "minao",
+        "iterations": 10,
+        "libxc": "7.0.0",
+        "physical_residual_rms": 4.523563753761325e-12,
+        "pyscf": "2.14.0",
+        "spin_square": [
+          0.7507921268955191,
+          2.000791970091363
+        ],
+        "symmetry": "C2v"
+      },
+      "method": "pbe-uks",
+      "multiplicity": 2,
+      "native": {
+        "converged": true,
+        "density_change_rms": 7.272000198281635e-11,
+        "energy_change_hartree": 2.7000623958883807e-13,
+        "energy_hartree": -74.56865898003991,
+        "executed_backend": "cpu_reference",
+        "iterations": 20,
+        "physical_residual_rms": 3.133512686464228e-11
+      },
+      "passed": true,
+      "spin_occupations": [
+        5,
+        4
+      ]
+    }
+  ],
+  "schema": "vibeqc.uks-endpoint-validation",
+  "source": {
+    "commit": "9d43a84a2780c4df9fc63050ea513812b95e00b3",
+    "status_porcelain": "",
+    "validator_sha256": "ab6ef01e05cf4d3a728c3558cb68c7742b7a7b4ef892dff1810652e07dcbeafd"
+  },
+  "version": 1
+}

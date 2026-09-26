@@ -1,0 +1,153 @@
+diff --git a/python/vibeqc_compiler/integral/df_shell_derivatives.py b/python/vibeqc_compiler/integral/df_shell_derivatives.py
+index 9474a26..f15f74e 100644
+--- a/python/vibeqc_compiler/integral/df_shell_derivatives.py
++++ b/python/vibeqc_compiler/integral/df_shell_derivatives.py
+@@ -134,6 +134,10 @@ template<unsigned A,unsigned B,unsigned C>
+ struct Moments {
+   static constexpr unsigned na=(A+1)*(A+2)/2,nb=(B+1)*(B+2)/2,nc=(C+1)*(C+2)/2;
+   static constexpr unsigned components=na*nb*nc;
++  // Both supported public representations use CCA identity expansions for s/p.
++  // Higher Cartesian classes are injective too, but retain the general path
++  // until independently qualified alongside spherical d/f fallback semantics.
++  static constexpr bool public_weight_identity=A<2 && B<2 && C<2;
+   static constexpr unsigned rows=B+1,columns=C+1;
+   static constexpr unsigned axis_size=(A+2)*rows*columns*(A+B+C+3)/2;
+   static constexpr unsigned polynomial_calls=(A<2 && B<2 && C<2)?0:3*(A+2)*rows*columns;
+diff --git a/src/scf/cuda/df_shell_derivatives.cu b/src/scf/cuda/df_shell_derivatives.cu
+index b6b2a7e..194dcd1 100644
+--- a/src/scf/cuda/df_shell_derivatives.cu
++++ b/src/scf/cuda/df_shell_derivatives.cu
+@@ -61,6 +61,19 @@ void report_work(DfShellDiagnostics* diagnostics, unsigned row, std::size_t pa,
+                   df_shell_work_names[metric]);
+     runtime::cuda_trace::trace_counter(name, totals[metric]);
+   }
++  // Every expansion product is consumed by a shared atomic, a direct store,
++  // or its lane's retained register. Derive the last count from the existing
++  // device totals instead of adding another diagnostic atomic and buffer row.
++  const auto register_values = totals[static_cast<unsigned>(DfShellWork::expansion_term_products)] -
++                               totals[static_cast<unsigned>(DfShellWork::folding_shared_atomics)] -
++                               totals[static_cast<unsigned>(DfShellWork::folding_direct_stores)];
++  char register_name[160];
++  std::snprintf(register_name, sizeof(register_name), "shell_%u%u%u_work_folding_register_values",
++                A, B, C);
++  runtime::cuda_trace::trace_counter(register_name, register_values);
++  std::snprintf(register_name, sizeof(register_name),
++                "shell_%u%u%u_p%zu_%zu_%zu_work_folding_register_values", A, B, C, pa, pb, pc);
++  runtime::cuda_trace::trace_counter(register_name, register_values);
+   if (diagnostics->observer)
+     diagnostics->observer(A, B, C, pa, pb, pc, totals, diagnostics->observer_context);
+ }
+@@ -82,7 +95,12 @@ __device__ __forceinline__ void contract_shell_task(
+   using Math = generated::Shell<A, B, C>;
+   using Schedule = generated::Schedule<A, B, C, Variant>;
+   constexpr auto lanes = Schedule::lanes, groups = Schedule::groups;
+-  __shared__ double all_weights[groups][Math::components], all_cache[groups][3 * Math::axis_size];
++  constexpr bool register_weights = Math::public_weight_identity;
++  static_assert(!register_weights || Math::components <= lanes);
++  // No compiled reference to all_weights remains in the s/p specialization.
++  // Every lane retains at most one component across the primitive traversal.
++  __shared__ double all_weights[groups][register_weights ? 1 : Math::components];
++  __shared__ double all_cache[groups][3 * Math::axis_size];
+   __shared__ scalar::Geometry all_geometry[groups];
+   const unsigned lane = threadIdx.x % lanes, group = threadIdx.x / lanes;
+   const unsigned mask = (0xffffffffU >> (32 - lanes)) << ((threadIdx.x % 32) / lanes * lanes);
+@@ -113,8 +131,11 @@ __device__ __forceinline__ void contract_shell_task(
+   const auto nb = second.ao_offsets[sb + 1] - ob;
+   const auto nc = auxiliary.ao_offsets[sc + 1] - oc;
+   if (oc >= panel_begin + panel_count || oc + nc <= panel_begin) return;
+-  for (unsigned i = lane; i < Math::components; i += lanes) cart_weights[i] = 0;
+-  __syncwarp(mask);
++  double owned_weight = 0;
++  if constexpr (!register_weights) {
++    for (unsigned i = lane; i < Math::components; i += lanes) cart_weights[i] = 0;
++    __syncwarp(mask);
++  }
+   unsigned public_work = 0, public_loads = 0;
+   unsigned long long expansion_work = 0, convolution_work = 0;
+   for (auto i = std::int64_t{lane}; i < na * nb * nc; i += lanes) {
+@@ -141,26 +162,36 @@ __device__ __forceinline__ void contract_shell_task(
+     }
+     if (weight == 0) continue;
+     ++public_work;
+-    if (work)
+-      expansion_work += static_cast<unsigned long long>(o.term_counts[ai]) * o.term_counts[bi] *
+-                        x.term_counts[ci];
+-    for (unsigned at = 0; at < o.term_counts[ai]; ++at)
+-      for (unsigned bt = 0; bt < o.term_counts[bi]; ++bt)
+-        for (unsigned ct = 0; ct < x.term_counts[ci]; ++ct) {
+-          const auto ia = ai * term_capacity + at, ib = bi * term_capacity + bt;
+-          const auto ic = ci * term_capacity + ct;
+-          const auto ac = generated::cartesian_index(A, o.term_angular + 3 * ia);
+-          const auto bc = generated::cartesian_index(B, o.term_angular + 3 * ib);
+-          const auto cc = generated::cartesian_index(C, x.term_angular + 3 * ic);
+-          atomicAdd(
+-              cart_weights + (ac * Math::nb + bc) * Math::nc + cc,
+-              weight * o.term_coefficients[ia] * o.term_coefficients[ib] * x.term_coefficients[ic]);
+-        }
++    if constexpr (register_weights) {
++      // ao_expansions() maps each public s/p AO to the same CCA component in
++      // both representations. Its product index is this lane's component;
++      // packed triangles and partial panels only remove owners, leaving zero.
++      owned_weight = weight * o.term_coefficients[ai * term_capacity] *
++                     o.term_coefficients[bi * term_capacity] *
++                     x.term_coefficients[ci * term_capacity];
++      if (work) ++expansion_work;
++    } else {
++      if (work)
++        expansion_work += static_cast<unsigned long long>(o.term_counts[ai]) * o.term_counts[bi] *
++                          x.term_counts[ci];
++      for (unsigned at = 0; at < o.term_counts[ai]; ++at)
++        for (unsigned bt = 0; bt < o.term_counts[bi]; ++bt)
++          for (unsigned ct = 0; ct < x.term_counts[ci]; ++ct) {
++            const auto ia = ai * term_capacity + at, ib = bi * term_capacity + bt;
++            const auto ic = ci * term_capacity + ct;
++            const auto ac = generated::cartesian_index(A, o.term_angular + 3 * ia);
++            const auto bc = generated::cartesian_index(B, o.term_angular + 3 * ib);
++            const auto cc = generated::cartesian_index(C, x.term_angular + 3 * ic);
++            atomicAdd(cart_weights + (ac * Math::nb + bc) * Math::nc + cc,
++                      weight * o.term_coefficients[ia] * o.term_coefficients[ib] *
++                          x.term_coefficients[ic]);
++          }
++    }
+   }
+-  __syncwarp(mask);
++  if constexpr (!register_weights) __syncwarp(mask);
+   unsigned component_work = 0;
+   for (unsigned i = lane; i < Math::components; i += lanes)
+-    if (cart_weights[i] != 0) {
++    if ((register_weights ? owned_weight : cart_weights[i]) != 0) {
+       ++component_work;
+       if (work) convolution_work += Math::convolution_work(i);
+     }
+@@ -182,8 +213,9 @@ __device__ __forceinline__ void contract_shell_task(
+     record_work(work, DfShellWork::public_weight_loads, public_loads);
+     record_work(work, DfShellWork::public_nonzero_weights, public_work);
+     record_work(work, DfShellWork::expansion_term_products, expansion_work);
+-    record_work(work, DfShellWork::folding_shared_atomics, expansion_work);
+-    record_work(work, DfShellWork::subgroup_rendezvous, 2);
++    if constexpr (!register_weights)
++      record_work(work, DfShellWork::folding_shared_atomics, expansion_work);
++    record_work(work, DfShellWork::subgroup_rendezvous, register_weights ? 0 : 2);
+   }
+   if (!active) return;
+   const auto atom_a = o.shell_atoms[sa], atom_b = o.shell_atoms[sb], atom_c = x.shell_atoms[sc];
+@@ -225,12 +257,13 @@ __device__ __forceinline__ void contract_shell_task(
+         __syncwarp(mask);
+         Math::prepare(geometry, cache, lane, lanes);
+         __syncwarp(mask);
+-        for (unsigned i = lane; i < Math::components; i += lanes)
+-          if (cart_weights[i] != 0)
+-            Math::accumulate(
+-                i, alpha, beta, geometry, cache,
+-                cart_weights[i] * o.coefficients[pa] * o.coefficients[pb] * x.coefficients[pc],
+-                output);
++        for (unsigned i = lane; i < Math::components; i += lanes) {
++          const double weight = register_weights ? owned_weight : cart_weights[i];
++          if (weight != 0)
++            Math::accumulate(i, alpha, beta, geometry, cache,
++                             weight * o.coefficients[pa] * o.coefficients[pb] * x.coefficients[pc],
++                             output);
++        }
+         // The next primitive must not overwrite moments still being consumed.
+         __syncwarp(mask);
+       }

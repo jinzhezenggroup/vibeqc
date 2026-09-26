@@ -1,0 +1,493 @@
+"""Freeze and optionally execute the matched DF completion matrix for #206.
+
+The existing ``compare_gpu4pyscf_batch`` benchmark owns one scientifically
+matched endpoint.  This driver owns the cross-case protocol: it freezes the
+four required 96/192-AO cases, records the exact command and source identity,
+and executes cases sequentially so one RTX 5090 is never shared by concurrent
+measurements.  It intentionally preserves failed runs in the manifest rather
+than turning a partial matrix into a passing result.
+
+Run the ``--run`` mode inside a finite Slurm allocation.  A manifest-only run
+is safe on a login node and is useful for review before spending GPU time.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import typing
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+BENCHMARK = ROOT / "benchmarks" / "compare_gpu4pyscf_batch.py"
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixCase:
+    """One mandatory #206 DF endpoint and its fixed topology."""
+
+    name: str
+    ao_count: int
+    batch_size: int
+
+
+MATRIX: tuple[MatrixCase, ...] = (
+    MatrixCase("water-tetramer-def2-svp-spherical", 96, 1),
+    MatrixCase("water-tetramer-def2-svp-spherical", 96, 4),
+    MatrixCase("water-octamer-s4-def2-svp-spherical", 192, 1),
+    MatrixCase("water-octamer-s4-def2-svp-spherical", 192, 4),
+)
+
+
+def _git(*command: str) -> str:
+    """Return a repository value, or an explicit empty value if unavailable."""
+
+    completed = subprocess.run(
+        ("git", "-C", str(ROOT), *command),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def _matrix(selected: str | None) -> tuple[MatrixCase, ...]:
+    """Select one case for a smoke run or retain the complete required matrix."""
+
+    if selected is None:
+        return MATRIX
+    return tuple(item for item in MATRIX if item.name == selected)
+
+
+def _native_library_metadata(library: Path) -> dict[str, Any]:
+    """Identify the requested binary without loading native code or CUDA.
+
+    Manifest-only planning is supported before compilation, so a missing file
+    remains explicit rather than inheriting another build's identity. Read in
+    bounded chunks: an sm_120 library can be much larger than the manifest.
+    This pre-run snapshot does not establish which binary an endpoint loads;
+    the comparator's own native-build metadata remains authoritative for that.
+    """
+    path = library.resolve()
+    metadata: dict[str, Any] = {
+        "path": str(path),
+        "status": "missing",
+        "sha256": None,
+        "size_bytes": None,
+    }
+    try:
+        stream = path.open("rb")
+    except FileNotFoundError:
+        return metadata
+    digest = hashlib.sha256()
+    size = 0
+    with stream:
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
+            size += len(chunk)
+    metadata.update(status="recorded", sha256=digest.hexdigest(), size_bytes=size)
+    return metadata
+
+
+def manifest_payload(
+    *,
+    cases: tuple[MatrixCase, ...],
+    repeats: int,
+    python: str,
+    library: Path,
+    output_dir: Path,
+    memory_budget_bytes: int = 0,
+    energy_only: bool = False,
+) -> dict[str, Any]:
+    """Build a reviewable protocol record before any GPU work starts."""
+
+    return {
+        "schema": "vibeqc.issue206.df_matrix",
+        "version": 1,
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "git_head": _git("rev-parse", "HEAD"),
+            "git_dirty": bool(_git("status", "--porcelain")),
+            "repository": str(ROOT),
+            "native_library": _native_library_metadata(library),
+        },
+        "execution": {
+            "slurm_required_for_run": True,
+            "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+            "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+            "python": python,
+            "library": str(library),
+            "repeats_per_engine": repeats,
+            "density_fitting_memory_budget_bytes": memory_budget_bytes,
+            "properties": ["energy"] if energy_only else ["energy", "forces"],
+            "output_dir": str(output_dir),
+            "benchmark": str(BENCHMARK),
+        },
+        "matched_contract": {
+            "method": "rhf",
+            "density_fitting": "cuda",
+            "auxiliary_basis": "same as orbital basis",
+            "energy_tolerance": 1.0e-12,
+            "density_tolerance": 1.0e-10,
+            "reference_gradient_tolerance": 1.0e-10,
+            "screening_tolerance": 1.0e-12,
+            "direct_scf_tolerance": 1.0e-14,
+            "warm_policy": "fixed post-cold engine-local density snapshot",
+            "comparison": "VibeQC DF versus GPU4PySCF DF; no mixed direct/DF claim",
+            "maximum_energy_error_hartree": 1.0e-9,
+            "maximum_force_error_hartree_per_bohr": None if energy_only else 1.0e-8,
+        },
+        "component_ledger": {
+            "status": "pending_measurement",
+            "required_components": [
+                "raw_metric_and_three_center_generation",
+                "metric_factorization",
+                "metric_transform",
+                "ri_j",
+                "ri_k",
+                "eigensolver_and_diis",
+                "one_electron_force",
+                "df_two_and_three_center_response",
+                "host_device_transfer",
+                "synchronization_and_control",
+            ],
+            "measurement_source": (
+                "endpoint JSON plus synchronized Nsight NVTX/CUPTI capture; "
+                "missing components remain null"
+            ),
+        },
+        "matrix": [
+            {
+                **asdict(case),
+                "result": None,
+                "status": "pending",
+            }
+            for case in cases
+        ],
+    }
+
+
+def _write(path: Path, payload: dict[str, Any]) -> None:
+    """Write atomically enough for an interrupted benchmark to remain readable."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    temporary.replace(path)
+
+
+def run_matrix(
+    payload: dict[str, Any],
+    *,
+    manifest_path: Path,
+    python: str,
+    library: Path,
+    output_dir: Path,
+) -> None:
+    """Retain every attempt, then fail the job if any endpoint failed.
+
+    Publish the command before launching so an interrupted job still identifies
+    its active endpoint. A failed attempt must not claim a previous run's JSON.
+    """
+
+    if not os.environ.get("SLURM_JOB_ID"):
+        raise SystemExit("--run requires a finite Slurm allocation (SLURM_JOB_ID)")
+    if not os.environ.get("CUDA_VISIBLE_DEVICES"):
+        raise SystemExit("--run requires Slurm-provided CUDA_VISIBLE_DEVICES")
+
+    environment = os.environ.copy()
+    environment["VIBEQC_LIBRARY"] = str(library)
+    environment["PYTHONPATH"] = os.pathsep.join(
+        [str(ROOT / "python"), environment.get("PYTHONPATH", "")]
+    ).rstrip(os.pathsep)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for entry in payload["matrix"]:
+        case = MatrixCase(
+            name=entry["name"],
+            ao_count=int(entry["ao_count"]),
+            batch_size=int(entry["batch_size"]),
+        )
+        stem = f"{case.ao_count}ao-b{case.batch_size}"
+        result_path = output_dir / f"{stem}.json"
+        log_path = output_dir / f"{stem}.log"
+
+        def result_identity(path: typing.Any = result_path) -> typing.Any:
+            """Distinguish a new endpoint artifact from an earlier attempt."""
+            try:
+                stat = path.stat()
+            except FileNotFoundError:
+                return None
+            return stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+
+        previous_result = result_identity()
+        command = [
+            python,
+            str(BENCHMARK),
+            "--case",
+            case.name,
+            "--batch",
+            str(case.batch_size),
+            "--repeats",
+            str(payload["execution"]["repeats_per_engine"]),
+            "--density-fitting",
+            "cuda",
+            "--density-fitting-memory-budget-bytes",
+            str(payload["execution"].get("density_fitting_memory_budget_bytes", 0)),
+            "--output",
+            str(result_path),
+        ]
+        # GPU4PySCF's matched DF reference must rebuild the full Fock from the
+        # full density.  Without this explicit protocol flag its incremental
+        # DF path rejects the issue-206 endpoint before producing a result.
+        command.append("--reference-full-fock")
+        command.extend(["--maximum-energy-error", "1e-9"])
+        if payload["execution"].get("properties") == ["energy"]:
+            command.append("--energy-only")
+        else:
+            command.extend(["--maximum-force-error", "1e-8"])
+        entry.update({"status": "running", "command": command, "result": None})
+        _write(manifest_path, payload)
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=ROOT,
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            returncode = completed.returncode
+            log = completed.stdout + "\n--- stderr ---\n" + completed.stderr
+        except OSError as error:
+            # A missing interpreter is an attempted endpoint too; retain its
+            # failure and finish the other cases before reporting job failure.
+            returncode = None
+            log = str(error) + "\n"
+        current_result = result_identity()
+        fresh_result = current_result is not None and current_result != previous_result
+        passed = returncode == 0 and fresh_result
+        if returncode == 0 and not passed:
+            log += "\nEndpoint exited successfully without a result JSON.\n"
+        log_path.write_text(log)
+        entry.update(
+            {
+                "status": "passed" if passed else "failed",
+                "returncode": returncode,
+                # Numerical gate failures also produce useful endpoint JSON;
+                # retain it when this attempt wrote it, regardless of exit code.
+                "result": str(result_path) if fresh_result else None,
+                "log": str(log_path),
+            }
+        )
+        _write(manifest_path, payload)
+    if any(entry["status"] != "passed" for entry in payload["matrix"]):
+        raise SystemExit("DF matrix failed; see endpoint logs in " + str(manifest_path))
+
+
+def main() -> None:
+    """Create the #206 protocol manifest and optionally run its matrix."""
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run", action="store_true", help="execute cases in Slurm")
+    parser.add_argument(
+        "--case",
+        choices=sorted(
+            {item.name for item in MATRIX}
+            | {"water-hexadecamer-2s4-def2-svp-spherical"}
+        ),
+    )
+    parser.add_argument("--batch", type=int, choices=(1, 4))
+    parser.add_argument(
+        "--host-workloads",
+        action="store_true",
+        help="run the #308 native host-eigensolve protocol control within #206",
+    )
+    parser.add_argument(
+        "--eager-core-ablation",
+        action="store_true",
+        help="pair restored eager core guesses with lazy warm preparation on one binary",
+    )
+    parser.add_argument(
+        "--preparation-ablation",
+        choices=("lazy-core", "overlap-cache", "combined"),
+        help="compare original eager/rebuilt preparation with one #309 increment",
+    )
+    parser.add_argument(
+        "--setup-eigen-ablation",
+        action="store_true",
+        help="compare reference/device cold setup with identical preparation work and device finalization",
+    )
+    parser.add_argument(
+        "--final-eigen-ablation",
+        action="store_true",
+        help="compare CPU-reference and ordinary device final eigen providers with identical preparation",
+    )
+    parser.add_argument(
+        "--final-state-ablation",
+        action="store_true",
+        help="compare forced device final rebuilding with verified retention and necessary correction",
+    )
+    parser.add_argument(
+        "--combined-host-ablation",
+        action="store_true",
+        help="compare eager/rebuilt reference setup and forced reference finalization with the combined verified device path",
+    )
+    parser.add_argument(
+        "--host-trace-dir",
+        type=Path,
+        help="diagnostic host traces; requires --host-workloads and a fresh directory",
+    )
+    parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--energy-only", action="store_true")
+    parser.add_argument(
+        "--memory-budget-bytes",
+        type=int,
+        default=0,
+        help="DF sub-budget; positive selects generated source execution",
+    )
+    parser.add_argument("--python", default=sys.executable)
+    parser.add_argument(
+        "--library",
+        type=Path,
+        default=ROOT / "build" / "cuda-dev-fast" / "libvibeqc.so",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=raw_output_path,
+        default=str(ROOT / ".artifacts" / "issue206-df"),
+    )
+    parser.add_argument("--manifest", type=Path)
+    args = parser.parse_args()
+    if args.repeats < 1:
+        parser.error("--repeats must be positive")
+    if args.memory_budget_bytes < 0:
+        parser.error("--memory-budget-bytes must be nonnegative")
+
+    if args.host_trace_dir and not args.host_workloads:
+        parser.error("--host-trace-dir requires --host-workloads")
+    ablations = {
+        "eager-core-ablation": args.eager_core_ablation,
+        "preparation-ablation": args.preparation_ablation,
+        "setup-eigen-ablation": args.setup_eigen_ablation,
+        "final-eigen-ablation": args.final_eigen_ablation,
+        "final-state-ablation": args.final_state_ablation,
+        "combined-host-ablation": args.combined_host_ablation,
+    }
+    for name, enabled in ablations.items():
+        if enabled and not args.host_workloads:
+            parser.error(f"--{name} requires --host-workloads")
+    if sum(bool(value) for value in ablations.values()) > 1:
+        parser.error("select one host ablation")
+    if args.host_workloads and args.repeats < 5:
+        parser.error("host workload controls require at least five paired samples")
+    cases = _matrix(args.case)
+    if args.case == "water-hexadecamer-2s4-def2-svp-spherical":
+        if not args.host_workloads:
+            parser.error(
+                "384-AO host probe does not replace the mandatory matched matrix"
+            )
+        cases = tuple(MatrixCase(args.case, 384, b) for b in (1, 4))
+    if args.batch:
+        cases = tuple(case for case in cases if case.batch_size == args.batch)
+    # Children run from ROOT; resolve caller-relative paths before changing cwd.
+    output_dir = args.output_dir.resolve()
+    library = args.library.resolve()
+    manifest_path = (
+        args.manifest.resolve() if args.manifest else output_dir / "manifest.json"
+    )
+    payload = manifest_payload(
+        cases=cases,
+        repeats=args.repeats,
+        python=args.python,
+        library=library,
+        output_dir=output_dir,
+        memory_budget_bytes=args.memory_budget_bytes,
+        energy_only=args.energy_only,
+    )
+    if args.host_workloads:
+        payload["execution"]["benchmark"] = "issue206_df_matrix.py --host-workloads"
+        payload["execution"]["profiled"] = args.host_trace_dir is not None
+        payload["execution"]["host_ablation"] = next(
+            (name for name, enabled in ablations.items() if enabled), "protocol-control"
+        )
+        payload["matched_contract"]["comparison"] = (
+            "combined preparation/provider/final-state work ablation with strict physical-state gates; no external parity claim"
+            if args.combined_host_ablation
+            else "forced device final rebuilding versus verified retention/correction; no external parity claim"
+            if args.final_state_ablation
+            else "reference/device setup provider ablation; no external parity claim"
+            if args.setup_eigen_ablation
+            else "reference versus ordinary device final eigen provider; no external parity claim"
+            if args.final_eigen_ablation
+            else f"original eager/rebuilt preparation versus {args.preparation_ablation}; no external parity claim"
+            if args.preparation_ablation
+            else "eager core frame versus lazy warm initialization; no external parity claim"
+            if args.eager_core_ablation
+            else "identical native ABBA protocol control; no external parity or speedup claim"
+        )
+    _write(manifest_path, payload)
+    if args.run and args.host_workloads:
+        from benchmarks.df_host_workloads import AblationBranchMismatch, host_workloads
+
+        os.environ["VIBEQC_LIBRARY"] = str(library)
+        for entry in payload["matrix"]:
+            stem = f"host-{entry['ao_count']}ao-b{entry['batch_size']}"
+            result_path = output_dir / f"{stem}.json"
+            entry.update(status="running", result=None)
+            _write(manifest_path, payload)
+            try:
+                result = host_workloads(
+                    case_name=entry["name"],
+                    batch_size=entry["batch_size"],
+                    library=library,
+                    repeats=args.repeats,
+                    memory_budget_bytes=args.memory_budget_bytes,
+                    energy_only=args.energy_only,
+                    eager_core_ablation=args.eager_core_ablation,
+                    preparation_ablation=args.preparation_ablation,
+                    final_eigen_ablation=args.final_eigen_ablation,
+                    setup_eigen_ablation=args.setup_eigen_ablation,
+                    final_state_ablation=args.final_state_ablation,
+                    combined_host_ablation=args.combined_host_ablation,
+                    trace_directory=None
+                    if args.host_trace_dir is None
+                    else args.host_trace_dir.resolve() / stem,
+                )
+                _write(result_path, result)
+                entry.update(status="passed", result=str(result_path))
+            except Exception as error:
+                entry.update(status="failed", detail=str(error))
+                if isinstance(error, AblationBranchMismatch):
+                    rejected_path = output_dir / f"{stem}.rejected.json"
+                    _write(rejected_path, error.evidence)
+                    entry["rejected_result"] = str(rejected_path)
+                _write(manifest_path, payload)
+                raise
+            _write(manifest_path, payload)
+    elif args.run:
+        run_matrix(
+            payload,
+            manifest_path=manifest_path,
+            python=args.python,
+            library=library,
+            output_dir=output_dir,
+        )
+    print(manifest_path)
+
+
+if __name__ == "__main__":
+    main()

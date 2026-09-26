@@ -1,0 +1,1070 @@
+{
+  "schema": "vibeqc.density-workload-reference.v1",
+  "inputs": {
+    "name": "water4_svp",
+    "basis_name": "def2-svp",
+    "atomic_numbers": [
+      8,
+      1,
+      1,
+      8,
+      1,
+      1,
+      8,
+      1,
+      1,
+      8,
+      1,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        -1.43,
+        1.11
+      ],
+      [
+        0.0,
+        1.43,
+        1.11
+      ],
+      [
+        5.5,
+        0.0,
+        0.0
+      ],
+      [
+        5.5,
+        -1.43,
+        1.11
+      ],
+      [
+        5.5,
+        1.43,
+        1.11
+      ],
+      [
+        0.0,
+        5.5,
+        0.0
+      ],
+      [
+        0.0,
+        4.07,
+        1.11
+      ],
+      [
+        0.0,
+        6.93,
+        1.11
+      ],
+      [
+        5.5,
+        5.5,
+        0.0
+      ],
+      [
+        5.5,
+        4.07,
+        1.11
+      ],
+      [
+        5.5,
+        6.93,
+        1.11
+      ]
+    ],
+    "basis_representation": "real_spherical",
+    "charge": 0,
+    "multiplicity": 1,
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            2266.1767785,
+            -0.0053431809926
+          ],
+          [
+            340.87010191,
+            -0.03989003923
+          ],
+          [
+            77.363135167,
+            -0.17853911985
+          ],
+          [
+            21.47964494,
+            -0.46427684959
+          ],
+          [
+            6.6589433124,
+            -0.44309745172
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.80975975668,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.25530772234,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            17.721504317,
+            0.043394573193
+          ],
+          [
+            3.863550544,
+            0.23094120765
+          ],
+          [
+            1.0480920883,
+            0.51375311064
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.27641544411,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 3,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            2266.1767785,
+            -0.0053431809926
+          ],
+          [
+            340.87010191,
+            -0.03989003923
+          ],
+          [
+            77.363135167,
+            -0.17853911985
+          ],
+          [
+            21.47964494,
+            -0.46427684959
+          ],
+          [
+            6.6589433124,
+            -0.44309745172
+          ]
+        ]
+      },
+      {
+        "atom_index": 3,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.80975975668,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 3,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.25530772234,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 3,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            17.721504317,
+            0.043394573193
+          ],
+          [
+            3.863550544,
+            0.23094120765
+          ],
+          [
+            1.0480920883,
+            0.51375311064
+          ]
+        ]
+      },
+      {
+        "atom_index": 3,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.27641544411,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 3,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 4,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 4,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 4,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 5,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 5,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 5,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 6,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            2266.1767785,
+            -0.0053431809926
+          ],
+          [
+            340.87010191,
+            -0.03989003923
+          ],
+          [
+            77.363135167,
+            -0.17853911985
+          ],
+          [
+            21.47964494,
+            -0.46427684959
+          ],
+          [
+            6.6589433124,
+            -0.44309745172
+          ]
+        ]
+      },
+      {
+        "atom_index": 6,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.80975975668,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 6,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.25530772234,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 6,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            17.721504317,
+            0.043394573193
+          ],
+          [
+            3.863550544,
+            0.23094120765
+          ],
+          [
+            1.0480920883,
+            0.51375311064
+          ]
+        ]
+      },
+      {
+        "atom_index": 6,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.27641544411,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 6,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 7,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 7,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 7,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 8,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 8,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 8,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 9,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            2266.1767785,
+            -0.0053431809926
+          ],
+          [
+            340.87010191,
+            -0.03989003923
+          ],
+          [
+            77.363135167,
+            -0.17853911985
+          ],
+          [
+            21.47964494,
+            -0.46427684959
+          ],
+          [
+            6.6589433124,
+            -0.44309745172
+          ]
+        ]
+      },
+      {
+        "atom_index": 9,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.80975975668,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 9,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.25530772234,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 9,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            17.721504317,
+            0.043394573193
+          ],
+          [
+            3.863550544,
+            0.23094120765
+          ],
+          [
+            1.0480920883,
+            0.51375311064
+          ]
+        ]
+      },
+      {
+        "atom_index": 9,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.27641544411,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 9,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 10,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 10,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 10,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 11,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13.010701,
+            0.019682158
+          ],
+          [
+            1.9622572,
+            0.13796524
+          ],
+          [
+            0.44453796,
+            0.47831935
+          ]
+        ]
+      },
+      {
+        "atom_index": 11,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.12194962,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 11,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.8,
+            1.0
+          ]
+        ]
+      }
+    ],
+    "grid_spec": {
+      "radial_points": 2,
+      "angular_polar": 16,
+      "angular_azimuth": 32,
+      "element_radii": [],
+      "partition_iterations": 3,
+      "coincident_tolerance": 1e-12,
+      "version": 1,
+      "radial_rule": "rational-legendre",
+      "angular_rule": "legendre-trapezoid",
+      "partition": "becke-equal-radius",
+      "pruning": "none",
+      "units": "Bohr",
+      "ordering": "atom-radial-polar-azimuth"
+    }
+  },
+  "inputs_hash": "23e4742b2d70fe7cf0514b2e6cf08245defcea34bdc4455da9fdefd2727bf7e6",
+  "grid_identity": "b3ac510b9608fb3fc8444594353ca37405ce4039ad62808b0d54ff45fcf4c859",
+  "grid_provenance": {
+    "atoms": [
+      {
+        "atomic_number": 8,
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          0.0,
+          -1.43,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          0.0,
+          1.43,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 8,
+        "position": [
+          5.5,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          5.5,
+          -1.43,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          5.5,
+          1.43,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 8,
+        "position": [
+          0.0,
+          5.5,
+          0.0
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          0.0,
+          4.07,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          0.0,
+          6.93,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 8,
+        "position": [
+          5.5,
+          5.5,
+          0.0
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          5.5,
+          4.07,
+          1.11
+        ]
+      },
+      {
+        "atomic_number": 1,
+        "position": [
+          5.5,
+          6.93,
+          1.11
+        ]
+      }
+    ],
+    "grid_identity": "97339adac497928cabe27f2113fdc1b056ddb5e45094a89a4e6dab7b2308b122",
+    "grid_spec": {
+      "angular_azimuth": 32,
+      "angular_polar": 16,
+      "angular_rule": "legendre-trapezoid",
+      "coincident_tolerance": 1e-12,
+      "element_radii": [],
+      "ordering": "atom-radial-polar-azimuth",
+      "partition": "becke-equal-radius",
+      "partition_iterations": 3,
+      "pruning": "none",
+      "radial_points": 2,
+      "radial_rule": "rational-legendre",
+      "units": "Bohr",
+      "version": 1
+    },
+    "units": "Bohr"
+  },
+  "layout": "total",
+  "reference": {
+    "PySCF": "2.14.0",
+    "Libxc": "7.0.0",
+    "exporter_sha256": "3a4ead4f2dcb6154e6a884c73cd26eb2b10ffba79f19f8e8feb745660717be71",
+    "basis_adapter_sha256": "210765088eda3366537b0e7baefb89dacc634ee82b032bf972bf991475168b3e",
+    "numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
+    "angular_momenta": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      2,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      2,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      2,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      2,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1
+    ],
+    "producer": "PySCF PBE RKS",
+    "converged": true,
+    "energy": -305.06300711157064,
+    "gradient_norm": 4.121892678488399e-08,
+    "seconds": 1.4699535991530865,
+    "threads": 2,
+    "conv_tol": 1e-10,
+    "conv_tol_grad": 1e-07,
+    "producer_grid_level": 1,
+    "endpoint_scope": "complete fixed-grid E/V on declared coarse radial quadrature; no filtering, clipping or grid convergence claim"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        12288,
+        3
+      ],
+      "dtype": "float64",
+      "sha256": "9c9aff2b3c99eeff03866b014573f6cfe36941e4d8eac400494a9ab03700b568"
+    },
+    "weights": {
+      "shape": [
+        12288
+      ],
+      "dtype": "float64",
+      "sha256": "c8ec8a9bceb53a7cad2b1dab2b23b2c4576d3586d46d5afe97b31b4f4724c0d9"
+    },
+    "owners": {
+      "shape": [
+        12288
+      ],
+      "dtype": "uint32",
+      "sha256": "45014199d77d51917a7d724790142431d90fbf8cfb6365f55df82fd8381bd7c7"
+    },
+    "density_spin": {
+      "shape": [
+        2,
+        96,
+        96
+      ],
+      "dtype": "float64",
+      "sha256": "d49a7e97cde98c0952623f6525d480e9352517f7c2af429cf8219ad2df35d309"
+    },
+    "ao_scale": {
+      "shape": [
+        96
+      ],
+      "dtype": "float64",
+      "sha256": "c845b35a5027a4059b880e0cf690c0c23ca67908c7f10e92affd96c74a0784d5"
+    },
+    "coefficients_0": {
+      "shape": [
+        96,
+        20
+      ],
+      "dtype": "float64",
+      "sha256": "e425f5b4b48dae88dd64c263d8eb09377d58d064bbb53c5023b0488d87914699"
+    },
+    "occupations_0": {
+      "shape": [
+        20
+      ],
+      "dtype": "float64",
+      "sha256": "44a2420d6f45ff8516f66bbad47077a221eef78b5aa4e7df63d1f19ab1893f7f"
+    },
+    "coefficients_1": {
+      "shape": [
+        96,
+        20
+      ],
+      "dtype": "float64",
+      "sha256": "e425f5b4b48dae88dd64c263d8eb09377d58d064bbb53c5023b0488d87914699"
+    },
+    "occupations_1": {
+      "shape": [
+        20
+      ],
+      "dtype": "float64",
+      "sha256": "44a2420d6f45ff8516f66bbad47077a221eef78b5aa4e7df63d1f19ab1893f7f"
+    },
+    "sample_ids": {
+      "shape": [
+        64
+      ],
+      "dtype": "uint32",
+      "sha256": "fae1d1c2efd3819b938381c17982dc349c7cfda34ad3d65f198bd79ec153b843"
+    },
+    "sample_jets": {
+      "shape": [
+        4,
+        64,
+        96
+      ],
+      "dtype": "float64",
+      "sha256": "a67b436bdfb5ff7ce1c31138e18ad5f13d61b04badf524efa8701e8ac407df22"
+    },
+    "sample_rho_gradient": {
+      "shape": [
+        2,
+        4,
+        64
+      ],
+      "dtype": "float64",
+      "sha256": "36354cc8e223b702241bd2081f4a2a322cd901bfc186dfaff0a29d04dfb1e772"
+    },
+    "LDA_XC_PW_energy": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "e7cef65fc75ca954e4fe631a543bffe437fcb2f5342825b6c4b11e34bfbd6cf3"
+    },
+    "LDA_XC_PW_electrons": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "27ee394e0f93a3fc2bc711559c3fddae272adffb2b1525f3f39e4011f8c7e1ce"
+    },
+    "LDA_XC_PW_potential": {
+      "shape": [
+        96,
+        96
+      ],
+      "dtype": "float64",
+      "sha256": "9f05395f6f756245e09e8eb1df4838f648f3f63b2bff11e1d02893f0c1fd1000"
+    },
+    "PBE_energy": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "a7c37798434f702776557df83e5fdff63bb08c98d3aecd855da8e905fafdbf91"
+    },
+    "PBE_electrons": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "27ee394e0f93a3fc2bc711559c3fddae272adffb2b1525f3f39e4011f8c7e1ce"
+    },
+    "PBE_potential": {
+      "shape": [
+        96,
+        96
+      ],
+      "dtype": "float64",
+      "sha256": "675a5cb81798c35f2cc16dcf4ebe21086feb4b97ca7b06c51ad1c9277e30ce9d"
+    }
+  },
+  "identity": "b63569eba5f84b79b8ee2818fbf3ae585e062f21a46c0cf8e31eb5f2128c0fb2"
+}

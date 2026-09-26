@@ -1,0 +1,6 @@
+{
+  "name": "jit_integral",
+  "outputs": [],
+  "owner": "python/vibeqc_compiler/integral",
+  "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+}

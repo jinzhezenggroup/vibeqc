@@ -1,0 +1,134 @@
+{
+  "fixtures": [
+    {
+      "data_hash": "a4628ea9d81d20d61ceb0e9036ed6ef96f08026f160eeee1eb034f3ae50f7c9f",
+      "file": "ssss-asymmetric.json",
+      "inputs_hash": "8725a7276e19392292f296d792cdeca5965df61656d0a18e30ff4f8f11b4efe4",
+      "record_hash": "e878a92ea33f97a2b820def13b38ca06e574f2b1fc1d420c96a25a512a6efb19"
+    },
+    {
+      "data_hash": "646b813e38f1c82a4932684ca9332e227c22997cfe9b817f973d217fac4288ce",
+      "file": "psss-coincident.json",
+      "inputs_hash": "9a6396da823b6ce8a54fde0400a1a428aa6ea909ca53d9e238ddf767f573083a",
+      "record_hash": "3b18911261de05288db3c0fd1adbd8dae624aed53a09ca166d9aa144771e8a72"
+    },
+    {
+      "data_hash": "82a32cb9429e650b380d2e5e0e9b215bf2f9c952ae28944620aa1270249f3696",
+      "file": "dpss-asymmetric.json",
+      "inputs_hash": "241eb680c3adf1f574687503b60d3a3bd315302006c713f6ae6871ea783a179e",
+      "record_hash": "38f590f93ddf2ca9a53ed6e15c1da34a0b7ae852c1e866dbf344d6aa81509efa"
+    },
+    {
+      "data_hash": "98464005660a7657cc855ec6ad5871cf20c662aef4afdd5ed30f07289de307e9",
+      "file": "fsss-asymmetric.json",
+      "inputs_hash": "e92b0e0bbad62ebeee22cafcfcc0d97542977b57a1c121ed5cd90217eb6333a4",
+      "record_hash": "e1c74a9d4afcaa56a27465c93a076d377be3d0220cdef2199044d12cb4ca2e5a"
+    },
+    {
+      "data_hash": "7ad55780832b788d767347b7f51013b295d22c0702f7c9a83cfbe88ef1e30ea8",
+      "file": "fsss-same-center.json",
+      "inputs_hash": "c2c894b1208521b1d0ce9b3e73fe53cb33995a484004036c27966e7461bb310b",
+      "record_hash": "eb051ea651367c509e8b676cbfaff79aeb7a771af392fed8e62e936c9a96f564"
+    },
+    {
+      "data_hash": "bac97770f52a96e6a7526735c39efcc40a007a26234b1485f6e26243145c5e58",
+      "file": "fsss-spherical.json",
+      "inputs_hash": "08427ce4742083395ea1eca1cf25fd6b136d64b8df218930d4d28fc06fb1260e",
+      "record_hash": "41823f25216334d06e72b618875960f9834d67d1369f3bcb7b6a4ec4fc99135e"
+    },
+    {
+      "data_hash": "7f84c4e836cf748aa59512e0939fcbe4656b6792016119802d0f4d1848d1a187",
+      "file": "h2.json",
+      "inputs_hash": "089ac08c503a5725a1e9735b7b274f82dcf2df7929ac62ba2df80e17bff85d42",
+      "record_hash": "4e55164fc9b780dfe5ee34da5f4e10d950970dceb83434bde4acef1ebc672864"
+    },
+    {
+      "data_hash": "3d01053a065634b1e25e04876bd243d703811e00c5d5366b6fcb8219bec4d12c",
+      "file": "he.json",
+      "inputs_hash": "f536e396d5ca709ccb4be9868c6d469dca3d8db988c124688e7d9e347cf25d6a",
+      "record_hash": "75121c35317e9da995e73a77f52b750c97d8b9063f1a17ae7c5d98179fb27d74"
+    },
+    {
+      "data_hash": "841e0d6574c58a3b2ccd9bd68faa887772150fe4ef8a9fe5ad5f2cbc7633ef15",
+      "file": "h2o.json",
+      "inputs_hash": "cca94fc0b269e983659df27893c6803932dff608ae60d9231bff1863e0c7dee5",
+      "record_hash": "afed538ada0572963570d483f10bf8a46d07a82942bb36d167fee54eb5795333"
+    },
+    {
+      "data_hash": "5d7f22080afad3d71f38dc4cecb563f15a75e4182df82381fd5cd1101d8e778f",
+      "file": "nh3.json",
+      "inputs_hash": "0ff0c69c2902620445e141f4c3153ba1a0afa9e87ef623eb85b4748c953b0e9d",
+      "record_hash": "eb1a641331e9d5752c61b314d374e905c129f1065d70e06061dc90baccd17d2b"
+    },
+    {
+      "data_hash": "ed1a6019e6265552ca15da9bf682ca1aa4b635b8428a9ca3c23ab76ca14fee9b",
+      "file": "ch4.json",
+      "inputs_hash": "f066b97af5349368a5b7b9353829e76e7e13c831b8e847071f5fef1221fdeda0",
+      "record_hash": "7d0b517a03a31a762d7f554e35a58e160f585f96a95d7735fc39e0802a902065"
+    },
+    {
+      "data_hash": "4536524488fcbc8935cf0eeb3ec04cb2f2c46a7b45d50c0e11df6cf3714154cd",
+      "file": "hf-plus-uhf.json",
+      "inputs_hash": "aab27cff618e8c0ffbf4182a6de83059ff652a4d7e1881a1fb08d7d730e205d6",
+      "record_hash": "4a68382184fedd7acb9e927c4a5cd3c89ceb828851068ba07a5dcfb08b6c5bfe"
+    }
+  ],
+  "provenance": {
+    "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+    "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+    "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+    "generated_at": "2026-09-07T17:55:35.529434+00:00",
+    "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+    "h5py": "3.14.0",
+    "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+    "loaded_threadpools": [
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.33.112.0"
+      },
+      {
+        "architecture": "Zen",
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libopenblas",
+        "threading_layer": "disabled",
+        "user_api": "blas",
+        "version": null
+      },
+      {
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "libgomp",
+        "user_api": "openmp",
+        "version": null
+      },
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.31.dev"
+      }
+    ],
+    "numpy": "2.5.1",
+    "purpose": "independent test/reference generation only",
+    "pyscf": "2.6.2",
+    "python": "3.13.9",
+    "schema_version": 1,
+    "scipy": "1.18.0",
+    "threadpoolctl": "3.6.0",
+    "threads": 1
+  },
+  "schema_version": 1
+}

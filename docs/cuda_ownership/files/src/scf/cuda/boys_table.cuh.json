@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/boys_table.cuh",
+  "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "direct_integrals"
+}

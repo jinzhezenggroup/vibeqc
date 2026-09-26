@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/cuda_xc_kernels.cuh",
+  "reason": "Allocation-free native semilocal XC launch adapter. AO traversal, D*AO/features, point-domain XC coefficient algebra, symmetric potential assembly and scalar-total reductions are compiler-emitted; native code retains density validation and runtime scheduling.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "xc"
+}

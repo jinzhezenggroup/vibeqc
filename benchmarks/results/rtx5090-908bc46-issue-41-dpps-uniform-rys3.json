@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "benchmark": "issue_41_dpps_uniform_rys3",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "base_commit": "908bc46a94aedd16a5c7cec9f4cc5bdf48ae68e7",
+      "dirty_candidate": true
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": "3.11.14",
+    "timestamp_utc": "2026-08-28T11:00:04.562319+00:00"
+  },
+  "implementation": {
+    "force": {
+      "block_threads": 256,
+      "component_lanes": 8,
+      "minimum_blocks_per_sm": 1,
+      "recurrence": "rys3",
+      "schedule": "uniform_component_warps",
+      "tasks_per_block": 32,
+      "tasks_per_warp": 4
+    },
+    "fock": {
+      "block_threads": 64,
+      "reason": "Retain the accepted value path so the endpoint isolates the force promotion.",
+      "recurrence": "rys3",
+      "schedule": "component_lanes"
+    }
+  },
+  "gates": {
+    "maximum_energy_error_hartree": 1e-10,
+    "maximum_force_error_hartree_per_bohr": 1e-7
+  },
+  "results": {
+    "isolated_dpps_force": {
+      "component_lane_milliseconds": 39.5215874,
+      "maximum_force_error_hartree_per_bohr": 6.508571459562518e-12,
+      "passed": true,
+      "speedup": 5.052119635329437,
+      "uniform_warp_milliseconds": 7.82277346
+    },
+    "production_resources": {
+      "ordinary_force": {
+        "registers_per_thread": 216,
+        "shared_bytes": 36360,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 56
+      },
+      "persistent_force": {
+        "registers_per_thread": 218,
+        "shared_bytes": 36360,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 56
+      }
+    },
+    "production_profile": {
+      "candidate_dpps_force_milliseconds_per_replay": 91.34110066666668,
+      "parent_dpps_force_milliseconds_per_replay": 122.642865,
+      "saving_milliseconds_per_replay": 31.301764333333324,
+      "speedup": 1.3426909037100792
+    },
+    "endpoint": {
+      "candidate_vibeqc_median_seconds": 2.779507710947655,
+      "energy_error_hartree": 1.5916157281026244e-11,
+      "force_error_hartree_per_bohr": 3.1537092912842235e-8,
+      "gpu4pyscf_median_seconds": 2.1399362959782593,
+      "iteration_branch": [
+        1
+      ],
+      "parent_vibeqc_median_seconds": 2.8101380660082214,
+      "repeats_per_engine": 5,
+      "saving_seconds": 0.030630355060566217,
+      "vibeqc_over_gpu4pyscf": 1.29887404413458
+    },
+    "small_system_checks": {
+      "96_ao": {
+        "energy_error_hartree": 1.7053025658242404e-12,
+        "force_error_hartree_per_bohr": 9.262141952709468e-9,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.1977058980264701
+      },
+      "192_ao": {
+        "energy_error_hartree": 9.094947017729282e-12,
+        "force_error_hartree_per_bohr": 1.0881955121722076e-8,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.7693108230014332
+      }
+    }
+  },
+  "rejected_predecessor": {
+    "dpps_scalar_rys3": {
+      "reason": "The one-task-per-thread mapping exceeded a useful live range; uniform component warps replace it.",
+      "registers_per_thread": 255,
+      "spill_load_bytes": 2752,
+      "spill_store_bytes": 1768,
+      "stack_bytes": 832
+    }
+  },
+  "current_gap": {
+    "gap_reduction_from_issue_baseline_fraction": 0.3840265287155129,
+    "gpu4pyscf_seconds": 2.1399362959782593,
+    "remaining_seconds": 0.6395714149693958,
+    "required_vibeqc_reduction_fraction": 0.23010240714581006,
+    "two_electron_force_device_milliseconds": 1352.8195773333332,
+    "vibeqc_seconds": 2.779507710947655
+  }
+}

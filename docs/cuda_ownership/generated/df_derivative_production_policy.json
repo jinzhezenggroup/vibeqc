@@ -1,0 +1,7 @@
+{
+  "name": "df_derivative_production_policy",
+  "outputs": [
+    "generated/generated_df_production.hpp"
+  ],
+  "owner": "python/vibeqc_compiler/integral/df_tuning/manifest.py"
+}

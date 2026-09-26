@@ -1,0 +1,406 @@
+diff --git a/src/scf/cuda/df_derivatives.cu b/src/scf/cuda/df_derivatives.cu
+index 86b417d..208de13 100644
+--- a/src/scf/cuda/df_derivatives.cu
++++ b/src/scf/cuda/df_derivatives.cu
+@@ -47,10 +47,13 @@ __device__ void contract(DfDerivativeBasisView o, DfDerivativeBasisView x, const
+     if (lane == 0) products::scatter(factors, result, weight, gradient);
+   }
+ }
++template <bool DistributedSink>
+ __global__ void derivative_tile(DfDerivativeBasisView o, DfDerivativeBasisView x,
+                                 const double* positions, unsigned kind, runtime::StridedRange range,
+                                 std::size_t count, const double* weights, unsigned schedule,
+-                                double* gradient, std::size_t begin) {
++                                double* gradient, std::size_t begin, std::size_t gradient_stride,
++                                unsigned gradient_copies) {
++  if constexpr (DistributedSink) gradient += (blockIdx.x % gradient_copies) * gradient_stride;
+   const auto thread = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+   if (schedule) {
+     if (thread == 0)
+@@ -65,11 +68,13 @@ cudaError_t launch_df_derivative_tile(DfDerivativeBasisView o, DfDerivativeBasis
+                                       const double* positions, unsigned kind,
+                                       runtime::StridedRange range, std::size_t count,
+                                       const double* weights, unsigned schedule, double* gradient,
+-                                      cudaStream_t stream, std::size_t begin) {
++                                      cudaStream_t stream, std::size_t begin,
++                                      std::size_t gradient_stride, unsigned gradient_copies) {
+   const auto maximum = std::numeric_limits<std::size_t>::max();
+   if (!o.nbf || !x.nbf || kind > 1 || schedule > 1 || !positions || !weights || !gradient ||
+       !count || o.nbf > maximum / o.nbf || o.nbf * o.nbf > maximum / x.nbf ||
+-      x.nbf > maximum / x.nbf)
++      x.nbf > maximum / x.nbf || !gradient_copies ||
++      (gradient_copies > 1 && (!gradient_stride || gradient_stride > maximum / gradient_copies)))
+     return cudaErrorInvalidValue;
+   const auto elements = kind ? x.nbf * x.nbf : o.nbf * o.nbf * x.nbf;
+   if (!range.row_length || !range.row_stride || !range.column_stride || range.offset >= elements ||
+@@ -89,8 +94,13 @@ cudaError_t launch_df_derivative_tile(DfDerivativeBasisView o, DfDerivativeBasis
+                      !fits((end / range.row_length) * range.row_length - 1)))
+     return cudaErrorInvalidValue;
+   const auto blocks = schedule ? 1U : static_cast<unsigned>((count - 1) / elements_per_block + 1);
+-  derivative_tile<<<blocks, threads, 0, stream>>>(o, x, positions, kind, range, count, weights,
+-                                                  schedule, gradient, begin);
++  if (gradient_copies > 1)
++    derivative_tile<true><<<blocks, threads, 0, stream>>>(o, x, positions, kind, range, count,
++                                                          weights, schedule, gradient, begin,
++                                                          gradient_stride, gradient_copies);
++  else
++    derivative_tile<false><<<blocks, threads, 0, stream>>>(
++        o, x, positions, kind, range, count, weights, schedule, gradient, begin, 0, 1);
+   return cudaPeekAtLastError();
+ }
+ }  // namespace vibeqc::scf
+diff --git a/src/scf/cuda/df_derivatives.cuh b/src/scf/cuda/df_derivatives.cuh
+index e384565..bc52905 100644
+--- a/src/scf/cuda/df_derivatives.cuh
++++ b/src/scf/cuda/df_derivatives.cuh
+@@ -22,11 +22,18 @@ using DfDerivativeBasisView = runtime::cuda_gaussian_products::BasisView;
+  * HF blocks without a full dense A-weight transpose. begin retains row phase
+  * when the upload capacity splits a block inside an AO row.
+  * This launch allocates nothing and uses the caller's owning stream.
++ * Diagnostic gradient_copies > 1 distributes the unchanged atomic scatter
++ * across caller-owned copies of gradient_stride coordinates. The caller must
++ * initialize and subsequently sum those copies; the default specialization
++ * contains no destination remapping. This measures sink-layout sensitivity,
++ * not isolated arithmetic time or a different scientific derivative.
+  */
+ cudaError_t launch_df_derivative_tile(DfDerivativeBasisView orbital,
+                                       DfDerivativeBasisView auxiliary, const double* positions,
+                                       unsigned kind, runtime::StridedRange range, std::size_t count,
+                                       const double* weights, unsigned schedule, double* gradient,
+-                                      cudaStream_t stream, std::size_t begin = 0);
++                                      cudaStream_t stream, std::size_t begin = 0,
++                                      std::size_t gradient_stride = 0,
++                                      unsigned gradient_copies = 1);
+ }  // namespace vibeqc::scf
+ #endif
+diff --git a/src/scf/cuda/df_gradient_bridge.cu b/src/scf/cuda/df_gradient_bridge.cu
+index 221fc1b..47b923e 100644
+--- a/src/scf/cuda/df_gradient_bridge.cu
++++ b/src/scf/cuda/df_gradient_bridge.cu
+@@ -3,9 +3,11 @@
+ #include <cstdlib>
+ #include <limits>
+ #include <stdexcept>
++#include <string_view>
+ 
+ #include "molecule/basis.hpp"
+ #include "runtime/cuda_component_trace.hpp"
++#include "runtime/host_component_trace.hpp"
+ #include "runtime/resource_cuda.cuh"
+ #include "scf/cuda/df_derivatives.cuh"
+ #include "scf/cuda/df_response_weights.cuh"
+@@ -28,6 +30,13 @@ struct DeviceGuard {
+   DeviceGuard(const DeviceGuard&) = delete;
+   DeviceGuard& operator=(const DeviceGuard&) = delete;
+ };
++/** Diagnostic staging only; declare before Arena so queued reads drain first. */
++struct PinnedResponseSlice {
++  double* data{};
++  ~PinnedResponseSlice() {
++    if (data) (void)cudaFreeHost(data);
++  }
++};
+ /** Compact metadata independent of Direct quartet queues and derivative tensors. */
+ struct HostBasis {
+   std::vector<std::int32_t> shell_atoms, ao_shells;
+@@ -402,6 +411,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
+                                               {1, n, a, source != nullptr, true, source_index});
+     runtime::cuda_trace::TraceRegion preparation("response_allocation_and_uploads",
+                                                  reinterpret_cast<cudaStream_t>(stream_handle));
++    PinnedResponseSlice packed_slice;
+     Arena arena(maximum_bytes);
+     arena.stream = reinterpret_cast<cudaStream_t>(stream_handle);
+     arena.owns_stream = false;
+@@ -439,6 +449,46 @@ vibeqc_status execute_cuda_df_hf_gradient(
+       runtime::cuda_trace::trace_counter("response_scratch_bytes", arena.stats.device_bytes);
+       runtime::cuda_trace::trace_counter("density_upload_bytes",
+                                          arena.stats.density_host_to_device_bytes);
++      // Causal attribution controls, not production schedule candidates. Both
++      // drain prior work before a raw read; packed additionally exposes the
++      // CPU gather and a contiguous pinned H2D copy as separate intervals.
++      // Default execution retains the original pageable strided submission.
++      const char* upload_probe = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
++      const std::string_view probe = upload_probe ? upload_probe : "";
++      if (!probe.empty() && probe != "drain" && probe != "packed")
++        throw std::invalid_argument("unknown DF response upload probe (use drain or packed)");
++      if (!probe.empty() && source)
++        throw std::invalid_argument("DF response upload probe requires resident host raw values");
++      if (probe == "packed") {
++        const auto bytes = n * n * sizeof(double);
++        if (bytes > maximum_bytes - arena.stats.host_bytes) throw std::bad_alloc();
++        check(cudaMallocHost(reinterpret_cast<void**>(&packed_slice.data), bytes));
++        arena.stats.host_bytes += bytes;
++        runtime::cuda_trace::trace_counter("raw_probe_pinned_host_bytes", bytes);
++      }
++      // Keep the original auxiliary tile and response scratch unchanged. This
++      // diagnostic reserves only unused budget headroom; insufficient room is
++      // an error, never a silent tile/traffic change that confounds attribution.
++      const char* sink_policy = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
++      const std::string_view sink = sink_policy ? sink_policy : "";
++      if (!sink.empty() && sink != "sharded")
++        throw std::invalid_argument("unknown DF response scatter probe (use sharded)");
++      const unsigned gradient_copies = sink.empty() ? 1 : 128;
++      auto* derivative_output = output;
++      const double* ones = nullptr;
++      if (gradient_copies > 1) {
++        const auto bytes = result.size() * gradient_copies * sizeof(double);
++        if (gradient_copies * sizeof(double) > maximum_bytes - arena.stats.host_bytes)
++          throw std::bad_alloc();
++        derivative_output = static_cast<double*>(arena.allocate(bytes));
++        ones = arena.upload(std::vector<double>(gradient_copies, 1.0));
++        check(cudaMemsetAsync(derivative_output, 0, bytes, arena.stream));
++        runtime::cuda_trace::trace_counter("derivative_probe_gradient_copies", gradient_copies);
++        runtime::cuda_trace::trace_counter("derivative_probe_scratch_bytes",
++                                           bytes + gradient_copies * sizeof(double));
++      }
++      runtime::cuda_trace::trace_counter("response_probe_total_device_bytes",
++                                         arena.stats.device_bytes);
+       preparation.finish();
+       runtime::cuda_trace::TraceRegion response_weights("response_weights", arena.stream);
+       const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
+@@ -454,12 +504,31 @@ vibeqc_status execute_cuda_df_hf_gradient(
+               if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+               arena.stats.recomputed_value_bytes += n * n * sizeof(double);
+             } else {
++              if (!probe.empty()) {
++                runtime::cuda_trace::TraceRegion wait("raw_value_prior_stream_wait", arena.stream);
++                check(cudaStreamSynchronize(arena.stream));
++                ++arena.stats.stream_synchronizations;
++                runtime::cuda_trace::trace_counter("raw_probe_prior_stream_drains", 1);
++              }
++              if (packed_slice.data) {
++                runtime::cuda_trace::TraceRegion gather("raw_value_host_gather", arena.stream);
++                runtime::host_trace::Region host_gather("df_raw_value_host_gather", n);
++                for (std::size_t ij = 0; ij < n * n; ++ij)
++                  packed_slice.data[ij] = raw_a[ij * a + p];
++                host_gather.finish();
++                runtime::cuda_trace::trace_counter("raw_probe_gather_elements", n * n);
++              }
+               // raw_a is caller-owned [mu*nu,P], live until the bridge drains
+               // its stream. Gather a column directly into existing device
+               // scratch; no host response matrix or full raw GPU copy is made.
+               runtime::cuda_trace::TraceRegion upload("raw_value_slice_upload", arena.stream);
+-              check(cudaMemcpy2DAsync(values, sizeof(double), raw_a.data() + p, a * sizeof(double),
+-                                      sizeof(double), n * n, cudaMemcpyHostToDevice, arena.stream));
++              if (packed_slice.data)
++                check(cudaMemcpyAsync(values, packed_slice.data, n * n * sizeof(double),
++                                      cudaMemcpyHostToDevice, arena.stream));
++              else
++                check(cudaMemcpy2DAsync(values, sizeof(double), raw_a.data() + p,
++                                        a * sizeof(double), sizeof(double), n * n,
++                                        cudaMemcpyHostToDevice, arena.stream));
+               arena.stats.host_to_device_bytes += n * n * sizeof(double);
+               arena.stats.tensor_host_to_device_bytes += n * n * sizeof(double);
+               ++arena.stats.uploads;
+@@ -478,11 +547,24 @@ vibeqc_status execute_cuda_df_hf_gradient(
+             runtime::cuda_trace::trace_counter(
+                 kind ? "metric_derivative_weight_bytes" : "three_center_derivative_weight_bytes",
+                 count * sizeof(double));
+-            check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule, output,
+-                                            arena.stream));
++            check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule,
++                                            derivative_output, arena.stream, 0, result.size(),
++                                            gradient_copies));
+             ++arena.stats.tiles;
+             arena.stats.device_response_bytes += count * sizeof(double);
+           }));
++      if (gradient_copies > 1) {
++        runtime::cuda_trace::TraceRegion reduction("gradient_probe_shard_reduction", arena.stream);
++        // Each column is already a complete contracted atom gradient, not an
++        // AO-element or nuclear-coordinate derivative tensor. The shared BLAS
++        // provider sums these bounded copies on the same owning stream.
++        const double alpha = 1.0, beta = 0.0;
++        const auto status = cublasDgemv(
++            reinterpret_cast<cublasHandle_t>(blas_handle), CUBLAS_OP_N,
++            static_cast<int>(result.size()), static_cast<int>(gradient_copies), &alpha,
++            derivative_output, static_cast<int>(result.size()), ones, 1, &beta, output, 1);
++        if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
++      }
+     } else {
+       const auto weight_tile =
+           std::min({std::size_t{65536}, std::max(n * n * a, a * a),
+diff --git a/src/scf/cuda/df_response_weights.cu b/src/scf/cuda/df_response_weights.cu
+index 3d9860d..3480a00 100644
+--- a/src/scf/cuda/df_response_weights.cu
++++ b/src/scf/cuda/df_response_weights.cu
+@@ -170,8 +170,10 @@ cudaError_t contract_cuda_df_response_weights(
+     // reconstructing raw A from a retained transformed tensor unsafe here.
+     auto* charge_values = q < tile ? raw + q * matrix : values;
+     read_values(q, charge_values);
++    runtime::cuda_trace::TraceRegion charge_dot("coulomb_response_charge_dot", stream);
+     charge_kernel<<<blocks(terms.size()), threads, 0, stream>>>(matrix, a, q, terms.size(),
+                                                                 densities, charge_values, charges);
++    runtime::cuda_trace::trace_counter("response_charge_dot_elements", terms.size() * matrix);
+   }
+   potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
+                                                                      charges, potentials);
+diff --git a/tests/python/test_df_derivatives_cuda.py b/tests/python/test_df_derivatives_cuda.py
+index 2e9ab6a..4d9aefc 100644
+--- a/tests/python/test_df_derivatives_cuda.py
++++ b/tests/python/test_df_derivatives_cuda.py
+@@ -174,7 +174,11 @@ def test_mixed_representations_and_permuted_auxiliary_shells(
+ 
+ @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
+ @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+-@pytest.mark.parametrize("budget", [0, 1 << 20, 4 << 20])
++# Complete forces split the DF allowance in half. Metric, compact SCF and
++# ordinary AO eigensolvers each reserve a fixed workspace floor on current
++# CUDA providers; the old 1/4-MiB requests fail before derivative execution.
++# Keep two feasible bounded cases and test the smaller rejected budgets below.
++@pytest.mark.parametrize("budget", [0, 8 << 20, 16 << 20])
+ def test_complete_hf_replay_two_budgets_and_force_components(
+     monkeypatch, method, charge, multiplicity, representation, budget
+ ):
+@@ -242,6 +246,26 @@ def test_complete_hf_replay_two_budgets_and_force_components(
+             assert policy["VIBEQC_DF_DERIVATIVE_MAPPING"] == mapping
+ 
+ 
++@pytest.mark.parametrize("budget", [1 << 20, 4 << 20])
++def test_complete_force_rejects_budget_below_provider_workspace_floors(budget):
++    """Retain the former tiny requests as explicit bounded-allocation failures."""
++    assert os.environ.get("SLURM_JOB_ID")
++    calc = Calculator(
++        device="cuda",
++        basis="def2-svp",
++        density_fitting="cuda",
++        density_fitting_memory_budget_bytes=budget,
++        energy_tolerance=1e-12,
++        density_tolerance=1e-10,
++    )
++    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.2, 0.7))]
++    with (
++        calc.prepare_batch([atoms]) as batch,
++        pytest.raises(RuntimeError, match="out of memory"),
++    ):
++        batch.execute(strict=True, properties=("energy", "forces"))
++
++
+ @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
+ def test_generated_df_hf_matches_pyscf_and_two_energy_difference_steps(
+     monkeypatch, method, charge, multiplicity
+@@ -274,7 +298,7 @@ def test_generated_df_hf_matches_pyscf_and_two_energy_difference_steps(
+         method=method,
+         basis="def2-svp",
+         density_fitting="cuda",
+-        density_fitting_memory_budget_bytes=1 << 20,
++        density_fitting_memory_budget_bytes=8 << 20,
+         energy_tolerance=1e-12,
+         density_tolerance=1e-10,
+         screening_tolerance=1e-14,
+@@ -379,7 +403,7 @@ def test_auxiliary_only_atom_hf_energy_derivative(
+         basis=shells(oi),
+         auxiliary_basis=shells(xi),
+         density_fitting="cuda",
+-        density_fitting_memory_budget_bytes=4 << 20,
++        density_fitting_memory_budget_bytes=8 << 20,
+         energy_tolerance=1e-12,
+         density_tolerance=1e-10,
+         screening_tolerance=1e-14,
+@@ -418,7 +442,8 @@ def test_auxiliary_only_atom_hf_energy_derivative(
+ @pytest.mark.parametrize(
+     "method,representation", [("rhf", "spherical"), ("uhf", "cartesian")]
+ )
+-@pytest.mark.parametrize("budget", [0, 4 << 20])
++# This bucket owns three compact SCF workspaces in addition to metric/AO frames.
++@pytest.mark.parametrize("budget", [0, 16 << 20])
+ def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
+     monkeypatch, method, representation, budget
+ ):
+@@ -478,7 +503,7 @@ def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
+             np.testing.assert_allclose(right.forces, forces, atol=3e-9, rtol=0)
+ 
+ 
+-@pytest.mark.parametrize("budget", [0, 1 << 20])
++@pytest.mark.parametrize("budget", [0, 16 << 20])
+ def test_df_generated_failed_item_preserves_successful_neighbor(monkeypatch, budget):
+     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
+     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
+@@ -499,7 +524,7 @@ def test_df_generated_failed_item_preserves_successful_neighbor(monkeypatch, bud
+         )
+ 
+ 
+-@pytest.mark.parametrize("budget", [0, 1 << 20])
++@pytest.mark.parametrize("budget", [0, 8 << 20])
+ def test_df_rank_crossing_is_reported_without_oracle_retry(monkeypatch, budget):
+     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
+     inputs = {
+diff --git a/tests/python/test_df_response_weights_cuda.py b/tests/python/test_df_response_weights_cuda.py
+index 895f158..3092ae2 100644
+--- a/tests/python/test_df_response_weights_cuda.py
++++ b/tests/python/test_df_response_weights_cuda.py
+@@ -15,6 +15,75 @@ pytestmark = pytest.mark.skipif(
+ )
+ 
+ 
++@pytest.mark.parametrize("method", ("rhf", "uhf"))
++@pytest.mark.parametrize("representation", ("cartesian", "spherical"))
++def test_raw_upload_attribution_preserves_complete_response(
++    method, representation, monkeypatch, tmp_path
++):
++    """Diagnostic transfers and sink layouts preserve complete weighted response.
++
++    Returning to default on the same prepared plan also exercises the pinned
++    buffer lifetime: its async read must finish before response cleanup.
++    Independent physical parity is covered by the response-route test below.
++    """
++    assert os.environ.get("SLURM_JOB_ID")
++    atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8))]
++    if method == "rhf":
++        atoms.append(("H", (1.7, 0, -0.6)))
++    calc = Calculator(
++        method=method,
++        basis="def2-svp",
++        basis_representation=representation,
++        device="cuda",
++        density_fitting="cuda",
++        energy_tolerance=1e-12,
++        density_tolerance=1e-10,
++    )
++    with calc.prepare_batch(
++        [atoms], multiplicities=[2 if method == "uhf" else 1]
++    ) as owner:
++        owner.execute(properties=("energy", "forces"), strict=True)
++        expected = None
++        probes = (("", ""), ("drain", ""), ("packed", ""), ("", "sharded"), ("", ""))
++        for step, (probe, sink) in enumerate(probes):
++            monkeypatch.setenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE", probe)
++            monkeypatch.setenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE", sink)
++            path = tmp_path / f"probe-{step}.jsonl"
++            monkeypatch.setenv("VIBEQC_DF_TRACE", str(path))
++            item = owner.execute(properties=("energy", "forces"), strict=True).items[0]
++            (record,) = [
++                r for r in read_trace(path) if r["operation"] == "force_response"
++            ]
++            counters = record["counters"]
++            if expected is None:
++                expected = item
++                raw_bytes = counters["raw_value_upload_bytes"]
++                blocks = counters["response_auxiliary_blocks"]
++                scratch = counters["response_scratch_bytes"]
++            assert abs(item.energy - expected.energy) < 1e-10
++            np.testing.assert_allclose(item.forces, expected.forces, rtol=0, atol=1e-9)
++            assert counters["raw_value_upload_bytes"] == raw_bytes
++            assert counters["response_auxiliary_blocks"] == blocks
++            assert counters["response_scratch_bytes"] == scratch
++            assert counters.get("derivative_probe_gradient_copies", 0) == (
++                128 if sink else 0
++            )
++            names = {r["name"] for r in record["regions"]}
++            assert ("gradient_probe_shard_reduction" in names) == bool(sink)
++            assert counters["response_probe_total_device_bytes"] == (
++                scratch + counters.get("derivative_probe_scratch_bytes", 0)
++            )
++            assert counters.get("raw_probe_prior_stream_drains", 0) == (
++                raw_bytes // (8 * record["nbf"] ** 2) if probe else 0
++            )
++            assert counters.get("raw_probe_gather_elements", 0) == (
++                raw_bytes // 8 if probe == "packed" else 0
++            )
++            assert counters.get("raw_probe_pinned_host_bytes", 0) == (
++                8 * record["nbf"] ** 2 if probe == "packed" else 0
++            )
++
++
+ @pytest.mark.parametrize("method", ("rhf", "uhf"))
+ @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
+ @pytest.mark.parametrize("budget", (0, 64 << 20))

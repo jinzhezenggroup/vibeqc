@@ -1,0 +1,24 @@
+{
+  "baseline": "3f4c6c4942efc0e6712e1b36b0c8938fcaae86e7",
+  "files": {
+    "docs/rccsd.md": "7f6ec9640d5d67b6e1fa09fa501b51de98b705199bccb1d3e86beaa7a477a343",
+    "docs/rccsd_bc.md": "753fa7998059f004e490c05c2f572202b0d28e9582794597825e30b12883c12a",
+    "tests/python/test_cc_solver.py": "c64f0419529f5979f4d7617e72fb64804e83d7cedd3b85cc281d5800baa558d4",
+    "tests/reference_data/cc/endpoints/ch4.json": "ee7fcc66c68e5d148de47cc3f54f9716186a1fc6d0df7654bdddb960b92016ba",
+    "tests/reference_data/cc/endpoints/ch4.npz": "2c10e08f7c769088f216da6f1103b7b9c2882ba93e4a804e79a285faaf83e30e",
+    "tests/reference_data/cc/endpoints/h2.json": "688571ddd492dc3d72c85078ad227def326bdc40be94fb8534653b269c69f18f",
+    "tests/reference_data/cc/endpoints/h2.npz": "a1d40ad2ca7e1b375fc94874bdd4dfa41463d0207da7f76b6541c3d36ad8ea5c",
+    "tests/reference_data/cc/endpoints/h2o.json": "387c40e295add40911f251793597608e0ce8649236c2452ae50663420c7c3fde",
+    "tests/reference_data/cc/endpoints/h2o.npz": "241122944192fd6916c70e902bee833c67618f94f1ea5177bb19f59081f6af1c",
+    "tests/reference_data/cc/endpoints/he.json": "03831882352ec1464318c3f4c84b9ba1d3d666e5999e5fa0702946f149e3791c",
+    "tests/reference_data/cc/endpoints/he.npz": "eb412f4531b73e53a1b822511108c60952f752fcd6d78e5decf3ff8976b06a5b",
+    "tests/reference_data/cc/endpoints/nh3.json": "7e5a98ac4e9a90215a60251777276feed5cea32fdb5a88be55816283487cf6bf",
+    "tests/reference_data/cc/endpoints/nh3.npz": "6b4d284a2a07ec44241e7c2806c932a440729219fa674096f639e72147795e8b",
+    "tools/cc_endpoint_fixtures.py": "9caaea408fe90216b8b9c6cca1a3774af28cd69c3efda79197a83f83532a1be4",
+    "tools/generate_cc_endpoints.py": "716a0f4698db060d29379df28313fc99593578386a69129fe1ca3cb20c169904",
+    "tools/replay_ccsd.py": "348fdd1a5b33f15faea8191314fc10bbb379aa8c0eb8bc3e46b3e4ea819415df",
+    "tools/validate_cc_solver.py": "f266788d8c17d820b5813e8a1b4b5b11b4ddeb1e2969ff148e4c83289e1aaac3",
+    "tools/vibeqc_cc/evaluate.py": "e4bc1a62d00cf398ece7b2baa86646f0d0767ab322c1950f50b016a26b33a855",
+    "tools/vibeqc_cc/solver.py": "2947b165294ee1f4d763fb1d0c504c5092a9d78cf60172293ea27c918b11233f"
+  }
+}

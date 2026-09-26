@@ -1,0 +1,18 @@
+{
+  "owner": "d3_dispersion",
+  "current_default": "Production nonperiodic D3 owner for BJ two-body, separately qualified BJ+ATM and zero-damping two-body variants, with Calculator exactly-once composition, compact pinned tables, bounded persistent plans, changed-geometry replay and a real-device-promoted cooperative ragged CUDA scheduler.",
+  "generated_capability": "GeometryIR/PairIR/TensorIR owns the two-body D3(BJ) equation and generated coordinate VJP. A non-public heterogeneous ragged CUDA retirement candidate now lowers per-system energies plus the complete generated gradient through the shared TensorIR planner/compiler/runtime, with explicit topology/switch rebuild state.",
+  "missing_capability": "The generated GeometryIR/PairIR CUDA retirement candidate still needs public-equivalent per-system failure isolation, energy-only specialization, resource qualification and matched endpoint promotion before it can retire the retained native production owner. These retirement gates do not narrow the qualified native BJ, BJ+ATM or zero-damping public capability.",
+  "retirement_condition": "Retain d3_bj.hpp as the public production runtime/oracle until the generated ragged candidate reproduces complete energy/CN-response gradients, changed-topology replay, bounded resources, per-system failure isolation, energy-only behavior and endpoint performance without changing MethodIR or public correction semantics.",
+  "evidence": [
+    "docs/developer/dft_d3.md",
+    "docs/developer/geometry_pair_ir.md",
+    "tests/data/d3_bj_reference.json",
+    "tests/python/test_d3_geometry_ir.py",
+    "tests/python/test_d3_generated_ragged.py",
+    ".agents/notes/implemented/numerics/2026-09-20-d3-generated-ragged-cuda.md",
+    ".agents/notes/implemented/performance/2026-09-21-d3-dft13-production-closure.md",
+    ".agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md"
+  ],
+  "status": "partial"
+}

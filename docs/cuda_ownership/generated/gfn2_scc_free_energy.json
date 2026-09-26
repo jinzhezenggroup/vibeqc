@@ -1,0 +1,7 @@
+{
+  "name": "gfn2_scc_free_energy",
+  "outputs": [
+    "generated/generated_gfn2_scc_free_energy_native.hpp"
+  ],
+  "owner": "python/vibeqc_compiler/method/gfn2_scc_free_energy_runtime.py"
+}

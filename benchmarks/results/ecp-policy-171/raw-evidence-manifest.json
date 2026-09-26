@@ -1,0 +1,259 @@
+{
+  "files": [
+    {
+      "path": "ISSUE-171-policy-collect.py",
+      "bytes": 5492,
+      "sha256": "afd516cc569f12fe1e9c0d98c15578657cbf6f07162928cac8526b511417dd9e"
+    },
+    {
+      "path": "ISSUE-171-policy-driver.py",
+      "bytes": 2764,
+      "sha256": "06bf5554080b373597128b3c1b3b193b87a6a960f42f3ba844fb7f696202d241"
+    },
+    {
+      "path": "ISSUE-171-policy-run.sh",
+      "bytes": 2967,
+      "sha256": "f1be2122ed699cd796a45fe0c1019153a4cb13453e50e4a30b485489c9ad20fb"
+    },
+    {
+      "path": "baseline-cpu-build.log",
+      "bytes": 20931,
+      "sha256": "67b96ca57a36ae9892ac321fcb5be89ca6c11c6535d374129124ba4b8fcfbe9d"
+    },
+    {
+      "path": "baseline-cpu-configure.log",
+      "bytes": 577,
+      "sha256": "dbd1c4d31200fb96d8b82c91273359cb10ce31400e31ccafbf7538bb0a7c9360"
+    },
+    {
+      "path": "baseline-cpu-ctest.log",
+      "bytes": 571,
+      "sha256": "f31fd78474fb858ff265aff7c0b35c4527cac14f331e61fb96b056abf756eff7"
+    },
+    {
+      "path": "baseline-cpu-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "baseline-cpu-endpoints.json",
+      "bytes": 6233,
+      "sha256": "ebfb5de354cb5c367b4eda9bbd1389fc7f1800f9961770e5a28c90c0ba5059da"
+    },
+    {
+      "path": "baseline-cpu-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "baseline-cpu-generated.cuh",
+      "bytes": 35716,
+      "sha256": "18eaccbc1d8a0e4f03659fdff6d55dfa254c5a9b0c32b7f55593c0ab18f9a112"
+    },
+    {
+      "path": "baseline-cpu-library.sha256",
+      "bytes": 188,
+      "sha256": "f0f38f2973f056eb5d546a65db3c0859a996b33e5e02ebba107b439fa6a171b5"
+    },
+    {
+      "path": "baseline-cpu.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "baseline-cuda-build.log",
+      "bytes": 64066,
+      "sha256": "d83d2d5bf1867743dc2a76a75f7b2ac43d34bb3062973f09e5bede39deaa7855"
+    },
+    {
+      "path": "baseline-cuda-configure.log",
+      "bytes": 1123,
+      "sha256": "66f18cacaf332f7ac21cf4f4344e6f003c1cde75af1391c88f46a5ecf4cc534a"
+    },
+    {
+      "path": "baseline-cuda-ctest.log",
+      "bytes": 689,
+      "sha256": "88946fdeab380855623005688eda1b7ab180f09686825274e1eb21953acc79a4"
+    },
+    {
+      "path": "baseline-cuda-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "baseline-cuda-endpoints.json",
+      "bytes": 6419,
+      "sha256": "07ee587792f46b34dc0b4d03a90b804a6e49da3144ab9dc6247a0c76a87e1421"
+    },
+    {
+      "path": "baseline-cuda-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "baseline-cuda-generated.cuh",
+      "bytes": 35716,
+      "sha256": "18eaccbc1d8a0e4f03659fdff6d55dfa254c5a9b0c32b7f55593c0ab18f9a112"
+    },
+    {
+      "path": "baseline-cuda-library.sha256",
+      "bytes": 189,
+      "sha256": "c108d5e1eed2ce3bdb2f997f119bf6b51cd95b2874009bc5b90fe7747c89bdb3"
+    },
+    {
+      "path": "baseline-cuda.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "baseline-source-identity.json",
+      "bytes": 163839,
+      "sha256": "b6d64658b7af26627a3eb91da6d0186b7223259bc70daca7a310c3d89c05d0fb"
+    },
+    {
+      "path": "candidate-cpu-build.log",
+      "bytes": 20931,
+      "sha256": "620ef8fc1bd9c3e42c5a70c76ce501cba510912920217f4538b0ff9064b7e259"
+    },
+    {
+      "path": "candidate-cpu-configure.log",
+      "bytes": 199,
+      "sha256": "c5b12e920f58354320d00ffe183152f4c4942b66ebabc011f0f58180615a5fcf"
+    },
+    {
+      "path": "candidate-cpu-ctest.log",
+      "bytes": 571,
+      "sha256": "1942c6c351284c8bb9d09b61430efe497f4fcc61abb3144a2692d39ccd50afa7"
+    },
+    {
+      "path": "candidate-cpu-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "candidate-cpu-endpoints.json",
+      "bytes": 6232,
+      "sha256": "c0057e32ea0eeb15a9217c71fde3d1f309d514ef201c904cbfb722f488e7c5ef"
+    },
+    {
+      "path": "candidate-cpu-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "candidate-cpu-generated.cuh",
+      "bytes": 36202,
+      "sha256": "b174c5823fcab64bab25ecf763fc3eadd8eb5f38ca9f5cd7886b6d8d2eb2926a"
+    },
+    {
+      "path": "candidate-cpu-library.sha256",
+      "bytes": 188,
+      "sha256": "ee92eb0118e2ee983b0a8e6cd48e2ca2762b5c40e064f9a92351aeaa271fd408"
+    },
+    {
+      "path": "candidate-cpu-tests.log",
+      "bytes": 1286,
+      "sha256": "b80ecd97064b42cc785dfe7ca0ec30afd87da51128ad17130bc5d7ee66717504"
+    },
+    {
+      "path": "candidate-cpu.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "candidate-cuda-build.log",
+      "bytes": 64297,
+      "sha256": "b77d3df5da60c1c33e2c6e278b05d4bea39aedaa84bc8021d49a4d526937451f"
+    },
+    {
+      "path": "candidate-cuda-configure.log",
+      "bytes": 200,
+      "sha256": "66b50e68667ed51385c8e22f9f8b9d5dbe04fac7a72d185316312f3c25c417e2"
+    },
+    {
+      "path": "candidate-cuda-ctest.log",
+      "bytes": 802,
+      "sha256": "29b090e77e40ed816fd199f9273430e8d7518a6c7915858e83dec2486fd0512f"
+    },
+    {
+      "path": "candidate-cuda-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "candidate-cuda-endpoints.json",
+      "bytes": 6414,
+      "sha256": "e22a68347b497ac792851bba3d39c773fe76279df2ddc1b55a8854f3a276a037"
+    },
+    {
+      "path": "candidate-cuda-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "candidate-cuda-errors-memcheck.log",
+      "bytes": 123,
+      "sha256": "dee39e8ce6fd5ddaa8c9b6d556139a5b64794939d8a7524b17ddbcfa59474c2d"
+    },
+    {
+      "path": "candidate-cuda-generated.cuh",
+      "bytes": 36202,
+      "sha256": "b174c5823fcab64bab25ecf763fc3eadd8eb5f38ca9f5cd7886b6d8d2eb2926a"
+    },
+    {
+      "path": "candidate-cuda-hf-memcheck.log",
+      "bytes": 187,
+      "sha256": "d7366bb3e54e1359263d637cdffcfd585f906002a71630a0217a8aa9bce4cc97"
+    },
+    {
+      "path": "candidate-cuda-library.sha256",
+      "bytes": 189,
+      "sha256": "abaa675378756d001fa1bad2024796b387f4a41496ceec8234cc191c222705e7"
+    },
+    {
+      "path": "candidate-cuda-policy-memcheck.log",
+      "bytes": 118,
+      "sha256": "72b1f61feac8129779c2fa4f5659a5a3ac918e39b19a42fb5c71962acfae4809"
+    },
+    {
+      "path": "candidate-cuda-resources.log",
+      "bytes": 100,
+      "sha256": "f7cf818fa681bf62bf7aab3e7feef459d3b8c79974d9c5a60ea1666689371788"
+    },
+    {
+      "path": "candidate-cuda-tests.log",
+      "bytes": 2480,
+      "sha256": "a24dab55f93be5a33ee3391c9e724aa090498f72377f5ff4df39a91163e06df7"
+    },
+    {
+      "path": "candidate-cuda.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "candidate-source-identity.json",
+      "bytes": 164181,
+      "sha256": "8b714e66cc0efb7a41d5bafcf20aef88cd2a2cadfdf987427104419a38daa71a"
+    },
+    {
+      "path": "driver.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "driver.log",
+      "bytes": 111,
+      "sha256": "e9195cbb4c3345a283a74f471a9a5b8ddcdcfb9b6316de314e752b7227395aca"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 2599,
+      "sha256": "2f7646b7fa4598dd521b2db5c8ec7ec490d56b9a68919beffb6084154a6acddd"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 478,
+      "sha256": "4fb76e478b49d89b31f15e292eb66a67c163532ae679ac061a435380be255563"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "base_commit": "b78215ef0bf2cb43c91234c9c2dc852151605468",
+  "baseline_verified_files": 3893,
+  "baseline_build_inputs_verified": 604,
+  "baseline_libraries": {
+    "cpu": {
+      "path": "/inspire/qb-ilm/project/chemicalreaction/diwenxi-CZXS25120072/vibeqc-workspace/build-171/stuttgart-20260918/cpu/libvibeqc.so",
+      "sha256": "9336629edea33d1917d3338ca8c6e81cfc7d39236e5050e35ac270324b958815"
+    },
+    "cuda": {
+      "path": "/inspire/qb-ilm/project/chemicalreaction/diwenxi-CZXS25120072/vibeqc-workspace/build-171/stuttgart-20260918/cuda/libvibeqc.so",
+      "sha256": "e5a86947d23a7757f7e49c25fbc4a5534358323827016cf7e5a8a6197fd1ce24"
+    }
+  },
+  "candidate_library_sha256": "0bb85227865489d37ddea2abb32625b9a5dac250b3a59f939ceace18f7f410f9",
+  "measured_files": {
+    "python/vibeqc/resources_hf.py": "9bd3a17b06309a6b3e47366fe8d2aeaa45db8ddac1d0ee8a374248e6b5110e6d",
+    "python/vibeqc/resources_ks.py": "c2a1594568477e0ca44967369beb7b0bf26b1ce6af33655fa7e81fe1da6ee5e0",
+    "python/vibeqc_compiler/integral/ecp_projector.py": "c64ac49d2c830f9d220ffe18fdefec40c6224881b97a99bca976829a5a0a79c9",
+    "python/vibeqc_compiler/integral/ecp_schedule.py": "05e950ebe1e399673258443f4ed30a6e75152416c6e105260353c02e251f5f47",
+    "src/integrals/ecp_cuda.cu": "02a9268e7d7e9c99e490b06e8d1c3f2f1d3d1c4224d7ea4778f9063b62714dd0",
+    "tests/native/test_ecp_cuda_errors.cpp": "6abd86e5347f1a3d5aa17ee79bb759f9b0dcf0ef6c3060f8142bc9e6f32049e4",
+    "tests/native/test_ecp_projector.cpp": "3b40b4f6a8be806f3bf35f0f92cab6e95b88acfa2dbfe0e48c9738c6ea43894d",
+    "tests/python/test_ecp_schedule.py": "00e18a72a2bca4b1fac35c0e6c06bf1b41f995ef374e578821e98b55b23f8e7d",
+    "tools/benchmark_ecp_schedule.py": "782193e6d72b4044d2ac0fab36e882bef2904e9a9505db597d3f47e73f4bba5d"
+  },
+  "generated_header_sha256": {
+    "baseline": "1393e2f010da000407100a12d2cc8c0da650163f5fb4c54d4b36892507247334",
+    "candidate": "0ca4ae2a16e012baafbf021a15025d13e17760ce7a4d49ad0b36c75bd708cd06"
+  },
+  "generated_science_unchanged_after_removing_schedule_helper": true
+}

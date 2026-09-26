@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "benchmark": "issue_41_ddpp_ddps_ddds_rys4",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "base_commit": "541acc32ecce4d678554ca79d12ca28647cfef12",
+      "dirty_candidate": true
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": "3.11.14",
+    "timestamp_utc": "2026-08-28T13:09:19.463891+00:00"
+  },
+  "implementation": {
+    "ddpp_force": {
+      "block_threads": 352,
+      "component_lanes": 324,
+      "minimum_blocks_per_sm": 1,
+      "pair_orientation": "swapped",
+      "pair_storage": "recomputed",
+      "recurrence": "rys4",
+      "schedule": "component_lanes"
+    },
+    "ddpp_fock": {
+      "block_threads": 64,
+      "reason": "Retain the accepted tiled value path while the force worker uses component-lane Rys4.",
+      "schedule": "tiled_components"
+    },
+    "ddps_force": {
+      "block_threads": 256,
+      "component_lanes": 8,
+      "minimum_blocks_per_sm": 1,
+      "recurrence": "rys4",
+      "schedule": "uniform_component_warps",
+      "tasks_per_block": 32,
+      "tasks_per_warp": 4
+    },
+    "ddps_fock": {
+      "block_threads": 128,
+      "reason": "Retain the accepted component-lane value path while the force worker uses uniform component warps.",
+      "schedule": "component_lanes"
+    },
+    "ddds_force": {
+      "block_threads": 224,
+      "component_lanes": 216,
+      "minimum_blocks_per_sm": 1,
+      "pair_orientation": "swapped",
+      "pair_storage": "recomputed",
+      "recurrence": "rys4",
+      "schedule": "component_lanes"
+    },
+    "ddds_fock": {
+      "block_threads": 64,
+      "reason": "Retain the accepted tiled value path while the force worker uses component-lane Rys4.",
+      "schedule": "tiled_components"
+    },
+    "generator_extension": "Second-center d shells use the exact bounded b=3 HRR state. Their component-lane task remains behind a device-call boundary so persistent queue state is not live across the recurrence."
+  },
+  "gates": {
+    "maximum_energy_error_hartree": 1e-10,
+    "maximum_force_error_hartree_per_bohr": 1e-07,
+    "maximum_small_system_regression_fraction": 0.02
+  },
+  "results": {
+    "isolated_force": {
+      "settings": {
+        "primitive_count_per_shell": 3,
+        "samples": 3,
+        "task_count": 2048,
+        "timed_iterations_per_sample": 3,
+        "warmups": 1
+      },
+      "ddpp": {
+        "component_lane_rys4_milliseconds": 122.601616,
+        "maximum_force_error_hartree_per_bohr": 2.9380942123680143e-12,
+        "passed": true,
+        "subset_wick_milliseconds": 535.1698,
+        "speedup": 4.3651121205449686
+      },
+      "ddps": {
+        "component_lane_rys4_milliseconds": 40.8667526,
+        "maximum_force_error_hartree_per_bohr": 3.361755318564974e-12,
+        "passed": true,
+        "subset_wick_milliseconds": 45.3041801,
+        "uniform_warp_rys4_milliseconds": 8.87207508,
+        "uniform_warp_speedup": 5.106379250794167
+      },
+      "ddds": {
+        "component_lane_rys4_milliseconds": 76.3049469,
+        "maximum_force_error_hartree_per_bohr": 4.437339384821826e-12,
+        "passed": true,
+        "subset_wick_milliseconds": 358.775848,
+        "speedup": 4.701868785390636
+      }
+    },
+    "production_resources": {
+      "ddpp_ordinary_force": {
+        "registers_per_thread": 168,
+        "shared_bytes": 1312,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 192
+      },
+      "ddpp_persistent_force": {
+        "registers_per_thread": 167,
+        "shared_bytes": 1320,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 192
+      },
+      "ddps_ordinary_force": {
+        "registers_per_thread": 254,
+        "shared_bytes": 36872,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 112
+      },
+      "ddps_persistent_force": {
+        "registers_per_thread": 254,
+        "shared_bytes": 36872,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 112
+      },
+      "ddds_ordinary_force": {
+        "registers_per_thread": 254,
+        "shared_bytes": 1024,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 192
+      },
+      "ddds_persistent_force": {
+        "registers_per_thread": 254,
+        "shared_bytes": 1032,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 192
+      }
+    },
+    "rejected_candidates": {
+      "ddpp_uniform_warp_rys4": {
+        "cubin_bytes": 8502712,
+        "helper_spill_load_bytes": 9952,
+        "helper_spill_store_bytes": 9288,
+        "reason": "Reject before endpoint testing because the helper spills heavily and the kernel reaches the register ceiling.",
+        "registers_per_thread": 255,
+        "shared_bytes": 36872,
+        "stack_bytes": 1200
+      },
+      "ddps_component_lane_rys4": {
+        "component_lane_milliseconds": 40.8667526,
+        "reason": "Resource-safe but 4.61x slower than the uniform-warp Rys4 candidate in the isolated gate.",
+        "uniform_warp_milliseconds": 8.87207508
+      },
+      "ddds_uniform_warp_rys4": {
+        "cubin_bytes": 5172616,
+        "helper_persistent_spill_load_bytes": 528,
+        "helper_persistent_spill_store_bytes": 392,
+        "helper_spill_load_bytes": 600,
+        "helper_spill_store_bytes": 464,
+        "reason": "Reject before endpoint testing because the helper still spills and the kernel reaches the register ceiling.",
+        "registers_per_thread": 255,
+        "shared_bytes": 36872,
+        "stack_bytes": 416
+      }
+    },
+    "production_profile": {
+      "combined_saving_milliseconds_per_replay": 153.80095166666666,
+      "ddpp": {
+        "candidate_milliseconds_per_replay": 30.321554,
+        "parent_milliseconds_per_replay": 118.71101633333333,
+        "saving_milliseconds_per_replay": 88.38946233333333,
+        "speedup": 3.9150703258810546
+      },
+      "ddps": {
+        "candidate_milliseconds_per_replay": 15.489951666666666,
+        "parent_milliseconds_per_replay": 47.368549333333334,
+        "saving_milliseconds_per_replay": 31.878597666666668,
+        "speedup": 3.058017889231632
+      },
+      "ddds": {
+        "candidate_milliseconds_per_replay": 11.027265,
+        "parent_milliseconds_per_replay": 44.560156666666664,
+        "saving_milliseconds_per_replay": 33.532891666666665,
+        "speedup": 4.040907396348959
+      },
+      "profiled_replays": 3,
+      "two_electron_force_candidate_milliseconds_per_replay": 983.953817,
+      "two_electron_force_parent_milliseconds_per_replay": 1137.41067,
+      "two_electron_force_saving_milliseconds_per_replay": 153.456853
+    },
+    "endpoint": {
+      "candidate_vibeqc_median_seconds": 2.411605569999665,
+      "energy_error_hartree": 1.6370904631912708e-11,
+      "force_error_hartree_per_bohr": 3.153685292772712e-08,
+      "gpu4pyscf_median_seconds": 2.1448064859723672,
+      "iteration_branch": [
+        1
+      ],
+      "parent_vibeqc_median_seconds": 2.5655019840341993,
+      "repeats_per_engine": 5,
+      "saving_seconds": 0.15389641403453425,
+      "vibeqc_over_gpu4pyscf": 1.1243930796424937
+    },
+    "small_system_checks": {
+      "96_ao": {
+        "change_from_parent_fraction": -0.1355437679285212,
+        "energy_error_hartree": 1.7053025658242404e-12,
+        "force_error_hartree_per_bohr": 9.262347784588787e-09,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.1637488420237787
+      },
+      "192_ao": {
+        "change_from_parent_fraction": -0.07382281704046972,
+        "energy_error_hartree": 9.777068044058979e-12,
+        "force_error_hartree_per_bohr": 1.088202071508615e-08,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.6561909529846162
+      }
+    }
+  },
+  "current_gap": {
+    "gpu4pyscf_seconds": 2.1448064859723672,
+    "parity_remaining_seconds": 0.2667990840272978,
+    "required_vibeqc_reduction_fraction_for_1_05x": 0.06616287576774063,
+    "target_ratio": 1.05,
+    "target_remaining_seconds": 0.15955875972867917,
+    "target_vibeqc_seconds": 2.252046810270986,
+    "two_electron_force_device_milliseconds": 983.953817,
+    "vibeqc_seconds": 2.411605569999665
+  }
+}

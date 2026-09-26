@@ -1,0 +1,38 @@
+{
+  "definition": "Nonblank/noncomment physical code lines, SequenceMatcher(autojunk=False); unchanged lines changing role are separate from physical edits.",
+  "added": {
+    "scientific": 172,
+    "runtime": 61
+  },
+  "removed": {
+    "scientific": 23,
+    "runtime": 23
+  },
+  "unchanged_lines_reclassified": {
+    "runtime -> scientific": 151
+  },
+  "net_role_delta": {
+    "runtime": -113,
+    "scientific": 300,
+    "oracle": 0,
+    "fallback": 0,
+    "performance_exception": 0
+  },
+  "baseline_commit": "b29649f895ad53a549bef03341c2349cbe131f6c",
+  "baseline_totals": {
+    "fallback": 0,
+    "oracle": 10,
+    "performance_exception": 156,
+    "runtime": 9686,
+    "scientific": 11557
+  },
+  "candidate_totals": {
+    "fallback": 0,
+    "oracle": 10,
+    "performance_exception": 156,
+    "runtime": 9573,
+    "scientific": 11857
+  },
+  "baseline_all_handwritten_scientific_lines": 11723,
+  "candidate_all_handwritten_scientific_lines": 12023
+}

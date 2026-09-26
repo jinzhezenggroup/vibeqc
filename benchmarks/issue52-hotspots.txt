@@ -1,0 +1,4 @@
+# Warm fixed-density Fock classes from the current 768-AO profile.
+ppps, psps, dpps, ddds
+psss
+ssss, pppp, dppp

@@ -1,0 +1,200 @@
+{
+  "scope": "Accuracy and failed-route diagnosis; no new clean timing or acceptance qualification.",
+  "prior_evidence": "https://github.com/jinzhezenggroup/vibeqc/tree/755bcaa3531612bfb52a1ade216bd43ad2b8e564/benchmarks/results/issue206-current-df",
+  "files": [
+    {
+      "path": "accuracy/cpu-oracles.json",
+      "sha256": "39f4b6746961c8fced83cc57bbac6af8fb0461b5e98b3f6cbfa2861f50883288",
+      "bytes": 20533,
+      "original_path": ".artifacts/issue206/cpu-force-diagnosis/report.json",
+      "original_sha256": "39f4b6746961c8fced83cc57bbac6af8fb0461b5e98b3f6cbfa2861f50883288"
+    },
+    {
+      "path": "accuracy/native-controls-partial-stock.json",
+      "sha256": "301013284eaf854a2a70f5d7370495bc2df9fe039c1910d128f0e73f042bca68",
+      "bytes": 91256,
+      "original_path": ".artifacts/issue206/convergence-controls/report.json",
+      "original_sha256": "301013284eaf854a2a70f5d7370495bc2df9fe039c1910d128f0e73f042bca68"
+    },
+    {
+      "path": "accuracy/stock-v2-incomplete.json",
+      "sha256": "38ca12c8174b16f432aed94692d0498dc231c1e678ec13237f4af9cc303ed1f1",
+      "bytes": 639,
+      "original_path": ".artifacts/issue206/convergence-controls-stock-v2/report.json",
+      "original_sha256": "38ca12c8174b16f432aed94692d0498dc231c1e678ec13237f4af9cc303ed1f1"
+    },
+    {
+      "path": "accuracy/stock-controls.json",
+      "sha256": "3e1ef6b4937fd1d624f711712d5f101e012582905baa598b871135ef53336e48",
+      "bytes": 10912,
+      "original_path": ".artifacts/issue206/convergence-controls-stock-v3/report.json",
+      "original_sha256": "3e1ef6b4937fd1d624f711712d5f101e012582905baa598b871135ef53336e48"
+    },
+    {
+      "path": "failed-route/metadata-regression.json",
+      "sha256": "51c0d23594e6ea583fb4e3f81aeb43725959f3bb621f7a4d1b3c449ffe69f636",
+      "bytes": 6128,
+      "original_path": ".artifacts/issue206/no-aot-metadata/manifest.json",
+      "original_sha256": "51c0d23594e6ea583fb4e3f81aeb43725959f3bb621f7a4d1b3c449ffe69f636"
+    },
+    {
+      "path": "failed-route/matrix-summary.json",
+      "sha256": "a2a15fb51a01961af656ab9a08d8ec208127ff6ee5a00885b52dc861e5901409",
+      "bytes": 1742,
+      "original_path": ".artifacts/issue206/no-aot-metadata/matrix/summary.json",
+      "original_sha256": "a2a15fb51a01961af656ab9a08d8ec208127ff6ee5a00885b52dc861e5901409"
+    },
+    {
+      "path": "failed-route/build-configuration.json",
+      "sha256": "9095b3360a06c3f1a7267b6d7ac5b8b7bb2a9a49dd79d05e83017ce4b0c8ce38",
+      "bytes": 1080,
+      "original_path": ".artifacts/issue206/direct-aot/failed-build-configuration.json",
+      "original_sha256": "9095b3360a06c3f1a7267b6d7ac5b8b7bb2a9a49dd79d05e83017ce4b0c8ce38"
+    },
+    {
+      "path": "accuracy/cpu-log.json",
+      "sha256": "8751c223967eaaf3b44663a18ff75648e2b3d42cc6098dfe926edb65fec103ff",
+      "bytes": 814,
+      "original_path": ".artifacts/issue206/cpu-force-diagnosis.log",
+      "original_sha256": "e85bfc6d9822cf2b8107d7be0660301d3dba2d15807ccc1e4f24c0228f4448ca"
+    },
+    {
+      "path": "accuracy/native-and-stock-failure-log.json",
+      "sha256": "6237bd942f49ddd87cd8e26fdc9d6f301376c9b158f5da0aec6478a5e0ac05ba",
+      "bytes": 1651,
+      "original_path": ".artifacts/issue206/convergence-controls.log",
+      "original_sha256": "6a4afa2b28538579f4306d31a7b51317ede78041180874f568d9a4eecdea4857"
+    },
+    {
+      "path": "accuracy/stock-v2-failure-log.json",
+      "sha256": "9cc3bd92502b0e1cd04764c668ec6ca96ed9f878538d80b5b99f57de759ce841",
+      "bytes": 632,
+      "original_path": ".artifacts/issue206/convergence-controls-stock-v2.log",
+      "original_sha256": "4736c65ddb3ebe4c668ed661099496a3bc156a8c25d75532a58b26dcb9ce48ab"
+    },
+    {
+      "path": "accuracy/stock-log.json",
+      "sha256": "9d08f1348154935df1b82ae1c9ce7a8debfcec9df47110e6a2ed747da1234df0",
+      "bytes": 149,
+      "original_path": ".artifacts/issue206/convergence-controls-stock-v3.log",
+      "original_sha256": "1be1babbaef77bbec4d62a9d84500f0086cc906e0bc3e34e2df80bc78198532b"
+    },
+    {
+      "path": "failed-route/execution-log.json",
+      "sha256": "e67fb65b6395f583916f5bc4ae1e7867f0ddffa5965aed9694ffb2700af8a3e8",
+      "bytes": 1783,
+      "original_path": ".artifacts/issue206/no-aot-metadata/execution.log",
+      "original_sha256": "32989a5fdb8c4cdddf03220867792d8b5468fb474aa87b15980f4c3f747f95fc"
+    },
+    {
+      "path": "validation/cpu-tests.json",
+      "sha256": "1d7d00899cb6e4135e98b428112123efe47d2e02ba11be3d6b13281f1646104a",
+      "bytes": 134,
+      "original_path": ".artifacts/issue206/metadata-tests.log",
+      "original_sha256": "c61640faa3479d1cdb649dff1600c22c2c4effdabeb64abb125f904725c394d0"
+    },
+    {
+      "path": "failed-route/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
+      "sha256": "e4bedcc754eb9a77b05cc84b3a2d0714a23d42b6edb9b359fdbc0a12d62e22ee",
+      "bytes": 1153,
+      "original_path": ".artifacts/issue206/no-aot-metadata/matrix/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
+      "original_sha256": "e4bedcc754eb9a77b05cc84b3a2d0714a23d42b6edb9b359fdbc0a12d62e22ee"
+    },
+    {
+      "path": "failed-route/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
+      "sha256": "9399b9b329ae74ab1572234633503936c05808cc16f1e05db8d0683f20bd0a45",
+      "bytes": 1153,
+      "original_path": ".artifacts/issue206/no-aot-metadata/matrix/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
+      "original_sha256": "9399b9b329ae74ab1572234633503936c05808cc16f1e05db8d0683f20bd0a45"
+    },
+    {
+      "path": "failed-route/gdb-log.json",
+      "sha256": "1cb376dc0f8016370cf3df77d7cf6d40790d8e731f22ae636e45f5568005350c",
+      "bytes": 7394,
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/debug-direct-192-v3/gdb.log",
+      "original_sha256": "758b8decbdf36b033acf06e206a0dc1797e84bf392fbda6fb076ee54673610f3"
+    },
+    {
+      "path": "failed-route/gdb-manifest.json",
+      "sha256": "8b0908866b8ddbd83403a615c11fb6c76c9b0a63997fe0a5d83755f59e483757",
+      "bytes": 665,
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/debug-direct-192-v3/manifest.json",
+      "original_sha256": "8b0908866b8ddbd83403a615c11fb6c76c9b0a63997fe0a5d83755f59e483757"
+    },
+    {
+      "path": "reproduction/diagnose-retained-forces.py.txt",
+      "sha256": "0f925b80c59165efd906f956eb5621dac251882548165855d34ec78fb1162b2e",
+      "bytes": 4622,
+      "original_path": ".artifacts/issue206/diagnose-retained-forces.py",
+      "original_sha256": "0f925b80c59165efd906f956eb5621dac251882548165855d34ec78fb1162b2e"
+    },
+    {
+      "path": "reproduction/diagnose-convergence-controls.py.txt",
+      "sha256": "76f7bf4c71a0b3f5da32057080e4775386b614457ab7f9d7c5e84e635c783150",
+      "bytes": 5575,
+      "original_path": ".artifacts/issue206/diagnose-convergence-controls.py",
+      "original_sha256": "76f7bf4c71a0b3f5da32057080e4775386b614457ab7f9d7c5e84e635c783150"
+    },
+    {
+      "path": "reproduction/diagnose-stock-changed-v2.py.txt",
+      "sha256": "e8c5f7351d5c31521f0ec5e5e027b5c874c405ec07a239b07bfad3e09f9c4390",
+      "bytes": 5666,
+      "original_path": ".artifacts/issue206/diagnose-stock-changed-v2.py",
+      "original_sha256": "e8c5f7351d5c31521f0ec5e5e027b5c874c405ec07a239b07bfad3e09f9c4390"
+    },
+    {
+      "path": "reproduction/diagnose-stock-changed-v3.py.txt",
+      "sha256": "e552f817b33df6542670ebf6fe38f43acdd32986d1fc15b7b7af7faf47ff8956",
+      "bytes": 5685,
+      "original_path": ".artifacts/issue206/diagnose-stock-changed-v3.py",
+      "original_sha256": "e552f817b33df6542670ebf6fe38f43acdd32986d1fc15b7b7af7faf47ff8956"
+    },
+    {
+      "path": "reproduction/run-metadata-regression.py.txt",
+      "sha256": "8e3fd799dc7b680130e9d0d0382a27bcdbc2ac0de6abd572511e5b4afc7e8ee6",
+      "bytes": 1650,
+      "original_path": ".artifacts/issue206/run-metadata-regression.py",
+      "original_sha256": "8e3fd799dc7b680130e9d0d0382a27bcdbc2ac0de6abd572511e5b4afc7e8ee6"
+    },
+    {
+      "path": "reproduction/trace.gdb.txt",
+      "sha256": "826e250a71ed36eccb14fa74496d6814e6662672df3b1418de466a24fb59313f",
+      "bytes": 779,
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/debug-direct-192-v3/trace.gdb",
+      "original_sha256": "826e250a71ed36eccb14fa74496d6814e6662672df3b1418de466a24fb59313f"
+    },
+    {
+      "path": "reproduction/run-gdb.py.txt",
+      "sha256": "1862f3e995f7612404ed4469dd6aaecf09b1e2dac9fcbba65bcc80eb7a17a1e1",
+      "bytes": 1297,
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/debug-direct-192-v3/run.py",
+      "original_sha256": "1862f3e995f7612404ed4469dd6aaecf09b1e2dac9fcbba65bcc80eb7a17a1e1"
+    },
+    {
+      "path": "reproduction/diagnose-direct-192.py.txt",
+      "sha256": "eba74cece41559d30f8f286d5ba332820b469af200af9a12c9bd59c663b56c8c",
+      "bytes": 3785,
+      "original_path": "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/diagnose-direct-192.py",
+      "original_sha256": "eba74cece41559d30f8f286d5ba332820b469af200af9a12c9bd59c663b56c8c"
+    },
+    {
+      "path": "reproduction/compare_gpu4pyscf_batch.py.txt",
+      "sha256": "efea113b3538ece5d9a1e88bc1f63156d04cb7159d2f58b5b298d3de21b895ea",
+      "bytes": 40895,
+      "original_path": "benchmarks/compare_gpu4pyscf_batch.py",
+      "original_sha256": "efea113b3538ece5d9a1e88bc1f63156d04cb7159d2f58b5b298d3de21b895ea"
+    },
+    {
+      "path": "reproduction/real_molecule_gate.py.txt",
+      "sha256": "d86e4880f20036dd943621389fef072de67ee9768971df0e1633997d9d6ad7fc",
+      "bytes": 7284,
+      "original_path": "benchmarks/real_molecule_gate.py",
+      "original_sha256": "d86e4880f20036dd943621389fef072de67ee9768971df0e1633997d9d6ad7fc"
+    }
+  ],
+  "incomplete": [
+    "AOT-enabled release reproduction is pending; the CUDA 801 failure is localized but a successful replacement calculation is not yet retained.",
+    "Original strict gates remain failed. Tighter convergence probes are separate accuracy-only experiments.",
+    "The native-control campaign completed six native settings but its first stock attempt failed in the geometry API; the stock-only v2 failed while reading the gradient norm; v3 completed."
+  ]
+}

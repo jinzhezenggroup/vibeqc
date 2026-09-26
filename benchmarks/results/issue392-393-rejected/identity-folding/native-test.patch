@@ -1,0 +1,76 @@
+diff --git a/tests/native/test_df_shell_pairs.cpp b/tests/native/test_df_shell_pairs.cpp
+index a88d991..721b2b3 100644
+--- a/tests/native/test_df_shell_pairs.cpp
++++ b/tests/native/test_df_shell_pairs.cpp
+@@ -23,6 +23,46 @@ void require(bool ok, const char* message) {
+ }
+ void check(cudaError_t error) { require(error == cudaSuccess, cudaGetErrorString(error)); }
+ 
++/** Prove the public expansion contract independently of generated indexing.
++ * Products of these one-to-one maps remain injective after a triangle/panel
++ * removes tuples. Spherical d/f deliberately demonstrate collisions and must
++ * keep the general folding path even when individual AOs have one term.
++ */
++void check_public_weight_ownership() {
++  for (const auto representation : {VIBEQC_BASIS_CARTESIAN, VIBEQC_BASIS_SPHERICAL})
++    for (unsigned l = 0; l < 4; ++l) {
++      const auto cartesian = molecule::cartesian_components(l);
++      const auto expansions = molecule::ao_expansions(l, representation);
++      std::vector<unsigned> owners(cartesian.size());
++      bool identity = expansions.size() == cartesian.size();
++      for (std::size_t ao = 0; ao < expansions.size(); ++ao) {
++        identity = identity && expansions[ao].size() == 1;
++        for (const auto& term : expansions[ao]) {
++          const auto found = std::find(cartesian.begin(), cartesian.end(), term.component);
++          require(found != cartesian.end(),
++                  "public expansion names an invalid Cartesian component");
++          const auto index = static_cast<std::size_t>(found - cartesian.begin());
++          ++owners[index];
++          identity = identity && index == ao && term.coefficient == 1.0;
++          if (l < 2)
++            require(
++                term.coefficient * molecule::cartesian_component_normalization(term.component) ==
++                    1.0,
++                "s/p identity weights require exact unit component normalization");
++        }
++      }
++      if (representation == VIBEQC_BASIS_CARTESIAN || l < 2) {
++        require(
++            identity && std::all_of(owners.begin(), owners.end(), [](auto n) { return n == 1; }),
++            "direct weight ownership requires the exact public CCA identity map");
++      } else {
++        require(
++            !identity && std::any_of(owners.begin(), owners.end(), [](auto n) { return n > 1; }),
++            "spherical d/f expansions must exercise the collision fallback");
++      }
++    }
++}
++
+ /** Synchronous test uploads retain every allocation until the stream is drained. */
+ struct Storage {
+   std::vector<void*> pointers;
+@@ -298,8 +338,14 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+                                   get(Work::gradient_atomics_distinct_atom) ==
+                               9 * get(Work::active_shell_tasks),
+                       "gradient atomic channels or shared-atom classification differ");
+-              require(get(Work::expansion_term_products) == get(Work::folding_shared_atomics),
+-                      "legacy folding must count one shared atomic per expansion product");
++              const bool identity = signature[0] < 2 && signature[1] < 2 && signature[2] < 2;
++              require(
++                  get(Work::expansion_term_products) ==
++                      get(identity ? Work::public_nonzero_weights : Work::folding_shared_atomics),
++                  "each expansion product must reach a register or a shared fold atomic");
++              require(get(Work::folding_direct_stores) == 0 &&
++                          (!identity || get(Work::folding_shared_atomics) == 0),
++                      "s/p identity expansions must bypass all shared weight staging");
+               for (unsigned metric = 0; metric < totals.size(); ++metric)
+                 totals[metric] += observed[metric];
+             }
+@@ -327,6 +373,7 @@ void exercise(bool spherical_o, bool spherical_x, bool many_signatures = false)
+ int main() {
+   if (!std::getenv("SLURM_JOB_ID")) return 77;
+   try {
++    check_public_weight_ownership();
+     for (bool spherical_o : {false, true})
+       for (bool spherical_x : {false, true}) exercise(spherical_o, spherical_x);
+     exercise(false, false, true);

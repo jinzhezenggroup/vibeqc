@@ -1,0 +1,14 @@
+{
+  "path": "src/scf/cuda/df_metric_kernels.cu",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "Runtime storage and launch glue for CUDA DF metric factors. The new physical inverse/whitening projection kernel is separately counted as scientific; existing storage/symmetrization launch ownership is unchanged.",
+  "regions": [
+    {
+      "start": "__global__ void scale_metric_projection_kernel(",
+      "stop": "void launch_symmetrize_metrics_kernel(",
+      "role": "scientific",
+      "reason": "New FP64 per-eigendirection inverse or inverse-root scaling for a caller-validated full-rank metric. This bounded matrix adapter is native scientific arithmetic, with no integral evaluator or new rank/cutoff policy. Only newly added code is reclassified."
+    }
+  ]
+}

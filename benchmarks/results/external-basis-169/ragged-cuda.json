@@ -1,0 +1,3184 @@
+[
+  {
+    "representation": "cartesian",
+    "trial": 0,
+    "seconds": 0.4811711311340332,
+    "items": [
+      {
+        "energy": -552.1219028912126,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 0.0,
+        "density_rms": 2.541233967274867e-16,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1368683772161603e-13,
+            "max_scaled_error": 1.1368683772161603e-05,
+            "rms_error": 1.1368683772161603e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.1990492552889,
+        "forces": [
+          [
+            -0.5882752799956287,
+            -0.2941376399978156,
+            -5.882752799956404
+          ],
+          [
+            0.5882752799956285,
+            0.29413763999781545,
+            5.882752799956405
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 1.1368683772161603e-13,
+        "density_rms": 3.7230461451812953e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.094947017729282e-13,
+            "max_scaled_error": 9.094947017729282e-05,
+            "rms_error": 9.094947017729282e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.6608936448392342e-13,
+            "max_scaled_error": 1.6608936448392342e-06,
+            "rms_error": 9.733349170069647e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -552.1219028912126,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 0.0,
+        "density_rms": 2.541233967274867e-16,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1368683772161603e-13,
+            "max_scaled_error": 1.1368683772161603e-05,
+            "rms_error": 1.1368683772161603e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.1990492552889,
+        "forces": [
+          [
+            -0.5882752799956287,
+            -0.2941376399978156,
+            -5.882752799956404
+          ],
+          [
+            0.5882752799956285,
+            0.29413763999781545,
+            5.882752799956405
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 1.1368683772161603e-13,
+        "density_rms": 3.7230461451812953e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.094947017729282e-13,
+            "max_scaled_error": 9.094947017729282e-05,
+            "rms_error": 9.094947017729282e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.6608936448392342e-13,
+            "max_scaled_error": 1.6608936448392342e-06,
+            "rms_error": 9.733349170069647e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      }
+    ]
+  },
+  {
+    "representation": "cartesian",
+    "trial": 1,
+    "seconds": 0.4565407389309257,
+    "items": [
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.413991533715,
+        "forces": [
+          [
+            -0.7519916418983387,
+            -0.22281233834023528,
+            -5.653863085383498
+          ],
+          [
+            0.751991641898338,
+            0.22281233834023514,
+            5.653863085383494
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 1.1368683772161603e-13,
+        "density_rms": 9.334573534536853e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0463630789890885e-12,
+            "max_scaled_error": 0.00020463630789890885,
+            "rms_error": 2.0463630789890885e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 8.268941087408166e-13,
+            "max_scaled_error": 8.268941087408166e-06,
+            "rms_error": 4.784396285047695e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            1.5777218104420236e-30
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.583788162614231e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.413991533715,
+        "forces": [
+          [
+            -0.7519916418983387,
+            -0.22281233834023528,
+            -5.653863085383498
+          ],
+          [
+            0.751991641898338,
+            0.22281233834023514,
+            5.653863085383494
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 1.1368683772161603e-13,
+        "density_rms": 9.334573534536853e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0463630789890885e-12,
+            "max_scaled_error": 0.00020463630789890885,
+            "rms_error": 2.0463630789890885e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 8.268941087408166e-13,
+            "max_scaled_error": 8.268941087408166e-06,
+            "rms_error": 4.784396285047695e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      }
+    ]
+  },
+  {
+    "representation": "cartesian",
+    "trial": 2,
+    "seconds": 0.456611474044621,
+    "items": [
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.1990492552885,
+        "forces": [
+          [
+            -0.5882752799956963,
+            -0.29413763999786824,
+            -5.882752799957291
+          ],
+          [
+            0.5882752799956964,
+            0.29413763999786785,
+            5.8827527999572915
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 7.958078640513122e-13,
+        "density_rms": 9.069909870130785e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.212008767965017e-13,
+            "max_scaled_error": 7.212008767965017e-06,
+            "rms_error": 4.173699465746384e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.1990492552885,
+        "forces": [
+          [
+            -0.5882752799956963,
+            -0.29413763999786824,
+            -5.882752799957291
+          ],
+          [
+            0.5882752799956964,
+            0.29413763999786785,
+            5.8827527999572915
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 7.958078640513122e-13,
+        "density_rms": 9.069909870130785e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.212008767965017e-13,
+            "max_scaled_error": 7.212008767965017e-06,
+            "rms_error": 4.173699465746384e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      }
+    ]
+  },
+  {
+    "representation": "cartesian",
+    "trial": 3,
+    "seconds": 0.45644577709026635,
+    "items": [
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.4139915337149,
+        "forces": [
+          [
+            -0.7519916418983387,
+            -0.2228123383402353,
+            -5.653863085383497
+          ],
+          [
+            0.751991641898338,
+            0.22281233834023517,
+            5.653863085383494
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 0.0,
+        "density_rms": 9.334680464286725e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.9326762412674725e-12,
+            "max_scaled_error": 0.00019326762412674725,
+            "rms_error": 1.9326762412674725e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 8.268941087408166e-13,
+            "max_scaled_error": 8.268941087408166e-06,
+            "rms_error": 4.786937914054522e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.4139915337149,
+        "forces": [
+          [
+            -0.7519916418983387,
+            -0.2228123383402353,
+            -5.653863085383497
+          ],
+          [
+            0.751991641898338,
+            0.22281233834023517,
+            5.653863085383494
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 0.0,
+        "density_rms": 9.334680464286725e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.9326762412674725e-12,
+            "max_scaled_error": 0.00019326762412674725,
+            "rms_error": 1.9326762412674725e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 8.268941087408166e-13,
+            "max_scaled_error": 8.268941087408166e-06,
+            "rms_error": 4.786937914054522e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      }
+    ]
+  },
+  {
+    "representation": "cartesian",
+    "trial": 4,
+    "seconds": 0.45558591093868017,
+    "items": [
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.1990492552885,
+        "forces": [
+          [
+            -0.5882752799956963,
+            -0.29413763999786824,
+            -5.882752799957291
+          ],
+          [
+            0.5882752799956964,
+            0.29413763999786785,
+            5.8827527999572915
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 7.958078640513122e-13,
+        "density_rms": 9.069909870130785e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.212008767965017e-13,
+            "max_scaled_error": 7.212008767965017e-06,
+            "rms_error": 4.173699465746384e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -552.1219028912125,
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1272284239991592e-29,
+            "max_scaled_error": 1.1272284239991593e-22,
+            "rms_error": 6.586654611949946e-30,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -540.1990492552885,
+        "forces": [
+          [
+            -0.5882752799956963,
+            -0.29413763999786824,
+            -5.882752799957291
+          ],
+          [
+            0.5882752799956964,
+            0.29413763999786785,
+            5.8827527999572915
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 7.958078640513122e-13,
+        "density_rms": 9.069909870130785e-13,
+        "executed_backend": "cuda",
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.212008767965017e-13,
+            "max_scaled_error": 7.212008767965017e-06,
+            "rms_error": 4.173699465746384e-13,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "f15f4d71861b67b033b9bca1269be2505bc53bccdc4d69774ded8df8b0f60d98",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "b5ca522afd671aa75648f170f85e93024f39cb67cdabc41faf375b414bb4dd52"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "ab096cbe5e2b6f0ab223141c6069068908f3540f06c52d39cef37737d83ff223",
+          "basis_identity": "78fd006f0056fb9666778581f88ac0188ef866541b11db8bd105453c12521da9",
+          "representation": "cartesian",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "6e1500f3aab941c89f7db2b8a8eb8e88d54836164e8c4401960cb253de7d2601"
+      }
+    ]
+  },
+  {
+    "representation": "cartesian",
+    "isolated_failure_indices": [
+      1
+    ]
+  },
+  {
+    "representation": "spherical",
+    "trial": 0,
+    "seconds": 0.8728452420327812,
+    "items": [
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 3.158111689322081e-12,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.6984705887912,
+        "forces": [
+          [
+            -0.5885000418055774,
+            -0.2942500209027885,
+            -5.885000418055815
+          ],
+          [
+            0.5885000418055782,
+            0.2942500209027892,
+            5.885000418055817
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 6.107237441498279e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.410605131648481e-13,
+            "max_scaled_error": 3.410605131648481e-05,
+            "rms_error": 3.410605131648481e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 2.220446049250313e-14,
+            "max_scaled_error": 2.220446049250313e-07,
+            "rms_error": 1.2424250524250576e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 3.158111689322081e-12,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.6984705887912,
+        "forces": [
+          [
+            -0.5885000418055774,
+            -0.2942500209027885,
+            -5.885000418055815
+          ],
+          [
+            0.5885000418055782,
+            0.2942500209027892,
+            5.885000418055817
+          ]
+        ],
+        "iterations": 5,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 6.107237441498279e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": false,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.410605131648481e-13,
+            "max_scaled_error": 3.410605131648481e-05,
+            "rms_error": 3.410605131648481e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 2.220446049250313e-14,
+            "max_scaled_error": 2.220446049250313e-07,
+            "rms_error": 1.2424250524250576e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      }
+    ]
+  },
+  {
+    "representation": "spherical",
+    "trial": 1,
+    "seconds": 0.8701934160199016,
+    "items": [
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            0.0,
+            -0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 3.2358763761374633e-16,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.9134941390676,
+        "forces": [
+          [
+            -0.7522729327691824,
+            -0.22289568378346483,
+            -5.655977976005379
+          ],
+          [
+            0.7522729327691826,
+            0.22289568378346503,
+            5.6559779760053726
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 2.2737367544323206e-13,
+        "density_rms": 2.477732922722106e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0463630789890885e-12,
+            "max_scaled_error": 0.00020463630789890885,
+            "rms_error": 2.0463630789890885e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1013412404281553e-13,
+            "max_scaled_error": 1.1013412404281553e-06,
+            "rms_error": 6.212312619279658e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            0.0,
+            -0.0,
+            -1.5777218104420236e-30
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 3.2358763761374633e-16,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.568460254570238e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.9134941390676,
+        "forces": [
+          [
+            -0.7522729327691824,
+            -0.22289568378346483,
+            -5.655977976005379
+          ],
+          [
+            0.7522729327691826,
+            0.22289568378346503,
+            5.6559779760053726
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 2.2737367544323206e-13,
+        "density_rms": 2.477732922722106e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0463630789890885e-12,
+            "max_scaled_error": 0.00020463630789890885,
+            "rms_error": 2.0463630789890885e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1013412404281553e-13,
+            "max_scaled_error": 1.1013412404281553e-06,
+            "rms_error": 6.212312619279658e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      }
+    ]
+  },
+  {
+    "representation": "spherical",
+    "trial": 2,
+    "seconds": 0.8720805558841676,
+    "items": [
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.6984705887915,
+        "forces": [
+          [
+            -0.5885000418055808,
+            -0.2942500209027876,
+            -5.885000418055802
+          ],
+          [
+            0.5885000418055805,
+            0.2942500209027878,
+            5.885000418055802
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 2.398035264331029e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 3.4638958368304884e-14,
+            "max_scaled_error": 3.4638958368304884e-07,
+            "rms_error": 1.9960626965348053e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.6984705887915,
+        "forces": [
+          [
+            -0.5885000418055807,
+            -0.2942500209027876,
+            -5.885000418055802
+          ],
+          [
+            0.5885000418055805,
+            0.2942500209027878,
+            5.885000418055802
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 2.398035264331029e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 3.4638958368304884e-14,
+            "max_scaled_error": 3.4638958368304884e-07,
+            "rms_error": 1.996325122415571e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      }
+    ]
+  },
+  {
+    "representation": "spherical",
+    "trial": 3,
+    "seconds": 0.8621593310963362,
+    "items": [
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            0.0,
+            -0.0,
+            0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.9134941390676,
+        "forces": [
+          [
+            -0.7522729327691825,
+            -0.2228956837834649,
+            -5.655977976005379
+          ],
+          [
+            0.7522729327691826,
+            0.22289568378346503,
+            5.6559779760053726
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 2.2737367544323206e-13,
+        "density_rms": 2.4777329318289297e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0463630789890885e-12,
+            "max_scaled_error": 0.00020463630789890885,
+            "rms_error": 2.0463630789890885e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1013412404281553e-13,
+            "max_scaled_error": 1.1013412404281553e-06,
+            "rms_error": 6.212661483292765e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            0.0,
+            -0.0,
+            1.5777218104420236e-30
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.568460254570238e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.9134941390676,
+        "forces": [
+          [
+            -0.7522729327691825,
+            -0.2228956837834649,
+            -5.655977976005379
+          ],
+          [
+            0.7522729327691826,
+            0.22289568378346503,
+            5.6559779760053726
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 2.2737367544323206e-13,
+        "density_rms": 2.4777329318289297e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0463630789890885e-12,
+            "max_scaled_error": 0.00020463630789890885,
+            "rms_error": 2.0463630789890885e-12,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 1.1013412404281553e-13,
+            "max_scaled_error": 1.1013412404281553e-06,
+            "rms_error": 6.212661483292765e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      }
+    ]
+  },
+  {
+    "representation": "spherical",
+    "trial": 4,
+    "seconds": 0.8689120719209313,
+    "items": [
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.6984705887915,
+        "forces": [
+          [
+            -0.5885000418055808,
+            -0.2942500209027876,
+            -5.885000418055802
+          ],
+          [
+            0.5885000418055805,
+            0.2942500209027878,
+            5.885000418055802
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 2.398035264331029e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 3.4638958368304884e-14,
+            "max_scaled_error": 3.4638958368304884e-07,
+            "rms_error": 1.9960626965348053e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -551.6224882782485,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.0
+          ]
+        ],
+        "iterations": 2,
+        "energy_change": 0.0,
+        "density_rms": 0.0,
+        "executed_backend": "cuda",
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 0.0,
+            "max_scaled_error": 0.0,
+            "rms_error": 0.0,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 7.911232219550407e-29,
+            "max_scaled_error": 7.911232219550407e-22,
+            "rms_error": 4.5675520515790675e-29,
+            "shape": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      {
+        "energy": -539.6984705887915,
+        "forces": [
+          [
+            -0.5885000418055808,
+            -0.2942500209027876,
+            -5.885000418055802
+          ],
+          [
+            0.5885000418055805,
+            0.2942500209027878,
+            5.885000418055802
+          ]
+        ],
+        "iterations": 4,
+        "energy_change": 3.410605131648481e-13,
+        "density_rms": 2.398035264331029e-13,
+        "executed_backend": "cuda",
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63",
+        "warm_start_used": true,
+        "errors": {
+          "energy": {
+            "passed": true,
+            "atol": 1e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.684341886080801e-13,
+            "max_scaled_error": 5.6843418860808015e-05,
+            "rms_error": 5.684341886080801e-13,
+            "shape": []
+          },
+          "forces": {
+            "passed": true,
+            "atol": 1e-07,
+            "rtol": 0,
+            "max_absolute_error": 3.4638958368304884e-14,
+            "max_scaled_error": 3.4638958368304884e-07,
+            "rms_error": 1.9960626965348053e-14,
+            "shape": [
+              2,
+              3
+            ]
+          }
+        }
+      }
+    ],
+    "basis_metadata": [
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "99222e1540095ba84494c32649b07d149bf06a349fd02beee139c773bd88d600",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26
+            ],
+            "nuclear_charges": [
+              26
+            ],
+            "ecp_core_electrons": [
+              0
+            ],
+            "ionic_charge": 24,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 4,
+          "primitive_count": 9
+        },
+        "model_identity": "40a9f9217427962a1c2aaac1bcc0fbdc777f711d276ee7d5f7ed6fc2f7780039"
+      },
+      {
+        "orbital": {
+          "name": "vibeqc-synthetic-fe-h",
+          "role": "orbital",
+          "mathematical_identity": "81123114f34811c6c0cbd23ed07fcde7075a287429d6fc4b6027b8b6613d1cad",
+          "basis_identity": "1861c2ea8db780b359c4f96ef1f85a8e1cddc896f893ee887981567e544d7888",
+          "representation": "spherical",
+          "provenance": {
+            "source": "BSE pinned checkout; VibeQC original synthetic Fe diagnostic data",
+            "version": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30; basis-data=1",
+            "license": "BSD-3-Clause AND GPL-3.0-or-later",
+            "checksum": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+          },
+          "electrons": {
+            "atomic_numbers": [
+              26,
+              1
+            ],
+            "nuclear_charges": [
+              26,
+              1
+            ],
+            "ecp_core_electrons": [
+              0,
+              0
+            ],
+            "ionic_charge": 25,
+            "electron_count": 2,
+            "multiplicity": 1,
+            "nalpha": 1,
+            "nbeta": 1
+          },
+          "shell_count": 5,
+          "primitive_count": 12
+        },
+        "model_identity": "a16554abcbfd68bdba2a62506f741fb71a9fa2fe5b3f16a40c92c976face4d63"
+      }
+    ]
+  },
+  {
+    "representation": "spherical",
+    "isolated_failure_indices": [
+      1
+    ]
+  }
+]

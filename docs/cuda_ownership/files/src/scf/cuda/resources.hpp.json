@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/resources.hpp",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
+  "regions": []
+}

@@ -1,0 +1,381 @@
+{
+  "schema": "vibeqc.issue206.practical-auxiliary.retention.v1",
+  "measured_commit": "67b35f3a0a236de39ebbdb2876908a3c2da78c6c",
+  "native_source_identity": "06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d",
+  "library_sha256": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be",
+  "slurm_job_id": 9904,
+  "controller_exit_code": 1,
+  "scope": "Both first practical-auxiliary cells failed predeclared force gates. Every14pair/28timedcall,exact basis/provider/rank,CPUoracle,anddevelopmentfailure is retained; no scientific rerun.",
+  "records": [
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/manifest.json",
+      "retained": "raw/manifest.json",
+      "encoding": "identity",
+      "original_bytes": 19594,
+      "original_sha256": "88f3a6d92c1ce83788b37d847d66f433ca580ca70a53fa97e638d091c6acb9c5",
+      "stored_bytes": 19594,
+      "stored_sha256": "88f3a6d92c1ce83788b37d847d66f433ca580ca70a53fa97e638d091c6acb9c5"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.json",
+      "retained": "raw/oh-def2-svp-spherical-uhf-b1-forces.json",
+      "encoding": "identity",
+      "original_bytes": 79640,
+      "original_sha256": "54ca323310d449ed54f97949ed9101336f2302e4c0cf49d1c8e22c1129590732",
+      "stored_bytes": 79640,
+      "stored_sha256": "54ca323310d449ed54f97949ed9101336f2302e4c0cf49d1c8e22c1129590732"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.progress.jsonl",
+      "retained": "raw/oh-def2-svp-spherical-uhf-b1-forces.progress.jsonl",
+      "encoding": "identity",
+      "original_bytes": 24483,
+      "original_sha256": "3bf386488ca54ffccbd33a33e1aced9e90ccbe08a4e7393b33c720bdb8c09642",
+      "stored_bytes": 24483,
+      "stored_sha256": "3bf386488ca54ffccbd33a33e1aced9e90ccbe08a4e7393b33c720bdb8c09642"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.txt",
+      "retained": "raw/oh-def2-svp-spherical-uhf-b1-forces.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 1065,
+      "original_sha256": "6a4dce3b9367b55e21c77c77ede4abe34fcfeea23d5c8a35fbdab184a5afb9ff",
+      "stored_bytes": 559,
+      "stored_sha256": "148ed6ec012256324e431db7815b1a6932cf009d117257370306ac338d1a303c"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-qualification.json",
+      "retained": "raw/oh-def2-svp-spherical-uhf-b1-qualification.json",
+      "encoding": "identity",
+      "original_bytes": 11837,
+      "original_sha256": "cac3ce764ba031de6bb88f1246da3c57d645a339f0197709135b35c596b5c759",
+      "stored_bytes": 11837,
+      "stored_sha256": "cac3ce764ba031de6bb88f1246da3c57d645a339f0197709135b35c596b5c759"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/oh-def2-svp-spherical-uhf-b1-qualification.txt",
+      "retained": "raw/oh-def2-svp-spherical-uhf-b1-qualification.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 76,
+      "original_sha256": "2d517b2df8781fe566f67f046a2dd7564e8cb99ca5cd70a4b83f25c96bd2c7c7",
+      "stored_bytes": 94,
+      "stored_sha256": "b2b1a518974771c861a76dafe1bd9534746daf1f2cba3a137db149056b986f57"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.json",
+      "retained": "raw/water-tetramer-def2-svp-spherical-b1-forces.json.gz",
+      "encoding": "gzip",
+      "original_bytes": 116331,
+      "original_sha256": "d0528f278a77db319c657cbc86f8118ba9635cea4ef12250644585452d3a0118",
+      "stored_bytes": 11286,
+      "stored_sha256": "0b8ada69f5a9d851d3a10899f202afe2f68b98cb2c118caf717055bf4776d890"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.progress.jsonl",
+      "retained": "raw/water-tetramer-def2-svp-spherical-b1-forces.progress.jsonl",
+      "encoding": "identity",
+      "original_bytes": 35671,
+      "original_sha256": "da5b32b4c354df37a503399062375fe6e40c0c003af34b0567b748d37cf3dfbf",
+      "stored_bytes": 35671,
+      "stored_sha256": "da5b32b4c354df37a503399062375fe6e40c0c003af34b0567b748d37cf3dfbf"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.txt",
+      "retained": "raw/water-tetramer-def2-svp-spherical-b1-forces.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 1088,
+      "original_sha256": "0890e0d278caa4aaebd48024c5fc8b287c764e8132d5af5be834826828a4d7b5",
+      "stored_bytes": 576,
+      "stored_sha256": "2ebf4c150eda4c629ffe1ebbd6f0a423b02377d902774fe52935731e879ce868"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-qualification.json",
+      "retained": "raw/water-tetramer-def2-svp-spherical-b1-qualification.json",
+      "encoding": "identity",
+      "original_bytes": 13496,
+      "original_sha256": "d6bdffb9976666bb36730294c6dd07a29b32939a7954e43ff28dfd1f6cdf79d1",
+      "stored_bytes": 13496,
+      "stored_sha256": "d6bdffb9976666bb36730294c6dd07a29b32939a7954e43ff28dfd1f6cdf79d1"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1/water-tetramer-def2-svp-spherical-b1-qualification.txt",
+      "retained": "raw/water-tetramer-def2-svp-spherical-b1-qualification.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 84,
+      "original_sha256": "02e0404c4f52db549cf2fe901f4c826a47112f9364c18552523c3d6c69b0efc2",
+      "stored_bytes": 100,
+      "stored_sha256": "83b91ac1772a362cfaccfd6b4c19a6548239d68768c9c0ea4c5fbb6c3da81779"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/practical-warm-v1.txt",
+      "retained": "raw/controller.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 1674,
+      "original_sha256": "7d0037eb8b10fd14f6f8bed44a2d0bf963e6387cc10271873ed3148ed7600a2f",
+      "stored_bytes": 581,
+      "stored_sha256": "0fa425d54a56dba04bdac7b5b0e2398dcadbc6ff655bc748c1524d9e80ee1723"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/build.json",
+      "retained": "identity/build.json",
+      "encoding": "identity",
+      "original_bytes": 5164,
+      "original_sha256": "7cdbed0c50e9ba50015fbdb5fe690667ef3627760f78dba2e4822630d41b99b9",
+      "stored_bytes": 5164,
+      "stored_sha256": "7cdbed0c50e9ba50015fbdb5fe690667ef3627760f78dba2e4822630d41b99b9"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/cc-pvdz.json",
+      "retained": "identity/cc-pvdz.json",
+      "encoding": "identity",
+      "original_bytes": 5533,
+      "original_sha256": "75156181a4270b6d96792875b688ead36edfc5b4f7c5931be7633243387036f4",
+      "stored_bytes": 5533,
+      "stored_sha256": "75156181a4270b6d96792875b688ead36edfc5b4f7c5931be7633243387036f4"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/cc-pvdz-jkfit.json",
+      "retained": "identity/cc-pvdz-jkfit.json",
+      "encoding": "identity",
+      "original_bytes": 14516,
+      "original_sha256": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871",
+      "stored_bytes": 14516,
+      "stored_sha256": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/cpu-basis-preflight.json",
+      "retained": "identity/cpu-basis-preflight.json",
+      "encoding": "identity",
+      "original_bytes": 1080,
+      "original_sha256": "06f89f5c4fbc4f0b634823c30b1270c5c35c99de8cdc43d1f568e0c2fd472903",
+      "stored_bytes": 1080,
+      "stored_sha256": "06f89f5c4fbc4f0b634823c30b1270c5c35c99de8cdc43d1f568e0c2fd472903"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/cpu-diagnosis-v1.json",
+      "retained": "diagnosis/cpu-diagnosis-v1.json",
+      "encoding": "identity",
+      "original_bytes": 41447,
+      "original_sha256": "224aa4e799f42b2f89afc50a0d2d1790f7a792f129bf05a6b6a1bb703d36ccc0",
+      "stored_bytes": 41447,
+      "stored_sha256": "224aa4e799f42b2f89afc50a0d2d1790f7a792f129bf05a6b6a1bb703d36ccc0"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/cpu-diagnosis-v1.txt",
+      "retained": "diagnosis/cpu-diagnosis-v1.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 311,
+      "original_sha256": "7253e5fbac559c56d1026e996b4306b5914d7a495327d36bc13e6f73a922294c",
+      "stored_bytes": 215,
+      "stored_sha256": "6e3fa25f761c185957fdd9a7efe3cd8f81e106a42d80aff0a7ebbcb156b90788"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/initial-validation-observations.json",
+      "retained": "validation/initial-validation-observations.json",
+      "encoding": "identity",
+      "original_bytes": 684,
+      "original_sha256": "b8a04e7d50a36a14da1ec6bb18d2d34b69ee0f532138110a786787def7e7e78c",
+      "stored_bytes": 684,
+      "stored_sha256": "b8a04e7d50a36a14da1ec6bb18d2d34b69ee0f532138110a786787def7e7e78c"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/missing-library-diagnostic.txt",
+      "retained": "validation/missing-library-diagnostic.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 949,
+      "original_sha256": "20d836f998317fbc9f362469fca44974f70e3a041043a455eef2717f9df3e859",
+      "stored_bytes": 380,
+      "stored_sha256": "11468b7164621148c827484324997f77686f4ba7e889ad835e8856b4eee892a2"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/host-tests-with-library.txt",
+      "retained": "validation/host-tests-with-library.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 99,
+      "original_sha256": "bd0f77e90f9f011e016bac7bc9c31da70521675251ae76ba04db2a0cc4880655",
+      "stored_bytes": 52,
+      "stored_sha256": "56ce8682dea2a1ece539119bec07f05f890cb38a6f1df559f5bbc2805e96670f"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/run-practical-matrix.py",
+      "retained": "reproduction/run-practical-matrix.py.gz",
+      "encoding": "gzip",
+      "original_bytes": 7893,
+      "original_sha256": "2d546696a3b415051a6d69f654cc39618684fc5af952e1289093696d234593ce",
+      "stored_bytes": 3268,
+      "stored_sha256": "e8bebb0876c3bb0fd34c2bf59361da23e33a9e4226202fa4b2ac0e6f906da48f"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/qualify-stock.py",
+      "retained": "reproduction/qualify-stock.py.gz",
+      "encoding": "gzip",
+      "original_bytes": 4432,
+      "original_sha256": "ed773cd76824d2ec19c221c97fb1aae110eba6a08de8e7d30dbbe67bc69aa02a",
+      "stored_bytes": 1968,
+      "stored_sha256": "af7da3057f06fe22a7a09bdc5acd07db8b262ffbd6036cbda2c3cc4793766cc0"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/diagnose-cpu.py",
+      "retained": "reproduction/diagnose-cpu.py.gz",
+      "encoding": "gzip",
+      "original_bytes": 2796,
+      "original_sha256": "cceee007c466e69531f9fdef8aae488c775e18bcfd76b4005358c66444cfdda4",
+      "stored_bytes": 1311,
+      "stored_sha256": "7458438cabbce4fa9846f8076b586cd4f9320051977c5bf97d59da7445dc2234"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-auto.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-auto.jsonl",
+      "encoding": "identity",
+      "original_bytes": 77845,
+      "original_sha256": "4a57178922c890bf16830087c26a3971f4970ea6d267d1ab62508dd84e35c6c0",
+      "stored_bytes": 77845,
+      "stored_sha256": "4a57178922c890bf16830087c26a3971f4970ea6d267d1ab62508dd84e35c6c0"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-auto_return.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-auto_return.jsonl",
+      "encoding": "identity",
+      "original_bytes": 77846,
+      "original_sha256": "7ff3680fe9673288e96c53222e590e1f8ae3da3ec3350ce9bc2a3de83e0e30ae",
+      "stored_bytes": 77846,
+      "stored_sha256": "7ff3680fe9673288e96c53222e590e1f8ae3da3ec3350ce9bc2a3de83e0e30ae"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-blas.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-blas.jsonl",
+      "encoding": "identity",
+      "original_bytes": 78051,
+      "original_sha256": "0fc06e91ab961aaae4a05a155dac317c3070e5b2dc82272c3e905ac2a5f8882b",
+      "stored_bytes": 78051,
+      "stored_sha256": "0fc06e91ab961aaae4a05a155dac317c3070e5b2dc82272c3e905ac2a5f8882b"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-host_final.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-host_final.jsonl",
+      "encoding": "identity",
+      "original_bytes": 76723,
+      "original_sha256": "7881d890ad5fd2d9ef201a34bb1f882e2700b08f293e039bdb260ed04334ba3f",
+      "stored_bytes": 76723,
+      "stored_sha256": "7881d890ad5fd2d9ef201a34bb1f882e2700b08f293e039bdb260ed04334ba3f"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-occupied.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-occupied.jsonl",
+      "encoding": "identity",
+      "original_bytes": 25941,
+      "original_sha256": "2f7d2e916674683dcfa281491a36bf6370f5f07fb73d257d518cc19e57e10234",
+      "stored_bytes": 25941,
+      "stored_sha256": "2f7d2e916674683dcfa281491a36bf6370f5f07fb73d257d518cc19e57e10234"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-shell.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-shell.jsonl",
+      "encoding": "identity",
+      "original_bytes": 90156,
+      "original_sha256": "60ccc7390207e8eac4bda02918f702ea52b987e06f8a080d4e75a8b23e46a5fc",
+      "stored_bytes": 90156,
+      "stored_sha256": "60ccc7390207e8eac4bda02918f702ea52b987e06f8a080d4e75a8b23e46a5fc"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/oh-def2-svp-spherical-uhf-shell_blas.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/oh-def2-svp-spherical-uhf-shell_blas.jsonl",
+      "encoding": "identity",
+      "original_bytes": 90315,
+      "original_sha256": "8fadab5c2e8de01477a687c4580fb28a2073b8882d448ca74cceee471f7573f6",
+      "stored_bytes": 90315,
+      "stored_sha256": "8fadab5c2e8de01477a687c4580fb28a2073b8882d448ca74cceee471f7573f6"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/report.json",
+      "retained": "diagnosis/control-diagnosis-v1/report.json",
+      "encoding": "identity",
+      "original_bytes": 17539,
+      "original_sha256": "c35759ba478dd94d7ee43eddfe55ecf5334b42dc2bb53db962a07c083674d76d",
+      "stored_bytes": 17539,
+      "stored_sha256": "c35759ba478dd94d7ee43eddfe55ecf5334b42dc2bb53db962a07c083674d76d"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-auto.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-auto.jsonl.gz",
+      "encoding": "gzip",
+      "original_bytes": 222485,
+      "original_sha256": "8d1a32ec87c495a27987942ba0cb3286b94b33b03837a838c7490104648cddad",
+      "stored_bytes": 16316,
+      "stored_sha256": "73495522406794860f4ad69a216136d7454ac05d4f001a8e349f9a3202b4d7db"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-auto_return.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-auto_return.jsonl.gz",
+      "encoding": "gzip",
+      "original_bytes": 222521,
+      "original_sha256": "c324af1bff03d16424e38f41c7acfa9c5eea6e9cf7920d214854a460b0fa72d8",
+      "stored_bytes": 15881,
+      "stored_sha256": "7fae09c7d4a47f48b64a4ef1701620e40b00e7dda9dc4845d974da85fb5d958c"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-blas.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-blas.jsonl.gz",
+      "encoding": "gzip",
+      "original_bytes": 222934,
+      "original_sha256": "9fdb7990c5f435badf8269d30a4238441f1b61d4e12b3b197f46b05ef7071fbc",
+      "stored_bytes": 15621,
+      "stored_sha256": "ca407c7aa61abc5b082317aba39ac1f21a9650dfc735aa1d00e6b4999aeea6c5"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-host_final.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-host_final.jsonl.gz",
+      "encoding": "gzip",
+      "original_bytes": 221338,
+      "original_sha256": "a42d80781b3c287698e5103acf388446df23eeb33e1b67461adde5cbc020ec8b",
+      "stored_bytes": 15732,
+      "stored_sha256": "ca9b1031281b86cb4361394137b061e7442a39b3a345032f9e41485ac3ac22ff"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-occupied.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-occupied.jsonl",
+      "encoding": "identity",
+      "original_bytes": 51076,
+      "original_sha256": "8343489d6e6d5a552a594a291fbdcd2214f601e845d78a85b7c8e28185f7350c",
+      "stored_bytes": 51076,
+      "stored_sha256": "8343489d6e6d5a552a594a291fbdcd2214f601e845d78a85b7c8e28185f7350c"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-shell.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-shell.jsonl.gz",
+      "encoding": "gzip",
+      "original_bytes": 234838,
+      "original_sha256": "e5e25e809c7669babc6783e0184479f2071aecfceed910c8cbbde4f32d3653a3",
+      "stored_bytes": 17780,
+      "stored_sha256": "72d170a50f60201c954d8e180d114cd49c561fd3bb5ee5c2eab9dfc03c1c0348"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1/water-tetramer-def2-svp-spherical-shell_blas.jsonl",
+      "retained": "diagnosis/control-diagnosis-v1/water-tetramer-def2-svp-spherical-shell_blas.jsonl.gz",
+      "encoding": "gzip",
+      "original_bytes": 235449,
+      "original_sha256": "32e86e38fe546fa56aefde70bbff5cb6332b768ce963240d46557baa3aff72c5",
+      "stored_bytes": 17159,
+      "stored_sha256": "cad9e4a8485d585af6511d36f7840d028071ed0decd78229869f76b3005e4b92"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/control-diagnosis-v1.txt",
+      "retained": "diagnosis/control-diagnosis-v1.txt.gz",
+      "encoding": "gzip",
+      "original_bytes": 864,
+      "original_sha256": "cce1bf20d0306f5aa264895579b2c4575e9e791794159e780a8de1029f429087",
+      "stored_bytes": 282,
+      "stored_sha256": "cdc01d3209acf10099efe2ec1cd2578290b33dd783f83e514b157f107623d510"
+    },
+    {
+      "source": ".artifacts/issue206-auxiliary/diagnose-controls.py",
+      "retained": "reproduction/diagnose-controls.py.gz",
+      "encoding": "gzip",
+      "original_bytes": 3495,
+      "original_sha256": "80eeba1cf8f50c492f9d586f2356fbdf740793a6ecdc6f5b438484c7700055a9",
+      "stored_bytes": 1480,
+      "stored_sha256": "ee7ad123962000f057cbb4f7d8d3072934baea6f68b56ed2273514e799a20642"
+    }
+  ],
+  "separate_native_diagnostic_job": "9905"
+}

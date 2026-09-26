@@ -1,0 +1,140 @@
+{
+  "files": [
+    {
+      "path": "ISSUE-171-dft-collect.py",
+      "bytes": 4582,
+      "sha256": "10da5d57cbc2e5e887e1f1cc1ccad924f69c98ab78b798ab59c1c0f82ff9ea74"
+    },
+    {
+      "path": "ISSUE-171-dft-cuda-regression.sh",
+      "bytes": 607,
+      "sha256": "88dc903a6283edbf0d8651a2c8b9f9a1de2ed4ca2723147df24988d61d66a78a"
+    },
+    {
+      "path": "ISSUE-171-dft-prepare.py",
+      "bytes": 2827,
+      "sha256": "b936e23977f7dcc62169ea8a1b0ce13a197b226b457300afb5eac7f640731158"
+    },
+    {
+      "path": "ISSUE-171-dft-run.sh",
+      "bytes": 1826,
+      "sha256": "6c95a602c17d27db82e419552283ec31f026e6c323e420ccaf947ab01f516ce9"
+    },
+    {
+      "path": "ISSUE-171-dft-source-manifest.json",
+      "bytes": 524847,
+      "sha256": "683f0842e16785cddf0956632138eaa583df8fed9fc0930f463c2456957c8f49"
+    },
+    {
+      "path": "cpu-ctest.log",
+      "bytes": 4051,
+      "sha256": "7e193f6138b9bfd367cea39ac595782e32fe657443ad50a7f86cb9d63bd1d0ab"
+    },
+    {
+      "path": "cpu-dft.log",
+      "bytes": 1582,
+      "sha256": "ad42e91294d700715bc7042c4f30e4f8e79df1d28098ee9be2aa30d7b708e9cb"
+    },
+    {
+      "path": "cpu-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-endpoints.json",
+      "bytes": 8168,
+      "sha256": "dc8d7424e4baddc5079b1e87c6f9d9ff5b7a0d0d0e427bcdab6200db4a7d812d"
+    },
+    {
+      "path": "cpu-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-preflight.log",
+      "bytes": 110,
+      "sha256": "337783fc8a858c1718ffd5134d407ca226622864f68858d84629ff75f13cc15e"
+    },
+    {
+      "path": "cpu-regression.log",
+      "bytes": 115,
+      "sha256": "6067b594cd17f88c35720c30f11eaa182091b8fec411235ab81e0960ba928675"
+    },
+    {
+      "path": "cpu.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-ctest.log",
+      "bytes": 695,
+      "sha256": "e611f45490447158bde4870e6c0656029acb9468b277cc0da00addebf3726f0b"
+    },
+    {
+      "path": "cuda-dft-regression-enabled.log",
+      "bytes": 98,
+      "sha256": "89bc62686c3a101a49d734e0577fca9caf46155e028e5ff4089376872039c9cd"
+    },
+    {
+      "path": "cuda-dft.log",
+      "bytes": 1594,
+      "sha256": "0d33608a1d40175140dcbff7c73fcedec4331772f964a240fd00bd7e3e2b8a2f"
+    },
+    {
+      "path": "cuda-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-endpoints.json",
+      "bytes": 8171,
+      "sha256": "a91dec56c7ea9635a439dddf47da7c53b0032130061c472e8abafcbe6410ba82"
+    },
+    {
+      "path": "cuda-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-extra.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-memcheck.log",
+      "bytes": 176,
+      "sha256": "9019871dcdde90d6d1b7722a3b5684c67feef976f30d4767234733014da35552"
+    },
+    {
+      "path": "cuda-regression.log",
+      "bytes": 124,
+      "sha256": "50362ff7d7a003e501e0445679c446be62e82f80b8c4882566b7d112eba834ea"
+    },
+    {
+      "path": "cuda.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "source-identity-compact.json",
+      "bytes": 1277,
+      "sha256": "388f03db074ed23c25f37420a7e8bbd57c16c8f98101a374d86fdafb0df73756"
+    },
+    {
+      "path": "source-identity.json",
+      "bytes": 148022,
+      "sha256": "fd0dacd222bc335d4be133cb4a3d572eccd8a4a9fc0a5f5c884564aad0a34baf"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 1138,
+      "sha256": "f09921e4f0973931be4c1112fc3387ffc34333b06ed5ce459f772dec6f4145ba"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 526,
+      "sha256": "89f076154770dd10d1ca8b709896fdc531f0b8f30f91b47739951e87a5c2ab8f"
+    }
+  ],
+  "archive_sha256": "74d637704e31a043ad63aa4633fe817cf0d52a15a7fc1aa67a99efbe72787c64"
+}

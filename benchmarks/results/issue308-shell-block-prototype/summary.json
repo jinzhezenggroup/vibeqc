@@ -1,0 +1,289 @@
+{
+  "endpoint_rows": [
+    {
+      "aos": 192,
+      "batch": 1,
+      "generic": {
+        "max_energy_error_hartree": 1.5347723092418164e-11,
+        "max_force_error_hartree_per_bohr": 5.4413221107704746e-11,
+        "mean_seconds": 0.8098723674193025,
+        "seconds": [
+          0.8123840088956058,
+          0.8073607259429991
+        ]
+      },
+      "generic_over_shell_speed_ratio": 1.0717594949584115,
+      "iterations": [
+        3
+      ],
+      "shell-sp": {
+        "max_energy_error_hartree": 1.5347723092418164e-11,
+        "max_force_error_hartree_per_bohr": 5.364583495308384e-11,
+        "mean_seconds": 0.7556474854936823,
+        "seconds": [
+          0.7584047019481659,
+          0.7528902690391988
+        ]
+      }
+    },
+    {
+      "aos": 384,
+      "batch": 1,
+      "generic": {
+        "max_energy_error_hartree": 1.8189894035458565e-12,
+        "max_force_error_hartree_per_bohr": 1.0637990835449251e-10,
+        "mean_seconds": 11.44122596946545,
+        "seconds": [
+          11.449724254896864,
+          11.432727684034035
+        ]
+      },
+      "generic_over_shell_speed_ratio": 0.9903830518906114,
+      "iterations": [
+        3
+      ],
+      "shell-sp": {
+        "max_energy_error_hartree": 1.8189894035458565e-12,
+        "max_force_error_hartree_per_bohr": 1.0637102657029551e-10,
+        "mean_seconds": 11.552324070595205,
+        "seconds": [
+          11.539220712147653,
+          11.565427429042757
+        ]
+      }
+    },
+    {
+      "aos": 192,
+      "batch": 4,
+      "generic": {
+        "max_energy_error_hartree": 7.16227077646181e-12,
+        "max_force_error_hartree_per_bohr": 4.972665161584455e-11,
+        "mean_seconds": 3.2377508509671316,
+        "seconds": [
+          3.243792681954801,
+          3.231709019979462
+        ]
+      },
+      "generic_over_shell_speed_ratio": 1.078229509228543,
+      "iterations": [
+        3,
+        2,
+        2,
+        3
+      ],
+      "shell-sp": {
+        "max_energy_error_hartree": 7.16227077646181e-12,
+        "max_force_error_hartree_per_bohr": 4.9596977566568334e-11,
+        "mean_seconds": 3.0028401404852048,
+        "seconds": [
+          3.004847712814808,
+          3.0008325681556016
+        ]
+      }
+    },
+    {
+      "aos": 384,
+      "batch": 4,
+      "generic": {
+        "max_energy_error_hartree": 4.888534022029489e-11,
+        "max_force_error_hartree_per_bohr": 1.086396961974545e-10,
+        "mean_seconds": 48.728120786487125,
+        "seconds": [
+          48.7094530579634,
+          48.74678851501085
+        ]
+      },
+      "generic_over_shell_speed_ratio": 1.0297432610858723,
+      "iterations": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "shell-sp": {
+        "max_energy_error_hartree": 4.888534022029489e-11,
+        "max_force_error_hartree_per_bohr": 1.0890703790178424e-10,
+        "mean_seconds": 47.320650328998454,
+        "seconds": [
+          47.64076069998555,
+          47.00053995801136
+        ]
+      }
+    }
+  ],
+  "implementation_commit": "787aade",
+  "promotion": false,
+  "reason": "384-AO complete force scaling is not materially improved",
+  "retained_files": {
+    "measurements/192ao-b1-generic.json": {
+      "bytes": 10185,
+      "sha256": "3779be67c0a721108aa54c17e0eac38e4835c4f0cbc1c884a039ef3fcd77c57f"
+    },
+    "measurements/192ao-b1-shell-sp.json": {
+      "bytes": 10173,
+      "sha256": "ff20f3dffc835c9dbb0939b9f2c2107958ab4c25235ed1369750feec6ab652cd"
+    },
+    "measurements/192ao-b4-generic.json": {
+      "bytes": 32264,
+      "sha256": "788ec657f1bb510fedfcdbaefe99c22b8d0cb5bb032027d1eb5808c9ec2857ca"
+    },
+    "measurements/192ao-b4-shell-sp.json": {
+      "bytes": 32268,
+      "sha256": "7cd7681251c2a960ab0b48bc551e73102ea622467becddd02c49a8b12a16e165"
+    },
+    "measurements/384-generic-traced.json": {
+      "bytes": 19706,
+      "sha256": "4908426002b7c5c424ec0c862116aae23bd1f0231babe61a71341846584308bb"
+    },
+    "measurements/384-shell-traced.json": {
+      "bytes": 20356,
+      "sha256": "9749743579d410b2de509a696b60285fa4f4319514ea29e92411cbfb95fb861a"
+    },
+    "measurements/384ao-b1-generic.json": {
+      "bytes": 16340,
+      "sha256": "7495f0bebed25739b95a60e03a6776b7867815df695d4bcb75db034382823cd4"
+    },
+    "measurements/384ao-b1-shell-sp.json": {
+      "bytes": 16343,
+      "sha256": "c3bd12fdeeab6424f96d88ce3542bcb102854e12d185a86d0502e558122f4039"
+    },
+    "measurements/384ao-b4-generic.json": {
+      "bytes": 56919,
+      "sha256": "92fb82ab7719165f9172ee9e90ed745dbba8f2f1788afbe0852fdb2ed3b98731"
+    },
+    "measurements/384ao-b4-shell-sp.json": {
+      "bytes": 56939,
+      "sha256": "96bb515bb20d12ae6e2a73c3d10d945546163bf394f895b51f2d3b149d24b34a"
+    },
+    "ownership-delta.json": {
+      "bytes": 340,
+      "sha256": "9124083704e2a3c51d4e48d3863e53c58445552d487cda787bc750e56538536f"
+    },
+    "reproduction/clean-gpu-after.csv": {
+      "bytes": 198,
+      "sha256": "058206a1debabe46af20de5d689885814d3fa55ff3fdd2f08e69bf4668046123"
+    },
+    "reproduction/clean-gpu-before.csv": {
+      "bytes": 194,
+      "sha256": "a13b157a8a7c1d46d9c6d9641af09fc3eb4bcbed31ca4b9c53b9aeddc63288c2"
+    },
+    "reproduction/measured-source.patch": {
+      "bytes": 45552,
+      "sha256": "56f1fd6c734dccef30d64aa24e156d4212dd482878acc908743f74a2401624ed"
+    },
+    "reproduction/provenance.json": {
+      "bytes": 180,
+      "sha256": "1bc7d9f9e5be1fe4e2ff6f7dcf036e593a6ec6f0b336439b8cac8d09cb93de98"
+    },
+    "reproduction/run-clean.sh": {
+      "bytes": 1642,
+      "sha256": "e31b96058d6bb0bbef67dbff4af10801738feaab7965970cab19ec911b376b65"
+    }
+  },
+  "schema": "vibeqc.issue308-shell-block-prototype.v1",
+  "source": {
+    "library_sha256": "143f87d15a6a6e2095144d0d235a18e27fad69ce21b17b0899e381c1cd6263ac",
+    "source_identity": "976e70c34cda7afb7bed41ac7fe838a618a51d22048f59677f8e7f8d715560fb"
+  },
+  "trace_qualification": {
+    "generic": {
+      "counters": {
+        "atom_coordinates": 144,
+        "density_upload_bytes": 1179648,
+        "device_to_host_bytes": 1152,
+        "host_to_device_bytes": 4016747664,
+        "metric_derivative_weight_bytes": 1179648,
+        "metric_derivative_weights": 147456,
+        "raw_value_cache_hits": 436,
+        "raw_value_reuse_bytes": 514326528,
+        "raw_value_upload_bytes": 4015521792,
+        "response_ao_matrix_products": 6144,
+        "response_auxiliary_blocks": 8,
+        "response_charge_dot_elements": 56623104,
+        "response_host_to_device_bytes": 0,
+        "response_metric_blas_dots": 147456,
+        "response_probe_total_device_bytes": 132174096,
+        "response_scratch_bytes": 132174096,
+        "stream_synchronizations": 1,
+        "tensor_host_to_device_bytes": 4015521792,
+        "three_center_derivative_weight_bytes": 452984832,
+        "three_center_derivative_weights": 56623104
+      },
+      "cuda_event_region_ms": {
+        "coulomb_response": 2259.14453,
+        "coulomb_response_charge_dot": 2074.64256233,
+        "coulomb_response_weights": 0.2636479976,
+        "exchange_response_matrix_products": 527.6461754440014,
+        "exchange_response_metric_dot": 165.87545760579306,
+        "exchange_response_weights_and_metric": 288.6543301688864,
+        "force_response": 11475.6338,
+        "metric_center_derivative_contraction": 4.4601922,
+        "metric_frechet_response": 0.552608013,
+        "metric_inverse": 0.224352002,
+        "raw_value_slice_upload": 5428.610176960996,
+        "response_allocation_and_uploads": 0.528703988,
+        "response_output_and_synchronization": 0.0171840005,
+        "response_weights": 11474.7383,
+        "three_center_derivative_contraction": 3144.9768360000003
+      },
+      "reference_eigensolves": 0,
+      "timing_scope": "Intrusive CUDA event intervals, not clean promotion samples or CUPTI kernel-only sums"
+    },
+    "shell": {
+      "counters": {
+        "atom_coordinates": 144,
+        "density_upload_bytes": 1179648,
+        "device_to_host_bytes": 1192,
+        "host_to_device_bytes": 4016752288,
+        "metric_derivative_weight_bytes": 1179648,
+        "metric_derivative_weights": 147456,
+        "raw_value_cache_hits": 436,
+        "raw_value_reuse_bytes": 514326528,
+        "raw_value_upload_bytes": 4015521792,
+        "response_ao_matrix_products": 6144,
+        "response_auxiliary_blocks": 8,
+        "response_charge_dot_elements": 56623104,
+        "response_host_to_device_bytes": 0,
+        "response_metric_blas_dots": 147456,
+        "response_probe_total_device_bytes": 132178760,
+        "response_scratch_bytes": 132178760,
+        "shell_cartesian_component_products": 133373952,
+        "shell_primitive_products": 24899328,
+        "shell_public_weights_nonzero": 26689536,
+        "shell_triples_nonzero": 4139776,
+        "shell_triples_visited": 4139776,
+        "stream_synchronizations": 1,
+        "tensor_host_to_device_bytes": 4015521792,
+        "three_center_derivative_weight_bytes": 452984832,
+        "three_center_derivative_weights": 56623104,
+        "three_center_shell_panels": 8
+      },
+      "cuda_event_region_ms": {
+        "coulomb_response": 2272.76025,
+        "coulomb_response_charge_dot": 2084.4071358600004,
+        "coulomb_response_weights": 0.2701120043,
+        "exchange_response_matrix_products": 524.7473917690012,
+        "exchange_response_metric_dot": 165.7178576129932,
+        "exchange_response_weights_and_metric": 288.175386476089,
+        "force_response": 10851.4629,
+        "metric_center_derivative_contraction": 4.30044794,
+        "metric_frechet_response": 0.552608013,
+        "metric_inverse": 0.234272003,
+        "raw_value_slice_upload": 5156.644799460004,
+        "response_allocation_and_uploads": 0.579967976,
+        "response_output_and_synchronization": 0.0292160008,
+        "response_weights": 10850.4775,
+        "three_center_derivative_contraction": 2786.38974
+      },
+      "reference_eigensolves": 0,
+      "timing_scope": "Intrusive CUDA event intervals, not clean promotion samples or CUPTI kernel-only sums"
+    }
+  },
+  "validation": {
+    "cpu_arithmetic_passed": 100,
+    "gpu_unique_cases_passed": 43,
+    "initial_reference_failures": "Two new UHF references hit PySCF default 50 cycles. At unchanged 1e-13 energy / 1e-10 gradient convergence thresholds, max_cycle=100 resolved both. All four transition cases then passed on the same frozen library.",
+    "memcheck_cases_passed": 4,
+    "memcheck_errors": 0
+  }
+}

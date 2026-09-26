@@ -1,0 +1,2764 @@
+{
+  "13a5752351b4d17d7b8523df14431a281243e03324371b7289d12fe01d4527c9": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "13a5752351b4d17d7b8523df14431a281243e03324371b7289d12fe01d4527c9",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 2728,
+      "pageable": 2728,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"178371edf76e4dc5d85fc87fdba387ee0849cbe8e217845dea610a3a698b9f6e\", \"program\": \"2593a5e6b31a6c640cfaadee05a0d7130b1e69d094f76b63926d2ed418b460ca\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "17b36d97f8626211e600cc1a0d74267ff20f789cb27d38fb080db58110ad40f6": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "17b36d97f8626211e600cc1a0d74267ff20f789cb27d38fb080db58110ad40f6",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 2728,
+      "pageable": 2728,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"519c85738f80319de6aa9c7d70626a112e581999258aa5a0d33b60d73ba310de\", \"program\": \"50f5073a049141d2f26954692b5087e4175d9be81566d6e6cdacf62302bde0d5\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "202191de508f5f085fa97e463d3601c6c71570ab9b7091995748d4d381478fc2": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "202191de508f5f085fa97e463d3601c6c71570ab9b7091995748d4d381478fc2",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"9867645fcfac6646c72fc84cc6340b70a1928a47cca8470b675314c3dcb6f8f0\", \"public_components\": [0, 22, 44]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"96ee220038431b5733a48e8810255840a566d74e8163fc58d0915c4e84aa5924\", \"program\": \"9867645fcfac6646c72fc84cc6340b70a1928a47cca8470b675314c3dcb6f8f0\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "2ec93fc26ab8d3a7e8c96f1dc8f0fff5697e53d421826ad2ae5b63aeb00050e4": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "2ec93fc26ab8d3a7e8c96f1dc8f0fff5697e53d421826ad2ae5b63aeb00050e4",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 2728,
+      "pageable": 2728,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"96ee220038431b5733a48e8810255840a566d74e8163fc58d0915c4e84aa5924\", \"program\": \"9867645fcfac6646c72fc84cc6340b70a1928a47cca8470b675314c3dcb6f8f0\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "406d0152546ac158eabd6443722d9bf6ca7bb6ce21366b569f317420d1b15ba7": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "406d0152546ac158eabd6443722d9bf6ca7bb6ce21366b569f317420d1b15ba7",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"2593a5e6b31a6c640cfaadee05a0d7130b1e69d094f76b63926d2ed418b460ca\", \"public_components\": [0, 5, 9]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"178371edf76e4dc5d85fc87fdba387ee0849cbe8e217845dea610a3a698b9f6e\", \"program\": \"2593a5e6b31a6c640cfaadee05a0d7130b1e69d094f76b63926d2ed418b460ca\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "702f522dd8fe25cc12cdf8152be6a5506fd82b33ce0dc6f7b66bdb50ebe20a2d": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "702f522dd8fe25cc12cdf8152be6a5506fd82b33ce0dc6f7b66bdb50ebe20a2d",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 2728,
+      "pageable": 2728,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"0d2891d0786c0359a93fcb809d5769df603272ba34121acecb1ac47cfc65232c\", \"program\": \"e63468705bca10c5bcad58b29c57aefd7cdcf9a3626cc669e5da88c03cb42197\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "7136edac6093956c865c74c6c6b4567c61be346bba22777a3a559a5dff886bfb": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "7136edac6093956c865c74c6c6b4567c61be346bba22777a3a559a5dff886bfb",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"e63468705bca10c5bcad58b29c57aefd7cdcf9a3626cc669e5da88c03cb42197\", \"public_components\": [0, 1, 2]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"0d2891d0786c0359a93fcb809d5769df603272ba34121acecb1ac47cfc65232c\", \"program\": \"e63468705bca10c5bcad58b29c57aefd7cdcf9a3626cc669e5da88c03cb42197\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "8b8e85f312b6d1f113a693a9a5b28944fbff500cdae2577d048cfa56f1c23ce4": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "8b8e85f312b6d1f113a693a9a5b28944fbff500cdae2577d048cfa56f1c23ce4",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"9867645fcfac6646c72fc84cc6340b70a1928a47cca8470b675314c3dcb6f8f0\", \"public_components\": [0, 27, 53]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"96ee220038431b5733a48e8810255840a566d74e8163fc58d0915c4e84aa5924\", \"program\": \"9867645fcfac6646c72fc84cc6340b70a1928a47cca8470b675314c3dcb6f8f0\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "8d7851f6cbf3676437f4e38c122f81a85b70c6b4664ddaf5a75b44c74c4986eb": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "8d7851f6cbf3676437f4e38c122f81a85b70c6b4664ddaf5a75b44c74c4986eb",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"a15a274b1a4c62d32020b74d5f575c77eebdc8394181abae4847ea2021db046c\", \"public_components\": [0, 5, 9]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"e176b89f769ebfd75f7b16008ddef8972108db4f3082fd49d17f453ef47b612f\", \"program\": \"a15a274b1a4c62d32020b74d5f575c77eebdc8394181abae4847ea2021db046c\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "9f500b2c95e344acf96b4806781b2dff425f6fbdf553b4bc74e5b8a29eecc29c": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "9f500b2c95e344acf96b4806781b2dff425f6fbdf553b4bc74e5b8a29eecc29c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 2728,
+      "pageable": 2728,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"e176b89f769ebfd75f7b16008ddef8972108db4f3082fd49d17f453ef47b612f\", \"program\": \"a15a274b1a4c62d32020b74d5f575c77eebdc8394181abae4847ea2021db046c\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "b33e9d39572868ec11953df9a648477dfb38bb54840a7a020d8d38a7223c2c2c": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "b33e9d39572868ec11953df9a648477dfb38bb54840a7a020d8d38a7223c2c2c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"50f5073a049141d2f26954692b5087e4175d9be81566d6e6cdacf62302bde0d5\", \"public_components\": [0, 1, 2]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"519c85738f80319de6aa9c7d70626a112e581999258aa5a0d33b60d73ba310de\", \"program\": \"50f5073a049141d2f26954692b5087e4175d9be81566d6e6cdacf62302bde0d5\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "b3fa2b42b362b8138fa0587f1ab6e2842bc741e12e4c8c90a48fd74da66a608c": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "b3fa2b42b362b8138fa0587f1ab6e2842bc741e12e4c8c90a48fd74da66a608c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"a642a5a5575988174f3526b1a7e9687d5c063bda9e2c2fc87ac79eb3a8e0fcf5\", \"public_components\": [0, 22, 44]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"bf451be5ef7022b15da8c9df0fe68a91c24043505e640e7da06675e7729646a7\", \"program\": \"a642a5a5575988174f3526b1a7e9687d5c063bda9e2c2fc87ac79eb3a8e0fcf5\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "b5ecdceb7e7e96467352d0d918f7207231a307971b762f604a0c7a06f3a59e5f": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "b5ecdceb7e7e96467352d0d918f7207231a307971b762f604a0c7a06f3a59e5f",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"2593a5e6b31a6c640cfaadee05a0d7130b1e69d094f76b63926d2ed418b460ca\", \"public_components\": [0, 3, 6]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"178371edf76e4dc5d85fc87fdba387ee0849cbe8e217845dea610a3a698b9f6e\", \"program\": \"2593a5e6b31a6c640cfaadee05a0d7130b1e69d094f76b63926d2ed418b460ca\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "ba37f8dad3cbf8da629f04fa1d94b3264a2efbc492071a6023f5eab362396c7d": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "ba37f8dad3cbf8da629f04fa1d94b3264a2efbc492071a6023f5eab362396c7d",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 2728,
+      "pageable": 2728,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"bf451be5ef7022b15da8c9df0fe68a91c24043505e640e7da06675e7729646a7\", \"program\": \"a642a5a5575988174f3526b1a7e9687d5c063bda9e2c2fc87ac79eb3a8e0fcf5\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "df4a0f7d3ecf496288d4adbcd5ff7208f4464d2de666359de9b95167ecb97703": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "df4a0f7d3ecf496288d4adbcd5ff7208f4464d2de666359de9b95167ecb97703",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"a642a5a5575988174f3526b1a7e9687d5c063bda9e2c2fc87ac79eb3a8e0fcf5\", \"public_components\": [0, 27, 53]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"bf451be5ef7022b15da8c9df0fe68a91c24043505e640e7da06675e7729646a7\", \"program\": \"a642a5a5575988174f3526b1a7e9687d5c063bda9e2c2fc87ac79eb3a8e0fcf5\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "f23a3c5de0f3e8d0f68efb717d835fd4072375600c48c5769c8fd6411e0e818d": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "f23a3c5de0f3e8d0f68efb717d835fd4072375600c48c5769c8fd6411e0e818d",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 4197136,
+      "pageable": 4197136,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 4194304,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "raw_stream",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 104,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "nested_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "shared_weighted_provider",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "raw_unit_weights",
+          "schedule": "bounded_public_components",
+          "schema_version": 1,
+          "topology": "{\"adapter_budget_bytes\": 4194304, \"program\": \"a15a274b1a4c62d32020b74d5f575c77eebdc8394181abae4847ea2021db046c\", \"public_components\": [0, 3, 6]}"
+        },
+        "infeasible_reason": null,
+        "name": "raw_adapter",
+        "scope_exclusions": [],
+        "unsupported_reason": null
+      },
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 1568,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 224,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "yielded_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "first_nuclear_derivative",
+            "value"
+          ],
+          "precision": "fp64",
+          "provider": "generated_weighted_eri",
+          "schedule": "bounded_primitive_stream_v2",
+          "schema_version": 1,
+          "topology": "{\"device\": 0, \"native_artifact\": \"e176b89f769ebfd75f7b16008ddef8972108db4f3082fd49d17f453ef47b612f\", \"program\": \"a15a274b1a4c62d32020b74d5f575c77eebdc8394181abae4847ea2021db046c\", \"record_capacity\": 7, \"tile_capacity\": 3}"
+        },
+        "infeasible_reason": null,
+        "name": "weighted_eri",
+        "scope_exclusions": [
+          "caller-owned primitive streams",
+          "Python/compiler object metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 2504,
+      "pageable": 2504,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "raw_adapter",
+        "shared_weighted_provider"
+      ],
+      [
+        "weighted_eri",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  }
+}

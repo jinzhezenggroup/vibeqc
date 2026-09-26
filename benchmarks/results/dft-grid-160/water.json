@@ -1,0 +1,2754 @@
+{
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "tier": "endpoint",
+  "subject": "grid/water",
+  "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+  "revision": "2c4ecf01710a81e66b6c5fd0b9109b677071f767",
+  "hashes": {
+    "equation": "a8f2ec3f2a4fc1cfd10241ba8d3c6d507c6ad74e36a4f702e09529c20ee3e49e",
+    "ir": "c07bad1af7a81ee01c0c3707ecf10dddc9c4c6c02c90d0a701bc30c547701cc8",
+    "source": "5857b6f218a5b35b4176a83e979b8fa08962ec051077abe3f1f8ff73038f6bb0",
+    "schedule": "dea6659bc3124c7705488a28b8b27bc9e7138d1aecbae7f3e53db334f6e42f98"
+  },
+  "hash_reasons": {},
+  "device": {
+    "kind": "cuda",
+    "nvidia_smi": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05"
+  },
+  "toolchain": {
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]",
+    "numpy": "2.4.6",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+  },
+  "settings": {
+    "device": "cuda",
+    "dirty": false,
+    "fast_compile": false,
+    "slurm_job_id": "9006",
+    "grid": {
+      "radial_points": 24,
+      "angular_polar": 12,
+      "angular_azimuth": 24,
+      "element_radii": [
+        [
+          1,
+          1.0
+        ],
+        [
+          8,
+          1.0
+        ]
+      ],
+      "partition_iterations": 3,
+      "coincident_tolerance": 1e-12,
+      "version": 1,
+      "radial_rule": "rational-legendre",
+      "angular_rule": "legendre-trapezoid",
+      "partition": "becke-equal-radius",
+      "pruning": "none",
+      "units": "Bohr",
+      "ordering": "atom-radial-polar-azimuth"
+    },
+    "reference": "PySCF 2.14.0",
+    "scope": "grid/AO/features; no DFT method or promotion",
+    "placement": "host grid; CUDA AO/BLAS/invariants; explicit output D2H",
+    "screening": "none",
+    "native_library_sha256": "02a10507ebed8e3879baf0f9cc06eba33dac5c41fdafebf1a7be620ef2a5a2c4"
+  },
+  "backend_selected": "cuda",
+  "hardware": {
+    "status": "pass",
+    "reason": null
+  },
+  "stages": {
+    "representation": {
+      "status": "pass",
+      "reason": null
+    },
+    "source": {
+      "status": "pass",
+      "reason": null
+    },
+    "compilation": {
+      "status": "pass",
+      "reason": null
+    },
+    "numerical": {
+      "status": "pass",
+      "reason": null
+    },
+    "endpoint": {
+      "status": "pass",
+      "reason": null
+    },
+    "production": {
+      "status": "not-run",
+      "reason": "no evidence registered"
+    }
+  },
+  "timings": [
+    {
+      "selection": "baseline",
+      "seconds": 0.10479134484194219,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 0
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.1032896600663662,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 0
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.104983433149755,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 0
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05367236281745136,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 0
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.049443514086306095,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 0
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.06036987900733948,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 0
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05327863898128271,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 1
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.04936560499481857,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 1
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05361628485843539,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 1
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10488093690946698,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 1
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10315125389024615,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 1
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10480286693200469,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 1
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10468698502518237,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 2
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.1031888669822365,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 2
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10488768015056849,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 2
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05375230498611927,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 2
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.049545760033652186,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 2
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05368919507600367,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 2
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05363905802369118,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 3
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.04946837201714516,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 3
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.053693673107773066,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 3
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10500793997198343,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 3
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10350904008373618,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 3
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10492536285892129,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 3
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10509538697078824,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 4
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10344438580796123,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 4
+    },
+    {
+      "selection": "baseline",
+      "seconds": 0.10506471898406744,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 4
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.053630942944437265,
+      "workload": "cold-start",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 4
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.049537745071575046,
+      "workload": "unchanged-geometry",
+      "inputs_hash": "5acafd8bc3fe2cd55db9a32dfb2d20e0a5063950e9ea23dc83d4c23c3f1ce700",
+      "trial": 4
+    },
+    {
+      "selection": "candidate",
+      "seconds": 0.05384715716354549,
+      "workload": "changed-geometry",
+      "inputs_hash": "73992bdc5aee02a5ced6be6ed7ecfafc4f07c3fff6e4fea0d5115845442bc4f4",
+      "trial": 4
+    }
+  ],
+  "memory": {
+    "allocated_bytes": 4397568,
+    "peak_bytes": 211605504,
+    "reason": null,
+    "scope": "numeric buffers including transient old/replacement overlap; docs/dft_grid.md"
+  },
+  "compilation": {
+    "seconds": 3.267174249049276,
+    "reason": null,
+    "artifact": {
+      "binary_sha256": "a68efbd581afb0bf5661c92ee45a261a6cc1dd56840c37637d85054e01ee54af",
+      "compile_seconds": 3.267174249049276,
+      "identity": {
+        "environment": {
+          "CPATH": "",
+          "LIBRARY_PATH": "",
+          "NVCC_APPEND_FLAGS": "",
+          "NVCC_CCBIN": "",
+          "NVCC_PREPEND_FLAGS": ""
+        },
+        "flags": [
+          "c++17",
+          "O3",
+          "shared",
+          "fPIC",
+          "--fmad=false"
+        ],
+        "headers": {
+          "../tensor/cuda_runtime.cuh": "363ea27949c7af9a817b9592c802d4b181914df4cff8139e477d082810beb220"
+        },
+        "host_compiler": "821af3c74506283c179ca413bb33e6b528805a4dd8a5c09df125e5ad560a9e89",
+        "host_version": "gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+        "libraries": [
+          "cublas"
+        ],
+        "schema": 1,
+        "source": "633d3d0a6b420d7af2b51197aa33f9962678dc7af340483ddf609478c0b737e3",
+        "target": {
+          "architecture": "sm_120",
+          "compute_capability_major": 12,
+          "compute_capability_minor": 0,
+          "cuda_toolkit_version": "",
+          "driver_version": "",
+          "generator_abi": 1,
+          "maximum_blocks_per_sm": 24,
+          "maximum_registers_per_thread": 255,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "minimum_cuda_toolkit": "12.8",
+          "nvcc_version": "",
+          "packed_register_caps": [
+            192,
+            208
+          ],
+          "ptxas_version": "",
+          "registers_per_sm": 65536,
+          "required_cuda_features": [
+            "fp64",
+            "fp64_atomic_add"
+          ],
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "sm_count": 170,
+          "tuning_maximum_packed_registers": 224,
+          "tuning_maximum_registers": 192,
+          "tuning_maximum_shared_bytes": 49152,
+          "tuning_maximum_stack_bytes": 128,
+          "warp_size": 32
+        },
+        "toolchain": {
+          "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+          "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+        }
+      },
+      "key": "23c453c3c001dd9d4c7f8e7e7eae8c992c54d22497ed299e3ab41be9de3c21b5",
+      "resources": [
+        {
+          "function": "_ZN45_GLOBAL__N__39799fdc_12_cuda_grid_cu_984f033e14feature_kernelEPKdS1_llPdPi",
+          "registers": 56,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_ZN45_GLOBAL__N__39799fdc_12_cuda_grid_cu_984f033e9ao_kernelEPKdlllS1_llPdPi",
+          "registers": 74,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+          "registers": 26,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        }
+      ]
+    }
+  },
+  "residuals": {},
+  "block_errors": {
+    "cpu/ao_jets": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 7.275957614183426e-12,
+      "max_scaled_error": 0.00014615920258552207,
+      "rms_error": 1.0487635149203409e-13,
+      "shape": [
+        20,
+        77,
+        7
+      ]
+    },
+    "cpu/rho": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 7.105427357601002e-15,
+      "max_scaled_error": 5.426659202512752e-06,
+      "rms_error": 1.0431953623787636e-15,
+      "shape": [
+        2,
+        77
+      ]
+    },
+    "cpu/gradient": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 7.105427357601002e-14,
+      "max_scaled_error": 1.6942958434144303e-05,
+      "rms_error": 5.406592206590239e-15,
+      "shape": [
+        2,
+        77,
+        3
+      ]
+    },
+    "cpu/sigma": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.9103830456733704e-11,
+      "max_scaled_error": 1.4316307844912364e-05,
+      "rms_error": 2.470275604833298e-12,
+      "shape": [
+        3,
+        77
+      ]
+    },
+    "cpu/tau": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.2737367544323206e-13,
+      "max_scaled_error": 9.55053330349356e-06,
+      "rms_error": 2.16338099401236e-14,
+      "shape": [
+        2,
+        77
+      ]
+    },
+    "cuda/rho": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 7.105427357601002e-15,
+      "max_scaled_error": 5.426659202512752e-06,
+      "rms_error": 1.0432071256642425e-15,
+      "shape": [
+        2,
+        77
+      ]
+    },
+    "cuda/gradient": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 7.105427357601002e-14,
+      "max_scaled_error": 1.8030554604211746e-05,
+      "rms_error": 5.406598168629413e-15,
+      "shape": [
+        2,
+        77,
+        3
+      ]
+    },
+    "cuda/tau": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.5579538487363607e-13,
+      "max_scaled_error": 1.0146190317455726e-05,
+      "rms_error": 2.2599834902009858e-14,
+      "shape": [
+        2,
+        77
+      ]
+    },
+    "cuda/sigma": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.9103830456733704e-11,
+      "max_scaled_error": 1.4316307844912364e-05,
+      "rms_error": 2.470275604878132e-12,
+      "shape": [
+        3,
+        77
+      ]
+    },
+    "cuda/ao_jets": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.0913936421275139e-11,
+      "max_scaled_error": 0.00012488759606938015,
+      "rms_error": 1.4955527376243993e-13,
+      "shape": [
+        20,
+        77,
+        7
+      ]
+    }
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "attachments": [],
+  "performance": {
+    "status": "not-run",
+    "reason": "initial interface evidence; no default schedule replacement"
+  },
+  "integration_convergence": {
+    "trace_DS": 3.770928764558032,
+    "samples": [
+      {
+        "spec": {
+          "radial_points": 16,
+          "angular_polar": 8,
+          "angular_azimuth": 16,
+          "element_radii": [
+            [
+              1,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ]
+          ],
+          "partition_iterations": 3,
+          "coincident_tolerance": 1e-12,
+          "version": 1,
+          "radial_rule": "rational-legendre",
+          "angular_rule": "legendre-trapezoid",
+          "partition": "becke-equal-radius",
+          "pruning": "none",
+          "units": "Bohr",
+          "ordering": "atom-radial-polar-azimuth"
+        },
+        "points": 6144,
+        "integrated_electrons": 3.7711435696898694,
+        "absolute_error": 0.00021480513183735894,
+        "seconds": 0.011941697914153337
+      },
+      {
+        "spec": {
+          "radial_points": 32,
+          "angular_polar": 12,
+          "angular_azimuth": 24,
+          "element_radii": [
+            [
+              1,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ]
+          ],
+          "partition_iterations": 3,
+          "coincident_tolerance": 1e-12,
+          "version": 1,
+          "radial_rule": "rational-legendre",
+          "angular_rule": "legendre-trapezoid",
+          "partition": "becke-equal-radius",
+          "pruning": "none",
+          "units": "Bohr",
+          "ordering": "atom-radial-polar-azimuth"
+        },
+        "points": 27648,
+        "integrated_electrons": 3.7709241190735963,
+        "absolute_error": 4.6454844357946e-06,
+        "seconds": 0.0533257988281548
+      },
+      {
+        "spec": {
+          "radial_points": 64,
+          "angular_polar": 20,
+          "angular_azimuth": 40,
+          "element_radii": [
+            [
+              1,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ]
+          ],
+          "partition_iterations": 3,
+          "coincident_tolerance": 1e-12,
+          "version": 1,
+          "radial_rule": "rational-legendre",
+          "angular_rule": "legendre-trapezoid",
+          "partition": "becke-equal-radius",
+          "pruning": "none",
+          "units": "Bohr",
+          "ordering": "atom-radial-polar-azimuth"
+        },
+        "points": 153600,
+        "integrated_electrons": 3.7709287804886586,
+        "absolute_error": 1.593062659566158e-08,
+        "seconds": 0.2909999859984964
+      }
+    ],
+    "gate": 1e-05,
+    "renormalization": false
+  },
+  "details": [
+    {
+      "trial": 0,
+      "backend": "cpu",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10329773603007197,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014564390294253826,
+          "grid_seconds": 0.026898801559582353,
+          "ao_seconds": 0.04411854362115264,
+          "feature_seconds": 0.031189025845378637,
+          "endpoint_seconds": 0.10237030335702002,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.1032896600663662,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014564390294253826,
+          "grid_seconds": 0.053751628613099456,
+          "ao_seconds": 0.08825779147446156,
+          "feature_seconds": 0.06241580960340798,
+          "endpoint_seconds": 0.20475674839690328,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10347228008322418,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014500869438052177,
+          "grid_seconds": 0.027060798136517406,
+          "ao_seconds": 0.04407873656600714,
+          "feature_seconds": 0.03125842032022774,
+          "endpoint_seconds": 0.10256196884438396,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.1035609389655292,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014500869438052177,
+          "grid_seconds": 0.054116811603307724,
+          "ao_seconds": 0.08816805318929255,
+          "feature_seconds": 0.06259414250962436,
+          "endpoint_seconds": 0.2052089897915721,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "cold_seconds": 0.10479134484194219,
+      "changed_seconds": 0.104983433149755
+    },
+    {
+      "trial": 0,
+      "backend": "cuda",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.04976546089164913,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0038056380581110716,
+          "grid_seconds": 0.02691432274878025,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.048643265850842,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 0.7960000024177134,
+            "output_ms": 1.6702079977840185,
+            "packing_ms": 1.3111360035836697,
+            "library_ms": 7.057952135801315,
+            "kernel_ms": 1.5050240084528923,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.049443514086306095,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0038056380581110716,
+          "grid_seconds": 0.053849828196689487,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.0969846888910979,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 1.5803200053051114,
+            "output_ms": 3.344064002856612,
+            "packing_ms": 2.624160001054406,
+            "library_ms": 14.088096275925636,
+            "kernel_ms": 3.0235520135611296,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.04960426199249923,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.010305685922503471,
+          "grid_seconds": 0.027025723829865456,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.0484761253464967,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 0.8056639987044036,
+            "output_ms": 1.6647680029273033,
+            "packing_ms": 1.2843520045280457,
+            "library_ms": 7.061280131340027,
+            "kernel_ms": 1.5481920037418604,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.04961638594977558,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.010305685922503471,
+          "grid_seconds": 0.0541686019860208,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09700111392885447,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 1.5925759971141815,
+            "output_ms": 3.3236800096929073,
+            "packing_ms": 2.5953920111060143,
+            "library_ms": 14.097184255719185,
+            "kernel_ms": 3.06313600204885,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "cold_seconds": 0.05367236281745136,
+      "changed_seconds": 0.06036987900733948
+    },
+    {
+      "trial": 1,
+      "backend": "cuda",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.04929594206623733,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0039026138838380575,
+          "grid_seconds": 0.026815035846084356,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.04818641603924334,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 0.7770559969358146,
+            "output_ms": 1.654527997598052,
+            "packing_ms": 1.3152000047266483,
+            "library_ms": 7.0346241891384125,
+            "kernel_ms": 1.5305280033499002,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.04936560499481857,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0039026138838380575,
+          "grid_seconds": 0.05366415111348033,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09645891259424388,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 1.54895999468863,
+            "output_ms": 3.3136000018566847,
+            "packing_ms": 2.6216000132262707,
+            "library_ms": 14.061664335429668,
+            "kernel_ms": 3.064895998686552,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.049497456988319755,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.003708732081577182,
+          "grid_seconds": 0.02690590498968959,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.04838722408749163,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 0.8085119933821261,
+            "output_ms": 1.6246079951524734,
+            "packing_ms": 1.3101439969614148,
+            "library_ms": 7.054208159446716,
+            "kernel_ms": 1.5113279977813363,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.049435459077358246,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.003708732081577182,
+          "grid_seconds": 0.053867075592279434,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09672917448915541,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 1.580767993349582,
+            "output_ms": 3.271263999864459,
+            "packing_ms": 2.618976006284356,
+            "library_ms": 14.098208285868168,
+            "kernel_ms": 3.039520002901554,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "cold_seconds": 0.05327863898128271,
+      "changed_seconds": 0.05361628485843539
+    },
+    {
+      "trial": 1,
+      "backend": "cpu",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10330856591463089,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015346489381045103,
+          "grid_seconds": 0.026901421369984746,
+          "ao_seconds": 0.04413056536577642,
+          "feature_seconds": 0.03119057440198958,
+          "endpoint_seconds": 0.10238631162792444,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10315125389024615,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015346489381045103,
+          "grid_seconds": 0.05369347217492759,
+          "ao_seconds": 0.08819520194083452,
+          "feature_seconds": 0.06241259281523526,
+          "endpoint_seconds": 0.2046289483550936,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10328774596564472,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014541950076818466,
+          "grid_seconds": 0.026877466356381774,
+          "ao_seconds": 0.04409925173968077,
+          "feature_seconds": 0.03122981870546937,
+          "endpoint_seconds": 0.10237749060615897,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10313869104720652,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014541950076818466,
+          "grid_seconds": 0.05373861384578049,
+          "ao_seconds": 0.08817309024743736,
+          "feature_seconds": 0.06235794071108103,
+          "endpoint_seconds": 0.20460567739792168,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "cold_seconds": 0.10488093690946698,
+      "changed_seconds": 0.10480286693200469
+    },
+    {
+      "trial": 2,
+      "backend": "cpu",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10314890998415649,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015004139859229326,
+          "grid_seconds": 0.02679177187383175,
+          "ao_seconds": 0.04404848720878363,
+          "feature_seconds": 0.031231010565534234,
+          "endpoint_seconds": 0.10223561082966626,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.1031888669822365,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015004139859229326,
+          "grid_seconds": 0.05361415701918304,
+          "ao_seconds": 0.0881752111017704,
+          "feature_seconds": 0.062404412776231766,
+          "endpoint_seconds": 0.20452193403616548,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.1033731799107045,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014528620522469282,
+          "grid_seconds": 0.026968999998643994,
+          "ao_seconds": 0.04405374825000763,
+          "feature_seconds": 0.03126359242014587,
+          "endpoint_seconds": 0.10245281993411481,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.1037300128955394,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014528620522469282,
+          "grid_seconds": 0.054017145885154605,
+          "ao_seconds": 0.08827421348541975,
+          "feature_seconds": 0.06264806166291237,
+          "endpoint_seconds": 0.2052714426536113,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "cold_seconds": 0.10468698502518237,
+      "changed_seconds": 0.10488768015056849
+    },
+    {
+      "trial": 2,
+      "backend": "cuda",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.04969663918018341,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.003950344864279032,
+          "grid_seconds": 0.027085065841674805,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.04857437312602997,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 0.8141440008766949,
+            "output_ms": 1.6821760050952435,
+            "packing_ms": 1.3017280139029026,
+            "library_ms": 7.049472086131573,
+            "kernel_ms": 1.5431679990142584,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.049545760033652186,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.003950344864279032,
+          "grid_seconds": 0.05412866687402129,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09701791661791503,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 1.5925120003521442,
+            "output_ms": 3.3495680037885904,
+            "packing_ms": 2.622144023887813,
+            "library_ms": 14.078432224690914,
+            "kernel_ms": 3.0647360011935234,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.04951654397882521,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.003763536922633648,
+          "grid_seconds": 0.026997137814760208,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.04841010156087577,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 0.8057600017637014,
+            "output_ms": 1.660128004848957,
+            "packing_ms": 1.3224000027403235,
+            "library_ms": 7.031776130199432,
+            "kernel_ms": 1.5111040035262704,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.04976705415174365,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.003763536922633648,
+          "grid_seconds": 0.05425321962684393,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.097089025657624,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 1.5916159967891872,
+            "output_ms": 3.329472007229924,
+            "packing_ms": 2.6386560117825866,
+            "library_ms": 14.065664261579514,
+            "kernel_ms": 3.023231997154653,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "cold_seconds": 0.05375230498611927,
+      "changed_seconds": 0.05368919507600367
+    },
+    {
+      "trial": 3,
+      "backend": "cuda",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.04965659184381366,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0038857008330523968,
+          "grid_seconds": 0.027005244977772236,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.048550145234912634,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 0.7885759943164885,
+            "output_ms": 1.6696960050612688,
+            "packing_ms": 1.3152960063889623,
+            "library_ms": 7.038496121764183,
+            "kernel_ms": 1.5113599989563227,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.04946837201714516,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0038857008330523968,
+          "grid_seconds": 0.05396229983307421,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09692677040584385,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 1.5590399908833206,
+            "output_ms": 3.3567680083215237,
+            "packing_ms": 2.6389760123565793,
+            "library_ms": 14.065888293087482,
+            "kernel_ms": 3.044159999117255,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.04962816787883639,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0036554899998009205,
+          "grid_seconds": 0.02708807378076017,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.048515910282731056,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 0.7838719999417663,
+            "output_ms": 1.6675840057432652,
+            "packing_ms": 1.3061120128259063,
+            "library_ms": 7.0400641188025475,
+            "kernel_ms": 1.5386240035295486,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.049467809963971376,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0036554899998009205,
+          "grid_seconds": 0.054062579525634646,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09689633641391993,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 1.5647359983995557,
+            "output_ms": 3.3223680052906275,
+            "packing_ms": 2.624896020628512,
+            "library_ms": 14.07539226859808,
+            "kernel_ms": 3.066304008476436,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "cold_seconds": 0.05363905802369118,
+      "changed_seconds": 0.053693673107773066
+    },
+    {
+      "trial": 3,
+      "backend": "cpu",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10339918010868132,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015709588769823313,
+          "grid_seconds": 0.026919777039438486,
+          "ao_seconds": 0.044135249918326735,
+          "feature_seconds": 0.03126242593862116,
+          "endpoint_seconds": 0.10248621203936636,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10350904008373618,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015709588769823313,
+          "grid_seconds": 0.053833318408578634,
+          "ao_seconds": 0.08830941002815962,
+          "feature_seconds": 0.06260973773896694,
+          "endpoint_seconds": 0.2050853946711868,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10341061092913151,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.001447511836886406,
+          "grid_seconds": 0.026888176565989852,
+          "ao_seconds": 0.044185817474499345,
+          "feature_seconds": 0.031249111285433173,
+          "endpoint_seconds": 0.10248704953119159,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10334196011535823,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.001447511836886406,
+          "grid_seconds": 0.053892224095761776,
+          "ao_seconds": 0.08824463188648224,
+          "feature_seconds": 0.06244852114468813,
+          "endpoint_seconds": 0.20491569302976131,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "cold_seconds": 0.10500793997198343,
+      "changed_seconds": 0.10492536285892129
+    },
+    {
+      "trial": 4,
+      "backend": "cpu",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10355248302221298,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015050920192152262,
+          "grid_seconds": 0.027027993462979794,
+          "ao_seconds": 0.04412879538722336,
+          "feature_seconds": 0.03131232503801584,
+          "endpoint_seconds": 0.10263555566780269,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767134
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.10344438580796123,
+        "identity": "2fde767333ca41d897b9552d76f0bf874b3f88c0679ffade318472d42accdd6c",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0015050920192152262,
+          "grid_seconds": 0.05399324442259967,
+          "ao_seconds": 0.08827052055858076,
+          "feature_seconds": 0.06257704901508987,
+          "endpoint_seconds": 0.20517244492657483,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23"
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10355429700575769,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014498960226774216,
+          "grid_seconds": 0.026932324282824993,
+          "ao_seconds": 0.04422442568466067,
+          "feature_seconds": 0.03131718887016177,
+          "endpoint_seconds": 0.10264011705294251,
+          "tiles": 83,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.10343663091771305,
+        "identity": "bd03cde6794975a669616ab361c4e5e1ca9a95d7558ebb728b6228e34fd31dc1",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cpu",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "host",
+          "feature_placement": "host",
+          "setup_seconds": 0.0014498960226774216,
+          "grid_seconds": 0.0538669191300869,
+          "ao_seconds": 0.08834596211090684,
+          "feature_seconds": 0.0626161526888609,
+          "endpoint_seconds": 0.20516250375658274,
+          "tiles": 166,
+          "plan": {
+            "backend": "cpu",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 0,
+            "allocation_bytes": 0,
+            "provider_bytes": 0
+          },
+          "peak_bytes": 741888,
+          "replacement_peak_bytes": 1483776,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf"
+        }
+      },
+      "cold_seconds": 0.10509538697078824,
+      "changed_seconds": 0.10506471898406744
+    },
+    {
+      "trial": 4,
+      "backend": "cuda",
+      "cold": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.049645922146737576,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0038853499572724104,
+          "grid_seconds": 0.027061363449320197,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.04854546720162034,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 0.8045119978487492,
+            "output_ms": 1.652191998437047,
+            "packing_ms": 1.316255996003747,
+            "library_ms": 7.056320160627365,
+            "kernel_ms": 1.5170560032129288,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "warm": {
+        "electrons": [
+          2.170872245098128,
+          1.6001005744767132
+        ],
+        "integrated_tau": [
+          8.309206099355157,
+          6.24445455425029
+        ],
+        "seconds": 0.049537745071575046,
+        "identity": "526123ec07e9b73934abd5c44067a59aa493e31e675fcf0672a10ce2c36570e3",
+        "generation": 0,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0038853499572724104,
+          "grid_seconds": 0.05408418131992221,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09698010259307921,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 0,
+          "basis_identity": "e088cb5d5248a39414803f18f2136c2f171a89d21b951dd5562d4f3d5f2640b6",
+          "grid_identity": "6816703cae9e47f74300c8bb9c67be94963923107dbe6f443544d28801e11c23",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 69206016,
+            "prepare_device_delta": 75497472,
+            "observed_device_delta": 75497472,
+            "device_ms": 0.0,
+            "input_ms": 1.5971199977211654,
+            "output_ms": 3.2997759990394115,
+            "packing_ms": 2.630271996371448,
+            "library_ms": 14.085792273283005,
+            "kernel_ms": 3.0554240057244897,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.04968018690124154,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0037586779799312353,
+          "grid_seconds": 0.027092190692201257,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.0485629066824913,
+          "tiles": 83,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 0.7965440023690462,
+            "output_ms": 1.6612159982323647,
+            "packing_ms": 1.291776007041335,
+            "library_ms": 7.038848139345646,
+            "kernel_ms": 1.5340160001069307,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "changed_replay": {
+        "electrons": [
+          2.1674348903338583,
+          1.5989259979724857
+        ],
+        "integrated_tau": [
+          8.306322019028618,
+          6.242843494420053
+        ],
+        "seconds": 0.049670208944007754,
+        "identity": "76b00e115522db219cc6ea0a3cf70afba083157f112adb7af5621bfd03065663",
+        "generation": 1,
+        "points": 20736,
+        "diagnostics": {
+          "backend": "cuda",
+          "screening": "none",
+          "grid_placement": "host-streamed",
+          "ao_placement": "device",
+          "feature_placement": "device then explicit D2H",
+          "setup_seconds": 0.0037586779799312353,
+          "grid_seconds": 0.054183185333386064,
+          "ao_seconds": 0.0,
+          "feature_seconds": 0.0,
+          "endpoint_seconds": 0.09712702641263604,
+          "tiles": 166,
+          "plan": {
+            "backend": "cuda",
+            "tile_points": 251,
+            "order": 1,
+            "nao": 7,
+            "host_bytes": 741888,
+            "device_bytes": 105060864,
+            "allocation_bytes": 4397568,
+            "provider_bytes": 100663296
+          },
+          "peak_bytes": 105802752,
+          "replacement_peak_bytes": 211605504,
+          "basis_identity": "bee1a126661170626bc756f9747bf278a2bd3fb2841db36fe41be3ff43712d1c",
+          "grid_identity": "23fb3b429fbf2ba2ac8c4c4bc2239cdb79764a561fc2ad8baaa0eb71ac54f7bf",
+          "cuda": {
+            "owned_device_bytes": 4397568,
+            "provider_retained_bytes": 67108864,
+            "prepare_device_delta": 73400320,
+            "observed_device_delta": 0,
+            "device_ms": 0.0,
+            "input_ms": 1.5879679997451603,
+            "output_ms": 3.315712006762624,
+            "packing_ms": 2.607616012915969,
+            "library_ms": 14.077856287360191,
+            "kernel_ms": 3.0584639981389046,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "cublas_version": 120402
+          }
+        }
+      },
+      "cold_seconds": 0.053630942944437265,
+      "changed_seconds": 0.05384715716354549
+    }
+  ],
+  "full_grid_errors": {
+    "rho": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.3877787807814457e-16,
+      "max_scaled_error": 5.780985962687363e-06,
+      "rms_error": 1.2322237140612778e-17,
+      "shape": [
+        2,
+        251
+      ]
+    },
+    "gradient": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.220446049250313e-15,
+      "max_scaled_error": 2.8198029205723608e-05,
+      "rms_error": 1.409247257633335e-16,
+      "shape": [
+        2,
+        251,
+        3
+      ]
+    },
+    "sigma": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.4210854715202004e-14,
+      "max_scaled_error": 5.381932017412866e-05,
+      "rms_error": 1.13083085144239e-15,
+      "shape": [
+        3,
+        251
+      ]
+    },
+    "tau": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.2737367544323206e-13,
+      "max_scaled_error": 9.473249295080615e-06,
+      "rms_error": 4.2343783251143095e-14,
+      "shape": [
+        2,
+        251
+      ]
+    }
+  },
+  "changed_grid_errors": {
+    "rho": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.3877787807814457e-16,
+      "max_scaled_error": 4.358495833481419e-06,
+      "rms_error": 2.4726977398573937e-17,
+      "shape": [
+        2,
+        251
+      ]
+    },
+    "gradient": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.7763568394002505e-15,
+      "max_scaled_error": 2.717973533039656e-05,
+      "rms_error": 1.388844539683589e-16,
+      "shape": [
+        2,
+        251,
+        3
+      ]
+    },
+    "sigma": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.2434497875801753e-14,
+      "max_scaled_error": 5.5679142015606353e-05,
+      "rms_error": 1.0166623910136774e-15,
+      "shape": [
+        3,
+        251
+      ]
+    },
+    "tau": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 7.105427357601002e-14,
+      "max_scaled_error": 1.045596613160865e-05,
+      "rms_error": 1.480762024046582e-14,
+      "shape": [
+        2,
+        251
+      ]
+    }
+  },
+  "medians": {
+    "cpu": {
+      "cold-start": 0.10488093690946698,
+      "unchanged-geometry": 0.1032896600663662,
+      "changed-geometry": 0.10492536285892129
+    },
+    "cuda": {
+      "cold-start": 0.05363905802369118,
+      "unchanged-geometry": 0.04946837201714516,
+      "changed-geometry": 0.053693673107773066
+    }
+  }
+}

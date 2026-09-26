@@ -1,0 +1,287 @@
+#include "molecule/basis.hpp"
+
+#include <cmath>
+#include <limits>
+#include <numbers>
+#include <stdexcept>
+
+namespace vibeqc::molecule {
+namespace {
+
+constexpr unsigned kMaximumPublicAngularMomentum = 4;
+
+double radial_primitive_normalization(double exponent, unsigned angular_momentum) {
+  return std::pow(2.0 * exponent / std::numbers::pi, 0.75) *
+         std::pow(4.0 * exponent, 0.5 * static_cast<double>(angular_momentum));
+}
+
+double normalized_same_center_overlap(double alpha, double beta, unsigned angular_momentum) {
+  const double ratio = 2.0 * std::sqrt(alpha * beta) / (alpha + beta);
+  return std::pow(ratio, static_cast<double>(angular_momentum) + 1.5);
+}
+
+double odd_double_factorial(unsigned angular_power) noexcept {
+  double value = 1.0;
+  for (unsigned factor = 1; factor < 2 * angular_power; factor += 2) {
+    value *= static_cast<double>(factor);
+  }
+  return value;
+}
+
+}  // namespace
+
+std::vector<CartesianComponent> cartesian_components(unsigned l) {
+  if (l > kMaximumPublicAngularMomentum)
+    throw std::invalid_argument("Cartesian components support l<=4");
+  std::vector<CartesianComponent> components;
+  components.reserve(cartesian_count(l));
+  // CCA/libcint order: x power decreases first; for a fixed x power, y
+  // decreases and z is the remaining power.  Examples are p=(x,y,z) and
+  // d=(xx,xy,xz,yy,yz,zz).
+  for (int lx = static_cast<int>(l); lx >= 0; --lx) {
+    for (unsigned lz = 0; lz <= l - static_cast<unsigned>(lx); ++lz) {
+      const unsigned ly = l - static_cast<unsigned>(lx) - lz;
+      components.push_back({static_cast<unsigned>(lx), ly, lz});
+    }
+  }
+  return components;
+}
+
+std::vector<AoExpansion> ao_expansions(unsigned l, vibeqc_basis_representation representation) {
+  const std::vector<CartesianComponent> cartesian = cartesian_components(l);
+  if (representation == VIBEQC_BASIS_CARTESIAN || l < 2) {
+    std::vector<AoExpansion> expansions;
+    expansions.reserve(cartesian.size());
+    for (const CartesianComponent& component : cartesian) {
+      expansions.push_back({{component, 1.0}});
+    }
+    return expansions;
+  }
+
+  if (l == 2) {
+    // Cartesian order: xx, xy, xz, yy, yz, zz. Spherical columns follow
+    // libcint/PySCF m=-2,-1,0,1,2 real-harmonic order.
+    const double root_three_over_two = std::sqrt(3.0) / 2.0;
+    return {
+        {{{1, 1, 0}, 1.0}},
+        {{{0, 1, 1}, 1.0}},
+        {{{2, 0, 0}, -0.5}, {{0, 2, 0}, -0.5}, {{0, 0, 2}, 1.0}},
+        {{{1, 0, 1}, 1.0}},
+        {{{2, 0, 0}, root_three_over_two}, {{0, 2, 0}, -root_three_over_two}},
+    };
+  }
+  if (l == 3) {
+    // Cartesian order: xxx, xxy, xxz, xyy, xyz, xzz, yyy, yyz,
+    // yzz, zzz. Coefficients act on individually normalized Cartesian AOs.
+    const double three_over_root_eight = 3.0 / std::sqrt(8.0);
+    const double root_five_over_eight = std::sqrt(5.0 / 8.0);
+    const double root_three_over_forty = std::sqrt(3.0 / 40.0);
+    const double root_three_over_eight = std::sqrt(3.0 / 8.0);
+    const double root_six_over_five = std::sqrt(6.0 / 5.0);
+    const double three_over_root_twenty = 3.0 / std::sqrt(20.0);
+    const double root_three_over_two = std::sqrt(3.0) / 2.0;
+    return {
+        {{{2, 1, 0}, three_over_root_eight}, {{0, 3, 0}, -root_five_over_eight}},
+        {{{1, 1, 1}, 1.0}},
+        {{{2, 1, 0}, -root_three_over_forty},
+         {{0, 3, 0}, -root_three_over_eight},
+         {{0, 1, 2}, root_six_over_five}},
+        {{{2, 0, 1}, -three_over_root_twenty},
+         {{0, 2, 1}, -three_over_root_twenty},
+         {{0, 0, 3}, 1.0}},
+        {{{3, 0, 0}, -root_three_over_eight},
+         {{1, 2, 0}, -root_three_over_forty},
+         {{1, 0, 2}, root_six_over_five}},
+        {{{2, 0, 1}, root_three_over_two}, {{0, 2, 1}, -root_three_over_two}},
+        {{{3, 0, 0}, root_five_over_eight}, {{1, 2, 0}, -three_over_root_eight}},
+    };
+  }
+  // Generate real regular solid harmonics from the differentiated Legendre
+  // polynomial. Remove the Condon-Shortley phase, use Im for m<0 and Re
+  // for m>=0 (libcint order), then normalize in the Cartesian Gaussian metric.
+  // Keeping the established d/f tables above preserves their exact rounding.
+  auto factorial = [](unsigned n) {
+    double result = 1.0;
+    for (unsigned i = 2; i <= n; ++i) result *= i;
+    return result;
+  };
+  std::vector<AoExpansion> expansions;
+  for (int signed_m = -static_cast<int>(l); signed_m <= static_cast<int>(l); ++signed_m) {
+    const unsigned m = static_cast<unsigned>(std::abs(signed_m));
+    std::vector<double> polynomial(cartesian.size(), 0.0);
+    for (unsigned k = 0; 2 * k + m <= l; ++k) {
+      const double legendre =
+          (k % 2 ? -1.0 : 1.0) * factorial(2 * l - 2 * k) /
+          (std::pow(2.0, l) * factorial(k) * factorial(l - k) * factorial(l - m - 2 * k));
+      for (unsigned y = 0; y <= m; ++y) {
+        if (y % 2 != static_cast<unsigned>(signed_m < 0)) continue;
+        const double phase = (y / 2) % 2 ? -1.0 : 1.0;
+        const double complex_term = phase * factorial(m) / (factorial(y) * factorial(m - y));
+        for (unsigned rx = 0; rx <= k; ++rx) {
+          for (unsigned ry = 0; ry <= k - rx; ++ry) {
+            const unsigned rz = k - rx - ry;
+            const CartesianComponent component{m - y + 2 * rx, y + 2 * ry, l - m - 2 * k + 2 * rz};
+            for (std::size_t i = 0; i < cartesian.size(); ++i) {
+              if (cartesian[i] == component)
+                polynomial[i] += legendre * complex_term * factorial(k) /
+                                 (factorial(rx) * factorial(ry) * factorial(rz));
+            }
+          }
+        }
+      }
+    }
+    double norm = 0.0;
+    for (std::size_t i = 0; i < cartesian.size(); ++i) {
+      for (std::size_t j = 0; j < cartesian.size(); ++j) {
+        double moment = 1.0;
+        for (unsigned axis = 0; axis < 3; ++axis) {
+          const unsigned power = cartesian[i][axis] + cartesian[j][axis];
+          moment *= power % 2 ? 0.0 : odd_double_factorial(power / 2);
+        }
+        norm += polynomial[i] * polynomial[j] * moment;
+      }
+    }
+    AoExpansion expansion;
+    for (std::size_t i = 0; i < cartesian.size(); ++i) {
+      if (polynomial[i] != 0.0)
+        expansion.push_back(
+            {cartesian[i],
+             polynomial[i] / (std::sqrt(norm) * cartesian_component_normalization(cartesian[i]))});
+    }
+    expansions.push_back(std::move(expansion));
+  }
+  return expansions;
+}
+
+std::size_t ao_count(const core::System& system) noexcept {
+  std::size_t count = 0;
+  for (const core::Shell& shell : system.shells) {
+    const std::size_t functions = system.basis_representation == VIBEQC_BASIS_SPHERICAL
+                                      ? 2 * static_cast<std::size_t>(shell.angular_momentum) + 1
+                                      : cartesian_count(shell.angular_momentum);
+    if (functions > std::numeric_limits<std::size_t>::max() - count) return 0;
+    count += functions;
+  }
+  return count;
+}
+
+std::size_t cartesian_ao_count(const core::System& system) noexcept {
+  std::size_t count = 0;
+  for (const core::Shell& shell : system.shells) {
+    const std::size_t functions = cartesian_count(shell.angular_momentum);
+    if (functions > std::numeric_limits<std::size_t>::max() - count) return 0;
+    count += functions;
+  }
+  return count;
+}
+
+double cartesian_component_normalization(const CartesianComponent& component) noexcept {
+  const double denominator = odd_double_factorial(component[0]) *
+                             odd_double_factorial(component[1]) *
+                             odd_double_factorial(component[2]);
+  return 1.0 / std::sqrt(denominator);
+}
+
+vibeqc_status validate_and_normalize(core::System& system, std::string& detail) {
+  if (system.atoms.empty()) {
+    detail = "a system requires at least one atom";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  std::int64_t nuclear_charge = 0;
+  for (const auto& atom : system.atoms) {
+    if (atom.atomic_number <= 0 || atom.atomic_number > 118) {
+      detail =
+          "atomic numbers must lie in [1, 118]; element identity is independent of basis "
+          "availability";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    for (double coordinate : atom.position) {
+      if (!std::isfinite(coordinate)) {
+        detail = "atom coordinates must be finite Bohr values";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+    if (atom.ecp_core < 0 || atom.ecp_core >= atom.atomic_number) {
+      detail = "ECP core count must leave a positive ionic charge";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    nuclear_charge += atom.ionic_charge();
+  }
+  // Widen before subtraction: an INT32_MIN ionic charge must not wrap the
+  // active-electron population.
+  const std::int64_t electrons = nuclear_charge - static_cast<std::int64_t>(system.charge);
+  if (electrons > std::numeric_limits<int>::max() || electrons <= 0) {
+    detail = "active-electron population is outside the positive native integer range";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  system.electron_count = static_cast<int>(electrons);
+  // Downstream HF occupation keys use signed int for N + (multiplicity - 1).
+  // Validate that intermediate here before any unsigned-to-signed narrowing.
+  if (system.multiplicity == 0 || electrons + static_cast<std::int64_t>(system.multiplicity) - 1 >
+                                      std::numeric_limits<int>::max()) {
+    detail = "electron count and multiplicity exceed the native spin integer range";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (system.basis_representation != VIBEQC_BASIS_CARTESIAN &&
+      system.basis_representation != VIBEQC_BASIS_SPHERICAL) {
+    detail = "basis representation must be Cartesian or spherical";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+
+  for (auto& shell : system.shells) {
+    if (shell.atom_index >= system.atoms.size()) {
+      detail = "shell atom index is out of range";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    if (shell.angular_momentum > kMaximumPublicAngularMomentum) {
+      detail = "shell on atom " + std::to_string(shell.atom_index) +
+               " has l=" + std::to_string(shell.angular_momentum) +
+               "; native CPU Cartesian/real-spherical execution supports s through g shells";
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    }
+    if (shell.primitives.empty()) {
+      detail = "each shell requires at least one primitive";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    for (auto& primitive : shell.primitives) {
+      if (!(primitive.exponent > 0.0) || !std::isfinite(primitive.exponent) ||
+          !std::isfinite(primitive.coefficient)) {
+        detail = "primitive exponents must be positive finite and coefficients finite";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+
+    // The overlap of two individually normalized primitives on the same
+    // center depends only on total angular momentum, not on the Cartesian
+    // distribution.  Therefore one contraction scale is valid for every AO
+    // in the shell.  We retain a radial primitive factor in the coefficient;
+    // the small component-dependent double-factorial factor is applied when
+    // the shell is expanded into Cartesian AOs.
+    double norm2 = 0.0;
+    for (const auto& a : shell.primitives) {
+      for (const auto& b : shell.primitives) {
+        norm2 += a.coefficient * b.coefficient *
+                 normalized_same_center_overlap(a.exponent, b.exponent, shell.angular_momentum);
+      }
+    }
+    if (!(norm2 > 0.0) || !std::isfinite(norm2)) {
+      detail = "contracted shell has an invalid normalization";
+      return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    }
+    const double scale = 1.0 / std::sqrt(norm2);
+    for (auto& primitive : shell.primitives) {
+      const bool nonzero = primitive.coefficient != 0.0;
+      primitive.coefficient *=
+          scale * radial_primitive_normalization(primitive.exponent, shell.angular_momentum);
+      // Retain source zeros, but never silently erase a nonzero primitive
+      // through a normalization underflow or overflow.
+      if (!std::isfinite(primitive.coefficient) || (nonzero && primitive.coefficient == 0.0)) {
+        detail = "normalized primitive coefficient is outside nonzero FP64 range";
+        return VIBEQC_STATUS_NUMERICAL_FAILURE;
+      }
+    }
+  }
+  return VIBEQC_STATUS_SUCCESS;
+}
+
+}  // namespace vibeqc::molecule

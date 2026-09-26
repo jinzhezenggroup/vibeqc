@@ -1,0 +1,14 @@
+{
+  "path": "src/scf/cuda/direct_tile_compaction.cu",
+  "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+  "regions": [
+    {
+      "reason": "Per-item FP32 contribution cutoff tied to the physical Fock error budget.",
+      "role": "scientific",
+      "start": "__device__ __forceinline__ double mixed_fock_item_cutoff",
+      "stop": "template <bool Unrestricted, DirectScreeningPurpose Purpose>"
+    }
+  ],
+  "role": "runtime",
+  "subsystem": "direct_integrals"
+}

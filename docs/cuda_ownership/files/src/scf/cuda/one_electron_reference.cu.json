@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_reference.cu",
+  "reason": "Retained independent coordinate-wise Dual derivative export/oracle for explicit validation APIs; no production SCF force selector reaches this implementation.",
+  "regions": [],
+  "role": "oracle",
+  "subsystem": "one_electron_derivatives"
+}

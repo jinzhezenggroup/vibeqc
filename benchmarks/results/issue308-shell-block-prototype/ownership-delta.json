@@ -1,0 +1,16 @@
+{
+  "added": {
+    "runtime": 166,
+    "scientific": 80
+  },
+  "definition": "Nonblank/noncomment physical code lines; SequenceMatcher(autojunk=False). No reclassification.",
+  "net_role_delta": {
+    "runtime": 158,
+    "scientific": 79
+  },
+  "removed": {
+    "runtime": 8,
+    "scientific": 1
+  },
+  "unchanged_lines_reclassified": {}
+}

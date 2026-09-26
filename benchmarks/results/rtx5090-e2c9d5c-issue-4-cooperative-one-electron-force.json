@@ -1,0 +1,150 @@
+{
+  "benchmark": "cooperative_one_electron_point_charge_force",
+  "schema_version": 1,
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090"
+    },
+    "base_commit": "e2c9d5cdc2aeade5372c6dd87598ffc18e03a574",
+    "candidate_source_dirty": true,
+    "cuda_runtime": "12.9",
+    "nsight_systems": "2025.1.3",
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "timestamp_utc": "2026-08-26T20:21:08+00:00"
+  },
+  "candidate": {
+    "description": "One warp owns one public AO pair. Lane zero evaluates overlap and kinetic derivatives; nuclear centers are point-charge auxiliary tasks distributed across lanes. A 6000-byte Hermite table is built once per primitive/component pair in shared memory and reused by all nuclear-center Coulomb recurrences.",
+    "host_launches_per_force_pass": 1,
+    "nuclear_center_host_loop": false,
+    "production_default": true,
+    "scalar_fallback_environment": "VIBEQC_ONE_ELECTRON_FORCE_SCALAR"
+  },
+  "resources": {
+    "cooperative": {
+      "dynamic_shared_memory_bytes": 6000,
+      "local_bytes": 0,
+      "registers_per_thread": 175,
+      "stack_bytes": 3400,
+      "static_shared_memory_bytes": 1024,
+      "threads_per_block": 32
+    },
+    "scalar_fallback": {
+      "dynamic_shared_memory_bytes": 0,
+      "local_bytes": 0,
+      "registers_per_thread": 170,
+      "stack_bytes": 9552,
+      "static_shared_memory_bytes": 0,
+      "threads_per_block": 32
+    }
+  },
+  "component_profiles": [
+    {
+      "ao_count": 96,
+      "batch_size": 1,
+      "case": "water-tetramer-def2-svp-spherical",
+      "methodology": "Five Nsight Systems CUDA kernel measurements from warm fixed-topology replays in the same candidate binary.",
+      "cooperative": {
+        "average_milliseconds": 2.180514,
+        "maximum_milliseconds": 2.286818,
+        "median_milliseconds": 2.145602,
+        "minimum_milliseconds": 2.130594,
+        "standard_deviation_milliseconds": 0.0655568
+      },
+      "scalar_fallback": {
+        "average_milliseconds": 20.0427686,
+        "maximum_milliseconds": 21.11756,
+        "median_milliseconds": 19.827863,
+        "minimum_milliseconds": 19.704662,
+        "standard_deviation_milliseconds": 0.6037114
+      },
+      "speedup_from_average": 9.191763318190116
+    },
+    {
+      "ao_count": 192,
+      "batch_size": 1,
+      "case": "water-octamer-s4-def2-svp-spherical",
+      "methodology": "Five Nsight Systems CUDA kernel measurements from warm fixed-topology replays in the same candidate binary.",
+      "cooperative": {
+        "average_milliseconds": 6.3835384,
+        "maximum_milliseconds": 6.453804,
+        "median_milliseconds": 6.378284,
+        "minimum_milliseconds": 6.316396,
+        "standard_deviation_milliseconds": 0.054145
+      },
+      "scalar_fallback": {
+        "average_milliseconds": 55.6763588,
+        "maximum_milliseconds": 57.085063,
+        "median_milliseconds": 55.497828,
+        "minimum_milliseconds": 54.874918,
+        "standard_deviation_milliseconds": 0.9045344
+      },
+      "speedup_from_average": 8.72186478897033
+    }
+  ],
+  "same_binary_endpoint_profiles": {
+    "batch_1": [
+      {
+        "ao_count": 96,
+        "cooperative_warm_median_seconds": 0.3790838480053935,
+        "scalar_warm_median_seconds": 0.39745190099347383,
+        "speedup": 1.0484538000886257
+      },
+      {
+        "ao_count": 192,
+        "cooperative_warm_median_seconds": 2.447499276982853,
+        "scalar_warm_median_seconds": 2.5068237319937907,
+        "speedup": 1.024238803896224
+      }
+    ],
+    "batch_4_192_ao": {
+      "cooperative_warm_median_seconds": 10.30368469998939,
+      "scalar_warm_median_seconds": 10.566491207981016,
+      "speedup": 1.025506070463501,
+      "warning": "Per-system SCF iteration branches differ between samples; this comparison establishes no median regression but is not an iteration-matched speed claim."
+    }
+  },
+  "accuracy_gate": {
+    "all_four_points_passed": true,
+    "points": [
+      {
+        "ao_count": 96,
+        "batch_size": 1,
+        "maximum_energy_error_hartree": 7.389644451905042e-13,
+        "maximum_force_error_hartree_per_bohr": 1.5497800091857084e-11
+      },
+      {
+        "ao_count": 96,
+        "batch_size": 4,
+        "maximum_energy_error_hartree": 2.8421709430404007e-12,
+        "maximum_force_error_hartree_per_bohr": 2.2945227315385175e-11
+      },
+      {
+        "ao_count": 192,
+        "batch_size": 1,
+        "maximum_energy_error_hartree": 3.296918293926865e-12,
+        "maximum_force_error_hartree_per_bohr": 4.863358847584376e-11
+      },
+      {
+        "ao_count": 192,
+        "batch_size": 4,
+        "maximum_energy_error_hartree": 9.094947017729282e-12,
+        "maximum_force_error_hartree_per_bohr": 2.356408809398025e-10
+      }
+    ],
+    "reference": "GPU4PySCF/PySCF with the committed 96/192-AO acceptance settings"
+  },
+  "decision": {
+    "accepted_for_production": true,
+    "reason": "The point-charge cooperative organization is 9.19x faster at 96 AOs and 8.72x faster at 192 AOs, remains below 5 ms at 96 AOs, passes all Cartesian, real-spherical, RHF, UHF, and real-molecule accuracy gates, and improves same-binary warm endpoint medians."
+  }
+}

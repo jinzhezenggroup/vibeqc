@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d4_cuda.hpp",
+  "role": "runtime",
+  "subsystem": "d4_dispersion",
+  "reason": "Internal CUDA batch descriptor and launch contract for bounded block-cooperative fixed-charge D4 execution.",
+  "regions": []
+}

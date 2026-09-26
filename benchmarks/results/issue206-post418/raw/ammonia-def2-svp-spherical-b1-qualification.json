@@ -1,0 +1,291 @@
+{
+  "scope": "Observe the installed stock provider and actual metric ranks outside timing.\n\nEach call qualifies one comparison cell. Wrapping decomposition records its\nunchanged return; no rank threshold or factorization policy is replaced.\n",
+  "slurm_job_id": "9902",
+  "cuda_visible_devices": "0",
+  "contract_engine": "cuTENSOR",
+  "versions": {
+    "gpu4pyscf-cuda12x": "1.8.1",
+    "cupy-cuda12x": "14.2.0",
+    "cutensor-cu12": "2.3.1",
+    "pyscf": "2.14.0",
+    "numpy": "2.5.3"
+  },
+  "runner_sha256": "8f29865f81629a61caba6c9c801b6bfb9e4f206c21a457d75484b0c738e98ee4",
+  "results": [
+    {
+      "case": "ammonia-def2-svp-spherical",
+      "batch": 1,
+      "slot": 0,
+      "atoms": [
+        [
+          "N",
+          [
+            0.0,
+            0.0,
+            0.2
+          ]
+        ],
+        [
+          "H",
+          [
+            0.0,
+            1.77,
+            -0.5
+          ]
+        ],
+        [
+          "H",
+          [
+            1.53,
+            -0.885,
+            -0.5
+          ]
+        ],
+        [
+          "H",
+          [
+            -1.53,
+            -0.885,
+            -0.5
+          ]
+        ]
+      ],
+      "unit": "Bohr",
+      "representation": "spherical",
+      "nbf": 29,
+      "naux": 29,
+      "orbital_basis": {
+        "N": [
+          [
+            0,
+            [
+              1712.8415853,
+              -0.0053934125305
+            ],
+            [
+              257.64812677,
+              -0.040221581118
+            ],
+            [
+              58.458245853,
+              -0.1793114499
+            ],
+            [
+              16.198367905,
+              -0.46376317823
+            ],
+            [
+              5.0052600809,
+              -0.44171422662
+            ]
+          ],
+          [
+            0,
+            [
+              0.58731856571,
+              1.0
+            ]
+          ],
+          [
+            0,
+            [
+              0.18764592253,
+              1.0
+            ]
+          ],
+          [
+            1,
+            [
+              13.571470233,
+              -0.040072398852
+            ],
+            [
+              2.9257372874,
+              -0.21807045028
+            ],
+            [
+              0.79927750754,
+              -0.51294466049
+            ]
+          ],
+          [
+            1,
+            [
+              0.21954348034,
+              1.0
+            ]
+          ],
+          [
+            2,
+            [
+              1.0,
+              1.0
+            ]
+          ]
+        ],
+        "H": [
+          [
+            0,
+            [
+              13.010701,
+              0.019682158
+            ],
+            [
+              1.9622572,
+              0.13796524
+            ],
+            [
+              0.44453796,
+              0.47831935
+            ]
+          ],
+          [
+            0,
+            [
+              0.12194962,
+              1.0
+            ]
+          ],
+          [
+            1,
+            [
+              0.8,
+              1.0
+            ]
+          ]
+        ]
+      },
+      "auxiliary_basis": {
+        "N": [
+          [
+            0,
+            [
+              1712.8415853,
+              -0.0053934125305
+            ],
+            [
+              257.64812677,
+              -0.040221581118
+            ],
+            [
+              58.458245853,
+              -0.1793114499
+            ],
+            [
+              16.198367905,
+              -0.46376317823
+            ],
+            [
+              5.0052600809,
+              -0.44171422662
+            ]
+          ],
+          [
+            0,
+            [
+              0.58731856571,
+              1.0
+            ]
+          ],
+          [
+            0,
+            [
+              0.18764592253,
+              1.0
+            ]
+          ],
+          [
+            1,
+            [
+              13.571470233,
+              -0.040072398852
+            ],
+            [
+              2.9257372874,
+              -0.21807045028
+            ],
+            [
+              0.79927750754,
+              -0.51294466049
+            ]
+          ],
+          [
+            1,
+            [
+              0.21954348034,
+              1.0
+            ]
+          ],
+          [
+            2,
+            [
+              1.0,
+              1.0
+            ]
+          ]
+        ],
+        "H": [
+          [
+            0,
+            [
+              13.010701,
+              0.019682158
+            ],
+            [
+              1.9622572,
+              0.13796524
+            ],
+            [
+              0.44453796,
+              0.47831935
+            ]
+          ],
+          [
+            0,
+            [
+              0.12194962,
+              1.0
+            ]
+          ],
+          [
+            1,
+            [
+              0.8,
+              1.0
+            ]
+          ]
+        ]
+      },
+      "reference_metric_sha256": "09819724dbc4344ade20f69f057f2b3e73e335eaf90ca298bf1bf7934acae3b6",
+      "reference_metric_extrema": [
+        0.14217009300818917,
+        401.8444787559511
+      ],
+      "reference_condition": 2826.505000125479,
+      "relative_threshold": 1e-10,
+      "reference_effective_rank": 29,
+      "gpu4pyscf_factor_blocks": {
+        "0": [
+          29,
+          460
+        ]
+      },
+      "gpu4pyscf_effective_rank": 29,
+      "gpu4pyscf_factor_container": "list",
+      "gpu4pyscf_df_class": "gpu4pyscf.df.df.DF",
+      "gpu4pyscf_decomposition": [
+        {
+          "factorization": "cd",
+          "coefficient_shape": [
+            30,
+            29
+          ],
+          "dtype": "float64",
+          "fallback_absolute_threshold": 1e-07
+        }
+      ],
+      "gpu4pyscf_default_initial_guess": "minao",
+      "matching_full_rank": true
+    }
+  ]
+}

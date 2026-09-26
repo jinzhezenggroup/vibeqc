@@ -1,0 +1,88 @@
+{
+  "archive_bytes": 213996,
+  "archive_sha256": "a0510af08da6f8cf66d5e951b5b6ba1370c5c1123bf82e5a79416147f8d2668f",
+  "archived_from_commit": "a05d5eea7d267b6c12896ba03c03e0d209698e1e",
+  "files": [
+    {
+      "bytes": 112716,
+      "path": "energy.json",
+      "sha256": "844d44716b4b67801e9ae99ad889e05cf5cb02d1aa8981e9b45acf31a69115d9"
+    },
+    {
+      "bytes": 1732,
+      "path": "files.json",
+      "sha256": "325a8af28b3fd00027cd86a4d407e7b74b44c18796f57b5d4bcb74a8384c0bc7"
+    },
+    {
+      "bytes": 146308,
+      "path": "force.json",
+      "sha256": "771d9018eefb20fc64e5a171b711a82242a68d354ff7235b7dcdab605cbe2e34"
+    },
+    {
+      "bytes": 118607,
+      "path": "larger/192b1-energy.json",
+      "sha256": "639872b8a27ae18abba380508f42b3c54b19c4734ef2c25a27123dcae4b0d643"
+    },
+    {
+      "bytes": 186095,
+      "path": "larger/192b1-force.json",
+      "sha256": "2c40fd6e408018af9dea0c2831b4de2c891136672fb2811e3fef3c673c617f54"
+    },
+    {
+      "bytes": 243255,
+      "path": "larger/192b1-profiled.json",
+      "sha256": "7c56b6ae8ff823d7d4635baa9686ea5f0c0db0a7447a12576f91323b6fc16a70"
+    },
+    {
+      "bytes": 101923,
+      "path": "larger/192b1-raw-traces.json",
+      "sha256": "9cb4fe4866d7a73ba63fd7d59396869d1c4ebe5381a7f2d9b711e21bdc61921c"
+    },
+    {
+      "bytes": 401584,
+      "path": "larger/96b4-energy.json",
+      "sha256": "6218569fe07c25b387892c138ca2fd8a21b310ef98d0d1d988cbc09f8cc7710b"
+    },
+    {
+      "bytes": 536711,
+      "path": "larger/96b4-force.json",
+      "sha256": "c269b39a97eedef978305d609d51570cbac0b84a1b3f39ceca9107fde41382ce"
+    },
+    {
+      "bytes": 645171,
+      "path": "larger/96b4-profiled.json",
+      "sha256": "7395bf4bd7a0742d618f528db714700e23297fb65278f253aa95ddc3dabf57fe"
+    },
+    {
+      "bytes": 291132,
+      "path": "larger/96b4-raw-traces.json",
+      "sha256": "5f6f0a38c21efb5d0dc4f6b8d3339afe963ebbd2aaee7a9093fa77fe98ed3bf7"
+    },
+    {
+      "bytes": 35873,
+      "path": "measured-source.patch",
+      "sha256": "ee01cb3543e3ffd7aff7783bfd656dd9269039df4afa0903d5a2c1318bc57b15"
+    },
+    {
+      "bytes": 236807,
+      "path": "profiled.json",
+      "sha256": "64207cab7c1118b61059d44a07d562698c474889edd02f1b3051c74819732262"
+    },
+    {
+      "bytes": 102486,
+      "path": "raw-traces.json",
+      "sha256": "6c242aecbb93d7fae86d6feac8cc45182c52102ab40b9d499194eb7fb2de84d3"
+    }
+  ],
+  "measured_source_variants": {
+    "first_domain": {
+      "base_commit": "07b83d2b7a44a35a5405de41a45f4aa37f0334f8",
+      "patch_member": "measured-source.patch"
+    },
+    "larger_domains": {
+      "clean_commit": "b362dbe2243ba9fea16bda09177ea1c21a9f46a4"
+    }
+  },
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "b362dbe2243ba9fea16bda09177ea1c21a9f46a4"
+}

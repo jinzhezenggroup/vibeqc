@@ -1,0 +1,654 @@
+{
+  "schema_version": 1,
+  "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+  "library_sha256": "398e7c971793e1af11d15926784c0f19eaf8ef494452f1f537e778b3662c192b",
+  "compiler": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "scope": "requested native C++ heap bytes during preparation and two serialized fleet solves; excludes caller inputs, malloc bookkeeping and page/runtime retention",
+  "records": [
+    {
+      "case": "h2-rhf",
+      "plan": {
+        "budget": {
+          "host_bytes": null,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cpu",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cpu-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "fleet topology, warm state and outputs",
+                    "bytes": 1792,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized item workspace",
+                    "bytes": 60360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized items; retained state summed across fleet"
+                  ],
+                  [
+                    "cpu_worker_limit",
+                    "1"
+                  ],
+                  [
+                    "item_phase_inventory",
+                    "[{\"finalization\": 5312, \"integral_state\": 1392, \"iteration\": 5312, \"preparation\": 60360}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cpu-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 62152,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 62152
+        },
+        "resident_bytes": {
+          "host": 1792,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 1792
+        },
+        "peak_phases": {
+          "pageable": 0,
+          "host": 0
+        },
+        "limits": {},
+        "identity": "33a590869f783f8ec82e5ee54dd29795eae7d0d1c1fb6f39873827df74dd414c"
+      },
+      "observed": {
+        "peak_host_bytes": 5304,
+        "live_after_destroy": 0,
+        "allocations": 729295,
+        "sampled_host_bytes": 1760,
+        "energies": [
+          -1.116714325175769
+        ],
+        "iterations": [
+          2
+        ],
+        "converged": true
+      },
+      "maximum_energy_error": 0.0
+    },
+    {
+      "case": "ragged-rhf",
+      "plan": {
+        "budget": {
+          "host_bytes": null,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cpu",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cpu-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "fleet topology, warm state and outputs",
+                    "bytes": 8672,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized item workspace",
+                    "bytes": 779832,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized items; retained state summed across fleet"
+                  ],
+                  [
+                    "cpu_worker_limit",
+                    "1"
+                  ],
+                  [
+                    "item_phase_inventory",
+                    "[{\"finalization\": 5312, \"integral_state\": 1392, \"iteration\": 5312, \"preparation\": 60360}, {\"finalization\": 233432, \"integral_state\": 199992, \"iteration\": 233432, \"preparation\": 779832}, {\"finalization\": 5312, \"integral_state\": 1392, \"iteration\": 5312, \"preparation\": 60360}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cpu-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 788504,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 788504
+        },
+        "resident_bytes": {
+          "host": 8672,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 8672
+        },
+        "peak_phases": {
+          "pageable": 0,
+          "host": 0
+        },
+        "limits": {},
+        "identity": "c55cd7cad079a9703070dfefacff6775fa01f7774f27ec68eb91da664d8a3d7e"
+      },
+      "observed": {
+        "peak_host_bytes": 463992,
+        "live_after_destroy": 0,
+        "allocations": 224767052,
+        "sampled_host_bytes": 209064,
+        "energies": [
+          -1.116714325175769,
+          -74.96308295573931,
+          -1.116714325175769
+        ],
+        "iterations": [
+          2,
+          2,
+          2
+        ],
+        "converged": true
+      },
+      "maximum_energy_error": 0.0
+    },
+    {
+      "case": "ragged-uhf",
+      "plan": {
+        "budget": {
+          "host_bytes": null,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cpu",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cpu-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "fleet topology, warm state and outputs",
+                    "bytes": 8576,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized item workspace",
+                    "bytes": 779832,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized items; retained state summed across fleet"
+                  ],
+                  [
+                    "cpu_worker_limit",
+                    "1"
+                  ],
+                  [
+                    "item_phase_inventory",
+                    "[{\"finalization\": 7936, \"integral_state\": 1392, \"iteration\": 7936, \"preparation\": 60360}, {\"finalization\": 265576, \"integral_state\": 199992, \"iteration\": 265576, \"preparation\": 779832}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cpu-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 788408,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 788408
+        },
+        "resident_bytes": {
+          "host": 8576,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 8576
+        },
+        "peak_phases": {
+          "pageable": 0,
+          "host": 0
+        },
+        "limits": {},
+        "identity": "67897c41a845d57544eb4176aaf9b5e7ff4f9bfb6e2ae485efc3116215e39574"
+      },
+      "observed": {
+        "peak_host_bytes": 463880,
+        "live_after_destroy": 0,
+        "allocations": 224038150,
+        "sampled_host_bytes": 219312,
+        "energies": [
+          -1.1167143251757685,
+          -74.96308295573932
+        ],
+        "iterations": [
+          2,
+          2
+        ],
+        "converged": true
+      },
+      "maximum_energy_error": 2.842170943040401e-14
+    },
+    {
+      "case": "ragged-ri-rhf",
+      "plan": {
+        "budget": {
+          "host_bytes": null,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cpu",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cpu\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cpu-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "fleet topology, warm state and outputs",
+                    "bytes": 13280,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized item workspace",
+                    "bytes": 779832,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized items; retained state summed across fleet"
+                  ],
+                  [
+                    "cpu_worker_limit",
+                    "1"
+                  ],
+                  [
+                    "item_phase_inventory",
+                    "[{\"finalization\": 7584, \"integral_state\": 2128, \"iteration\": 6192, \"preparation\": 60360}, {\"finalization\": 286144, \"integral_state\": 234096, \"iteration\": 269160, \"preparation\": 779832}, {\"finalization\": 7584, \"integral_state\": 2128, \"iteration\": 6192, \"preparation\": 60360}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cpu-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 793112,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 793112
+        },
+        "resident_bytes": {
+          "host": 13280,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 13280
+        },
+        "peak_phases": {
+          "pageable": 0,
+          "host": 0
+        },
+        "limits": {},
+        "identity": "9d15fc47700133a8185738332d0918b7eeecca038c84e2f94e10ef8ee9d8c243"
+      },
+      "observed": {
+        "peak_host_bytes": 464488,
+        "live_after_destroy": 0,
+        "allocations": 233116186,
+        "sampled_host_bytes": 243168,
+        "energies": [
+          -1.1933554788642753,
+          -74.87703881717069,
+          -1.1933554788642753
+        ],
+        "iterations": [
+          2,
+          2,
+          2
+        ],
+        "converged": true
+      },
+      "maximum_energy_error": 5.684341886080802e-14
+    },
+    {
+      "case": "h2-ri-uhf",
+      "plan": {
+        "budget": {
+          "host_bytes": null,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cpu",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"2048c38f76f26f9749aa9beda3993428b6b477d561cf6b3337ff77b78ba53340\", \"cartesian_nbf\": 10, \"maximum_angular\": 1, \"nbf\": 10, \"primitives\": 10, \"representation\": \"cartesian\", \"shells\": 6}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"2048c38f76f26f9749aa9beda3993428b6b477d561cf6b3337ff77b78ba53340\", \"cartesian_nbf\": 10, \"maximum_angular\": 1, \"nbf\": 10, \"primitives\": 10, \"representation\": \"cartesian\", \"shells\": 6}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cpu\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cpu-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "fleet topology, warm state and outputs",
+                    "bytes": 11136,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized item workspace",
+                    "bytes": 2448096,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized items; retained state summed across fleet"
+                  ],
+                  [
+                    "cpu_worker_limit",
+                    "1"
+                  ],
+                  [
+                    "item_phase_inventory",
+                    "[{\"finalization\": 815328, \"integral_state\": 640848, \"iteration\": 776624, \"preparation\": 2448096}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cpu-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 2459232,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 2459232
+        },
+        "resident_bytes": {
+          "host": 11136,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 11136
+        },
+        "peak_phases": {
+          "pageable": 0,
+          "host": 0
+        },
+        "limits": {},
+        "identity": "cd3d2075dce162c7117b855ff48779f8567b35663b3bb0b801cfcc301859264e"
+      },
+      "observed": {
+        "peak_host_bytes": 1391224,
+        "live_after_destroy": 0,
+        "allocations": 51531705,
+        "sampled_host_bytes": 677008,
+        "energies": [
+          -1.1358007241432095
+        ],
+        "iterations": [
+          2
+        ],
+        "converged": true
+      },
+      "maximum_energy_error": 1.3322676295501878e-15
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+"""Independent CPU DF check of the complete-shell unequal-auxiliary records.
+
+Keep the original GPU gate verdicts intact. This separate libcint/PySCF oracle
+uses tighter SCF convergence to distinguish reference convergence from a native
+DF/derivative difference; it is not an endpoint performance measurement.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib.metadata
+import json
+import os
+from pathlib import Path
+
+
+def main():
+    # Schedule this otherwise CPU-only oracle after the clean campaign so its
+    # substantial integral/memory work cannot perturb the active endpoint timer.
+    assert os.environ.get("SLURM_JOB_ID")
+    import numpy as np
+    from pyscf import df, gto, scf
+
+    root = Path.cwd()
+    prior = root / ".artifacts/issue409/unequal-v2"
+    out = root / ".artifacts/issue409/unequal-reference-diagnosis"
+    out.mkdir(exist_ok=False)
+    manifest = {
+        "scope": __doc__,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "versions": {
+            name: importlib.metadata.version(name) for name in ("pyscf", "numpy")
+        },
+        "settings": {
+            "energy_tolerance": 1e-13,
+            "gradient_tolerance": 1e-12,
+            "direct_scf_tol": 1e-14,
+            "max_cycle": 200,
+            "max_memory_MB": 4096,
+        },
+        "cases": [],
+    }
+
+    def save():
+        (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+    save()
+    for name in (
+        "water-tetramer-def2-svp-spherical",
+        "water-hexadecamer-2s4-def2-svp-spherical",
+    ):
+        reference_path = prior / f"{name}-reference.json"
+        native_path = prior / f"{name}-measure.json"
+        reference = json.loads(reference_path.read_text())
+        native = json.loads(native_path.read_text())
+        assert reference["converged"]
+        for key in (
+            "atoms_bohr",
+            "basis_definitions",
+            "basis_representation",
+            "aos",
+            "auxiliary_count",
+        ):
+            assert reference[key] == native[key], key
+        row = {
+            "case": name,
+            "status": "running",
+            "reference_sha256": hashlib.sha256(reference_path.read_bytes()).hexdigest(),
+            "native_sha256": hashlib.sha256(native_path.read_bytes()).hexdigest(),
+            "original_native_failure": bool(native.get("failure")),
+        }
+        manifest["cases"].append(row)
+        save()
+        try:
+            assert reference["basis_representation"] == "spherical"
+            basis = reference["basis_definitions"]
+            mol = gto.M(
+                atom=reference["atoms_bohr"],
+                unit="Bohr",
+                basis=basis[reference["orbital_basis"]],
+                cart=False,
+                verbose=0,
+            )
+            auxbasis = basis[reference["auxiliary_basis"]]
+            aux = df.addons.make_auxmol(mol, auxbasis)
+            assert (
+                mol.nao == reference["aos"] and aux.nao == reference["auxiliary_count"]
+            )
+            eigenvalues = np.linalg.eigvalsh(aux.intor("int2c2e"))
+            rank = int(np.count_nonzero(eigenvalues > 1e-10 * eigenvalues[-1]))
+            assert rank == reference["stock_effective_rank"] == aux.nao
+            engine = scf.RHF(mol).density_fit(auxbasis=auxbasis)
+            engine.conv_tol, engine.conv_tol_grad = 1e-13, 1e-12
+            engine.direct_scf_tol, engine.max_cycle, engine.max_memory = (
+                1e-14,
+                200,
+                4096,
+            )
+            energy = engine.kernel()
+            row.update(energy_hartree=float(energy), converged=bool(engine.converged))
+            save()
+            assert engine.converged, "independent CPU oracle did not converge"
+            gradient = engine.nuc_grad_method()
+            gradient.auxbasis_response = True
+            forces = -gradient.kernel()
+            norm = float(
+                np.linalg.norm(engine.get_grad(engine.mo_coeff, engine.mo_occ))
+            )
+            assert np.isfinite(energy) and np.isfinite(forces).all() and norm < 1e-11
+
+            def difference(
+                label, data, target_forces=forces, target_energy=float(energy)
+            ):
+                delta = np.asarray(data["forces_hartree_per_bohr"]) - target_forces
+                index = np.unravel_index(np.argmax(np.abs(delta)), delta.shape)
+                return {
+                    "label": label,
+                    "energy_error": abs(data["energy_hartree"] - target_energy),
+                    "force_max": float(np.max(np.abs(delta))),
+                    "force_rms": float(np.sqrt(np.mean(delta**2))),
+                    "largest_error_atom_component": [int(v) for v in index],
+                    "largest_signed_force_error": float(delta[index]),
+                }
+
+            differences = [
+                difference("stock original reference", reference),
+                difference("native dense cold", native["cold_dense"]),
+            ]
+            differences += [
+                difference(f"native {s['policy']} repeat {s['repeat']}", s)
+                for s in native.get("samples", [])
+            ]
+            row.update(
+                status="passed oracle convergence",
+                orbital_gradient_norm=norm,
+                forces_hartree_per_bohr=forces.tolist(),
+                force_sum=forces.sum(axis=0).tolist(),
+                matching_full_metric_rank=rank,
+                metric_extrema=[float(eigenvalues[0]), float(eigenvalues[-1])],
+                differences=differences,
+            )
+            save()
+            print(name, differences[:2], flush=True)
+        except Exception as error:
+            row.update(status="diagnostic failed", failure=repr(error))
+            save()
+            raise
+    manifest["status"] = "completed diagnosis; original GPU gate verdicts unchanged"
+    save()
+
+
+if __name__ == "__main__":
+    main()

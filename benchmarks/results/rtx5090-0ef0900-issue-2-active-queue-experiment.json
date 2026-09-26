@@ -1,0 +1,169 @@
+{
+  "benchmark": "direct_high_order_active_queue_experiment",
+  "schema_version": 1,
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090
+    },
+    "base_commit": "0ef0900c2ab0acf6532631223672cdbec1476c8e",
+    "candidate_source_dirty": true,
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "profiler": "NVIDIA Nsight Systems 2025.1.3",
+    "timestamp_utc": "2026-08-26T19:10:44.034453+00:00"
+  },
+  "workload": {
+    "ao_count": 192,
+    "basis": "def2-SVP real spherical",
+    "batch_size": 1,
+    "case": "water-octamer-s4-def2-svp-spherical",
+    "density_tolerance": 1e-10,
+    "energy_tolerance": 1e-12,
+    "screening_tolerance": 1e-14
+  },
+  "active_domain": {
+    "methodology": "Final-converged-density shell-class profiling after Schwarz and density screening; subtile counts use the production order-aware 1/3/6/8 virtual tiling policy.",
+    "orders": [
+      {
+        "active_subtiles": 379680,
+        "active_tiles": 47460,
+        "angular_order": 6,
+        "capacity_subtiles": 916480,
+        "capacity_tiles": 114560,
+        "capacity_tail_fraction": 0.5857206703910615,
+        "force_generic_tiles_after_generated_removal": 0,
+        "fock_generic_tiles_after_generated_removal": 47460
+      },
+      {
+        "active_subtiles": 64800,
+        "active_tiles": 8100,
+        "angular_order": 7,
+        "capacity_subtiles": 204800,
+        "capacity_tiles": 25600,
+        "capacity_tail_fraction": 0.68359375,
+        "force_generic_tiles_after_generated_removal": 0,
+        "fock_generic_tiles_after_generated_removal": 8100
+      },
+      {
+        "active_subtiles": 5504,
+        "active_tiles": 688,
+        "angular_order": 8,
+        "capacity_subtiles": 24704,
+        "capacity_tiles": 3088,
+        "capacity_tail_fraction": 0.7772020725388601,
+        "force_generic_tiles_after_generated_removal": 688,
+        "fock_generic_tiles_after_generated_removal": 688
+      }
+    ]
+  },
+  "candidate": {
+    "description": "Exact generic queues for every angular order plus order-specific bounded grid-stride launches; fixed-capacity high-order grids remained selectable as the in-process fallback.",
+    "fock_worker_blocks": {
+      "order_6": 348160,
+      "order_7": 54400,
+      "order_8": 4080
+    },
+    "force_worker_blocks": {
+      "order_7": 4080,
+      "order_8": 4080
+    },
+    "queue_claims": {
+      "fock_rejected_or_noop_claims": 0,
+      "force_order_7_empty_queue_blocks": 4080,
+      "force_rejected_or_noop_fraction_of_capacity_domain": 0.00035511163895486936
+    }
+  },
+  "device_profile": {
+    "fixed_capacity_fallback": {
+      "direct_fock_milliseconds": 470.277387,
+      "direct_fock_plus_two_electron_force_milliseconds": 1380.963233,
+      "two_electron_force_milliseconds": 910.685846
+    },
+    "bounded_active_queue": {
+      "direct_fock_milliseconds": 468.786,
+      "direct_fock_plus_two_electron_force_milliseconds": 1380.514,
+      "two_electron_force_milliseconds": 911.728
+    },
+    "direct_fock_plus_force_improvement_fraction": 0.00032530011970424343,
+    "nvtx_range": "vibeqc/warm/energy-plus-force"
+  },
+  "endpoint": {
+    "fixed_capacity_fallback": {
+      "two_iteration_median_milliseconds": 2559.9285,
+      "warm_samples": [
+        {
+          "iterations": 3,
+          "milliseconds": 3072.609
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2556.46
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2565.002
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2559.907
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2559.95
+        }
+      ]
+    },
+    "bounded_active_queue": {
+      "two_iteration_median_milliseconds": 2546.095,
+      "warm_samples": [
+        {
+          "iterations": 3,
+          "milliseconds": 3062.659
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2544.192
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2545.107
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2547.083
+        },
+        {
+          "iterations": 2,
+          "milliseconds": 2552.274
+        }
+      ]
+    },
+    "two_iteration_improvement_fraction": 0.005403862705636946
+  },
+  "accuracy": {
+    "maximum_energy_error_hartree": 1.035e-11,
+    "maximum_force_error_hartree_per_bohr": 2.326e-10,
+    "status": "within the committed 192-AO gate"
+  },
+  "decision": {
+    "accepted_for_production": false,
+    "reason": "The best bounded launch improved direct-Fock plus two-electron-force device time by 0.03% and the iteration-matched endpoint by 0.54%, far below the issue's 10% and 5% gates. Empty fixed-capacity blocks return cheaply; active high-order integral evaluation remains the cost. The production scheduler is therefore unchanged.",
+    "tested_and_rejected": [
+      "static grid-stride workers from 8 through 1024 warps per SM",
+      "per-subtile atomic work stealing",
+      "per-tile atomic work stealing",
+      "CUDA Dynamic Parallelism exact child grids (incompatible with the device-launch SCF Graph at graph instantiation)"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+Generating SQLite file benchmarks/results/df-derivatives-rtx5090/profile-reference-0.sqlite from benchmarks/results/df-derivatives-rtx5090/profile-reference-0.nsys-rep
+Processing [benchmarks/results/df-derivatives-rtx5090/profile-reference-0.sqlite] with [/group/software/cuda-12.9.1/nsight-systems-2025.1.3/host-linux-x64/reports/cuda_gpu_kern_sum.py]...
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+55.6,4420706,630,7017.0,6688.0,6560,7873,471.3,"void gemmSN_TN_kernel<double, (int)128, (int)16, (int)2, (int)4, (int)8, (int)9, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+20.8,1652942,15,110196.1,109985.0,109921,111745,501.0,"vibeqc::scf::<unnamed>::thread_gradient(vibeqc::scf::OneElectronDeviceView, const int *, const int *, unsigned long, vibeqc::scf::OneElectronWeightView, const unsigned char *, double, double *)"
+6.9,549409,210,2616.2,2624.0,2560,2720,35.2,"void gemv2N_kernel<int, int, double, double, double, double, (int)128, (int)32, (int)4, (int)4, (int)1, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)"
+6.0,479715,180,2665.1,2656.0,2592,2784,42.3,"void gemmSN_NN_kernel<double, (int)128, (int)2, (int)4, (int)8, (int)4, (int)4, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+3.0,239969,90,2666.3,2656.0,2624,2720,19.7,"vibeqc::scf::<unnamed>::reduce_force_response_kernel(unsigned long, const double *, const double *, const double *, const double *, const double *, const double *, double, double, double *)"
+2.3,184834,180,1026.9,1024.0,992,1056,17.0,"vibeqc::scf::<unnamed>::gather_force_auxiliary_matrices_kernel(unsigned long, unsigned long, const double *, double *)"
+2.1,163329,180,907.4,928.0,768,960,40.3,"vibeqc::scf::<unnamed>::transpose_density_kernel(unsigned long, const double *, double *)"
+1.4,112000,90,1244.4,1248.0,1216,1280,18.9,"vibeqc::scf::<unnamed>::reduce_exchange_tile_kernel(unsigned long, unsigned long, unsigned long, const double *, double *)"
+1.0,81889,90,909.9,896.0,864,960,19.2,"vibeqc::scf::<unnamed>::gather_auxiliary_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)"
+0.7,59232,30,1974.4,1968.0,1952,2080,29.3,"void gemv2T_kernel_val<int, int, double, double, double, double, (int)128, (int)16, (int)2, (int)2, (bool)0, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13, T6, T6)"
+
+Processing [benchmarks/results/df-derivatives-rtx5090/profile-reference-0.sqlite] with [/group/software/cuda-12.9.1/nsight-systems-2025.1.3/host-linux-x64/reports/cuda_gpu_mem_size_sum.py]...
+Total (MB),Count,Avg (MB),Med (MB),Min (MB),Max (MB),StdDev (MB),Operation
+0.558,525,0.001,0.001,0.000,0.004,0.002,[CUDA memcpy Host-to-Device]
+0.094,180,0.001,0.000,0.000,0.002,0.001,[CUDA memset]
+0.041,230,0.000,0.000,0.000,0.002,0.000,[CUDA memcpy Device-to-Host]
+
+Processing [benchmarks/results/df-derivatives-rtx5090/profile-reference-0.sqlite] with [/group/software/cuda-12.9.1/nsight-systems-2025.1.3/host-linux-x64/reports/cuda_api_sum.py]...
+Time (%),Total Time (ns),Num Calls,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+42.0,8175064,1695,4823.0,4639.0,4298,15630,778.2,cudaLaunchKernel
+32.5,6315645,515,12263.4,4879.0,3406,144126,26384.1,cudaMemcpyAsync
+7.3,1418725,510,2781.8,2695.5,1794,13406,1157.5,cudaMalloc
+6.9,1339700,510,2626.9,2625.0,1893,7424,657.8,cudaFree
+5.3,1031189,240,4296.6,4178.0,3947,6883,477.7,cudaMemcpy
+3.6,694597,180,3858.9,3793.0,2735,8957,659.1,cudaMemsetAsync
+1.0,192021,10,19202.1,16321.5,12735,48774,10808.9,cudaGraphLaunch_v10000
+0.5,104995,75,1399.9,1352.0,972,2455,231.8,cudaStreamSynchronize
+0.5,94309,15,6287.3,5771.0,5621,10781,1333.8,cudaStreamCreateWithFlags
+0.3,59815,15,3987.7,3968.0,3778,4419,164.2,cudaStreamDestroy
+0.1,16641,5,3328.2,3306.0,3236,3496,99.7,cudaDeviceSynchronize
+0.0,2434,1,2434.0,2434.0,2434,2434,0.0,cuProfilerStart

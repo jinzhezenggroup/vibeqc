@@ -1,0 +1,22 @@
+
+Fatbin elf code:
+================
+arch = sm_120
+code version = [1,8]
+host = linux
+compile_size = 64bit
+
+Resource usage:
+ Common:
+  GLOBAL:126112 CONSTANT[4]:224
+ Function df_fixture_values:
+  REG:130 STACK:160 SHARED:0 LOCAL:0 CONSTANT[2]:360 CONSTANT[0]:920 TEXTURE:0 SURFACE:0 SAMPLER:0
+
+Fatbin ptx code:
+================
+arch = sm_120
+code version = [8,8]
+host = linux
+compile_size = 64bit
+compressed
+ptxasOptions = -v

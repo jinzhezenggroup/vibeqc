@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_native_eri_order4.cuh",
+  "role": "scientific",
+  "subsystem": "direct_integrals",
+  "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+  "regions": []
+}

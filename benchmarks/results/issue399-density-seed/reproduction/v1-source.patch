@@ -1,0 +1,583 @@
+diff --git a/python/vibeqc/resources_hf.py b/python/vibeqc/resources_hf.py
+index 9fa0624..47e84a9 100644
+--- a/python/vibeqc/resources_hf.py
++++ b/python/vibeqc/resources_hf.py
+@@ -33,6 +33,9 @@ from .resources import (
+ # Preserve that distinction in restart provenance; absence is not a claim
+ # that an older build implemented today's automatic execution policy.
+ _CUDA_SCHEDULE_EXTENSION_VARIABLES = (
++    "VIBEQC_DF_SEED_EXCHANGE",
++    "VIBEQC_DF_SEED_VERIFY",
++    "VIBEQC_DF_FINAL_EXCHANGE",
+     "VIBEQC_DF_RESIDENT_EXCHANGE",
+     "VIBEQC_DF_RAW_REUSE",
+     "VIBEQC_DF_RESPONSE_BATCHING",
+diff --git a/src/scf/cuda/df_rhf_scf.cpp b/src/scf/cuda/df_rhf_scf.cpp
+index 5b667eb..2a2f830 100644
+--- a/src/scf/cuda/df_rhf_scf.cpp
++++ b/src/scf/cuda/df_rhf_scf.cpp
+@@ -8,6 +8,7 @@
+ #include <utility>
+ #include <vector>
+ 
++#include "runtime/cuda_component_trace.hpp"
+ #include "runtime/df_progress_trace.hpp"
+ #include "scf/cuda/df_plan_internal.hpp"
+ #include "scf/cuda/df_runtime.hpp"
+@@ -318,13 +319,17 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+                ? VIBEQC_STATUS_SUCCESS
+                : cuda_failure(iteration_error, "advance CUDA DF device RHF SCF", detail);
+   };
+-  // Imported/warm D has no trustworthy C. Execute one dense iteration on
+-  // every invocation, then capture/replay only the canonical factor loop.
++  // Imported/warm D has no trustworthy C. The seed can use a checked algebraic
++  // D=L L^T factor, then capture/replay only the canonical factor loop.
+   // The seed has no tail launch and is downloaded once even at max_iterations=1.
+   if (occupied_exchange) {
++    runtime::cuda_trace::TraceOperation seed_trace(
++        "scf_seed_iteration", plan->stream,
++        {batch_size, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
+     status = reset_scf_factors(*plan, *state, detail);
+     if (status == VIBEQC_STATUS_SUCCESS) status = launch_iteration(false, false);
+     if (status != VIBEQC_STATUS_SUCCESS) return status;
++    runtime::cuda_trace::trace_counter("factorized", state->density_seed_used);
+   }
+   bool graph_replay = state->graph_replay;
+   // Host-backed streamed tiles require pageable copies and fences, while a
+@@ -388,7 +393,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+   };
+   for (unsigned iteration = 0; iteration < max_iterations && !all_converged; ++iteration) {
+     if (occupied_exchange && iteration == 0) {
+-      // The already-executed dense seed needs its convergence/limit readback.
++      // The already-executed seed needs its convergence/limit readback.
+     } else if (graph_replay) {
+       runtime::df_progress::number("host_graph_replay", 1);
+       cuda_error = cudaGraphLaunch(iteration_graph.executable, plan->stream);
+diff --git a/src/scf/cuda/df_scf_factor.cpp b/src/scf/cuda/df_scf_factor.cpp
+index 60f0017..f6207e4 100644
+--- a/src/scf/cuda/df_scf_factor.cpp
++++ b/src/scf/cuda/df_scf_factor.cpp
+@@ -1,17 +1,127 @@
+ #include "scf/cuda/df_scf_factor.hpp"
+ 
+ #include <algorithm>
++#include <cmath>
++#include <cstdio>
+ #include <cstdlib>
+ #include <new>
+ 
+ #include "runtime/cuda_component_trace.hpp"
++#include "runtime/df_progress_trace.hpp"
+ #include "scf/cuda/df_jk_internal.hpp"
+ #include "scf/cuda/df_runtime.hpp"
+ #include "scf/cuda/df_scf_kernels.hpp"
++#include "scf/cuda/df_scf_library.hpp"
+ #include "scf/df_exchange_policy.hpp"
+ 
+ namespace vibeqc::scf::cuda_df {
+ 
++vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
++                                          const double* density, bool& accepted, std::size_t& rank,
++                                          std::string& detail) {
++  using namespace runtime::cuda_trace;
++  TraceOperation trace(
++      "density_exchange_seed", plan.stream,
++      {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
++  accepted = false;
++  rank = 0;
++  // This first qualification uses existing singleton resident RHF workspace.
++  // Unsupported plans retain dense exchange without allocating another solver.
++  if (state.unrestricted || plan.batch_size != 1 || !state.occupied_exchange || plan.streamed ||
++      plan.integral_source || plan.row_tile != plan.nbf || plan.auxiliary_tile != plan.naux ||
++      plan.nbf < 2) {
++    trace_counter("unsupported", 1);
++    return VIBEQC_STATUS_SUCCESS;
++  }
++  constexpr double spectral_threshold = 1e-13;
++  constexpr double discarded_frobenius_tolerance = 1e-12;
++  constexpr double maximum_tolerance = 1e-12;
++  constexpr double rms_tolerance = 1e-13;
++  auto error = cudaMemcpyAsync(state.d_fock, density, plan.matrix_elements * sizeof(double),
++                               cudaMemcpyDeviceToDevice, plan.stream);
++  if (error != cudaSuccess) return cuda_failure(error, "copy density seed for eigensolve", detail);
++  auto status = solve_device_batch(plan, state.solver, plan.nbf, 1, state.d_fock,
++                                   state.d_eigenvalues, state.d_info, detail);
++  if (status != VIBEQC_STATUS_SUCCESS) return status;
++  std::vector<double> values(plan.nbf);
++  int info = 0;
++  error = cudaMemcpyAsync(values.data(), state.d_eigenvalues, plan.nbf * sizeof(double),
++                          cudaMemcpyDeviceToHost, plan.stream);
++  if (error == cudaSuccess)
++    error = cudaMemcpyAsync(&info, state.d_info, sizeof(info), cudaMemcpyDeviceToHost, plan.stream);
++  const auto spectrum_drained = cudaStreamSynchronize(plan.stream);
++  if (error == cudaSuccess) error = spectrum_drained;
++  if (error != cudaSuccess) return cuda_failure(error, "read density seed spectrum", detail);
++  trace_counter("d2h_bytes", plan.nbf * sizeof(double) + sizeof(info));
++  trace_counter("explicit_synchronizations", 1);
++  if (info) {
++    trace_counter("solver_rejected", 1);
++    return VIBEQC_STATUS_SUCCESS;
++  }
++  double discarded_square = 0;
++  for (std::size_t i = 0; i < values.size(); ++i) {
++    const double value = values[i];
++    if (!std::isfinite(value) || value < -spectral_threshold || (i && value < values[i - 1])) {
++      trace_counter("spectrum_rejected", 1);
++      return VIBEQC_STATUS_SUCCESS;
++    }
++    if (value > spectral_threshold)
++      ++rank;
++    else
++      discarded_square += value * value;
++  }
++  trace_counter("candidate_rank", rank);
++  if (rank > state.alpha_factor_rank ||
++      discarded_square > discarded_frobenius_tolerance * discarded_frobenius_tolerance) {
++    trace_counter("rank_rejected", 1);
++    return VIBEQC_STATUS_SUCCESS;
++  }
++  // d_fock/d_eigenvalues are scratch before the first physical SCF iteration.
++  // No canonical generation is published for this algebraic factor.
++  launch_density_exchange_factor(plan.stream, plan.nbf, rank, state.d_fock, state.d_eigenvalues,
++                                 state.d_alpha_factor);
++  if (rank) {
++    const double one = 1, zero = 0;
++    const auto n = static_cast<int>(plan.nbf);
++    const auto product = trace_call("density_seed_reconstruction", plan.stream, [&] {
++      return cublasDgemm(plan.blas, CUBLAS_OP_N, CUBLAS_OP_T, n, n, static_cast<int>(rank), &one,
++                         state.d_alpha_factor, n, state.d_alpha_factor, n, &zero, state.d_temporary,
++                         n);
++    });
++    if (product != CUBLAS_STATUS_SUCCESS)
++      return blas_failure(product, "reconstruct density seed", detail);
++  } else {
++    error =
++        cudaMemsetAsync(state.d_temporary, 0, plan.matrix_elements * sizeof(double), plan.stream);
++    if (error != cudaSuccess) return cuda_failure(error, "zero density reconstruction", detail);
++  }
++  // Checking the full original matrix also rejects nonsymmetric input: the
++  // eigensolver reads just one triangle, but promotion must reproduce both.
++  launch_density_exchange_error(plan.stream, plan.matrix_elements, density, state.d_temporary,
++                                state.d_next_density);
++  double errors[2]{};
++  error = cudaMemcpyAsync(errors, state.d_next_density, sizeof(errors), cudaMemcpyDeviceToHost,
++                          plan.stream);
++  const auto reconstruction_drained = cudaStreamSynchronize(plan.stream);
++  if (error == cudaSuccess) error = reconstruction_drained;
++  if (error != cudaSuccess) return cuda_failure(error, "verify density reconstruction", detail);
++  trace_counter("d2h_bytes", sizeof(errors));
++  trace_counter("explicit_synchronizations", 1);
++  const auto record = [](const char* name, double value) {
++    char text[64];
++    std::snprintf(text, sizeof(text), "%.17g", value);
++    runtime::df_progress::label(name, text);
++  };
++  record("seed_reconstruction_maximum", errors[0]);
++  record("seed_reconstruction_rms", errors[1]);
++  record("seed_discarded_frobenius", std::sqrt(discarded_square));
++  accepted = std::isfinite(errors[0]) && std::isfinite(errors[1]) &&
++             errors[0] <= maximum_tolerance && errors[1] <= rms_tolerance;
++  trace_counter(accepted ? "accepted" : "reconstruction_rejected", 1);
++  runtime::df_progress::number("density_seed_rank", rank);
++  return VIBEQC_STATUS_SUCCESS;
++}
++
+ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
+                                   std::string& detail, std::span<const std::int32_t> alpha,
+                                   std::span<const std::int32_t> beta) {
+@@ -88,8 +198,10 @@ vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScf
+ 
+ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                 std::string& detail) {
+-  // Every imported/warm density is untrusted until the first dense iteration
+-  // builds C and D together. Old factors are unreachable before that seed.
++  // Every solve discards old provenance before attempting an algebraic seed.
++  // Only the first canonical SCF update may publish a new orbital generation.
++  state.density_seed_used = false;
++  state.density_seed_rank = 0;
+   auto error = cudaMemsetAsync(state.d_factor_error, 0, sizeof(int), plan.stream);
+   if (error == cudaSuccess)
+     error = cudaMemsetAsync(state.d_alpha_factor_generation, 0,
+@@ -104,13 +216,73 @@ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSta
+ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                     const double* alpha, const double* beta, bool ready,
+                                     std::string& detail) {
+-  const JkTermSelection terms{true, !ready};
++  bool seed = false;
++  std::size_t seed_rank = 0;
++  if (!ready && !beta && state.occupied_exchange) {
++    const char* policy = std::getenv("VIBEQC_DF_SEED_EXCHANGE");
++    if (policy && std::string(policy) != "auto" && std::string(policy) != "dense" &&
++        std::string(policy) != "factor") {
++      detail = "VIBEQC_DF_SEED_EXCHANGE must be auto, dense or factor";
++      return VIBEQC_STATUS_INVALID_ARGUMENT;
++    }
++    // Explicit prototype selection; auto remains dense until endpoint qualification.
++    if (policy && std::string(policy) == "factor") {
++      const auto status = factor_density_for_exchange(plan, state, alpha, seed, seed_rank, detail);
++      if (status != VIBEQC_STATUS_SUCCESS) return status;
++    }
++  }
++  const JkTermSelection terms{true, !ready && !seed};
+   auto status = beta ? execute_cuda_density_fitting_uhf_jk_device(&plan, alpha, beta, plan.coulomb,
+                                                                   plan.alpha_exchange,
+                                                                   plan.beta_exchange, detail, terms)
+                      : execute_cuda_density_fitting_rhf_jk_device(
+                            &plan, alpha, plan.coulomb, plan.alpha_exchange, detail, terms);
+-  if (status != VIBEQC_STATUS_SUCCESS || !ready) return status;
++  if (status != VIBEQC_STATUS_SUCCESS) return status;
++  if (seed) {
++    state.density_seed_used = true;
++    state.density_seed_rank = seed_rank;
++    status = build_occupied_exchange(plan, 0, state.d_alpha_factor, seed_rank, true, 1,
++                                     plan.alpha_exchange, detail);
++    const char* verify = std::getenv("VIBEQC_DF_SEED_VERIFY");
++    if (status != VIBEQC_STATUS_SUCCESS || !verify || std::string(verify) != "1") return status;
++    // Intrusive qualification only: compute both K matrices for the identical
++    // supplied density. Restore candidate K so endpoint gates test its actual
++    // arithmetic, and never include this pass in clean performance claims.
++    runtime::cuda_trace::TraceOperation trace("density_seed_k_validation", plan.stream,
++                                              {1, plan.nbf, plan.naux, false, false});
++    auto error =
++        cudaMemcpyAsync(state.d_fock, plan.alpha_exchange, plan.matrix_elements * sizeof(double),
++                        cudaMemcpyDeviceToDevice, plan.stream);
++    if (error != cudaSuccess) return cuda_failure(error, "retain candidate seed K", detail);
++    status = build_exchange(plan, alpha, plan.alpha_exchange, detail);
++    if (status != VIBEQC_STATUS_SUCCESS) return status;
++    launch_density_exchange_error(plan.stream, plan.matrix_elements, state.d_fock,
++                                  plan.alpha_exchange, state.d_next_density);
++    double errors[2]{};
++    error = cudaMemcpyAsync(errors, state.d_next_density, sizeof(errors), cudaMemcpyDeviceToHost,
++                            plan.stream);
++    const auto drained = cudaStreamSynchronize(plan.stream);
++    if (error == cudaSuccess) error = drained;
++    if (error != cudaSuccess) return cuda_failure(error, "read seed K validation", detail);
++    for (unsigned i = 0; i < 2; ++i) {
++      char text[64];
++      std::snprintf(text, sizeof(text), "%.17g", errors[i]);
++      runtime::df_progress::label(i ? "seed_k_rms_error" : "seed_k_maximum_error", text);
++      std::snprintf(text, sizeof(text), "%.17g", 0.5 * errors[i]);
++      runtime::df_progress::label(i ? "seed_fock_rms_error" : "seed_fock_maximum_error", text);
++    }
++    if (!std::isfinite(errors[0]) || !std::isfinite(errors[1]) || errors[0] > 1e-10 ||
++        errors[1] > 1e-11) {
++      detail = "density seed K failed dense reference qualification";
++      return VIBEQC_STATUS_NUMERICAL_FAILURE;
++    }
++    error =
++        cudaMemcpyAsync(plan.alpha_exchange, state.d_fock, plan.matrix_elements * sizeof(double),
++                        cudaMemcpyDeviceToDevice, plan.stream);
++    return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
++                                : cuda_failure(error, "restore candidate seed K", detail);
++  }
++  if (!ready) return status;
+   launch_validate_device_occupied_kernel(
+       blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+       state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+@@ -166,7 +338,9 @@ vibeqc_status verify_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSt
+     return VIBEQC_STATUS_NUMERICAL_FAILURE;
+   }
+   trace_counter("validated_density_generations", plan.batch_size);
+-  trace_counter("dense_seed_iterations", 1);
++  trace_counter("dense_seed_iterations", !state.density_seed_used);
++  trace_counter("factor_seed_iterations", state.density_seed_used);
++  trace_counter("density_seed_rank", state.density_seed_rank);
+   trace_counter("occupied_iterations", *std::max_element(iterations.begin(), iterations.end()) - 1);
+   trace_counter("occupied_state_bytes",
+                 plan.batch_size * plan.nbf * (state.alpha_factor_rank + state.beta_factor_rank) *
+diff --git a/src/scf/cuda/df_scf_factor.hpp b/src/scf/cuda/df_scf_factor.hpp
+index 8e3ec8c..5bb55b8 100644
+--- a/src/scf/cuda/df_scf_factor.hpp
++++ b/src/scf/cuda/df_scf_factor.hpp
+@@ -16,6 +16,13 @@ vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScf
+                                    const std::vector<std::int32_t>& beta, std::string& detail);
+ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                 std::string& detail);
++/** Factor a singleton resident RHF seed using the existing solver/scratch.
++ * Numerical or capacity rejection returns success with accepted=false. Runtime
++ * errors propagate. The factor has occupation absorbed and no orbital identity.
++ */
++vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
++                                          const double* density, bool& accepted, std::size_t& rank,
++                                          std::string& detail);
+ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                     const double* alpha, const double* beta, bool ready,
+                                     std::string& detail);
+diff --git a/src/scf/cuda/df_scf_final_state.cpp b/src/scf/cuda/df_scf_final_state.cpp
+index 7d39ea5..1d80992 100644
+--- a/src/scf/cuda/df_scf_final_state.cpp
++++ b/src/scf/cuda/df_scf_final_state.cpp
+@@ -1,10 +1,12 @@
+ #include "scf/cuda/df_scf_final_state.hpp"
+ 
+ #include <algorithm>
++#include <cstdlib>
+ #include <limits>
+ #include <new>
+ 
+ #include "runtime/cuda_component_trace.hpp"
++#include "scf/cuda/df_jk_internal.hpp"
+ #include "scf/cuda/df_runtime.hpp"
+ #include "scf/cuda/df_scf_factor.hpp"
+ #include "scf/cuda/df_scf_kernels.hpp"
+@@ -163,6 +165,95 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
+   }
+ }
+ 
++vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
++                                                    const CudaDfFinalStateToken& expected,
++                                                    const std::vector<double>& density,
++                                                    std::vector<double>& coulomb,
++                                                    std::vector<double>& exchange, bool& used,
++                                                    std::string& detail) {
++  using namespace runtime::cuda_trace;
++  used = false;
++  const char* policy = std::getenv("VIBEQC_DF_FINAL_EXCHANGE");
++  if (policy && std::string(policy) != "auto" && std::string(policy) != "dense" &&
++      std::string(policy) != "occupied") {
++    detail = "VIBEQC_DF_FINAL_EXCHANGE must be auto, dense or occupied";
++    return VIBEQC_STATUS_INVALID_ARGUMENT;
++  }
++  // Keep the final-state ablation independent of seed qualification.
++  if (!policy || std::string(policy) != "occupied" || !plan || plan->batch_size != 1 ||
++      plan->streamed || plan->integral_source || plan->row_tile != plan->nbf ||
++      plan->auxiliary_tile != plan->naux || plan->nbf < 2)
++    return VIBEQC_STATUS_SUCCESS;
++  auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
++  if (!state || state->unrestricted || !state->occupied_exchange ||
++      density.size() != plan->matrix_elements || !finite_values(density))
++    return VIBEQC_STATUS_SUCCESS;
++  CudaDfFinalStateToken current;
++  auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);
++  if (status == VIBEQC_STATUS_OUT_OF_MEMORY) return status;
++  if (status != VIBEQC_STATUS_SUCCESS || expected != current) {
++    detail.clear();
++    return VIBEQC_STATUS_SUCCESS;
++  }
++  TraceOperation trace("final_state_retained_jk", plan->stream,
++                       {1, plan->nbf, plan->naux, false, false});
++  const auto bytes = plan->matrix_elements * sizeof(double);
++  auto error = cudaSetDevice(plan->device_id);
++  if (error == cudaSuccess)
++    error = cudaMemcpyAsync(plan->primary_density, density.data(), bytes, cudaMemcpyHostToDevice,
++                            plan->stream);
++  if (error != cudaSuccess)
++    return cuda_failure(error, "upload final density for identity check", detail);
++  launch_density_exchange_error(plan->stream, plan->matrix_elements, plan->primary_density,
++                                state->d_density, state->d_next_density);
++  double errors[2]{};
++  std::uint64_t generation = 0;
++  int info = 0;
++  error = cudaMemcpyAsync(errors, state->d_next_density, sizeof(errors), cudaMemcpyDeviceToHost,
++                          plan->stream);
++  if (error == cudaSuccess)
++    error = cudaMemcpyAsync(&generation, state->d_final_alpha_generation, sizeof(generation),
++                            cudaMemcpyDeviceToHost, plan->stream);
++  if (error == cudaSuccess)
++    error = cudaMemcpyAsync(&info, state->d_final_alpha_info, sizeof(info), cudaMemcpyDeviceToHost,
++                            plan->stream);
++  const auto drained = cudaStreamSynchronize(plan->stream);
++  if (error == cudaSuccess) error = drained;
++  if (error != cudaSuccess) return cuda_failure(error, "validate final retained density", detail);
++  trace_counter("h2d_bytes", bytes);
++  trace_counter("d2h_bytes", sizeof(errors) + sizeof(generation) + sizeof(info));
++  trace_counter("explicit_synchronizations", 1);
++  if (errors[0] != 0 || errors[1] != 0 || info ||
++      generation != current.identity.factor.density_generation) {
++    trace_counter("identity_rejected", 1);
++    return VIBEQC_STATUS_SUCCESS;
++  }
++  // Both D and the full retained C were committed under this generation. The
++  // strict selector still checks the resulting physical F[D] and eigenframe;
++  // if it changes D or generation, this exact identity gate refuses reuse.
++  coulomb.resize(plan->matrix_elements);
++  exchange.resize(plan->matrix_elements);
++  status = build_coulomb(*plan, state->d_density, detail);
++  if (status == VIBEQC_STATUS_SUCCESS)
++    status = build_occupied_exchange(*plan, 0, state->d_final_alpha_coefficients,
++                                     current.identity.occupied[0], true, 2, plan->alpha_exchange,
++                                     detail);
++  if (status != VIBEQC_STATUS_SUCCESS) return status;
++  error =
++      cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost, plan->stream);
++  if (error == cudaSuccess)
++    error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes, cudaMemcpyDeviceToHost,
++                            plan->stream);
++  const auto finished = cudaStreamSynchronize(plan->stream);
++  if (error == cudaSuccess) error = finished;
++  if (error != cudaSuccess) return cuda_failure(error, "download final retained J/K", detail);
++  trace_counter("d2h_bytes", 2 * bytes);
++  trace_counter("explicit_synchronizations", 1);
++  trace_counter("accepted", 1);
++  used = true;
++  return VIBEQC_STATUS_SUCCESS;
++}
++
+ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* plan,
+                                                     const CudaDfFinalStateToken& expected,
+                                                     CudaDfFinalStateSnapshot& snapshot,
+diff --git a/src/scf/cuda/df_scf_kernels.cu b/src/scf/cuda/df_scf_kernels.cu
+index 8ecf533..8bd7e77 100644
+--- a/src/scf/cuda/df_scf_kernels.cu
++++ b/src/scf/cuda/df_scf_kernels.cu
+@@ -14,6 +14,54 @@
+ 
+ namespace vibeqc::scf::cuda_df {
+ 
++__global__ void density_exchange_factor_kernel(std::size_t nbf, std::size_t rank,
++                                               const double* vectors, const double* values,
++                                               double* factor) {
++  const std::size_t k = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
++  if (k < nbf * rank) {
++    const std::size_t offset = nbf - rank;
++    factor[k] = vectors[offset * nbf + k] * sqrt(values[offset + k / nbf]);
++  }
++}
++
++__global__ void density_exchange_error_kernel(std::size_t elements, const double* density,
++                                              const double* reconstructed, double* errors) {
++  __shared__ double maxima[256], squares[256];
++  double maximum = 0, sum = 0;
++  for (std::size_t k = threadIdx.x; k < elements; k += blockDim.x) {
++    const double error = fabs(density[k] - reconstructed[k]);
++    // fmax alone would hide NaNs. Reject nonfinite reconstruction explicitly.
++    maximum = isfinite(error) ? fmax(maximum, error) : CUDART_INF;
++    sum += error * error;
++  }
++  maxima[threadIdx.x] = maximum;
++  squares[threadIdx.x] = sum;
++  __syncthreads();
++  for (unsigned width = 128; width; width >>= 1) {
++    if (threadIdx.x < width) {
++      maxima[threadIdx.x] = fmax(maxima[threadIdx.x], maxima[threadIdx.x + width]);
++      squares[threadIdx.x] += squares[threadIdx.x + width];
++    }
++    __syncthreads();
++  }
++  if (!threadIdx.x) {
++    errors[0] = maxima[0];
++    errors[1] = sqrt(squares[0] / elements);
++  }
++}
++
++void launch_density_exchange_factor(cudaStream_t stream, std::size_t nbf, std::size_t rank,
++                                    const double* vectors, const double* values, double* factor) {
++  if (rank)
++    density_exchange_factor_kernel<<<(nbf * rank + 255) / 256, 256, 0, stream>>>(nbf, rank, vectors,
++                                                                                 values, factor);
++}
++
++void launch_density_exchange_error(cudaStream_t stream, std::size_t elements, const double* density,
++                                   const double* reconstructed, double* errors) {
++  density_exchange_error_kernel<<<1, 256, 0, stream>>>(elements, density, reconstructed, errors);
++}
++
+ __global__ void store_device_final_frame_kernel(
+     std::size_t nbf, const double* coefficients, const double* eigenvalues, const int* info,
+     const std::uint8_t* active, const std::uint32_t* iterations, double* retained_coefficients,
+diff --git a/src/scf/cuda/df_scf_kernels.hpp b/src/scf/cuda/df_scf_kernels.hpp
+index de49985..9799f5d 100644
+--- a/src/scf/cuda/df_scf_kernels.hpp
++++ b/src/scf/cuda/df_scf_kernels.hpp
+@@ -7,6 +7,18 @@
+ 
+ namespace vibeqc::scf::cuda_df {
+ 
++/** Scale the retained, sorted positive eigenvectors into column-major L.
++ * Rank selection is already validated; occupation is absorbed in sqrt(lambda).
++ */
++void launch_density_exchange_factor(cudaStream_t stream, std::size_t nbf, std::size_t rank,
++                                    const double* vectors, const double* values, double* factor);
++
++/** Check every entry, including both triangles of the original density.
++ * Writes maximum and RMS error into two scratch doubles; nonfinite values fail.
++ */
++void launch_density_exchange_error(cudaStream_t stream, std::size_t elements, const double* density,
++                                   const double* reconstructed, double* errors);
++
+ /** Snapshot only active items before their density commit. Device coefficients
+  * retain column-major layout; the detached host reader converts them once. */
+ void launch_store_device_final_frame_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+diff --git a/src/scf/cuda/df_scf_state.hpp b/src/scf/cuda/df_scf_state.hpp
+index ef4b7dd..f107c03 100644
+--- a/src/scf/cuda/df_scf_state.hpp
++++ b/src/scf/cuda/df_scf_state.hpp
+@@ -99,11 +99,14 @@ struct PersistentScfState {
+   int* d_final_alpha_info{};
+   int* d_final_beta_info{};
+ 
+-  // A solve always seeds from its arbitrary input D with dense K. Only the
+-  // coefficients that constructed the next canonical density are retained.
++  // An algebraic seed factor may temporarily occupy alpha storage before the
++  // first update. It never receives a canonical generation; the first C that
++  // constructs the next density overwrites it before graph capture.
+   // Inactive items keep both D and factors. Occupation changes rebuild this
+   // owner and its captured GEMM shapes; buffers never borrow d_temporary.
+   bool occupied_exchange{};
++  bool density_seed_used{};
++  std::size_t density_seed_rank{};
+   std::vector<std::int32_t> factor_alpha_ranks, factor_beta_ranks;
+   std::size_t alpha_factor_rank{}, beta_factor_rank{};
+   double* d_alpha_factor{};
+diff --git a/src/scf/cuda_density_fitting_final_state.hpp b/src/scf/cuda_density_fitting_final_state.hpp
+index 66a5b28..a7edac3 100644
+--- a/src/scf/cuda_density_fitting_final_state.hpp
++++ b/src/scf/cuda_density_fitting_final_state.hpp
+@@ -47,6 +47,18 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
+                                                     CudaDfFinalStateSnapshot& snapshot,
+                                                     std::string& detail);
+ 
++/** Try physical J/K from an exact current singleton RHF retained density/frame.
++ * Token, device generation and every supplied density entry must match. A
++ * correction step, stale token or unsupported plan returns used=false so the
++ * caller evaluates dense J/K. Successful reuse still evaluates physical F[D].
++ */
++vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
++                                                    const CudaDfFinalStateToken& expected,
++                                                    const std::vector<double>& density,
++                                                    std::vector<double>& coulomb,
++                                                    std::vector<double>& exchange, bool& used,
++                                                    std::string& detail);
++
+ /** Two-spin upper bound shared by native planning and the prepared owner.
+  * Full C/epsilon snapshots and generation/info words are per item, unlike
+  * the one serialized ordinary correction eigensystem. */
+diff --git a/src/scf/cuda_density_fitting_stub.cpp b/src/scf/cuda_density_fitting_stub.cpp
+index a2cede2..00bca49 100644
+--- a/src/scf/cuda_density_fitting_stub.cpp
++++ b/src/scf/cuda_density_fitting_stub.cpp
+@@ -3,6 +3,14 @@
+ #include "scf/cuda_density_fitting_final_state.hpp"
+ 
+ namespace vibeqc::scf {
++vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan*,
++                                                    const CudaDfFinalStateToken&,
++                                                    const std::vector<double>&,
++                                                    std::vector<double>&, std::vector<double>&,
++                                                    bool& used, std::string&) {
++  used = false;
++  return VIBEQC_STATUS_SUCCESS;
++}
+ void bind_cuda_density_fitting_response_source(CudaDensityFittingJkPlan*, const core::System&,
+                                                const core::System&,
+                                                std::span<const double>) noexcept {}
+diff --git a/src/scf/rhf.cpp b/src/scf/rhf.cpp
+index fe16952..d3fbd7b 100644
+--- a/src/scf/rhf.cpp
++++ b/src/scf/rhf.cpp
+@@ -620,7 +620,14 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+     const solver::PhysicalFockOperation physical = [&](const auto& current, const auto& densities) {
+       std::vector<double> coulomb, exchange;
+       std::string detail;
+-      const auto status = execute_item_rhf_jk(densities[0], coulomb, exchange, detail);
++      bool retained = false;
++      auto status =
++          try_cuda_density_fitting_final_rhf_jk(cuda_plan, CudaDfFinalStateToken{1, current},
++                                                densities[0], coulomb, exchange, retained, detail);
++      if (status == VIBEQC_STATUS_SUCCESS && !retained) {
++        host_trace::Region dense_final("final_state_dense_jk", n);
++        status = execute_item_rhf_jk(densities[0], coulomb, exchange, detail);
++      }
+       if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+       if (status != VIBEQC_STATUS_SUCCESS || coulomb.size() != n * n || exchange.size() != n * n)
+         throw std::runtime_error(detail.empty() ? "strict CUDA DF physical J/K evaluation failed"

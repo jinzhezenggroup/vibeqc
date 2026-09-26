@@ -1,0 +1,822 @@
+{
+  "scope": "class diagnostic only; complete endpoint gates are still required",
+  "raw_sha256": {
+    ".artifacts/issue418/class-timing-v1/hot-objects-v2.jsonl": "45da4d3c76935d344ab0e71070d7a282a33e85dfb07782814497babe5f6fe9a7",
+    ".artifacts/issue418/class-timing-v1/rest-objects-v1.jsonl": "12ebece9758b51fc62fb384d35869973083d1350d11e269787cd4e7acacb847b"
+  },
+  "ranking": {
+    "profiles": {
+      "384": {
+        "101": {
+          "baseline": "101:polynomial:compact",
+          "winner": "101:rys:compact",
+          "milliseconds": {
+            "101:polynomial:compact": 37.362815380096436,
+            "101:rys:compact": 15.558687925338745
+          },
+          "rejections": {
+            "101:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "101:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "101:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "101:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "102": {
+          "baseline": "102:polynomial:compact",
+          "winner": "102:rys:compact",
+          "milliseconds": {
+            "102:polynomial:compact": 13.743200182914734,
+            "102:rys:compact": 5.983968079090118
+          },
+          "rejections": {
+            "102:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "102:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "102:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "102:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "110": {
+          "baseline": "110:polynomial:compact",
+          "winner": "110:rys:compact",
+          "milliseconds": {
+            "110:polynomial:compact": 19.897472023963928,
+            "110:rys:compact": 8.455679893493652
+          },
+          "rejections": {
+            "110:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "110:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "110:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "110:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "111": {
+          "baseline": "111:polynomial:compact",
+          "winner": "111:rys:compact",
+          "milliseconds": {
+            "111:polynomial:compact": 18.188031673431396,
+            "111:rys:compact": 7.9686079621315
+          },
+          "rejections": {
+            "111:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "111:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "111:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "111:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "112": {
+          "baseline": "112:polynomial:compact",
+          "winner": "112:rys:compact",
+          "milliseconds": {
+            "112:polynomial:compact": 7.363071799278259,
+            "112:rys:compact": 1.9637439846992493
+          },
+          "rejections": {
+            "112:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "112:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "112:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "112:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "201": {
+          "baseline": "201:polynomial:compact",
+          "winner": "201:rys:compact",
+          "milliseconds": {
+            "201:polynomial:compact": 14.21283209323883,
+            "201:rys:compact": 6.172575950622559
+          },
+          "rejections": {
+            "201:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "201:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "201:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "201:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "202": {
+          "baseline": "202:polynomial:compact",
+          "winner": "202:rys:compact",
+          "milliseconds": {
+            "202:polynomial:compact": 4.517952084541321,
+            "202:rys:compact": 1.5117760300636292
+          },
+          "rejections": {
+            "202:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "202:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "202:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "202:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "210": {
+          "baseline": "210:polynomial:compact",
+          "winner": "210:rys:compact",
+          "milliseconds": {
+            "210:polynomial:compact": 14.789344072341919,
+            "210:rys:compact": 6.254143953323364
+          },
+          "rejections": {
+            "210:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "210:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "210:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "210:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "211": {
+          "baseline": "211:polynomial:compact",
+          "winner": "211:rys:compact",
+          "milliseconds": {
+            "211:polynomial:compact": 13.467328071594238,
+            "211:rys:compact": 3.593952000141144
+          },
+          "rejections": {
+            "211:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "211:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "211:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "211:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "212": {
+          "baseline": "212:polynomial:compact",
+          "winner": "212:rys:compact",
+          "milliseconds": {
+            "212:polynomial:compact": 5.907871961593628,
+            "212:rys:compact": 1.3119360208511353
+          },
+          "rejections": {
+            "212:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "212:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "212:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "212:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "220": {
+          "baseline": "220:polynomial:compact",
+          "winner": "220:rys:compact",
+          "milliseconds": {
+            "220:polynomial:compact": 3.1298239827156067,
+            "220:rys:compact": 0.9587199985980988
+          },
+          "rejections": {
+            "220:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "220:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "220:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "220:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "221": {
+          "baseline": "221:polynomial:compact",
+          "winner": "221:rys:compact",
+          "milliseconds": {
+            "221:polynomial:compact": 3.5236799716949463,
+            "221:rys:compact": 0.7528320252895355
+          },
+          "rejections": {
+            "221:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "221:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "221:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "221:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "222": {
+          "baseline": "222:polynomial:compact",
+          "winner": "222:rys:compact",
+          "milliseconds": {
+            "222:polynomial:compact": 1.4537279605865479,
+            "222:rys:compact": 0.23919999599456787
+          },
+          "rejections": {
+            "222:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "222:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "222:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "222:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        }
+      },
+      "768": {
+        "101": {
+          "baseline": "101:polynomial:compact",
+          "winner": "101:rys:compact",
+          "milliseconds": {
+            "101:polynomial:compact": 264.97151990723796,
+            "101:rys:compact": 119.85724815679714
+          },
+          "rejections": {
+            "101:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "101:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "101:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "101:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "102": {
+          "baseline": "102:polynomial:compact",
+          "winner": "102:rys:compact",
+          "milliseconds": {
+            "102:polynomial:compact": 106.28527998924255,
+            "102:rys:compact": 46.39808003604412
+          },
+          "rejections": {
+            "102:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "102:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "102:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "102:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "110": {
+          "baseline": "110:polynomial:compact",
+          "winner": "110:rys:compact",
+          "milliseconds": {
+            "110:polynomial:compact": 148.99833603855222,
+            "110:rys:compact": 65.80428809602745
+          },
+          "rejections": {
+            "110:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "110:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "110:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "110:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "111": {
+          "baseline": "111:polynomial:compact",
+          "winner": "111:rys:compact",
+          "milliseconds": {
+            "111:polynomial:compact": 131.5826559944544,
+            "111:rys:compact": 59.907807818613946
+          },
+          "rejections": {
+            "111:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "111:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "111:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "111:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "112": {
+          "baseline": "112:polynomial:compact",
+          "winner": "112:rys:compact",
+          "milliseconds": {
+            "112:polynomial:compact": 58.23833605647087,
+            "112:rys:compact": 15.069279909133911
+          },
+          "rejections": {
+            "112:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "112:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "112:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "112:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "201": {
+          "baseline": "201:polynomial:compact",
+          "winner": "201:rys:compact",
+          "milliseconds": {
+            "201:polynomial:compact": 108.02665561274625,
+            "201:rys:compact": 46.22595188906416
+          },
+          "rejections": {
+            "201:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "201:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "201:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "201:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "202": {
+          "baseline": "202:polynomial:compact",
+          "winner": "202:rys:compact",
+          "milliseconds": {
+            "202:polynomial:compact": 36.54575991630554,
+            "202:rys:compact": 11.466752007603645
+          },
+          "rejections": {
+            "202:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "202:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "202:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "202:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "210": {
+          "baseline": "210:polynomial:compact",
+          "winner": "210:rys:compact",
+          "milliseconds": {
+            "210:polynomial:compact": 113.2623042470077,
+            "210:rys:compact": 49.82620806992054
+          },
+          "rejections": {
+            "210:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "210:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "210:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "210:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "211": {
+          "baseline": "211:polynomial:compact",
+          "winner": "211:rys:compact",
+          "milliseconds": {
+            "211:polynomial:compact": 105.47619204898365,
+            "211:rys:compact": 27.671488011139445
+          },
+          "rejections": {
+            "211:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "211:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "211:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "211:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "212": {
+          "baseline": "212:polynomial:compact",
+          "winner": "212:rys:compact",
+          "milliseconds": {
+            "212:polynomial:compact": 47.132576048374176,
+            "212:rys:compact": 9.860960006713867
+          },
+          "rejections": {
+            "212:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "212:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "212:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "212:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "220": {
+          "baseline": "220:polynomial:compact",
+          "winner": "220:rys:compact",
+          "milliseconds": {
+            "220:polynomial:compact": 25.126463891356252,
+            "220:rys:compact": 7.253311998210847
+          },
+          "rejections": {
+            "220:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "220:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "220:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "220:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "221": {
+          "baseline": "221:polynomial:compact",
+          "winner": "221:rys:compact",
+          "milliseconds": {
+            "221:polynomial:compact": 27.498047842876986,
+            "221:rys:compact": 6.06233599036932
+          },
+          "rejections": {
+            "221:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "221:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "221:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "221:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        },
+        "222": {
+          "baseline": "222:polynomial:compact",
+          "winner": "222:rys:compact",
+          "milliseconds": {
+            "222:polynomial:compact": 11.486591905355453,
+            "222:rys:compact": 1.9940160065889359
+          },
+          "rejections": {
+            "222:polynomial:warp": [
+              "incomplete signature coverage"
+            ],
+            "222:polynomial:packed": [
+              "incomplete signature coverage"
+            ],
+            "222:rys:warp": [
+              "incomplete signature coverage"
+            ],
+            "222:rys:packed": [
+              "incomplete signature coverage"
+            ]
+          },
+          "baseline_valid": true
+        }
+      }
+    },
+    "proposed_mapping": {
+      "101": "101:rys:compact",
+      "102": "102:rys:compact",
+      "110": "110:rys:compact",
+      "111": "111:rys:compact",
+      "112": "112:rys:compact",
+      "201": "201:rys:compact",
+      "202": "202:rys:compact",
+      "210": "210:rys:compact",
+      "211": "211:rys:compact",
+      "212": "212:rys:compact",
+      "220": "220:rys:compact",
+      "221": "221:rys:compact",
+      "222": "222:rys:compact"
+    },
+    "conflicts": {},
+    "production_promoted": false,
+    "minimum_gain": 0.03
+  },
+  "summary": {
+    "384": {
+      "101": {
+        "control_ms": 37.362815380096436,
+        "candidate_ms": 15.558687925338745,
+        "saving_ms": 21.80412745475769,
+        "winner": "101:rys:compact",
+        "baseline_valid": true
+      },
+      "102": {
+        "control_ms": 13.743200182914734,
+        "candidate_ms": 5.983968079090118,
+        "saving_ms": 7.7592321038246155,
+        "winner": "102:rys:compact",
+        "baseline_valid": true
+      },
+      "110": {
+        "control_ms": 19.897472023963928,
+        "candidate_ms": 8.455679893493652,
+        "saving_ms": 11.441792130470276,
+        "winner": "110:rys:compact",
+        "baseline_valid": true
+      },
+      "111": {
+        "control_ms": 18.188031673431396,
+        "candidate_ms": 7.9686079621315,
+        "saving_ms": 10.219423711299896,
+        "winner": "111:rys:compact",
+        "baseline_valid": true
+      },
+      "112": {
+        "control_ms": 7.363071799278259,
+        "candidate_ms": 1.9637439846992493,
+        "saving_ms": 5.39932781457901,
+        "winner": "112:rys:compact",
+        "baseline_valid": true
+      },
+      "201": {
+        "control_ms": 14.21283209323883,
+        "candidate_ms": 6.172575950622559,
+        "saving_ms": 8.040256142616272,
+        "winner": "201:rys:compact",
+        "baseline_valid": true
+      },
+      "202": {
+        "control_ms": 4.517952084541321,
+        "candidate_ms": 1.5117760300636292,
+        "saving_ms": 3.0061760544776917,
+        "winner": "202:rys:compact",
+        "baseline_valid": true
+      },
+      "210": {
+        "control_ms": 14.789344072341919,
+        "candidate_ms": 6.254143953323364,
+        "saving_ms": 8.535200119018555,
+        "winner": "210:rys:compact",
+        "baseline_valid": true
+      },
+      "211": {
+        "control_ms": 13.467328071594238,
+        "candidate_ms": 3.593952000141144,
+        "saving_ms": 9.873376071453094,
+        "winner": "211:rys:compact",
+        "baseline_valid": true
+      },
+      "212": {
+        "control_ms": 5.907871961593628,
+        "candidate_ms": 1.3119360208511353,
+        "saving_ms": 4.595935940742493,
+        "winner": "212:rys:compact",
+        "baseline_valid": true
+      },
+      "220": {
+        "control_ms": 3.1298239827156067,
+        "candidate_ms": 0.9587199985980988,
+        "saving_ms": 2.171103984117508,
+        "winner": "220:rys:compact",
+        "baseline_valid": true
+      },
+      "221": {
+        "control_ms": 3.5236799716949463,
+        "candidate_ms": 0.7528320252895355,
+        "saving_ms": 2.7708479464054108,
+        "winner": "221:rys:compact",
+        "baseline_valid": true
+      },
+      "222": {
+        "control_ms": 1.4537279605865479,
+        "candidate_ms": 0.23919999599456787,
+        "saving_ms": 1.21452796459198,
+        "winner": "222:rys:compact",
+        "baseline_valid": true
+      }
+    },
+    "768": {
+      "101": {
+        "control_ms": 264.97151990723796,
+        "candidate_ms": 119.85724815679714,
+        "saving_ms": 145.11427175044082,
+        "winner": "101:rys:compact",
+        "baseline_valid": true
+      },
+      "102": {
+        "control_ms": 106.28527998924255,
+        "candidate_ms": 46.39808003604412,
+        "saving_ms": 59.88719995319843,
+        "winner": "102:rys:compact",
+        "baseline_valid": true
+      },
+      "110": {
+        "control_ms": 148.99833603855222,
+        "candidate_ms": 65.80428809602745,
+        "saving_ms": 83.19404794252478,
+        "winner": "110:rys:compact",
+        "baseline_valid": true
+      },
+      "111": {
+        "control_ms": 131.5826559944544,
+        "candidate_ms": 59.907807818613946,
+        "saving_ms": 71.67484817584045,
+        "winner": "111:rys:compact",
+        "baseline_valid": true
+      },
+      "112": {
+        "control_ms": 58.23833605647087,
+        "candidate_ms": 15.069279909133911,
+        "saving_ms": 43.16905614733696,
+        "winner": "112:rys:compact",
+        "baseline_valid": true
+      },
+      "201": {
+        "control_ms": 108.02665561274625,
+        "candidate_ms": 46.22595188906416,
+        "saving_ms": 61.80070372368209,
+        "winner": "201:rys:compact",
+        "baseline_valid": true
+      },
+      "202": {
+        "control_ms": 36.54575991630554,
+        "candidate_ms": 11.466752007603645,
+        "saving_ms": 25.079007908701897,
+        "winner": "202:rys:compact",
+        "baseline_valid": true
+      },
+      "210": {
+        "control_ms": 113.2623042470077,
+        "candidate_ms": 49.82620806992054,
+        "saving_ms": 63.436096177087165,
+        "winner": "210:rys:compact",
+        "baseline_valid": true
+      },
+      "211": {
+        "control_ms": 105.47619204898365,
+        "candidate_ms": 27.671488011139445,
+        "saving_ms": 77.8047040378442,
+        "winner": "211:rys:compact",
+        "baseline_valid": true
+      },
+      "212": {
+        "control_ms": 47.132576048374176,
+        "candidate_ms": 9.860960006713867,
+        "saving_ms": 37.27161604166031,
+        "winner": "212:rys:compact",
+        "baseline_valid": true
+      },
+      "220": {
+        "control_ms": 25.126463891356252,
+        "candidate_ms": 7.253311998210847,
+        "saving_ms": 17.873151893145405,
+        "winner": "220:rys:compact",
+        "baseline_valid": true
+      },
+      "221": {
+        "control_ms": 27.498047842876986,
+        "candidate_ms": 6.06233599036932,
+        "saving_ms": 21.435711852507666,
+        "winner": "221:rys:compact",
+        "baseline_valid": true
+      },
+      "222": {
+        "control_ms": 11.486591905355453,
+        "candidate_ms": 1.9940160065889359,
+        "saving_ms": 9.492575898766518,
+        "winner": "222:rys:compact",
+        "baseline_valid": true
+      }
+    }
+  },
+  "all_rows_numerical_passed": true,
+  "rows": 252,
+  "maximum_error": 5.074066167232161e-17
+}

@@ -1,0 +1,17 @@
+{
+  "fixtures": [
+    {
+      "data_hash": "a93ab65ce0b7470ecdd9c7f7d425fc50237b612796cd359e3c938969e7d5d2cf",
+      "file": "hf.json",
+      "inputs_hash": "405f42d23d0fddaaaa57b6ea4c632a76565c35ff6ad2a01b0ee5ae6878352866",
+      "record_hash": "723e7b9f35ee0efd43210b923756a7009ba79d712a711b2f046685cfa16eeb58"
+    },
+    {
+      "data_hash": "755479b4d8ca37e195bf83fe0464e533b24ce74931869d9fb44a9ecd80711cac",
+      "file": "h2-def2-svp.json",
+      "inputs_hash": "6e31ac4c0c557bdd76250ea2dba42e180f48f7d037f344aaf04b48d157c09296",
+      "record_hash": "f407ddf9a76ca26a5fd63bf0c024b22f7e887185fce95ccb5dbd385767c1f185"
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,123 @@
+{
+  "device": "cuda",
+  "python": "3.11.16",
+  "pyscf": "2.14.0",
+  "machine": "x86_64",
+  "library_sha256": "57f7d9b360982352d937b300d29cb9c9effab0fc42e7b734f1597e5d2febb198",
+  "grid": {
+    "radial": 160,
+    "polar": 32,
+    "azimuth": 64
+  },
+  "refined_grid": {
+    "radial": 224,
+    "polar": 44,
+    "azimuth": 88
+  },
+  "atoms_bohr": [
+    [
+      "Na",
+      [
+        0.13,
+        -0.21,
+        0.17
+      ]
+    ],
+    [
+      "H",
+      [
+        0.43,
+        0.19,
+        3.2
+      ]
+    ]
+  ],
+  "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+  "timing_scope": "warm synchronous API including context, metadata, allocations and transfers",
+  "component_timing": "other coefficients zeroed; full local/projector engine retained",
+  "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Enhanced / Automatic IBRS; IBPB conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+  "gpu": "NVIDIA GeForce RTX 4090, 570.124.06",
+  "quadrature_difference": {
+    "local_matrix_max_abs": 3.468114684324064e-12,
+    "nonlocal_matrix_max_abs": 7.216449660063518e-16,
+    "local_derivative_max_abs": 2.0259155464330547e-11,
+    "nonlocal_derivative_max_abs": 3.608224830031759e-16
+  },
+  "libcint_matrix_max_abs": 3.4688155126083586e-12,
+  "cpu_gpu_max_abs": {
+    "local": 4.163336342344337e-17,
+    "nonlocal_": 2.220446049250313e-16,
+    "local_derivative": 3.122502256758253e-17,
+    "nonlocal_derivative": 1.942890293094024e-16
+  },
+  "components": {
+    "local_value": {
+      "median_ms": 46.09971679747105,
+      "samples_ms": [
+        46.04564094915986,
+        46.15379264578223
+      ]
+    },
+    "local_gradient": {
+      "median_ms": 142.71169411949813,
+      "samples_ms": [
+        143.27044459059834,
+        142.15294364839792
+      ]
+    },
+    "nonlocal_value": {
+      "median_ms": 46.067585702985525,
+      "samples_ms": [
+        46.15547135472298,
+        45.979700051248074
+      ]
+    },
+    "nonlocal_gradient": {
+      "median_ms": 143.29838706180453,
+      "samples_ms": [
+        142.71862618625164,
+        143.87814793735743
+      ]
+    }
+  },
+  "hf": [
+    {
+      "method": "rhf",
+      "timing": {
+        "median_ms": 700.7371480576694,
+        "samples_ms": [
+          700.6328660063446,
+          700.8414301089942
+        ]
+      },
+      "energy_abs_error": 1.5543122344752192e-15,
+      "force_max_abs_error": 5.533976055183132e-13,
+      "resource_peak_bytes": {
+        "host": 6196960,
+        "device": 5704624,
+        "pinned": 0,
+        "pageable": 6196960,
+        "device:0": 5704624
+      }
+    },
+    {
+      "method": "uhf",
+      "timing": {
+        "median_ms": 697.8569249622524,
+        "samples_ms": [
+          698.1394761241972,
+          697.5743738003075
+        ]
+      },
+      "energy_abs_error": 6.661338147750939e-16,
+      "force_max_abs_error": 4.649058915617843e-16,
+      "resource_peak_bytes": {
+        "host": 6238432,
+        "device": 5739776,
+        "pinned": 0,
+        "pageable": 6238432,
+        "device:0": 5739776
+      }
+    }
+  ]
+}

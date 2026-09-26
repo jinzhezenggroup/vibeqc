@@ -1,0 +1,69 @@
+{
+  "gpu_final": {
+    "slurm_job_id": "9667",
+    "exit_code": 0,
+    "native_executables": [
+      "vibeqc_df_occupied_response_tests",
+      "vibeqc_df_shell_pairs_tests"
+    ],
+    "pytest": {
+      "files": [
+        "tests/python/test_df_shell_derivatives_cuda.py",
+        "tests/python/test_df_occupied_response_cuda.py",
+        "tests/python/test_df_resident_response_cuda.py"
+      ],
+      "passed": 63,
+      "seconds": 72.51
+    }
+  },
+  "gpu4pyscf_final": {
+    "slurm_job_id": "9668",
+    "exit_code": 0,
+    "sizes": [
+      192,
+      384,
+      768
+    ],
+    "complete_repeats": 5,
+    "force_only_repeats": 5,
+    "separate_nsys_captures": 3
+  },
+  "native_oracle_combinations": 108,
+  "prior_cpu_validation": {
+    "generated_libcint_shell_derivative_oracle": 128,
+    "benchmark_reference_contracts": 20,
+    "total_passed": 148
+  },
+  "prior_gpu_validation": {
+    "slice_a_passed": 24,
+    "slice_b_passed": 37
+  },
+  "compute_sanitizer": {
+    "slurm_job_id": "9665",
+    "tool": "memcheck",
+    "native_shell_oracle_errors": 0,
+    "packed_96ao_producer_errors": 0,
+    "source_snapshot": "slice-b",
+    "scope": "64-row producer and generated shell consumer; final 256-row qualification is the independent final benchmark and GPU suite, not a second sanitizer run."
+  },
+  "pre_commit": "All applicable hooks passed, including retention, 160 compiler modules, 213 SCF modules, ownership, Ruff and clang-format.",
+  "evidence_audit": {
+    "all_manifest_hashes_match": true,
+    "metadata_dedup_roundtrips_verified": true,
+    "final_runner_matches_snapshot": true
+  },
+  "fresh_cross_engine_gates": {
+    "192": {
+      "energy_error_hartree": 1.48929757415317e-11,
+      "force_error_hartree_per_bohr": 3.583074462132352e-11
+    },
+    "384": {
+      "energy_error_hartree": 9.094947017729282e-13,
+      "force_error_hartree_per_bohr": 8.249590247033645e-11
+    },
+    "768": {
+      "energy_error_hartree": 3.956301952712238e-11,
+      "force_error_hartree_per_bohr": 1.2962202665389722e-10
+    }
+  }
+}

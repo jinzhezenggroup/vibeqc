@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/xc_point.hpp",
+  "reason": "Shared CPU/CUDA semilocal point algebra and forward first derivatives for the explicit scaled-density/spin-boundary domain. Counted as maintained scientific code; this is not a generated-code retirement claim.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "xc"
+}

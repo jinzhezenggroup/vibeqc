@@ -1,0 +1,2672 @@
+{
+  "accuracy": {
+    "gate_selection": {
+      "maximum_energy_error_hartree": 1.7621459846850485e-12,
+      "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+      "pair_count": 7,
+      "selection": "all_measured_pairs"
+    },
+    "maximum_energy_error_hartree": 1.7621459846850485e-12,
+    "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+    "paired_warm_repeats": [
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7195134205394424e-12,
+        "maximum_force_error_hartree_per_bohr": 1.292755850285099e-10,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7337242752546445e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2889278012961913e-10,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7621459846850485e-12,
+        "maximum_force_error_hartree_per_bohr": 1.303702649307903e-10,
+        "repeat": 2
+      },
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7195134205394424e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2871381217804956e-10,
+        "repeat": 3
+      },
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7053025658242404e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2919342852468763e-10,
+        "repeat": 4
+      },
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7479351299698465e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2910150205824866e-10,
+        "repeat": 5
+      },
+      {
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.7195134205394424e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2914147008713517e-10,
+        "repeat": 6
+      }
+    ]
+  },
+  "benchmark": "compare_gpu4pyscf_batch",
+  "environment": {
+    "accelerator": {
+      "backend": "cuda",
+      "clock_rate_khz": 2407000,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "device_id": 0,
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "nvidia_smi": {
+        "memory_clock_mhz": 13801.0,
+        "performance_state": "P1",
+        "power_draw_watts": 68.09,
+        "power_limit_watts": 575.0,
+        "sampling_point": "after benchmark measurements",
+        "sm_clock_mhz": 2565.0,
+        "temperature_celsius": 42.0
+      },
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "commit": "67b35f3a0a236de39ebbdb2876908a3c2da78c6c",
+      "dirty": false,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "host": {
+      "machine": "x86_64",
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "processor": "x86_64"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.5.3",
+      "pyscf": "2.14.0"
+    },
+    "python": {
+      "executable": "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+      "version": "3.13.9"
+    },
+    "runtime": {
+      "cuda_visible_devices": "0",
+      "vibeqc_library": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/final-production/libvibeqc.so"
+    },
+    "timestamp_utc": "2026-09-17T06:57:12.638451+00:00",
+    "toolchain": {
+      "cuobjdump": {
+        "path": null,
+        "version": null
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      },
+      "nvcc": {
+        "path": null,
+        "version": null
+      },
+      "ptxas": {
+        "path": null,
+        "version": null
+      }
+    }
+  },
+  "gate": {
+    "failures": [
+      "maximum force error 1.3037e-10 Eh/bohr exceeds 3e-11 Eh/bohr"
+    ],
+    "passed": false
+  },
+  "gpu4pyscf": {
+    "cold_convergence": [
+      {
+        "converged": true,
+        "final_residuals": {
+          "density_rms": 2.6541544893995757e-11,
+          "energy_change_hartree": 7.105427357601002e-14,
+          "orbital_gradient_norm": 9.798593779620679e-11
+        },
+        "iterations": 57,
+        "warm_start": {
+          "fallback": false,
+          "used": true
+        }
+      }
+    ],
+    "cold_energies_hartree": [
+      -75.39383746063527
+    ],
+    "cold_forces_hartree_per_bohr": [
+      [
+        [
+          -1.1205675057351115e-15,
+          6.4320370349079e-17,
+          0.01235489696089509
+        ],
+        [
+          1.120567505735121e-15,
+          -6.432037034906953e-17,
+          -0.012354896960896422
+        ]
+      ]
+    ],
+    "cold_seconds": 1.276686318218708,
+    "convergence": [
+      {
+        "converged": true,
+        "final_residuals": {
+          "density_rms": 1.0048151487772857e-10,
+          "energy_change_hartree": null,
+          "orbital_gradient_norm": 6.780433224527503e-11
+        },
+        "iterations": 1,
+        "warm_start": {
+          "fallback": false,
+          "used": true
+        }
+      }
+    ],
+    "energies_hartree": [
+      -75.39383746063528
+    ],
+    "forces_hartree_per_bohr": [
+      [
+        [
+          -5.075011190170961e-16,
+          3.7717567457097596e-17,
+          0.012354896956749961
+        ],
+        [
+          5.075011190171135e-16,
+          -3.771756745710785e-17,
+          -0.01235489695676284
+        ]
+      ]
+    ],
+    "interface": "sequential single-system objects",
+    "warm_median_seconds": 0.2029471469577402,
+    "warm_samples": [
+      {
+        "component_seconds": {
+          "force": 0.09592681494541466,
+          "scf": 0.10658719297498465
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048079315315894e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.780468615471791e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.39383746063528
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.5137498738906547e-15,
+              -8.246963832454322e-16,
+              0.01235489695688674
+            ],
+            [
+              1.513749873890691e-15,
+              8.246963832454361e-16,
+              -0.012354896956903616
+            ]
+          ]
+        ],
+        "seconds": 0.2025304101407528,
+        "sequence_index": 1
+      },
+      {
+        "component_seconds": {
+          "force": 0.09586039814166725,
+          "scf": 0.1067384120542556
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048209294873194e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.780492703329262e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.39383746063527
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.9387854411788612e-15,
+              -8.87117233977844e-16,
+              0.01235489695650216
+            ],
+            [
+              1.938785441178877e-15,
+              8.871172339778506e-16,
+              -0.012354896956512817
+            ]
+          ]
+        ],
+        "seconds": 0.20261461101472378,
+        "sequence_index": 2
+      },
+      {
+        "component_seconds": {
+          "force": 0.09591903002001345,
+          "scf": 0.10703849606215954
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048224852120855e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.780407418840278e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.39383746063524
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.0619901002108437e-15,
+              -8.218229456708945e-16,
+              0.012354896957979644
+            ],
+            [
+              1.0619901002108737e-15,
+              8.218229456709016e-16,
+              -0.012354896958007178
+            ]
+          ]
+        ],
+        "seconds": 0.2029725150205195,
+        "sequence_index": 5
+      },
+      {
+        "component_seconds": {
+          "force": 0.09589703800156713,
+          "scf": 0.10703424806706607
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048071784341453e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.780452023652268e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.39383746063528
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -7.5872441751687e-16,
+              -7.409229478962733e-17,
+              0.012354896956326744
+            ],
+            [
+              7.587244175169173e-16,
+              7.409229478963128e-17,
+              -0.012354896956332517
+            ]
+          ]
+        ],
+        "seconds": 0.2029471469577402,
+        "sequence_index": 6
+      },
+      {
+        "component_seconds": {
+          "force": 0.09598200093023479,
+          "scf": 0.10697060590609908
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048186797716615e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.78039664687687e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.3938374606353
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.5906552697614624e-15,
+              -6.245974915262786e-16,
+              0.012354896956809025
+            ],
+            [
+              1.5906552697613914e-15,
+              6.245974915262668e-16,
+              -0.012354896956812134
+            ]
+          ]
+        ],
+        "seconds": 0.20296781696379185,
+        "sequence_index": 9
+      },
+      {
+        "component_seconds": {
+          "force": 0.09586149989627302,
+          "scf": 0.10690633300691843
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048035921389106e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.780516929798244e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.39383746063525
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.571848647262233e-15,
+              -1.114017438997381e-15,
+              0.012354896956714434
+            ],
+            [
+              1.5718486472622014e-15,
+              1.1140174389973972e-15,
+              -0.012354896956732642
+            ]
+          ]
+        ],
+        "seconds": 0.20278315409086645,
+        "sequence_index": 10
+      },
+      {
+        "component_seconds": {
+          "force": 0.09615533193573356,
+          "scf": 0.10699884104542434
+        },
+        "convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.0048151487772857e-10,
+              "energy_change_hartree": null,
+              "orbital_gradient_norm": 6.780433224527503e-11
+            },
+            "iterations": 1,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "energies_hartree": [
+          -75.39383746063528
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -5.075011190170961e-16,
+              3.7717567457097596e-17,
+              0.012354896956749961
+            ],
+            [
+              5.075011190171135e-16,
+              -3.771756745710785e-17,
+              -0.01235489695676284
+            ]
+          ]
+        ],
+        "seconds": 0.20316861988976598,
+        "sequence_index": 13
+      }
+    ],
+    "warm_seconds": [
+      0.2025304101407528,
+      0.20261461101472378,
+      0.2029725150205195,
+      0.2029471469577402,
+      0.20296781696379185,
+      0.20278315409086645,
+      0.20316861988976598
+    ],
+    "warm_systems_per_second": 4.927391269058986
+  },
+  "native_build": {
+    "library_path": "/home/jzzeng/codes/vibeqc-issue418-cooperative-rys/.artifacts/issue418/final-production/libvibeqc.so",
+    "library_sha256": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be",
+    "probe": {
+      "device": {
+        "driver_version": 13000,
+        "fast_compile": 0,
+        "major": 12,
+        "maximum_blocks_per_sm": 24,
+        "maximum_registers_per_thread": 255,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "minor": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "official_profile": "sm_120",
+        "portable": 0,
+        "registers_per_sm": 65536,
+        "release_build": 1,
+        "runtime_version": 12090,
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "sm_count": 170,
+        "toolkit_version": 12090,
+        "warp_size": 32
+      },
+      "host": {
+        "libc": [
+          "glibc",
+          "2.35"
+        ],
+        "machine": "x86_64",
+        "system": "Linux"
+      },
+      "native_abi": 0,
+      "policy": {
+        "consumers": [
+          "fock",
+          "force"
+        ],
+        "precision": "fp64",
+        "spin": [
+          "rhf",
+          "uhf"
+        ]
+      },
+      "schema": 1,
+      "source_identity": "06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d"
+    }
+  },
+  "schema_version": 2,
+  "settings": {
+    "density_fitting_metric_diagnostics": [
+      {
+        "absolute_threshold": 1.1563063560204023e-08,
+        "auxiliary_tile": 93,
+        "bucket_id": 0,
+        "condition_number": 1696091.2373200064,
+        "device_resident_bytes": 3637603,
+        "effective_rank": 93,
+        "host_resident_bytes": 1095586,
+        "peak_device_bytes": 5279855,
+        "peak_host_bytes": 1434854,
+        "solver_device_workspace_bytes": 1303728,
+        "solver_host_workspace_bytes": 0,
+        "streamed": false,
+        "system_index": 0
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 3e-11,
+      "maximum_force_error_hartree_per_bohr": 3e-11,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "interleave_policy": "deterministic ABBA",
+    "measurement_order": [
+      "vibeqc",
+      "gpu4pyscf",
+      "gpu4pyscf",
+      "vibeqc",
+      "vibeqc",
+      "gpu4pyscf",
+      "gpu4pyscf",
+      "vibeqc",
+      "vibeqc",
+      "gpu4pyscf",
+      "gpu4pyscf",
+      "vibeqc",
+      "vibeqc",
+      "gpu4pyscf"
+    ],
+    "repeats_per_engine": 7,
+    "warm_start_policy": {
+      "cross_engine_density_identity": "not asserted because backend AO conventions are independent",
+      "gpu4pyscf": "engine-local fixed post-cold converged density snapshot",
+      "vibeqc": "engine-local fixed post-cold converged density snapshot"
+    },
+    "warm_start_priming": {
+      "engine_order": [
+        "vibeqc",
+        "gpu4pyscf"
+      ],
+      "gpu4pyscf": {
+        "iteration_branch": [
+          1
+        ],
+        "seconds": 0.21015772386454046
+      },
+      "measured": false,
+      "performed": true,
+      "purpose": "settle the post-cold resident-density state before timing; every published replay still starts from the fixed post-cold dm0",
+      "vibeqc": {
+        "iteration_branch": [
+          2
+        ],
+        "seconds": 0.018131693126633763
+      }
+    }
+  },
+  "timing_summary": {
+    "integral_contraction_breakdown": {
+      "cold_setup_and_integral_generation_seconds": 0.2551073990762234,
+      "component_split_measured": false,
+      "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+      "warm_contraction_and_force_seconds": 0.01785502419807017,
+      "warm_endpoint_seconds": 0.01785502419807017
+    },
+    "iteration_matched": null,
+    "ordinary": {
+      "gpu4pyscf_median_seconds": 0.2029471469577402,
+      "iteration_branches_match_for_every_pair": false,
+      "speedup": 11.366388793786983,
+      "vibeqc_median_seconds": 0.01785502419807017
+    },
+    "speed_claim_uses": "unmatched_labeled"
+  },
+  "vibeqc": {
+    "cold_convergence": [
+      {
+        "basis_metadata": {
+          "auxiliary": {
+            "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+            "electrons": {
+              "atomic_numbers": [
+                8,
+                1
+              ],
+              "ecp_core_electrons": [
+                0,
+                0
+              ],
+              "electron_count": 9,
+              "ionic_charge": 0,
+              "multiplicity": 2,
+              "nalpha": 5,
+              "nbeta": 4,
+              "nuclear_charges": [
+                8,
+                1
+              ]
+            },
+            "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+            "name": "cc-pvdz-jkfit",
+            "primitive_count": 33,
+            "provenance": {
+              "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+              "license": "Apache-2.0",
+              "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+              "version": "2.14.0"
+            },
+            "representation": "spherical",
+            "role": "auxiliary",
+            "shell_count": 33
+          },
+          "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+          "orbital": {
+            "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+            "electrons": {
+              "atomic_numbers": [
+                8,
+                1
+              ],
+              "ecp_core_electrons": [
+                0,
+                0
+              ],
+              "electron_count": 9,
+              "ionic_charge": 0,
+              "multiplicity": 2,
+              "nalpha": 5,
+              "nbeta": 4,
+              "nuclear_charges": [
+                8,
+                1
+              ]
+            },
+            "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+            "name": "cc-pvdz",
+            "primitive_count": 27,
+            "provenance": {
+              "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+              "license": "Apache-2.0",
+              "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+              "version": "2.14.0"
+            },
+            "representation": "spherical",
+            "role": "orbital",
+            "shell_count": 9
+          }
+        },
+        "converged": true,
+        "density_rms": 6.892028871706277e-11,
+        "energy_change_hartree": 4.263256414560601e-14,
+        "final_residuals": {
+          "density_rms": 6.892028871706277e-11,
+          "energy_change_hartree": 4.263256414560601e-14,
+          "orbital_gradient_norm": null
+        },
+        "iterations": 16,
+        "warm_start": {
+          "fallback": false,
+          "used": false
+        },
+        "warm_start_fallback": false,
+        "warm_start_used": false
+      }
+    ],
+    "cold_seconds": 0.2551073990762234,
+    "convergence": [
+      {
+        "basis_metadata": {
+          "auxiliary": {
+            "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+            "electrons": {
+              "atomic_numbers": [
+                8,
+                1
+              ],
+              "ecp_core_electrons": [
+                0,
+                0
+              ],
+              "electron_count": 9,
+              "ionic_charge": 0,
+              "multiplicity": 2,
+              "nalpha": 5,
+              "nbeta": 4,
+              "nuclear_charges": [
+                8,
+                1
+              ]
+            },
+            "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+            "name": "cc-pvdz-jkfit",
+            "primitive_count": 33,
+            "provenance": {
+              "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+              "license": "Apache-2.0",
+              "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+              "version": "2.14.0"
+            },
+            "representation": "spherical",
+            "role": "auxiliary",
+            "shell_count": 33
+          },
+          "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+          "orbital": {
+            "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+            "electrons": {
+              "atomic_numbers": [
+                8,
+                1
+              ],
+              "ecp_core_electrons": [
+                0,
+                0
+              ],
+              "electron_count": 9,
+              "ionic_charge": 0,
+              "multiplicity": 2,
+              "nalpha": 5,
+              "nbeta": 4,
+              "nuclear_charges": [
+                8,
+                1
+              ]
+            },
+            "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+            "name": "cc-pvdz",
+            "primitive_count": 27,
+            "provenance": {
+              "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+              "license": "Apache-2.0",
+              "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+              "version": "2.14.0"
+            },
+            "representation": "spherical",
+            "role": "orbital",
+            "shell_count": 9
+          }
+        },
+        "converged": true,
+        "density_rms": 3.0967438107968575e-12,
+        "energy_change_hartree": 4.263256414560601e-14,
+        "final_residuals": {
+          "density_rms": 3.0967438107968575e-12,
+          "energy_change_hartree": 4.263256414560601e-14,
+          "orbital_gradient_norm": null
+        },
+        "iterations": 2,
+        "warm_start": {
+          "fallback": false,
+          "used": true
+        },
+        "warm_start_fallback": false,
+        "warm_start_used": true
+      }
+    ],
+    "eigensolver_diagnostics": [],
+    "energies_hartree": [
+      -75.393837460637
+    ],
+    "forces_hartree_per_bohr": [
+      [
+        [
+          -1.8050900789375044e-15,
+          -1.7281832269362329e-15,
+          0.012354896827608491
+        ],
+        [
+          1.8050900789376654e-15,
+          1.7281832269374564e-15,
+          -0.012354896827644948
+        ]
+      ]
+    ],
+    "warm_median_seconds": 0.01785502419807017,
+    "warm_samples": [
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.01785502419807017
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.8050900789375683e-15,
+              -1.728183226936348e-15,
+              0.012354896827611156
+            ],
+            [
+              1.8050900789375005e-15,
+              1.728183226937335e-15,
+              -0.012354896827642283
+            ]
+          ]
+        ],
+        "seconds": 0.01785502419807017,
+        "sequence_index": 0
+      },
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.018000792944803834
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.8050900789371763e-15,
+              -1.7281832269361808e-15,
+              0.01235489682760938
+            ],
+            [
+              1.8050900789380464e-15,
+              1.7281832269372182e-15,
+              -0.012354896827643172
+            ]
+          ]
+        ],
+        "seconds": 0.018000792944803834,
+        "sequence_index": 3
+      },
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.017450588988140225
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.8050900789382633e-15,
+              -1.728183226936012e-15,
+              0.01235489682760938
+            ],
+            [
+              1.805090078938119e-15,
+              1.7281832269368111e-15,
+              -0.012354896827645836
+            ]
+          ]
+        ],
+        "seconds": 0.017450588988140225,
+        "sequence_index": 4
+      },
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.01821456104516983
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.8050900789373893e-15,
+              -1.7281832269363228e-15,
+              0.012354896827612932
+            ],
+            [
+              1.8050900789378886e-15,
+              1.7281832269372497e-15,
+              -0.012354896827649389
+            ]
+          ]
+        ],
+        "seconds": 0.01821456104516983,
+        "sequence_index": 7
+      },
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.01761396205984056
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.805090078938265e-15,
+              -1.7281832269362707e-15,
+              0.012354896827615596
+            ],
+            [
+              1.805090078937813e-15,
+              1.7281832269370904e-15,
+              -0.01235489682764406
+            ]
+          ]
+        ],
+        "seconds": 0.01761396205984056,
+        "sequence_index": 8
+      },
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.017856736900284886
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.805090078937435e-15,
+              -1.728183226936643e-15,
+              0.012354896827612932
+            ],
+            [
+              1.805090078937756e-15,
+              1.72818322693701e-15,
+              -0.01235489682763873
+            ]
+          ]
+        ],
+        "seconds": 0.017856736900284886,
+        "sequence_index": 11
+      },
+      {
+        "component_seconds": {
+          "energy_plus_force": 0.017738200025632977
+        },
+        "convergence": [
+          {
+            "basis_metadata": {
+              "auxiliary": {
+                "basis_identity": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "ed3556ad8594c3c1a146a1aba9c82f168408a0964db3bb637dfb4da4154743a8",
+                "name": "cc-pvdz-jkfit",
+                "primitive_count": 33,
+                "provenance": {
+                  "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "auxiliary",
+                "shell_count": 33
+              },
+              "model_identity": "aad575252a9c4d8b6850b49b7a66345ef8167b8ef416fa194962324c55c8d68f",
+              "orbital": {
+                "basis_identity": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+                "electrons": {
+                  "atomic_numbers": [
+                    8,
+                    1
+                  ],
+                  "ecp_core_electrons": [
+                    0,
+                    0
+                  ],
+                  "electron_count": 9,
+                  "ionic_charge": 0,
+                  "multiplicity": 2,
+                  "nalpha": 5,
+                  "nbeta": 4,
+                  "nuclear_charges": [
+                    8,
+                    1
+                  ]
+                },
+                "mathematical_identity": "42b1f3f5675377afbb362cce814a164a582f105a036b48d13aa9f1f4ec41bd12",
+                "name": "cc-pvdz",
+                "primitive_count": 27,
+                "provenance": {
+                  "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+                  "license": "Apache-2.0",
+                  "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+                  "version": "2.14.0"
+                },
+                "representation": "spherical",
+                "role": "orbital",
+                "shell_count": 9
+              }
+            },
+            "converged": true,
+            "density_rms": 3.0967438107968575e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "final_residuals": {
+              "density_rms": 3.0967438107968575e-12,
+              "energy_change_hartree": 4.263256414560601e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 2,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -75.393837460637
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              -1.8050900789375044e-15,
+              -1.7281832269362329e-15,
+              0.012354896827608491
+            ],
+            [
+              1.8050900789376654e-15,
+              1.7281832269374564e-15,
+              -0.012354896827644948
+            ]
+          ]
+        ],
+        "seconds": 0.017738200025632977,
+        "sequence_index": 12
+      }
+    ],
+    "warm_seconds": [
+      0.01785502419807017,
+      0.018000792944803834,
+      0.017450588988140225,
+      0.01821456104516983,
+      0.01761396205984056,
+      0.017856736900284886,
+      0.017738200025632977
+    ],
+    "warm_systems_per_second": 56.00664490323589
+  },
+  "workload": {
+    "ao_count": 19,
+    "auxiliary_basis": "cc-pvdz-jkfit",
+    "basis_overrides": {
+      "auxiliary": {
+        "checksum": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+        "elements": [
+          {
+            "atomic_number": 1,
+            "ecp_core_electrons": 0,
+            "ecp_data": null,
+            "nuclear_charge": 1,
+            "shells": [
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "953024933E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "191745062E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "68424049E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "28413256E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "29133232E-7"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "126212054E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "50199776E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "231353291E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "71290724E-8"
+                ],
+                "source_group": 0
+              }
+            ]
+          },
+          {
+            "atomic_number": 7,
+            "ecp_core_electrons": 0,
+            "ecp_data": null,
+            "nuclear_charge": 7,
+            "shells": [
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "11028622453E-7"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "37098041153E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "13673555938E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "5075587192E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "205356561E-7"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "783187372E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "347840639E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "145528566E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "63068989E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "27276596E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "9354095407E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "2952401953E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "1091750299E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "43449289E-7"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "182169126E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "75792424E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "28241469E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "1641937893E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "501040494E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "197939719E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "78495772E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "28954066E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 3,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "17935424E-7"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 3,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "6085424E-7"
+                ],
+                "source_group": 0
+              }
+            ]
+          },
+          {
+            "atomic_number": 8,
+            "ecp_core_electrons": 0,
+            "ecp_data": null,
+            "nuclear_charge": 8,
+            "shells": [
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "15178667506E-7"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "48967952008E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "17672118665E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "6379223314E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "2536649913E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "991354912E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "446453066E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "180177437E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "80789711E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "33864327E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "12016030921E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "3440962247E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "1258114861E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "506638242E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "203469271E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "86092967E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "36681357E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "1904306281E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "580603811E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "218918416E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "87794614E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "35623647E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 3,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "249391479E-8"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 3,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "82491479E-8"
+                ],
+                "source_group": 0
+              }
+            ]
+          }
+        ],
+        "exponent_units": "bohr^-2",
+        "name": "cc-pvdz-jkfit",
+        "normalization": "normalized-primitives; native-normalized-contractions",
+        "ordering": "CCA-cartesian; libcint-real-spherical",
+        "provenance": {
+          "checksum": "6a9f74d1f2d5df23dabb696e4045d7fad4b11895ed1e3234045da34ac6ade0c9",
+          "license": "Apache-2.0",
+          "source": "PySCF packaged cc-pvdz-jkfit basis; unmodified gto.basis.load result",
+          "version": "2.14.0"
+        },
+        "representation": "spherical",
+        "schema": "vibeqc.basis",
+        "schema_version": 1
+      },
+      "orbital": {
+        "checksum": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+        "elements": [
+          {
+            "atomic_number": 1,
+            "ecp_core_electrons": 0,
+            "ecp_data": null,
+            "nuclear_charge": 1,
+            "shells": [
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "19685E-6",
+                    "137977E-6",
+                    "478148E-6"
+                  ]
+                ],
+                "exponents": [
+                  "1301E-2",
+                  "1962E-3",
+                  "4446E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "122E-3"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "727E-3"
+                ],
+                "source_group": 0
+              }
+            ]
+          },
+          {
+            "atomic_number": 7,
+            "ecp_core_electrons": 0,
+            "ecp_data": null,
+            "nuclear_charge": 7,
+            "shells": [
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "7E-4",
+                    "5389E-6",
+                    "27406E-6",
+                    "103207E-6",
+                    "278723E-6",
+                    "44854E-5",
+                    "278238E-6",
+                    "1544E-5"
+                  ],
+                  [
+                    "-153E-6",
+                    "-1208E-6",
+                    "-5992E-6",
+                    "-24544E-6",
+                    "-67459E-6",
+                    "-158078E-6",
+                    "-121831E-6",
+                    "549003E-6"
+                  ]
+                ],
+                "exponents": [
+                  "9046E0",
+                  "1357E0",
+                  "3093E-1",
+                  "8773E-2",
+                  "2856E-2",
+                  "1021E-2",
+                  "3838E-3",
+                  "7466E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "2248E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "39919E-6",
+                    "217169E-6",
+                    "510319E-6"
+                  ]
+                ],
+                "exponents": [
+                  "1355E-2",
+                  "2917E-3",
+                  "7973E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "2185E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "817E-3"
+                ],
+                "source_group": 0
+              }
+            ]
+          },
+          {
+            "atomic_number": 8,
+            "ecp_core_electrons": 0,
+            "ecp_data": null,
+            "nuclear_charge": 8,
+            "shells": [
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "71E-5",
+                    "547E-5",
+                    "27837E-6",
+                    "1048E-4",
+                    "283062E-6",
+                    "448719E-6",
+                    "270952E-6",
+                    "15458E-6"
+                  ],
+                  [
+                    "-16E-5",
+                    "-1263E-6",
+                    "-6267E-6",
+                    "-25716E-6",
+                    "-70924E-6",
+                    "-165411E-6",
+                    "-116955E-6",
+                    "557368E-6"
+                  ]
+                ],
+                "exponents": [
+                  "1172E1",
+                  "1759E0",
+                  "4008E-1",
+                  "1137E-1",
+                  "3703E-2",
+                  "1327E-2",
+                  "5025E-3",
+                  "1013E-3"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 0,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "3023E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "43018E-6",
+                    "228913E-6",
+                    "508728E-6"
+                  ]
+                ],
+                "exponents": [
+                  "177E-1",
+                  "3854E-3",
+                  "1046E-3"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 1,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "2753E-4"
+                ],
+                "source_group": 0
+              },
+              {
+                "angular_momentum": 2,
+                "coefficients": [
+                  [
+                    "1E0"
+                  ]
+                ],
+                "exponents": [
+                  "1185E-3"
+                ],
+                "source_group": 0
+              }
+            ]
+          }
+        ],
+        "exponent_units": "bohr^-2",
+        "name": "cc-pvdz",
+        "normalization": "normalized-primitives; native-normalized-contractions",
+        "ordering": "CCA-cartesian; libcint-real-spherical",
+        "provenance": {
+          "checksum": "32140a42d5b7df822291aeb61e48d46f3f514bc99e23ae7e09e56ed52605da15",
+          "license": "Apache-2.0",
+          "source": "PySCF packaged cc-pvdz basis; unmodified gto.basis.load result",
+          "version": "2.14.0"
+        },
+        "representation": "spherical",
+        "schema": "vibeqc.basis",
+        "schema_version": 1
+      }
+    },
+    "basis_representation": "spherical",
+    "batch_size": 1,
+    "case": "oh-def2-svp-spherical-uhf",
+    "charge": 0,
+    "density_fitting": "cuda",
+    "density_fitting_memory_budget_bytes": 0,
+    "density_fitting_relative_threshold": 1e-10,
+    "density_tolerance": 1e-10,
+    "description": "Geometry/spin from oh-def2-svp-spherical-uhf; orbital basis cc-pvdz",
+    "direct_scf_tolerance": 1e-14,
+    "energy_tolerance": 1e-12,
+    "geometries": [
+      [
+        {
+          "coordinates_bohr": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "element": "O"
+        },
+        {
+          "coordinates_bohr": [
+            0.0,
+            0.0,
+            1.8323918340046244
+          ],
+          "element": "H"
+        }
+      ]
+    ],
+    "max_iterations": 100,
+    "method": "uhf",
+    "multiplicity": 2,
+    "properties": [
+      "energy",
+      "forces"
+    ],
+    "reference_gradient_tolerance": 1e-10,
+    "vibeqc_screening_tolerance": 1e-14
+  }
+}

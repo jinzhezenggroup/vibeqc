@@ -1,0 +1,28 @@
+{
+  "build_settings": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_CUDA_ARCHITECTURES": "120",
+    "CMAKE_CUDA_COMPILER": "/group/software/cuda-12.9.1/bin/nvcc",
+    "VIBEQC_AOT_UNIT_MODE": "stable-shards",
+    "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+    "VIBEQC_ENABLE_AOT_SHELLS": "ON"
+  },
+  "gpu_native_gates": {
+    "failed": 0,
+    "passed": 4,
+    "seconds": 7.42,
+    "suites": [
+      "vibeqc_native_tests",
+      "vibeqc_density_fitting_tests",
+      "vibeqc_cuda_fock_provider_tests",
+      "vibeqc_cuda_fock_composition_tests"
+    ]
+  },
+  "host_tests": 151,
+  "raw_evidence_archive_bytes": 249473,
+  "raw_evidence_manifest": "raw-evidence.manifest.json",
+  "restoration_verified": true,
+  "schema": "vibeqc.df_component_evidence",
+  "version": 1,
+  "warning": "Diagnostic CUDA-event intervals include CPU submission gaps. Graph construction counts are not replay work. Neither instrumentation nor this evidence implements a scientific optimization."
+}

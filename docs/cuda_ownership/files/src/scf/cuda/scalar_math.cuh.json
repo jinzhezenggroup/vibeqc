@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/scalar_math.cuh",
+  "reason": "Unchanged generic scalar/AD, precision traits, elementary math and order-zero Boys helper extracted from the previously classified runtime region.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

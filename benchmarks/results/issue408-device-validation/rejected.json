@@ -1,0 +1,48 @@
+[
+  {
+    "status": "rejected",
+    "reason": "Fixed reduction allowance forced poor tiles in the 16 MiB, batch-four, 25-AO force test. The first intrusive test was approximately 82.54 s; AO-scaled admission reduced the corresponding test to approximately 10.5 s. These observations are not clean endpoint comparisons.",
+    "source_patch": {
+      "local_path": ".artifacts/issue408/fixed-workspace/source.patch",
+      "sha256": "b5312f8c642f750dbec878975b368aa921bd44d6b5e87fb5184906be49e6ad14",
+      "bytes": 87769,
+      "retention": "Transient local artifact; excluded from Git"
+    },
+    "library": {
+      "local_path": ".artifacts/issue408/fixed-workspace/libvibeqc.so",
+      "sha256": "56499cd75ea886e4b7caa30bfb1875712f655da887ef83c11ef290fd0b926e27",
+      "bytes": 162197168,
+      "retention": "Transient local artifact; excluded from Git"
+    },
+    "log": {
+      "local_path": ".artifacts/issue408/gpu-tests.log",
+      "sha256": "1a050558bbc727fd7b9d65defcc7c025f630f599e984313689246d52266ae0f5",
+      "bytes": 1450,
+      "retention": "Transient local artifact; excluded from Git"
+    },
+    "slurm_job_id": 9794
+  },
+  {
+    "status": "rejected",
+    "reason": "Numerical suites and memcheck passed, but initcheck reported 72 copies containing uninitialized diagnostic packet padding. Replaced the 32-bit status by a full-width word without changing the packet byte count, mathematical outputs or workspace size. Final measurements use the fixed build.",
+    "source_patch": {
+      "local_path": ".artifacts/issue408/final/source.patch",
+      "sha256": "706593b6ae839c41b91e65ca1ebd6a36eed90559d70b905795199378094c083c",
+      "bytes": 88633,
+      "retention": "Transient local artifact; excluded from Git"
+    },
+    "library": {
+      "local_path": ".artifacts/issue408/final/libvibeqc.so",
+      "sha256": "137e8b7bda464285bcfa2ea0c18b70c2d02ecaf516b9a09d18a5078176d304d8",
+      "bytes": 162197248,
+      "retention": "Transient local artifact; excluded from Git"
+    },
+    "log": {
+      "local_path": ".artifacts/issue408/sanitize-and-direct-v2.log",
+      "sha256": "54e3d80d6b0487843b88693ad24edba4f6712dad96d7ccb0df45bdcee56c0009",
+      "bytes": 230154,
+      "retention": "Transient local artifact; excluded from Git"
+    },
+    "slurm_job_id": 9799
+  }
+]

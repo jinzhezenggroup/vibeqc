@@ -1,0 +1,57 @@
+{
+  "aot_shells": true,
+  "architecture": "sm_120",
+  "cmake_configuration": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_CUDA_COMPILER": "/group/software/cuda-12.9.1/bin/nvcc",
+    "VIBEQC_CUDA_ARCHITECTURES": "120",
+    "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+    "VIBEQC_CUDA_SPLIT_COMPILE_THREADS": "1",
+    "VIBEQC_ENABLE_AOT_SHELLS": "ON"
+  },
+  "cuda_fast_compile": false,
+  "cuda_split_compile_threads": 1,
+  "df_core_object_hash": "ede3a66367441023c7bec029814072e2c3d390492bee287b25f0e6ae7d8a1978",
+  "kernels": {
+    "_ZN6vibeqc3scf44_GLOBAL__N__78d680f2_11_cuda_rhf_cu_996a39dd30build_cuda_df_integrals_kernelILb0EEEvNS1_11DeviceBatchEmmmmmmmlPdS4_b": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 1024,
+      "STACK": 26496
+    },
+    "_ZN6vibeqc3scf44_GLOBAL__N__78d680f2_11_cuda_rhf_cu_996a39dd30build_cuda_df_integrals_kernelILb1EEEvNS1_11DeviceBatchEmmmmmmmlPdS4_b": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 1024,
+      "STACK": 52656
+    },
+    "_ZN6vibeqc3scf44_GLOBAL__N__78d680f2_11_cuda_rhf_cu_996a39dd34build_cuda_df_metric_source_kernelILb0EEEvNS1_11DeviceBatchEmmmmmmmlPKdPdbj": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 1024,
+      "STACK": 26528
+    },
+    "_ZN6vibeqc3scf44_GLOBAL__N__78d680f2_11_cuda_rhf_cu_996a39dd34build_cuda_df_metric_source_kernelILb1EEEvNS1_11DeviceBatchEmmmmmmmlPKdPdbj": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 1024,
+      "STACK": 52640
+    },
+    "_ZN6vibeqc3scf44_GLOBAL__N__78d680f2_11_cuda_rhf_cu_996a39dd37build_cuda_df_transformed_tile_kernelILb0EEEvNS1_11DeviceBatchEmmmmmmmmmmlPKdS5_S5_bPdbj": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 1024,
+      "STACK": 26496
+    },
+    "_ZN6vibeqc3scf44_GLOBAL__N__78d680f2_11_cuda_rhf_cu_996a39dd37build_cuda_df_transformed_tile_kernelILb1EEEvNS1_11DeviceBatchEmmmmmmmmmmlPKdS5_S5_bPdbj": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 1024,
+      "STACK": 52672
+    }
+  },
+  "library_hash": "1f13509c9b2fbe4c4344c895da0dadd2b21b2adacf3d563581d1495eb1c3d939",
+  "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+  "promoted_core_unchanged": true,
+  "promoted_library_hash": "e5fe30d5be845cefe1703a592cd719ceb7f28efb49f2de92a2955e49ed60e264"
+}

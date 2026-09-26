@@ -1,0 +1,518 @@
+"""Compare fresh-owner cold and changed-geometry DF forces in isolated processes.
+
+The parent owns no CUDA context. Each clean arm gets a new process, so neither
+engine retains the other engine's allocator. Imports and CUDA driver startup
+are outside timing; cold timers include molecular construction, preparation,
+SCF and full forces. Changed timers include geometry update/reset, rebuilding,
+SCF and full forces. Both changed arms receive their own immutable post-cold
+density, then one original-geometry priming call before the timed displacement.
+These are ordinary converged latencies, not a claim of identical operator work.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import statistics
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def write(path, data):
+    path.write_text(json.dumps(data, indent=2) + "\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--reference", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--phase", choices=("cold", "changed"), required=True)
+    parser.add_argument("--repeats", type=int, default=7)
+    parser.add_argument(
+        "--mode", choices=("campaign", "seed", "qualify", "sample"), default="campaign"
+    )
+    parser.add_argument("--engine", choices=("vibeqc", "gpu4pyscf"))
+    parser.add_argument("--seed", type=Path)
+    args = parser.parse_args()
+    if not os.environ.get("SLURM_JOB_ID") or args.repeats < 7:
+        parser.error("finite Slurm and at least seven repeats are required")
+    if args.output.exists():
+        parser.error("refusing to overwrite prior evidence")
+    if args.mode != "campaign" and not args.engine:
+        parser.error("child modes require an engine")
+    for key in ("VIBEQC_DF_TRACE", "VIBEQC_DF_HOST_TRACE", "VIBEQC_DF_PROGRESS_TRACE"):
+        if os.environ.get(key):
+            parser.error("clean rebuild timing requires native tracing disabled")
+    reference = json.loads(args.reference.read_text())
+    gates = reference["settings"]["gates"]
+    workload = reference["workload"]
+    assert workload["density_fitting"] == "cuda"
+    assert workload["properties"] == ["energy", "forces"]
+    # The fresh warm comparator supplies exact scientific settings and gates;
+    # an ineligible/failed warm cell does not silently become an accepted one.
+    assert reference["gate"]["passed"]
+    assert len(reference["accuracy"]["paired_warm_repeats"]) == 7
+    assert all(
+        row["maximum_energy_error_hartree"] <= gates["maximum_energy_error_hartree"]
+        and row["maximum_force_error_hartree_per_bohr"]
+        <= gates["maximum_force_error_hartree_per_bohr"]
+        for row in reference["accuracy"]["paired_warm_repeats"]
+    )
+    if args.mode == "campaign":
+        campaign(args, reference)
+    else:
+        child(args, reference)
+
+
+def campaign(args, reference):
+    """Interleave isolated arms, saving each failure and raw result immediately."""
+    args.output.mkdir(parents=True)
+    payload = {
+        "scope": __doc__,
+        "phase": args.phase,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "reference_sha256": digest(args.reference),
+        "runner_sha256": digest(__file__),
+        "library_sha256": digest(os.environ["VIBEQC_LIBRARY"]),
+        "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
+        "qualification": "incomplete",
+        "noise_contract": {
+            "repeats": args.repeats,
+            "maximum_relative_median_absolute_deviation": 0.03,
+            "minimum_gain_for_superiority": 0.02,
+            "bootstrap_replicates": 10000,
+            "bootstrap_seed": 206,
+            "interval": "paired percentile 95% interval of stock/native median ratio",
+        },
+        "checks": [],
+        "samples": [],
+    }
+    manifest = args.output / "manifest.json"
+
+    def run(mode, engine, name, seed=None):
+        output = args.output / f"{name}.json"
+        command = [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--reference",
+            str(args.reference.resolve()),
+            "--output",
+            str(output),
+            "--phase",
+            args.phase,
+            "--mode",
+            mode,
+            "--engine",
+            engine,
+        ]
+        if seed:
+            command += ["--seed", str(seed)]
+        row = {"name": name, "command": command, "status": "running"}
+        payload["checks"].append(row)
+        write(manifest, payload)
+        with (args.output / f"{name}.log").open("x") as log:
+            completed = subprocess.run(
+                command, stdout=log, stderr=subprocess.STDOUT, check=False
+            )
+        row.update(
+            exit_code=completed.returncode,
+            status="passed" if completed.returncode == 0 else "failed",
+        )
+        result = json.loads(output.read_text()) if output.exists() else None
+        row["result_sha256"] = digest(output) if output.exists() else None
+        write(manifest, payload)
+        print(name, row["status"], flush=True)
+        if completed.returncode:
+            # Provider, preparation and execution failures are retained rather
+            # than retried under altered settings or pooled with later runs.
+            raise RuntimeError(f"{name} failed; retained {output}")
+        return result
+
+    try:
+        run("qualify", "gpu4pyscf", "stock-provider-and-rank")
+        seeds = {}
+        if args.phase == "changed":
+            for engine in ("vibeqc", "gpu4pyscf"):
+                seed_record = run("seed", engine, f"{engine}-seed")
+                seeds[engine] = Path(seed_record["seed_path"])
+        for repeat in range(args.repeats):
+            order = (
+                ("vibeqc", "gpu4pyscf") if repeat % 2 == 0 else ("gpu4pyscf", "vibeqc")
+            )
+            pair = {}
+            for engine in order:
+                row = run("sample", engine, f"{repeat}-{engine}", seeds.get(engine))
+                row["repeat"] = repeat
+                pair[engine] = row
+                payload["samples"].append(row)
+                write(manifest, payload)
+            # CPU-only numerical analysis happens after both timed processes
+            # exit. It never changes the original per-arm convergence route.
+            import numpy as np
+
+            left, right = pair["vibeqc"], pair["gpu4pyscf"]
+            energy = float(
+                np.max(np.abs(np.array(left["energies"]) - right["energies"]))
+            )
+            force = float(np.max(np.abs(np.array(left["forces"]) - right["forces"])))
+            limits = reference["settings"]["gates"]
+            payload.setdefault("paired_accuracy", []).append(
+                {
+                    "repeat": repeat,
+                    "maximum_energy_error": energy,
+                    "maximum_force_error": force,
+                    "passed": energy <= limits["maximum_energy_error_hartree"]
+                    and force <= limits["maximum_force_error_hartree_per_bohr"],
+                }
+            )
+            write(manifest, payload)
+        times = {
+            engine: [s["seconds"] for s in payload["samples"] if s["engine"] == engine]
+            for engine in ("vibeqc", "gpu4pyscf")
+        }
+        medians = {
+            engine: statistics.median(values) for engine, values in times.items()
+        }
+        dispersion = {
+            engine: statistics.median(abs(v - medians[engine]) for v in values)
+            / medians[engine]
+            for engine, values in times.items()
+        }
+        rng = np.random.default_rng(206)
+        choices = rng.integers(0, args.repeats, size=(10000, args.repeats))
+        ratios = np.median(np.array(times["gpu4pyscf"])[choices], axis=1) / np.median(
+            np.array(times["vibeqc"])[choices], axis=1
+        )
+        interval = np.quantile(ratios, [0.025, 0.975]).tolist()
+        passed = all(row["passed"] for row in payload["paired_accuracy"])
+        stable = all(value <= 0.03 for value in dispersion.values())
+        payload["summary"] = {
+            "ordinary_median_seconds": medians,
+            "relative_median_absolute_deviation": dispersion,
+            "stock_over_native_median_ratio": medians["gpu4pyscf"] / medians["vibeqc"],
+            "paired_ratio_interval_95": interval,
+            "all_numerical_gates_passed": passed,
+            "timing_stable": stable,
+            "native_superiority_qualified": passed
+            and stable
+            and interval[0] >= 1 / 0.98,
+            "work_scope": "ordinary converged latency; complete operator diagnostics remain separate",
+        }
+        payload["qualification"] = (
+            "passed numerical gates" if passed else "failed numerical gates"
+        )
+        write(manifest, payload)
+        if not passed:
+            raise SystemExit(2)
+    except Exception as error:
+        payload["failure"] = repr(error)
+        write(manifest, payload)
+        raise
+
+
+def child(args, reference):
+    """Execute a single provider check, seed preparation or clean endpoint."""
+    import ctypes
+    import importlib.metadata
+
+    import cupy as cp
+    import numpy as np
+    from gpu4pyscf.lib import cutensor
+    from pyscf import df, gto, scf
+
+    from benchmarks._cases import benchmark_cases
+    from benchmarks.compare_gpu4pyscf_batch import (
+        GpuCycleTracker,
+        convergence_payload,
+        gpu_convergence_payload,
+        scaled_geometries,
+    )
+
+    assert cutensor.cutensor is not None and cutensor.contract_engine is None
+    workload = reference["workload"]
+    case = benchmark_cases()[workload["case"]]
+    systems = scaled_geometries(case.atoms, workload["batch_size"])
+    original = [np.array([r for _, r in atoms]) for atoms in systems]
+    changed = [r.copy() for r in original]
+    for coordinates in changed:
+        coordinates[1, 0] += 0.001
+    assert [
+        [{"element": z, "coordinates_bohr": list(r)} for z, r in atoms]
+        for atoms in systems
+    ] == workload["geometries"]
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "mode": args.mode,
+        "engine": args.engine,
+        "phase": args.phase,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "reference_sha256": digest(args.reference),
+        "runner_sha256": digest(__file__),
+        "original_coordinates_bohr": [r.tolist() for r in original],
+        "target_coordinates_bohr": [
+            r.tolist() for r in (changed if args.phase == "changed" else original)
+        ],
+        "workload": workload,
+        "output_boundary": "both engines provide synchronized host energies and full host forces before timer end",
+        "versions": {
+            name: importlib.metadata.version(name)
+            for name in (
+                "gpu4pyscf-cuda12x",
+                "cupy-cuda12x",
+                "cutensor-cu12",
+                "pyscf",
+                "numpy",
+            )
+        },
+        "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
+        "library_sha256": digest(os.environ["VIBEQC_LIBRARY"]),
+    }
+    if args.seed:
+        payload["seed_sha256"] = digest(args.seed)
+
+    def molecule(atoms):
+        return gto.M(
+            atom=atoms,
+            unit="Bohr",
+            basis=case.pyscf_basis,
+            cart=case.basis_representation == "cartesian",
+            charge=case.charge,
+            spin=case.multiplicity - 1,
+            verbose=0,
+        )
+
+    def stock(atoms):
+        mol = molecule(atoms)
+        engine = (
+            (scf.UHF(mol) if case.method == "uhf" else scf.RHF(mol))
+            .density_fit(auxbasis=case.pyscf_basis)
+            .to_gpu()
+        )
+        engine.conv_tol = workload["energy_tolerance"]
+        engine.conv_tol_grad = workload["reference_gradient_tolerance"]
+        engine.direct_scf_tol = 1e-14
+        engine.max_cycle = workload["max_iterations"]
+        return engine
+
+    def stock_execute(engines, densities=None):
+        trackers = [GpuCycleTracker() for _ in engines]
+        for engine, tracker in zip(engines, trackers, strict=True):
+            engine.callback = tracker
+        energies = [
+            engine.kernel(dm0=None if densities is None else densities[i])
+            for i, engine in enumerate(engines)
+        ]
+        gradients = [engine.nuc_grad_method().kernel() for engine in engines]
+        forces = np.stack([cp.asnumpy(-gradient) for gradient in gradients])
+        cp.cuda.runtime.deviceSynchronize()
+        return [float(energy) for energy in energies], forces, trackers
+
+    # Common untimed driver startup; all molecular work remains at the stated
+    # boundary. No profiler or process sampler is active in these children.
+    cp.cuda.runtime.free(0)
+    try:
+        if args.mode == "qualify":
+            rows = []
+            for atoms, coordinates in zip(
+                systems, changed if args.phase == "changed" else original, strict=True
+            ):
+                engine = stock(
+                    [(z, r) for (z, _), r in zip(atoms, coordinates, strict=True)]
+                )
+                auxiliary = df.addons.make_auxmol(engine.mol, case.pyscf_basis)
+                metric = auxiliary.intor("int2c2e")
+                eigenvalues = np.linalg.eigvalsh(metric)
+                engine.with_df.build()
+                blocks = engine.with_df._cderi
+                values = blocks.values() if isinstance(blocks, dict) else blocks
+                shapes = [list(block.shape) for block in values]
+                rank = sum(shape[0] for shape in shapes)
+                row = {
+                    "nbf": engine.mol.nao,
+                    "naux": auxiliary.nao,
+                    "stock_rank": rank,
+                    "reference_rank": int(
+                        np.count_nonzero(eigenvalues > 1e-10 * eigenvalues[-1])
+                    ),
+                    "metric_extrema": [float(eigenvalues[0]), float(eigenvalues[-1])],
+                    "metric_sha256": hashlib.sha256(metric.tobytes()).hexdigest(),
+                    "factor_shapes": shapes,
+                }
+                rows.append(row)
+                payload["ranks"] = rows
+                write(args.output, payload)
+                assert rank == row["reference_rank"] == auxiliary.nao
+                del engine, blocks, values
+                cp.get_default_memory_pool().free_all_blocks()
+        elif args.engine == "gpu4pyscf":
+            engines, densities = [], None
+            if args.mode == "seed" or args.phase == "changed":
+                engines = [stock(atoms) for atoms in systems]
+            if args.mode == "seed":
+                _, _, trackers = stock_execute(engines)
+                assert all(engine.converged for engine in engines)
+                seed = args.output.with_suffix(".npy")
+                np.save(
+                    seed,
+                    np.stack([cp.asnumpy(engine.make_rdm1()) for engine in engines]),
+                )
+                payload.update(
+                    seed_path=str(seed.resolve()),
+                    seed_sha256=digest(seed),
+                    convergence=gpu_convergence_payload(engines, trackers),
+                )
+            else:
+                if args.phase == "changed":
+                    assert args.seed
+                    densities = [
+                        cp.asarray(d).copy()
+                        for d in np.load(args.seed, allow_pickle=False)
+                    ]
+                    # Only bare density snapshots cross the timer boundary;
+                    # priming may update engine-local caches but never this D.
+                    assert all(not hasattr(d, "mo_coeff") for d in densities)
+                    stock_execute(engines, [d.copy() for d in densities])
+                    assert all(engine.converged for engine in engines)
+                cp.cuda.runtime.deviceSynchronize()
+                start = time.perf_counter()
+                if args.phase == "cold":
+                    engines = [stock(atoms) for atoms in systems]
+                else:
+                    for engine, coordinates in zip(engines, changed, strict=True):
+                        engine.reset(
+                            engine.mol.set_geom_(coordinates, unit="Bohr", inplace=True)
+                        )
+                energies, forces, trackers = stock_execute(engines, densities)
+                seconds = time.perf_counter() - start
+                convergence = gpu_convergence_payload(engines, trackers)
+                for row in convergence:
+                    row["warm_start"]["used"] = args.phase == "changed"
+                payload.update(
+                    seconds=seconds,
+                    energies=[float(e) for e in energies],
+                    forces=forces.tolist(),
+                    convergence=convergence,
+                )
+        else:
+            from vibeqc import Calculator
+            from vibeqc.checkpoint import inspect_checkpoint
+
+            options = {
+                "method": case.method,
+                "basis": case.vibeqc_basis,
+                "auxiliary_basis": case.vibeqc_basis,
+                "basis_representation": case.basis_representation,
+                "device": "cuda",
+                "density_fitting": "cuda",
+                "screening_tolerance": workload["vibeqc_screening_tolerance"],
+                "energy_tolerance": workload["energy_tolerance"],
+                "density_tolerance": workload["density_tolerance"],
+                "max_iterations": workload["max_iterations"],
+                "density_fitting_memory_budget_bytes": workload[
+                    "density_fitting_memory_budget_bytes"
+                ],
+            }
+            calculator = Calculator(**options)
+            library = calculator._library
+            library.vibeqc_get_source_identity.restype = ctypes.c_char_p
+            payload["native_identity"] = library.vibeqc_get_source_identity().decode()
+            prepare = {
+                "charges": [case.charge] * len(systems),
+                "multiplicities": [case.multiplicity] * len(systems),
+                "warm_start": True,
+            }
+            if args.mode == "seed":
+                with calculator.prepare_batch(systems, **prepare) as batch:
+                    result = batch.execute(strict=True)
+                    seed = args.output.with_suffix(".checkpoint")
+                    batch.save_checkpoint(seed)
+                    payload.update(
+                        seed_path=str(seed.resolve()),
+                        seed_sha256=digest(seed),
+                        convergence=convergence_payload(result),
+                    )
+            elif args.phase == "cold":
+                cp.cuda.runtime.deviceSynchronize()
+                start = time.perf_counter()
+                with Calculator(**options).prepare_batch(systems, **prepare) as batch:
+                    result = batch.execute(strict=True)
+                    cp.cuda.runtime.deviceSynchronize()
+                    seconds = time.perf_counter() - start
+                    metric = [
+                        row.to_dict()
+                        for row in batch.last_density_fitting_metric_diagnostics()
+                    ]
+                payload.update(
+                    seconds=seconds,
+                    energies=result.energies.tolist(),
+                    forces=[item.forces.tolist() for item in result.items],
+                    convergence=convergence_payload(result),
+                    metric=metric,
+                )
+            else:
+                assert args.seed
+                with calculator.prepare_batch(systems, **prepare) as batch:
+                    payload["restore"] = batch.load_checkpoint(
+                        args.seed, allow_warm=True
+                    )
+                    batch.set_warm_start_updates(False)
+                    batch.execute(strict=True)
+                    before = {
+                        b["name"]: b["sha256"]
+                        for b in inspect_checkpoint(args.seed).blobs
+                        if b["name"].startswith("density_")
+                    }
+                    assert before
+                    cp.cuda.runtime.deviceSynchronize()
+                    start = time.perf_counter()
+                    result = batch.execute(changed, strict=True)
+                    cp.cuda.runtime.deviceSynchronize()
+                    seconds = time.perf_counter() - start
+                    verify = args.output.with_suffix(".checkpoint")
+                    batch.save_checkpoint(verify)
+                    after = {
+                        b["name"]: b["sha256"]
+                        for b in inspect_checkpoint(verify).blobs
+                        if b["name"].startswith("density_")
+                    }
+                    payload.update(
+                        seconds=seconds,
+                        energies=result.energies.tolist(),
+                        forces=[item.forces.tolist() for item in result.items],
+                        convergence=convergence_payload(result),
+                        metric=[
+                            row.to_dict()
+                            for row in batch.last_density_fitting_metric_diagnostics()
+                        ],
+                        frozen_density_sha256=before,
+                    )
+                    assert before == after, (
+                        "changed endpoint mutated frozen starting density"
+                    )
+        write(args.output, payload)
+        if args.mode == "sample":
+            assert all(row["converged"] for row in payload["convergence"])
+            assert (
+                np.isfinite(payload["energies"]).all()
+                and np.isfinite(payload["forces"]).all()
+            )
+        if args.seed:
+            assert digest(args.seed) == payload["seed_sha256"]
+    except Exception as error:
+        payload["failure"] = repr(error)
+        write(args.output, payload)
+        raise
+
+
+if __name__ == "__main__":
+    main()

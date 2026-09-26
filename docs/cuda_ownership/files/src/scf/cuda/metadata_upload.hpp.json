@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/metadata_upload.hpp",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Shared checked metadata upload/cleanup and CUDA status mapping used by direct and DF sources; no provider equations.",
+  "regions": []
+}

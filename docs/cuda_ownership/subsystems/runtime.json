@@ -1,0 +1,12 @@
+{
+  "current_default": "native shared allocation, stream, graph, ABI and library adapters",
+  "evidence": [
+    "docs/developer/compiler_architecture.md",
+    "docs/developer/scf_module_boundaries.md"
+  ],
+  "generated_capability": "not applicable: generic runtime infrastructure",
+  "missing_capability": "none; infrastructure remains native",
+  "owner": "runtime",
+  "retirement_condition": "retain generic runtime; review new embedded scientific formulas separately",
+  "status": "retained"
+}

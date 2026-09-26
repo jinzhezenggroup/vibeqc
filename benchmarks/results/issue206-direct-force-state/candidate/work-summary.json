@@ -1,0 +1,12 @@
+{
+  "scope": "Separate intrusive correctness journal, excluded from clean endpoint timing.",
+  "trace": ".artifacts/issue206/direct-force-final-qualification/progress.jsonl",
+  "counts_across_qualification_calls": {
+    "additional_density_updates": 97,
+    "additional_physical_fock_builds": 97,
+    "final_physical_residual_checks": 97,
+    "final_physical_residual_rejections": 0,
+    "reported_scf_updates": 718
+  },
+  "interpretation": "The loops report iterative updates separately; each tested force item adds one density projection and one physical Fock build, including rejected items. Four residual products and two PFP products per spin are extra. Zero energy-only force records is asserted in the qualification runner."
+}

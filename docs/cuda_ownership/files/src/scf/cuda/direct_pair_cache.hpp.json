@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_pair_cache.hpp",
+  "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

@@ -1,0 +1,418 @@
+{
+  "decision": "Reject split4; retain the existing default and archive the candidate as patches.",
+  "fixed_work_gate_passed": false,
+  "complete_gain_gate_evaluated": false,
+  "paired_stability_gate_evaluated": false,
+  "automatic_promotion": false,
+  "qualifying_campaign_slurm_job": "9825",
+  "completed_384_regressions": {
+    "384-forces": {
+      "median_seconds": {
+        "auto": 0.6975012118928134,
+        "split4": 0.6979884668253362
+      },
+      "ratio_of_medians": 1.0006985721662054,
+      "regression_gate_passed": true,
+      "work": {
+        "auto": {
+          "iterations": 3,
+          "j_builds": 4,
+          "k_builds": 4,
+          "eigensolves_including_seed_factorization": 3,
+          "final_fock_evaluations": 1,
+          "final_density_updates": 0,
+          "final_candidate_rejections": 0
+        },
+        "split4": {
+          "iterations": 3,
+          "j_builds": 4,
+          "k_builds": 4,
+          "eigensolves_including_seed_factorization": 3,
+          "final_fock_evaluations": 1,
+          "final_density_updates": 0,
+          "final_candidate_rejections": 0
+        }
+      },
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 8.428249244352148e-11
+    },
+    "384-energy": {
+      "median_seconds": {
+        "auto": 0.2841362259350717,
+        "split4": 0.28431269503198564
+      },
+      "ratio_of_medians": 1.000621072150632,
+      "regression_gate_passed": true,
+      "work": {
+        "auto": {
+          "iterations": 3,
+          "j_builds": 4,
+          "k_builds": 4,
+          "eigensolves_including_seed_factorization": 3,
+          "final_fock_evaluations": 1,
+          "final_density_updates": 0,
+          "final_candidate_rejections": 0
+        },
+        "split4": {
+          "iterations": 3,
+          "j_builds": 4,
+          "k_builds": 4,
+          "eigensolves_including_seed_factorization": 3,
+          "final_fock_evaluations": 1,
+          "final_density_updates": 0,
+          "final_candidate_rejections": 0
+        }
+      },
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 0
+    }
+  },
+  "stopped_768_force_pair": {
+    "seconds": {
+      "auto": 2.5598615841008723,
+      "split4": 2.979251679033041
+    },
+    "iterations": {
+      "auto": [
+        3
+      ],
+      "split4": [
+        5
+      ]
+    },
+    "prime_iterations": {
+      "auto": [
+        3
+      ],
+      "split4": [
+        5
+      ]
+    },
+    "observed_single_pair_ratio": 1.1638331140781097,
+    "interpretation": "One changed-work pair, not a stable timing estimate or matched-work attribution.",
+    "maximum_energy_error": 3.228706191293895e-11,
+    "maximum_force_error": 1.6198721097121505e-10
+  },
+  "unrun_qualifying_endpoints": [
+    "96-forces",
+    "96-energy",
+    "192-forces",
+    "192-energy",
+    "768-energy"
+  ],
+  "followup": {
+    "768-forces": {
+      "status": "intrusive diagnostic; all times excluded from performance qualification",
+      "arms": {
+        "auto": {
+          "work": {
+            "iterations": 3,
+            "j_builds": 4,
+            "k_builds": 4,
+            "eigensolves_including_seed_factorization": 4,
+            "final_fock_evaluations": 1,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "gram_partial_products": 4,
+          "gram_flops": 290287779840,
+          "gram_borrowed_bytes": 0,
+          "gram_partial_write_bytes": 0,
+          "gram_reduction_read_bytes": 0,
+          "final_projection_reused": 1,
+          "process_device_resident_bytes": 21292384256,
+          "inclusive_gpu_region_ms": {
+            "compact_diis_reset": 0.636864007,
+            "compact_eigensolve": 68.8902378,
+            "density_exchange_seed": 16.4582081,
+            "density_seed_reconstruction": 0.165087998,
+            "ri_j": 17.92982386,
+            "ri_j_gemm": 17.559456100000002,
+            "ri_k_occupied": 773.544403,
+            "ri_k_occupied_projection_gemm": 357.0075836,
+            "ri_k_occupied_exchange_gemm": 415.35232469999994,
+            "ri_k_occupied_mirror": 0.04694399985,
+            "compact_diis": 52.1955509,
+            "diis_residual_products": 7.75248002,
+            "diis_history_update": 44.266079399999995,
+            "scf_seed_iteration": 275.998779,
+            "occupied_scf_provenance": 0.0892160013,
+            "final_state_retained_jk": 190.147751,
+            "final_state_physical_fock": 192.495621,
+            "final_state_validation": 20.4355526,
+            "final_state_weighted_density": 6.11459208,
+            "occupied_response_provenance": 0.981504023,
+            "force_response": 1442.1123,
+            "response_allocation_and_uploads": 1.91664004,
+            "shell_metadata_preparation": 0.115199998,
+            "response_weights": 1439.80151,
+            "coulomb_response_charge_dot": 2.35315204,
+            "exchange_response_occupied_products": 38.8688316,
+            "exchange_response_occupied_metric_gemm": 22.8928318,
+            "exchange_response_occupied_weight_gemm": 19.5889606,
+            "exchange_response_pseudo_density_products": 84.25177551,
+            "three_center_derivative_contraction": 1247.8746205999998,
+            "shell_000_packet": 56.262879729999995,
+            "shell_001_packet": 40.589760117,
+            "shell_002_packet": 23.007456076999997,
+            "shell_100_packet": 82.51315104999999,
+            "shell_101_packet": 200.71721692999998,
+            "shell_102_packet": 86.04915142,
+            "shell_110_packet": 107.33059273999999,
+            "shell_111_packet": 106.65935945,
+            "shell_112_packet": 46.35724844,
+            "shell_200_packet": 45.129023853,
+            "shell_201_packet": 89.11638401,
+            "shell_202_packet": 29.303135578999996,
+            "shell_210_packet": 95.71606542,
+            "shell_211_packet": 89.69711982,
+            "shell_212_packet": 40.34339214,
+            "shell_220_packet": 18.172639683,
+            "shell_221_packet": 22.23504028,
+            "shell_222_packet": 11.252831967000002,
+            "metric_frechet_response": 3.85062408,
+            "metric_center_derivative_contraction": 12.113184,
+            "response_output_and_synchronization": 0.0536319986
+          }
+        },
+        "split4": {
+          "work": {
+            "iterations": 5,
+            "j_builds": 6,
+            "k_builds": 6,
+            "eigensolves_including_seed_factorization": 6,
+            "final_fock_evaluations": 1,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "gram_partial_products": 24,
+          "gram_flops": 869730877440,
+          "gram_borrowed_bytes": 18874368,
+          "gram_partial_write_bytes": 113246208,
+          "gram_reduction_read_bytes": 113246208,
+          "final_projection_reused": 1,
+          "process_device_resident_bytes": 21252538368,
+          "inclusive_gpu_region_ms": {
+            "compact_diis_reset": 0.64646399,
+            "compact_eigensolve": 105.7846069,
+            "density_exchange_seed": 16.5427208,
+            "density_seed_reconstruction": 0.167743996,
+            "ri_j": 26.824960230000002,
+            "ri_j_gemm": 26.28707196,
+            "ri_k_occupied": 1078.025865,
+            "ri_k_occupied_projection_gemm": 534.102684,
+            "ri_k_occupied_exchange_gemm": 542.0939483,
+            "ri_k_occupied_split_reduce": 0.12704000059999998,
+            "compact_diis": 97.11324889999999,
+            "diis_residual_products": 13.1112318,
+            "diis_history_update": 83.69638261,
+            "scf_seed_iteration": 263.676239,
+            "occupied_scf_provenance": 0.0851840004,
+            "final_state_retained_jk": 177.797821,
+            "final_state_physical_fock": 180.165146,
+            "final_state_validation": 20.3188152,
+            "final_state_weighted_density": 5.86639977,
+            "occupied_response_provenance": 1.01814401,
+            "force_response": 1466.26184,
+            "response_allocation_and_uploads": 1.92380798,
+            "shell_metadata_preparation": 0.121151999,
+            "response_weights": 1463.91846,
+            "coulomb_response_charge_dot": 2.35110402,
+            "exchange_response_occupied_products": 36.1694717,
+            "exchange_response_occupied_metric_gemm": 20.7479038,
+            "exchange_response_occupied_weight_gemm": 17.7658558,
+            "exchange_response_pseudo_density_products": 85.77167989,
+            "three_center_derivative_contraction": 1276.7372331000001,
+            "shell_000_packet": 57.29916749999999,
+            "shell_001_packet": 41.371359359,
+            "shell_002_packet": 23.415423774000004,
+            "shell_100_packet": 84.00870468000001,
+            "shell_101_packet": 204.88620798,
+            "shell_102_packet": 87.79871965999999,
+            "shell_110_packet": 110.35270285999998,
+            "shell_111_packet": 109.6721605,
+            "shell_112_packet": 47.60239958,
+            "shell_200_packet": 46.397856188,
+            "shell_201_packet": 91.65190363,
+            "shell_202_packet": 30.107295692,
+            "shell_210_packet": 98.41088010000001,
+            "shell_211_packet": 92.27612734,
+            "shell_212_packet": 41.476223819999994,
+            "shell_220_packet": 18.673663662,
+            "shell_221_packet": 22.875295994000002,
+            "shell_222_packet": 11.560063956999999,
+            "metric_frechet_response": 3.86159992,
+            "metric_center_derivative_contraction": 12.429472,
+            "response_output_and_synchronization": 0.0624319986
+          }
+        }
+      },
+      "work_differs": true,
+      "maximum_energy_error": 3.228706191293895e-11,
+      "maximum_force_error": 1.6198898732805445e-10
+    },
+    "768-energy": {
+      "status": "intrusive diagnostic; all times excluded from performance qualification",
+      "arms": {
+        "auto": {
+          "work": {
+            "iterations": 3,
+            "j_builds": 4,
+            "k_builds": 4,
+            "eigensolves_including_seed_factorization": 4,
+            "final_fock_evaluations": 1,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "gram_partial_products": 4,
+          "gram_flops": 290287779840,
+          "gram_borrowed_bytes": 0,
+          "gram_partial_write_bytes": 0,
+          "gram_reduction_read_bytes": 0,
+          "final_projection_reused": 0,
+          "process_device_resident_bytes": 21252538368,
+          "inclusive_gpu_region_ms": {
+            "compact_diis_reset": 0.635327995,
+            "compact_eigensolve": 69.3168316,
+            "density_exchange_seed": 14.9240637,
+            "density_seed_reconstruction": 0.149184003,
+            "ri_j": 17.894335750000003,
+            "ri_j_gemm": 17.544032089999998,
+            "ri_k_occupied": 767.48973,
+            "ri_k_occupied_projection_gemm": 351.56956479999997,
+            "ri_k_occupied_exchange_gemm": 414.7396771,
+            "ri_k_occupied_mirror": 0.0496639992,
+            "compact_diis": 53.486527499999994,
+            "diis_residual_products": 8.10278392,
+            "diis_history_update": 45.210464509999994,
+            "scf_seed_iteration": 260.183777,
+            "occupied_scf_provenance": 0.0891200006,
+            "final_state_retained_jk": 190.101028,
+            "final_state_physical_fock": 192.448486,
+            "final_state_validation": 19.8765125
+          }
+        },
+        "split4": {
+          "work": {
+            "iterations": 5,
+            "j_builds": 6,
+            "k_builds": 6,
+            "eigensolves_including_seed_factorization": 6,
+            "final_fock_evaluations": 1,
+            "final_density_updates": 0,
+            "final_candidate_rejections": 0
+          },
+          "gram_partial_products": 24,
+          "gram_flops": 869730877440,
+          "gram_borrowed_bytes": 18874368,
+          "gram_partial_write_bytes": 113246208,
+          "gram_reduction_read_bytes": 113246208,
+          "final_projection_reused": 0,
+          "process_device_resident_bytes": 21252538368,
+          "inclusive_gpu_region_ms": {
+            "compact_diis_reset": 0.628512025,
+            "compact_eigensolve": 103.9824334,
+            "density_exchange_seed": 14.9246721,
+            "density_seed_reconstruction": 0.148576006,
+            "ri_j": 26.83014393,
+            "ri_j_gemm": 26.294655780000003,
+            "ri_k_occupied": 1063.221359,
+            "ri_k_occupied_projection_gemm": 519.6273269,
+            "ri_k_occupied_exchange_gemm": 541.7558747,
+            "ri_k_occupied_split_reduce": 0.1301759984,
+            "compact_diis": 96.80892750000001,
+            "diis_residual_products": 13.10921573,
+            "diis_history_update": 83.40937521000001,
+            "scf_seed_iteration": 253.247742,
+            "occupied_scf_provenance": 0.0858239979,
+            "final_state_retained_jk": 177.802277,
+            "final_state_physical_fock": 180.136703,
+            "final_state_validation": 19.8311043
+          }
+        }
+      },
+      "work_differs": true,
+      "maximum_energy_error": 3.228706191293895e-11,
+      "maximum_force_error": 0
+    }
+  },
+  "sampled_resources": [
+    {
+      "label": "768-forces",
+      "slurm_job_id": "9826",
+      "cuda_visible_devices": "0",
+      "exit_code": 0,
+      "command": [
+        "/tmp/vibeqc-pr-review-env/bin/python",
+        "-m",
+        "benchmarks.df_policy_endpoint",
+        "--aos",
+        "768",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/changed-work-diagnostics/768-forces.json",
+        "--repeats",
+        "1",
+        "--control",
+        "VIBEQC_DF_RESIDENT_EXCHANGE",
+        "--policies",
+        "auto",
+        "split4",
+        "--trace",
+        "--journal",
+        "--source-patch",
+        ".artifacts/issue412/candidate/source.patch",
+        "--skip-cold",
+        "--warm-checkpoint-in",
+        "/home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/768-VIBEQC_DF_DIIS_DOTS.checkpoint",
+        "--reference",
+        "benchmarks/results/issue377-379-df/gpu4pyscf/water-32mer-4s4-def2-svp-spherical.json"
+      ],
+      "scope": "intrusive changed-work diagnostic after fixed-work stop; exclude all times from performance qualification",
+      "peak_host_rss_bytes": 13909282816,
+      "peak_host_highwater_bytes": 13909282816,
+      "peak_process_device_resident_bytes": 24631050240,
+      "sample_count": 1318,
+      "samples_sha256": "076c03fae3db336b045dd3d04a9c256e5a8135b18d604ac66cd9d7d8e9c8a940",
+      "definition": "Per-process NVIDIA reported device residency at 200 ms plus query cost, and /proc VmRSS/VmHWM from initialization through teardown. Device peak is a sampled lower bound, includes CUDA context/modules, and may miss short allocations; it is not an allocator peak. Each process runs both policies for one observable; the peak is not attributable to either arm separately."
+    },
+    {
+      "label": "768-energy",
+      "slurm_job_id": "9826",
+      "cuda_visible_devices": "0",
+      "exit_code": 0,
+      "command": [
+        "/tmp/vibeqc-pr-review-env/bin/python",
+        "-m",
+        "benchmarks.df_policy_endpoint",
+        "--aos",
+        "768",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue412-split/.artifacts/issue412/changed-work-diagnostics/768-energy.json",
+        "--repeats",
+        "1",
+        "--control",
+        "VIBEQC_DF_RESIDENT_EXCHANGE",
+        "--policies",
+        "auto",
+        "split4",
+        "--trace",
+        "--journal",
+        "--source-patch",
+        ".artifacts/issue412/candidate/source.patch",
+        "--skip-cold",
+        "--warm-checkpoint-in",
+        "/home/jzzeng/codes/vibeqc-issues388-391/.artifacts/issues388-391/final/ablations/768-VIBEQC_DF_DIIS_DOTS.checkpoint",
+        "--reference",
+        "benchmarks/results/issue377-379-df/gpu4pyscf/water-32mer-4s4-def2-svp-spherical.json",
+        "--energy-only"
+      ],
+      "scope": "intrusive changed-work diagnostic after fixed-work stop; exclude all times from performance qualification",
+      "peak_host_rss_bytes": 13909286912,
+      "peak_host_highwater_bytes": 13909286912,
+      "peak_process_device_resident_bytes": 24631050240,
+      "sample_count": 1343,
+      "samples_sha256": "a3ddb357249f76bc1f0036ef2368443c341af9cf0ea1acfde7d59b79e8719a63",
+      "definition": "Per-process NVIDIA reported device residency at 200 ms plus query cost, and /proc VmRSS/VmHWM from initialization through teardown. Device peak is a sampled lower bound, includes CUDA context/modules, and may miss short allocations; it is not an allocator peak. Each process runs both policies for one observable; the peak is not attributable to either arm separately."
+    }
+  ]
+}

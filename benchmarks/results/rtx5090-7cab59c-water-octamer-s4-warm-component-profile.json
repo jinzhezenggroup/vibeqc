@@ -1,0 +1,116 @@
+{
+  "benchmark": "vibeqc_nvtx_component_profile",
+  "schema_version": 1,
+  "environment": {
+    "accelerator": {
+      "backend": "cuda",
+      "clock_rate_khz": 2407000,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "device_id": 0,
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "commit": "7cab59cf384523e5f2b996b063e3e09dcde0c4fb",
+      "dirty": false,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "timestamp_utc": "2026-08-26T17:43:46.385643+00:00"
+  },
+  "profile": {
+    "classification": {
+      "direct J/K and Fock transforms": "kernel name contains 'fock'",
+      "one-electron force": "kernel name contains 'one_electron_force_kernel'",
+      "screening and queue preparation": "kernel name contains 'compact', 'generated_shell_task', or 'density_bound'",
+      "two-electron force": "kernel name contains 'two_electron_force', or is a generated force kernel"
+    },
+    "kernel_time_milliseconds": 1433.957,
+    "nvtx_range": "vibeqc/warm/energy-plus-force",
+    "profiler": "NVIDIA Nsight Systems version 2025.1.3.140-251335620677v0",
+    "trace": "cuda,nvtx",
+    "top_contributors": [
+      {
+        "component": "two-electron force",
+        "kernel_time_milliseconds": 898.338,
+        "kernel_time_percent": 62.65,
+        "launches": 31
+      },
+      {
+        "component": "direct J/K and Fock transforms",
+        "kernel_time_milliseconds": 453.942,
+        "kernel_time_percent": 31.66,
+        "launches": 20
+      },
+      {
+        "component": "one-electron force",
+        "kernel_time_milliseconds": 51.903,
+        "kernel_time_percent": 3.62,
+        "launches": 1
+      }
+    ],
+    "remaining_components": [
+      {
+        "component": "other",
+        "kernel_time_milliseconds": 19.256,
+        "kernel_time_percent": 1.34,
+        "launches": 74
+      },
+      {
+        "component": "screening and queue preparation",
+        "kernel_time_milliseconds": 10.518,
+        "kernel_time_percent": 0.73,
+        "launches": 10
+      }
+    ],
+    "top_kernels": [
+      {
+        "kernel": "generated_ppps_shell_class_force_rhf_persistent_kernel",
+        "kernel_time_milliseconds": 93.925,
+        "launches": 1,
+        "registers_per_thread": 164,
+        "local_memory_per_thread_bytes": 0
+      },
+      {
+        "kernel": "generated_dppp_shell_class_force_rhf_persistent_kernel",
+        "kernel_time_milliseconds": 70.684,
+        "launches": 1,
+        "registers_per_thread": 166,
+        "local_memory_per_thread_bytes": 0
+      },
+      {
+        "kernel": "two_electron_force_quartet_packed_persistent_kernel<rhf, order 0>",
+        "kernel_time_milliseconds": 66.975,
+        "launches": 1,
+        "registers_per_thread": 190,
+        "local_memory_per_thread_bytes": 0
+      }
+    ]
+  },
+  "workload": {
+    "ao_count": 192,
+    "batch_size": 1,
+    "basis_representation": "spherical",
+    "case": "water-octamer-s4-def2-svp-spherical",
+    "density_tolerance": 1e-10,
+    "direct_scf_tolerance": 1e-14,
+    "energy_tolerance": 1e-12,
+    "iterations": 4,
+    "max_iterations": 100,
+    "method": "rhf",
+    "screening_tolerance": 1e-14,
+    "warm_start_used": true
+  },
+  "warning": "Profiler instrumentation increased the synchronized host interval to 3.507 s. Use this artifact for device component attribution, not endpoint timing."
+}

@@ -1,0 +1,28 @@
+"""Exercise the failed direct route while retaining actual binary capabilities."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+assert os.environ.get("SLURM_JOB_ID")
+out=Path(".artifacts/issue206/no-aot-metadata")
+out.mkdir(exist_ok=False)
+cmd=[sys.executable,"benchmarks/real_molecule_gate.py","--size","192","--repeats","1","--density-fitting","none","--output-directory",str(out/"matrix")]
+with (out/"execution.log").open("x") as log:
+ result=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,check=False)
+payload={"scope":__doc__,"slurm_job_id":os.environ["SLURM_JOB_ID"],"cuda_visible_devices":os.environ.get("CUDA_VISIBLE_DEVICES"),"command":cmd,"exit_code":result.returncode,"runner_sha256":hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),"library_sha256":hashlib.sha256(Path(os.environ["VIBEQC_LIBRARY"]).read_bytes()).hexdigest(),"points":[]}
+summary=json.loads((out/"matrix/summary.json").read_text())
+assert result.returncode==2 and not summary["passed"]
+assert len(summary["points"])==2
+for point in summary["points"]:
+ rows=[json.loads(x) for x in Path(point["progress_artifact"]).read_text().splitlines()]
+ native=next(x for x in rows if x["stage"]=="native_build")
+ assert native["library_sha256"]==payload["library_sha256"]
+ assert native["probe"]["device"]["official_profile"]=="generic_cuda"
+ assert not point["passed"]
+ payload["points"].append({"point":point,"journal":rows})
+payload["status"]="metadata regression passed; both molecular calculations remain failed"
+(out/"manifest.json").write_text(json.dumps(payload,indent=2)+"\n")
+print(payload["status"],flush=True)

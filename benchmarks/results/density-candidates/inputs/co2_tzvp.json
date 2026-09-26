@@ -1,0 +1,727 @@
+{
+  "schema": "vibeqc.density-workload-reference.v1",
+  "inputs": {
+    "name": "co2_tzvp",
+    "basis_name": "def2-tzvp",
+    "atomic_numbers": [
+      8,
+      6,
+      8
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        -2.2
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        2.2
+      ]
+    ],
+    "basis_representation": "real_spherical",
+    "charge": 0,
+    "multiplicity": 1,
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            27032.382631,
+            0.00021726302465
+          ],
+          [
+            4052.3871392,
+            0.0016838662199
+          ],
+          [
+            922.3272271,
+            0.0087395616265
+          ],
+          [
+            261.24070989,
+            0.035239968808
+          ],
+          [
+            85.354641351,
+            0.11153519115
+          ],
+          [
+            31.035035245,
+            0.25588953961
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            12.260860728,
+            0.39768730901
+          ],
+          [
+            4.9987076005,
+            0.2462784943
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            1.1703108158,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.46474740994,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.18504536357,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            63.274954801,
+            0.0060685103418
+          ],
+          [
+            14.627049379,
+            0.041912575824
+          ],
+          [
+            4.4501223456,
+            0.16153841088
+          ],
+          [
+            1.5275799647,
+            0.35706951311
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.52935117943,
+            0.44794207502
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.1747842127,
+            0.24446069663
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            2.314,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            0.645,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            1.428,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            13575.349682,
+            0.00022245814352
+          ],
+          [
+            2035.233368,
+            0.0017232738252
+          ],
+          [
+            463.22562359,
+            0.0089255715314
+          ],
+          [
+            131.20019598,
+            0.035727984502
+          ],
+          [
+            42.853015891,
+            0.11076259931
+          ],
+          [
+            15.584185766,
+            0.24295627626
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            6.2067138508,
+            0.41440263448
+          ],
+          [
+            2.5764896527,
+            0.23744968655
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.57696339419,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.22972831358,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.095164440028,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            34.697232244,
+            0.0053333657805
+          ],
+          [
+            7.9582622826,
+            0.035864109092
+          ],
+          [
+            2.3780826883,
+            0.14215873329
+          ],
+          [
+            0.81433208183,
+            0.34270471845
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.28887547253,
+            0.46445822433
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.10056823671,
+            0.24955789874
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.097,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            0.318,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            0.761,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            27032.382631,
+            0.00021726302465
+          ],
+          [
+            4052.3871392,
+            0.0016838662199
+          ],
+          [
+            922.3272271,
+            0.0087395616265
+          ],
+          [
+            261.24070989,
+            0.035239968808
+          ],
+          [
+            85.354641351,
+            0.11153519115
+          ],
+          [
+            31.035035245,
+            0.25588953961
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            12.260860728,
+            0.39768730901
+          ],
+          [
+            4.9987076005,
+            0.2462784943
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            1.1703108158,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.46474740994,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.18504536357,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            63.274954801,
+            0.0060685103418
+          ],
+          [
+            14.627049379,
+            0.041912575824
+          ],
+          [
+            4.4501223456,
+            0.16153841088
+          ],
+          [
+            1.5275799647,
+            0.35706951311
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.52935117943,
+            0.44794207502
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.1747842127,
+            0.24446069663
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            2.314,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            0.645,
+            1.0
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            1.428,
+            1.0
+          ]
+        ]
+      }
+    ],
+    "grid_spec": {
+      "radial_points": 2,
+      "angular_polar": 16,
+      "angular_azimuth": 32,
+      "element_radii": [],
+      "partition_iterations": 3,
+      "coincident_tolerance": 1e-12,
+      "version": 1,
+      "radial_rule": "rational-legendre",
+      "angular_rule": "legendre-trapezoid",
+      "partition": "becke-equal-radius",
+      "pruning": "none",
+      "units": "Bohr",
+      "ordering": "atom-radial-polar-azimuth"
+    }
+  },
+  "inputs_hash": "406d8ca86aa05d09d792ad54f7544854209c63fcfdf87ff49fc940577230e716",
+  "grid_identity": "408daaa595bc979ec7b3470478b60f97cd0de8a3772869d9b0efd3fd8f073b35",
+  "grid_provenance": {
+    "atoms": [
+      {
+        "atomic_number": 8,
+        "position": [
+          0.0,
+          0.0,
+          -2.2
+        ]
+      },
+      {
+        "atomic_number": 6,
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "atomic_number": 8,
+        "position": [
+          0.0,
+          0.0,
+          2.2
+        ]
+      }
+    ],
+    "grid_identity": "b7dc9777c93141380c8dd8e11c2b418b715224682d18db9cb20dffe8aa928778",
+    "grid_spec": {
+      "angular_azimuth": 32,
+      "angular_polar": 16,
+      "angular_rule": "legendre-trapezoid",
+      "coincident_tolerance": 1e-12,
+      "element_radii": [],
+      "ordering": "atom-radial-polar-azimuth",
+      "partition": "becke-equal-radius",
+      "partition_iterations": 3,
+      "pruning": "none",
+      "radial_points": 2,
+      "radial_rule": "rational-legendre",
+      "units": "Bohr",
+      "version": 1
+    },
+    "units": "Bohr"
+  },
+  "layout": "total",
+  "reference": {
+    "PySCF": "2.14.0",
+    "Libxc": "7.0.0",
+    "exporter_sha256": "3a4ead4f2dcb6154e6a884c73cd26eb2b10ffba79f19f8e8feb745660717be71",
+    "basis_adapter_sha256": "210765088eda3366537b0e7baefb89dacc634ee82b032bf972bf991475168b3e",
+    "numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
+    "angular_momenta": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      2,
+      3,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      2,
+      3,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      2,
+      3
+    ],
+    "producer": "PySCF PBE RKS",
+    "converged": true,
+    "energy": -188.47908829564477,
+    "gradient_norm": 9.317870909225072e-08,
+    "seconds": 0.681661447044462,
+    "threads": 2,
+    "conv_tol": 1e-10,
+    "conv_tol_grad": 1e-07,
+    "producer_grid_level": 1,
+    "endpoint_scope": "complete fixed-grid E/V on declared coarse radial quadrature; no filtering, clipping or grid convergence claim"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        3072,
+        3
+      ],
+      "dtype": "float64",
+      "sha256": "f27a205f28ee6cbae782f52d93ef5f735735489323f8c53503e663e49b7197c6"
+    },
+    "weights": {
+      "shape": [
+        3072
+      ],
+      "dtype": "float64",
+      "sha256": "f50f9f2d6e235fd5c725e2d0838c212f2c148270d5e00b8c6773da24e5b431d9"
+    },
+    "owners": {
+      "shape": [
+        3072
+      ],
+      "dtype": "uint32",
+      "sha256": "f3855f302389df3752dadf4e1645399bfba97525b53ca6c200e66965e859a4d6"
+    },
+    "density_spin": {
+      "shape": [
+        2,
+        93,
+        93
+      ],
+      "dtype": "float64",
+      "sha256": "427502585c047f9877ea8b8305e8ef42ddf0e5fa8153e2b2c2a94fd40418e08c"
+    },
+    "ao_scale": {
+      "shape": [
+        93
+      ],
+      "dtype": "float64",
+      "sha256": "f85e25ed270028d70b858f28176d82a03a7e317597b462ea9d133afaa35a5cff"
+    },
+    "coefficients_0": {
+      "shape": [
+        93,
+        11
+      ],
+      "dtype": "float64",
+      "sha256": "ee959d5e0e21768c5dcee439680c3e78552fbdbf4d6044640ccf4356fc54538e"
+    },
+    "occupations_0": {
+      "shape": [
+        11
+      ],
+      "dtype": "float64",
+      "sha256": "29f6db545d43579dff149c61e371f139d5c14e017765ad4161082dd12b07bb37"
+    },
+    "coefficients_1": {
+      "shape": [
+        93,
+        11
+      ],
+      "dtype": "float64",
+      "sha256": "ee959d5e0e21768c5dcee439680c3e78552fbdbf4d6044640ccf4356fc54538e"
+    },
+    "occupations_1": {
+      "shape": [
+        11
+      ],
+      "dtype": "float64",
+      "sha256": "29f6db545d43579dff149c61e371f139d5c14e017765ad4161082dd12b07bb37"
+    },
+    "sample_ids": {
+      "shape": [
+        64
+      ],
+      "dtype": "uint32",
+      "sha256": "0ad222e4c6e6d93291bb868cc459b3893e4d4a87e23ee7e1f4f7700b5f552d63"
+    },
+    "sample_jets": {
+      "shape": [
+        4,
+        64,
+        93
+      ],
+      "dtype": "float64",
+      "sha256": "64f7c1a53f16252585b0a258847a2313b51948ed947cf2db0b78f04b5b77dc1b"
+    },
+    "sample_rho_gradient": {
+      "shape": [
+        2,
+        4,
+        64
+      ],
+      "dtype": "float64",
+      "sha256": "ed22e2ea9917ef5e8527afe09ffe8829fc724badd48c49765165e2c136c3ff80"
+    },
+    "LDA_XC_PW_energy": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "b759d6dff0b4285fbee4a35730f0f8ecd1aca2d5e153dfb9a4fc4b567d707051"
+    },
+    "LDA_XC_PW_electrons": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "9edaa6195920fb55a5753cc6a1d5a48cc9ca482a540875a1e0e853aa72a23a52"
+    },
+    "LDA_XC_PW_potential": {
+      "shape": [
+        93,
+        93
+      ],
+      "dtype": "float64",
+      "sha256": "fb7432a735531aa59d7516b31ed4dc9783ab4e25066201507b197d1639bd317e"
+    },
+    "PBE_energy": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "29e84149672062dadaf10c4ea02ce952f9fbfd63658af8a4734dbb523f9d6893"
+    },
+    "PBE_electrons": {
+      "shape": [
+        1
+      ],
+      "dtype": "float64",
+      "sha256": "9edaa6195920fb55a5753cc6a1d5a48cc9ca482a540875a1e0e853aa72a23a52"
+    },
+    "PBE_potential": {
+      "shape": [
+        93,
+        93
+      ],
+      "dtype": "float64",
+      "sha256": "edee23594638e6a3b1224c9274a480582293c95d608e6c6161c670e3e769ccdc"
+    }
+  },
+  "identity": "004f6b8f9d8a80e4584a798ee5f18d35761af8d93e7ec7ddc271d3d50df071de"
+}

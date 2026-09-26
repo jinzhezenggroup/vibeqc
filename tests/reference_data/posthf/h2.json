@@ -1,0 +1,144 @@
+{
+  "schema": "vibeqc.posthf_reference",
+  "version": 1,
+  "inputs": {
+    "name": "h2",
+    "atomic_numbers": [
+      1,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.1,
+        0.2,
+        1.4
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "cartesian",
+    "charge": 0,
+    "multiplicity": 1
+  },
+  "auxiliary_shells": [
+    {
+      "atom_index": 0,
+      "angular_momentum": 0,
+      "primitives": [
+        [
+          3.425250914,
+          0.1543289673
+        ],
+        [
+          0.6239137298,
+          0.5353281423
+        ],
+        [
+          0.168855404,
+          0.4446345422
+        ]
+      ]
+    },
+    {
+      "atom_index": 1,
+      "angular_momentum": 0,
+      "primitives": [
+        [
+          3.425250914,
+          0.1543289673
+        ],
+        [
+          0.6239137298,
+          0.5353281423
+        ],
+        [
+          0.168855404,
+          0.4446345422
+        ]
+      ]
+    }
+  ],
+  "actual_angular_momenta": [
+    0,
+    0
+  ],
+  "records": {
+    "conventional": {
+      "hf_energy": -1.1161349456102454,
+      "correlation_energy": -0.013378767959626213,
+      "scf_residual": 2.220446049250313e-16,
+      "electron_count": 2
+    },
+    "df": {
+      "hf_energy": -1.192241526042237,
+      "correlation_energy": -0.007924143467761102,
+      "scf_residual": 2.220446049250313e-16,
+      "electron_count": 2
+    }
+  },
+  "array_hash": "cfd74081c2a53e4b613d706a2cd2a066126f2e200e4b90f4569d13c518cd0f70",
+  "versions": {
+    "pyscf": "2.14.0",
+    "numpy": "2.4.6",
+    "numpy_blas_configuration": "{\n  \"Compilers\": {\n    \"c\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"14.2.1\",\n      \"commands\": \"cc\"\n    },\n    \"cython\": {\n      \"name\": \"cython\",\n      \"linker\": \"cython\",\n      \"version\": \"3.2.4\",\n      \"commands\": \"cython\"\n    },\n    \"c++\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"14.2.1\",\n      \"commands\": \"c++\"\n    }\n  },\n  \"Machine Information\": {\n    \"host\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    },\n    \"build\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    }\n  },\n  \"Build Dependencies\": {\n    \"blas\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.31.188.0\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.31.188.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project/.openblas\"\n    },\n    \"lapack\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.31.188.0\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.31.188.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project/.openblas\"\n    }\n  },\n  \"Python Information\": {\n    \"path\": \"/tmp/build-env-gjolnpt6/bin/python\",\n    \"version\": \"3.11\"\n  },\n  \"SIMD Extensions\": {\n    \"baseline\": [\n      \"X86_V2\"\n    ],\n    \"found\": [\n      \"X86_V3\"\n    ],\n    \"not found\": [\n      \"X86_V4\",\n      \"AVX512_ICL\",\n      \"AVX512_SPR\"\n    ]\n  }\n}\n",
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]"
+  },
+  "provenance": {
+    "pyscf": "Apache-2.0",
+    "libcint": "BSD-2-Clause",
+    "exporter": "original repository GPL-3.0-or-later"
+  },
+  "settings": {
+    "scf_energy_tolerance": 1e-13,
+    "scf_gradient_tolerance": 1e-11,
+    "screening": 0,
+    "df_relative_threshold": 1e-10,
+    "frozen_core": null,
+    "mo_phase": "largest unit-normalized AO coefficient positive",
+    "eri": "chemists (pq|rs)",
+    "t2": "restricted ijab = (ia|jb)/D",
+    "units": "Bohr, Hartree"
+  },
+  "conventional_df_ao_max_difference": 0.10059818980817922
+}

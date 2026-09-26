@@ -1,0 +1,22 @@
+{
+  "scope": "Accuracy-only SCF-control probes; do not replace the original gate samples.",
+  "runner_sha256": "e8c5f7351d5c31521f0ec5e5e027b5c874c405ec07a239b07bfad3e09f9c4390",
+  "slurm_job_id": "9867",
+  "cuda_visible_devices": "0",
+  "library_sha256": "6100ffe6cf4997935ff440b91e622e37dbb8b96207894291d8ff586071320d9d",
+  "oracle_sha256": "39f4b6746961c8fced83cc57bbac6af8fb0461b5e98b3f6cbfa2861f50883288",
+  "controls": {
+    "native_density_tolerances": [
+      1e-10,
+      1e-11,
+      1e-12
+    ],
+    "stock_changed_gradient_tolerances": [
+      1e-09,
+      1e-10,
+      1e-11
+    ]
+  },
+  "native": [],
+  "stock_changed": []
+}

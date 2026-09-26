@@ -1,0 +1,671 @@
+{
+  "archive_sha256": "94e8a23b5f7176151a26c3e1d2ee0bbbe1f6340e2632719843c5e45b7a1806ef",
+  "files": [
+    {
+      "bytes": 5932,
+      "path": "archive-response-panel.py",
+      "sha256": "6329f4733d05f3f3488c389c307498e7bc898d0ad6b411836d0721574546f421"
+    },
+    {
+      "bytes": 2864,
+      "path": "df-fixed-panel-probe.py",
+      "sha256": "d7f9bfad8c6bb9d81712f0ff4fab3f1d5ec11e605e8738ea607c1152bc3910cb"
+    },
+    {
+      "bytes": 1611,
+      "path": "df-response-panel-ab-quiet.log",
+      "sha256": "8e9e614dfa429311cf160d0c87a582609a96224ddb1c63a63ba6e0d35d1d9d9f"
+    },
+    {
+      "bytes": 83246,
+      "path": "df-response-panel-ab-quiet/summary.json",
+      "sha256": "e242c93c946e5135fde6adde2f1733896f968a76499d8269ac370589bce75f04"
+    },
+    {
+      "bytes": 4882,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-0-before.json",
+      "sha256": "bfa0a1bb22a094908283fb1af818890d9d38e1e747e5de37c736cf1cbba3d444"
+    },
+    {
+      "bytes": 118,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-0-before.log",
+      "sha256": "bb4235d0eb850156f84de546ecb7f766e043f53b0ca16fd188382c3e18765ab1"
+    },
+    {
+      "bytes": 4872,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-1-after.json",
+      "sha256": "6dd956a26253db24f641949f3ff2940a279f20f1ef1be56446731a7fb91317f2"
+    },
+    {
+      "bytes": 117,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-1-after.log",
+      "sha256": "6097d895ae58380337ace6601677d8ecb95c0a2f011d81de5643a87f987e0910"
+    },
+    {
+      "bytes": 4885,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-2-after.json",
+      "sha256": "cf1a05a70364dec15edb9f13228ca6b26d33df70f4d693f18a1e158171b657a0"
+    },
+    {
+      "bytes": 117,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-2-after.log",
+      "sha256": "9618fde0089b2e541a550e59e00515a3ee3b1489e9fe89c49d0f395d6b4aecce"
+    },
+    {
+      "bytes": 4881,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-3-before.json",
+      "sha256": "e6e2dbf05c2e3e506ed5cc735fe3579bc9de54e382c596d7d5278308e0a01bc6"
+    },
+    {
+      "bytes": 118,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-3-before.log",
+      "sha256": "5d21dff844499ae68056985bcaa115f15de6b1373607b7e6d75991c188125c21"
+    },
+    {
+      "bytes": 4871,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-4-before.json",
+      "sha256": "337befa1b942245b3ab412319d61709653b0f091cdde8c8e26c2abca9e706251"
+    },
+    {
+      "bytes": 118,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-4-before.log",
+      "sha256": "0ec81ee349f039c22e38325d06527dd1a38e94f0ef902f70999b416f2871b3f5"
+    },
+    {
+      "bytes": 4876,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-5-after.json",
+      "sha256": "7cc9502223db0dc3148fe1773cb16e63a7ad1d20de7880b6725e5bf59c99d3db"
+    },
+    {
+      "bytes": 117,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-5-after.log",
+      "sha256": "25d6826afd161f503ae8d0f3fcf4a4d71898d084db50b07b84b8ab88fa8fa0f6"
+    },
+    {
+      "bytes": 4875,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-6-after.json",
+      "sha256": "daeb9050e243cbbcf72cdaae171c6dd3f6756f999f506528970bd1277441d25b"
+    },
+    {
+      "bytes": 117,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-6-after.log",
+      "sha256": "0c01505eab14691d075b12da7671215abb2e27ede2787e7a56f3c81f07a5bcfc"
+    },
+    {
+      "bytes": 4877,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-7-before.json",
+      "sha256": "f68ccc8e60208afd74594c4c33aca1b9d72fe916c71c6fc70b82f770122c067b"
+    },
+    {
+      "bytes": 118,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-7-before.log",
+      "sha256": "f1baa1f99550ec57d539756de63472fe8638a3fcb67579069c9efc38c98e25f4"
+    },
+    {
+      "bytes": 4874,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-8-before.json",
+      "sha256": "f2b4537928181c80697cbd622a7c8b72ad99de1ea68e82d06523fad7cfba390c"
+    },
+    {
+      "bytes": 118,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-8-before.log",
+      "sha256": "aba3d2b9caeaedb0eeacb2858bc5423f86d5fa689d8141068e80de326732c765"
+    },
+    {
+      "bytes": 4880,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-9-after.json",
+      "sha256": "462ca4a572fc5b99c48e1c28143ec2663a78f135e6a3fdcf282211cffb7f62f6"
+    },
+    {
+      "bytes": 117,
+      "path": "df-response-panel-ab-quiet/water-octamer-s4-def2-svp-spherical-9-after.log",
+      "sha256": "d952c1f84ccf0d80c21e5510845e8a4b613b7415df986c8445a5a5e2336b8984"
+    },
+    {
+      "bytes": 3339,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-0-before.json",
+      "sha256": "5e778596295c4bce234ba6314c86f297fe4d5a3310a65ded7b2a3ce0b066fe97"
+    },
+    {
+      "bytes": 116,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-0-before.log",
+      "sha256": "56831e2538c43b9e54bd26c2bc277f49332c4c653124c234587133a68e98c809"
+    },
+    {
+      "bytes": 3336,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-1-after.json",
+      "sha256": "232745b9e1ce282813958f4c8d3c0469fa820bd74f2108fac4914cf3b5cd3317"
+    },
+    {
+      "bytes": 115,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-1-after.log",
+      "sha256": "87e59a6a87117d0c93613756b0468d84acd97760365aec54330858c36f206d25"
+    },
+    {
+      "bytes": 3337,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-2-after.json",
+      "sha256": "ad5a66a9c86299028b16d399cf341418841dd19ff27ec2b5fd77ba71c08622b9"
+    },
+    {
+      "bytes": 115,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-2-after.log",
+      "sha256": "ce170d39bcab92f6340b6e2e00959003337fc9747f942a596a17fc463b767e1c"
+    },
+    {
+      "bytes": 3341,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-3-before.json",
+      "sha256": "ca7db4a53ada4be2b30903216c015826c24a6c314edd4a2dbe744087d8aef9cb"
+    },
+    {
+      "bytes": 116,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-3-before.log",
+      "sha256": "470ad2ec737a5595a69bc9ecf8de9f13a6f7476237da219fc5e6d7fa6bd95386"
+    },
+    {
+      "bytes": 3333,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-4-before.json",
+      "sha256": "1e3e9e92901f19dc4f4e594a36857204aa7455c6b45eb5e929c9d992b5f2aea7"
+    },
+    {
+      "bytes": 116,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-4-before.log",
+      "sha256": "47caf208ee7bd58f537105afe6bf9c6c4cd556a35693f692a8db7546b431ebfa"
+    },
+    {
+      "bytes": 3341,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-5-after.json",
+      "sha256": "c55071cb924d3f48670387aa5f8ca19ce619c403c281140ffb002950bed0f55e"
+    },
+    {
+      "bytes": 115,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-5-after.log",
+      "sha256": "7c01df07b35c9974a36d81ed7d547d9df76dc10b8746704184238aed1368354d"
+    },
+    {
+      "bytes": 3334,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-6-after.json",
+      "sha256": "037de1dceab918ce1ceaab79c1532b0f8d6cea3e024743feeac7bedabe899153"
+    },
+    {
+      "bytes": 115,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-6-after.log",
+      "sha256": "c5020342e9b3f4b34eda4996f92151360175ceaa59a8f57dd3b6548647609e40"
+    },
+    {
+      "bytes": 3333,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-7-before.json",
+      "sha256": "b183c8197c7ef2474cefbcc32c6a3121f8bb18ad91e26b1a6418ab993806d767"
+    },
+    {
+      "bytes": 116,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-7-before.log",
+      "sha256": "d83df807b55c4446182a98777f92b6d044d0f3b9c7a94b4bf95c6cc972eef001"
+    },
+    {
+      "bytes": 3337,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-8-before.json",
+      "sha256": "a207f69592c71c07c06d617755936b48c1fe5f373f8646156de1cf78ce1f26e1"
+    },
+    {
+      "bytes": 116,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-8-before.log",
+      "sha256": "b021a06ef32128f163378a6fb41ccc8b2d9000c8a7904544ca2bc0c5417ef9ed"
+    },
+    {
+      "bytes": 3334,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-9-after.json",
+      "sha256": "dbf9978f508baba361d8eb6df92e95753614889308548b4181e3dc33123f02dc"
+    },
+    {
+      "bytes": 115,
+      "path": "df-response-panel-ab-quiet/water-tetramer-def2-svp-spherical-9-after.log",
+      "sha256": "7dba465dc39983ba2abad968d2cedff0d9de537d464a1901c1ee483b0e87d9ca"
+    },
+    {
+      "bytes": 1604,
+      "path": "df-response-panel-ab.log",
+      "sha256": "ec932ef6b212d14f3006fd6ed258d8fc1211b4551599ca7abb55471136f7105a"
+    },
+    {
+      "bytes": 4038,
+      "path": "df-response-panel-ab.py",
+      "sha256": "4b9ef12d5c57efa18bd00d0e1f7743d19206bdf64737e791ea715660608905e2"
+    },
+    {
+      "bytes": 83140,
+      "path": "df-response-panel-ab/summary.json",
+      "sha256": "9f41af48f6b9dfc5bc086643687f1c8abd083e27e29f3c65cd34fd98636a85bd"
+    },
+    {
+      "bytes": 4877,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-0-before.json",
+      "sha256": "f153f79e124d2a9c04babcc99e0e405045c6df0a860191fd2e20b4b23c7f8955"
+    },
+    {
+      "bytes": 112,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-0-before.log",
+      "sha256": "ec2f4f1108d4483b2c8d9c3aa650e58f2a71938403d6c4460d1b4092456c3b13"
+    },
+    {
+      "bytes": 4875,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-1-after.json",
+      "sha256": "f4d6cb5489135e05db4366bcaa18e9fd653bcc08cb427a0dadb18b98da4c2b5a"
+    },
+    {
+      "bytes": 111,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-1-after.log",
+      "sha256": "468178be47c371d602e77f39249f77586e38d2ae8c8dcc3de282d6a805172fe3"
+    },
+    {
+      "bytes": 4873,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-2-after.json",
+      "sha256": "aaa2adf2aaa60b7ba98f2024733d3943684489cbc058e4132942bf279ed9272c"
+    },
+    {
+      "bytes": 111,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-2-after.log",
+      "sha256": "4de9adf4143e4d4cdbe170dc34c899e1743ed106b1d83c5521882eb4e8f8fad1"
+    },
+    {
+      "bytes": 4874,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-3-before.json",
+      "sha256": "3465786c09e14b52ad7395b034300f4d5278a0f1f41de6660c52e337f2200f5e"
+    },
+    {
+      "bytes": 112,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-3-before.log",
+      "sha256": "8303842ad69440504c4e6fd70a6888598c14dd1f30ca1fe74c48249f0cd04f4e"
+    },
+    {
+      "bytes": 4881,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-4-before.json",
+      "sha256": "44b194759b4b11a1b7558fe3da13bbeac64b0b27c3c466d49a630fbb12eb99e5"
+    },
+    {
+      "bytes": 112,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-4-before.log",
+      "sha256": "8825de610047029aee78eb2897aaf728728c49a86023129cbf32b02bb0ce4443"
+    },
+    {
+      "bytes": 4878,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-5-after.json",
+      "sha256": "8dfe1144ed7c3ae5c33d34ecb6484e69eab0847cd197e3553470449d33a88fbf"
+    },
+    {
+      "bytes": 111,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-5-after.log",
+      "sha256": "53dfa9d3c871329440728ff7faf6720d6c8afd81fa6e6a84e66b8b9527a77c20"
+    },
+    {
+      "bytes": 4879,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-6-after.json",
+      "sha256": "df7807a4ea9f61f5c2a2de4e4a92d6e9c2723e6b8d00d66c64ca9d49cd565c65"
+    },
+    {
+      "bytes": 111,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-6-after.log",
+      "sha256": "64cb0d68a6d1b056f1c11f1c6e8b331654fb6345d422c7b93305f808033b34e3"
+    },
+    {
+      "bytes": 4879,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-7-before.json",
+      "sha256": "5506cce45fd7083b661dfe6e61cf6bb649d320c178f854119d8eca9ee4fc1eaf"
+    },
+    {
+      "bytes": 112,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-7-before.log",
+      "sha256": "a49390a9ff1addf4915f93d9f5bb0607c2c86335ebeb9479dfaa8f1b490d6f2f"
+    },
+    {
+      "bytes": 4876,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-8-before.json",
+      "sha256": "111ee639bb9b369128b4b3ee6ef4cf31a21acddb601ff07aafb76d32d061ca69"
+    },
+    {
+      "bytes": 112,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-8-before.log",
+      "sha256": "bf12ab46745b46c7f40abbd4f53c28dec9748ce5b146f24d35eb5080d86a9d57"
+    },
+    {
+      "bytes": 4884,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-9-after.json",
+      "sha256": "68b14959e049326fbc13e93ee659d4ca96e6b869233db17bd595ed3bf73ef4e9"
+    },
+    {
+      "bytes": 111,
+      "path": "df-response-panel-ab/water-octamer-s4-def2-svp-spherical-9-after.log",
+      "sha256": "3f5670db6a720131b6078ef3042bcd5c83a47739cd757e9f8f02bb2e059b6298"
+    },
+    {
+      "bytes": 3339,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-0-before.json",
+      "sha256": "c0f9a3ff13cec0f390dfa32ac836fb0293fa28e7f7ffc29543320367432a7f8f"
+    },
+    {
+      "bytes": 110,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-0-before.log",
+      "sha256": "92a4bc7656a1cb98120e3508b649356920f4ca44819ac6645a469c4a7277cc63"
+    },
+    {
+      "bytes": 3338,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-1-after.json",
+      "sha256": "e761705d132b4a5fc275a0bdc9a9b34acaf8f25e898aee90d74a4cd4e95bf01d"
+    },
+    {
+      "bytes": 109,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-1-after.log",
+      "sha256": "c42c8f173442977a2da14413f412a895bb222eda776929d2d3863ada56982b34"
+    },
+    {
+      "bytes": 3345,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-2-after.json",
+      "sha256": "55f553aa3deb38eabe69ade7774002390db9894307a0efbe0c6a5001d63f3caa"
+    },
+    {
+      "bytes": 109,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-2-after.log",
+      "sha256": "ee7894b92f831a6e73d4bd1b4777f180eab0bf2f449afca05811648cfdb27561"
+    },
+    {
+      "bytes": 3337,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-3-before.json",
+      "sha256": "b11939491f96bdaee83a8f006f93100339968e15df29a3aee947b9508e74383d"
+    },
+    {
+      "bytes": 110,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-3-before.log",
+      "sha256": "badf52f78bd8cfb2edefecb69ccf91ddbf12be916277c65f18c0839efc25b5a1"
+    },
+    {
+      "bytes": 3335,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-4-before.json",
+      "sha256": "c4d68298d9281ba3cb9ca9683581cea432fe1b2f01f209fdcfaadabe4f1349e2"
+    },
+    {
+      "bytes": 110,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-4-before.log",
+      "sha256": "d2501d2289eaff542da8f7c78ce9ef99756fc47a35c9386087a647aea4d7076b"
+    },
+    {
+      "bytes": 3339,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-5-after.json",
+      "sha256": "8d3bfcd4357cc65e5f535c1c99210c4aa32ff7adf273e15e8939fafeec0f640d"
+    },
+    {
+      "bytes": 109,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-5-after.log",
+      "sha256": "4e081b547389287ba2e32c0905b4baab47c71a82eec38e75327a1f487c49fe23"
+    },
+    {
+      "bytes": 3336,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-6-after.json",
+      "sha256": "d5f13f4b2930c9e7060c1a364cc5200113ae876483736aa06f09f82ec20db4f6"
+    },
+    {
+      "bytes": 109,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-6-after.log",
+      "sha256": "95337703941f89ed30d118e2570a817199aa777d5b2fa8ac30d64fa59af88ab5"
+    },
+    {
+      "bytes": 3334,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-7-before.json",
+      "sha256": "bb8e5f047726adf9740b0b9fea474db108322dc7761f2318c9ea494b1fcf3ca0"
+    },
+    {
+      "bytes": 110,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-7-before.log",
+      "sha256": "6b2f40a0256cf16aca3841a0e9fe6758b557e93bad87604b541779615adb8da9"
+    },
+    {
+      "bytes": 3340,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-8-before.json",
+      "sha256": "928101837830c9bfc20186ef2b33b676aafcdbe4426f2ab6a24b105c0a500dab"
+    },
+    {
+      "bytes": 110,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-8-before.log",
+      "sha256": "5880db4ed5f34accbab2814a1b031de11b90976024d2a22013b4d8fe407245cc"
+    },
+    {
+      "bytes": 3333,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-9-after.json",
+      "sha256": "68658cf440a3aceef2df4c108c7f9bb009fa962b3262259bb039f91f39d5234a"
+    },
+    {
+      "bytes": 109,
+      "path": "df-response-panel-ab/water-tetramer-def2-svp-spherical-9-after.log",
+      "sha256": "d8d5f3e860ab222e48e5bc893e15c6ecf13cb8bc97ea841ec8fb7e219749a766"
+    },
+    {
+      "bytes": 37010,
+      "path": "df-response-panel-after-components.json",
+      "sha256": "5f696ae53c13604bda4eb27eedc94f941d6caebffaa188db0cf093710524e4d0"
+    },
+    {
+      "bytes": 4692,
+      "path": "df-response-panel-after-components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "c12a0aa01c94ce33319f7b8cdbeb4a78d210815a1d277dcb3bd369cf11c3d0e4"
+    },
+    {
+      "bytes": 106477,
+      "path": "df-response-panel-after-components/water-octamer-s4-def2-svp-spherical-0-force.jsonl",
+      "sha256": "aad986a7a8d036b0190cde1e237a1bfab4c84cc8e381041c9e1177fbc742ef41"
+    },
+    {
+      "bytes": 4680,
+      "path": "df-response-panel-after-components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "87ac79f97dc3f2f88d6009d9522a32b2e347fa8b14cff87f679764fd46194124"
+    },
+    {
+      "bytes": 56625,
+      "path": "df-response-panel-after-components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "4f92bc143485fbd58d4bfb32aee27c9e55ad93504e4c49861448cec24f57fec1"
+    },
+    {
+      "bytes": 35537,
+      "path": "df-response-panel-after-warm-components.json",
+      "sha256": "ceffe9e0c4b9f4e0be49f3c6d3d8a0300b594794222d8e1afde463a8d4b72c41"
+    },
+    {
+      "bytes": 4677,
+      "path": "df-response-panel-after-warm-components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "2c6c69fba8ff1ffab6cc89b6f9a55e5f3142d47cdbcf8ce8f273d32c621c90e5"
+    },
+    {
+      "bytes": 56728,
+      "path": "df-response-panel-after-warm-components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "f808781ba8a3b819070e060f33b7acf697e46e6ad6e85db5b7e3d111eeaca742"
+    },
+    {
+      "bytes": 4671,
+      "path": "df-response-panel-after-warm-components/water-tetramer-def2-svp-spherical-1-energy.jsonl",
+      "sha256": "1d02122b07344aaae9d96696a14979e1371612e780b09f10723003b796313122"
+    },
+    {
+      "bytes": 56750,
+      "path": "df-response-panel-after-warm-components/water-tetramer-def2-svp-spherical-1-force.jsonl",
+      "sha256": "9abfece3fb19745041ab1b2e82dcfad1cca5205cdf82037eec72b32086fb8626"
+    },
+    {
+      "bytes": 36737,
+      "path": "df-response-panel-before-components.json",
+      "sha256": "a619e739b8f21ea57dabb951e2a84ad172f87cc11578d35a8ff66f9eab7d3cdb"
+    },
+    {
+      "bytes": 4690,
+      "path": "df-response-panel-before-components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "032edd3f095d05bd758e79bb7ed61015c7e37badac93920f1c5e91ff8c684675"
+    },
+    {
+      "bytes": 140574,
+      "path": "df-response-panel-before-components/water-octamer-s4-def2-svp-spherical-0-force.jsonl",
+      "sha256": "437553194a2cbf9b6bad66b2aad21a49d5bb53a69d3a59d5f4f050c50281da64"
+    },
+    {
+      "bytes": 4678,
+      "path": "df-response-panel-before-components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "1cc39c4bf5fbb729760d7c97f0da6802560ea759cc33b9744b7a2fe0a0fb388c"
+    },
+    {
+      "bytes": 73714,
+      "path": "df-response-panel-before-components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "2652004bab2a213739e0f6522b1777d3ca204e0be872756e00b9af31922aec69"
+    },
+    {
+      "bytes": 35124,
+      "path": "df-response-panel-before-warm-components.json",
+      "sha256": "c9525e17f91fb9725e0ebdcfa43ec199baade5ab4a47aa64d393251f3f8e4322"
+    },
+    {
+      "bytes": 4677,
+      "path": "df-response-panel-before-warm-components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "e93566e4c3f118a0fc1718cec20bce7959b49321597494449eed1345e24cfffd"
+    },
+    {
+      "bytes": 73790,
+      "path": "df-response-panel-before-warm-components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "15db90c5a134741570b9bfd0e36a42d30185645d6234d6bc4f7a546acf231daf"
+    },
+    {
+      "bytes": 4677,
+      "path": "df-response-panel-before-warm-components/water-tetramer-def2-svp-spherical-1-energy.jsonl",
+      "sha256": "7926d8005b48abafa77361ff7a1f8c184c271a78658cbe3ac7f3bf2ed5f74314"
+    },
+    {
+      "bytes": 73821,
+      "path": "df-response-panel-before-warm-components/water-tetramer-def2-svp-spherical-1-force.jsonl",
+      "sha256": "9f0416f8a344c167c85518e511f6252deaf8d552abaed96b6f05165d7328f4cf"
+    },
+    {
+      "bytes": 253,
+      "path": "df-response-panel-components.log",
+      "sha256": "573b21ac936bee474b6093ae5d2902df14ac412bfd0a53e5471bf691d0184a28"
+    },
+    {
+      "bytes": 180631,
+      "path": "df-response-panel-fixed-134217728.jsonl",
+      "sha256": "f9092340b321ff309234e973afc4985e9028148aead8953d51daa9831b0403d7"
+    },
+    {
+      "bytes": 639333,
+      "path": "df-response-panel-fixed-33554432.jsonl",
+      "sha256": "8855ddea4ed33b1e0a06725f0890349fa252ef9a91368ac8a0481c8140d91b92"
+    },
+    {
+      "bytes": 104049,
+      "path": "df-response-panel-fixed-536870912.jsonl",
+      "sha256": "8f00d3f62f4aacf676371d571aeea88cddce58b8941ebe65d26326af45032ac9"
+    },
+    {
+      "bytes": 8614353,
+      "path": "df-response-panel-fixed.json",
+      "sha256": "a90f6bfc55faac29bdeb9ae21649a9518be1a8b4ffe40df375eebd2dd22507d0"
+    },
+    {
+      "bytes": 233,
+      "path": "df-response-panel-fixed.log",
+      "sha256": "7d8b304e1019eb3ecba132b961df76ecedccf3287c225d5ac75144a5eb6577d9"
+    },
+    {
+      "bytes": 79,
+      "path": "df-response-panel-matrix.log",
+      "sha256": "d107f1bd9596e60822ba5a78760205eb0236312d81517a353cb5c5b0bb18b3cc"
+    },
+    {
+      "bytes": 103475,
+      "path": "df-response-panel-matrix/192ao-b1.json",
+      "sha256": "0d06dfd8393930bbe35589ee41da8242994666c9725e1a280f06fe8b10bf21eb"
+    },
+    {
+      "bytes": 1207,
+      "path": "df-response-panel-matrix/192ao-b1.log",
+      "sha256": "fe13f7d3993931c0b554714010478c85d7d013386d8e7286ccb7af018700b696"
+    },
+    {
+      "bytes": 382665,
+      "path": "df-response-panel-matrix/192ao-b4.json",
+      "sha256": "ac0facbd3c2cf1b7bebe1ad54ad0abbb7ab1396ae3445717a64193f516aa1645"
+    },
+    {
+      "bytes": 1272,
+      "path": "df-response-panel-matrix/192ao-b4.log",
+      "sha256": "8930b9ccf4faf789779454d97a49028d38ee163fdcc0d6cf70a1c24a4312b789"
+    },
+    {
+      "bytes": 69619,
+      "path": "df-response-panel-matrix/96ao-b1.json",
+      "sha256": "6ed3c67e6be5e95cfd4ceda11f67b17dc87247e4079e5c5bb261830f27ff8e0e"
+    },
+    {
+      "bytes": 1200,
+      "path": "df-response-panel-matrix/96ao-b1.log",
+      "sha256": "d97e317057f94f7d9f81e28297338276f903da11381045126d64055215c63224"
+    },
+    {
+      "bytes": 246309,
+      "path": "df-response-panel-matrix/96ao-b4.json",
+      "sha256": "3622c8cb42744935049b06453c1c6671b4892ef717b5ae4c0bce4b11ac4e6757"
+    },
+    {
+      "bytes": 1262,
+      "path": "df-response-panel-matrix/96ao-b4.log",
+      "sha256": "794a9ae4630b95e24d66d01bf2c60af3b4fbb8ddf4b2cee3fac41f6e52cebac4"
+    },
+    {
+      "bytes": 5932,
+      "path": "df-response-panel-matrix/manifest.json",
+      "sha256": "814d826d5248ea468c5cba2bf219192f339073a5be6c7c4f05ddcbdf606128a9"
+    },
+    {
+      "bytes": 2362,
+      "path": "df-response-panel-reuse-build.log",
+      "sha256": "a39f41ec2421600338d4902f3d284a78433978502d297ce3eab2b623c3f3999c"
+    },
+    {
+      "bytes": 723,
+      "path": "df-response-panel-reuse-commit.txt",
+      "sha256": "2b1396aff21ec5e5d52828a11b8bd2b6bde64fd3fffb91e003c6a21910351183"
+    },
+    {
+      "bytes": 834,
+      "path": "df-response-panel-reuse-gpu-tests.log",
+      "sha256": "f74af44c0d90d4b5801f6e5a7d2f8fc1410118600c877c5003112d798bca7c49"
+    },
+    {
+      "bytes": 1204,
+      "path": "df-response-panel-reuse-hooks.log",
+      "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+    },
+    {
+      "bytes": 38011,
+      "path": "df-response-panel-reuse-runtime/CMakeCache.txt",
+      "sha256": "14120dd393564e81859bcfeb8dd04cad3bdd17b3e47beab060b0df7fa6df5fa5"
+    },
+    {
+      "bytes": 11254,
+      "path": "df-response-panel-reuse-runtime/optimization.patch",
+      "sha256": "872ab610db3e430fa9ed2612bd7e9b1d31f0ed8af0b0779588e0b3412e8e65b1"
+    },
+    {
+      "bytes": 263,
+      "path": "df-response-panel-warm-components.log",
+      "sha256": "d2b99928828e827df85318cc9942a08ec563253e68426f7b5ad473d6cd6df88f"
+    },
+    {
+      "bytes": 38011,
+      "path": "df-streamed-preparation-runtime/CMakeCache.txt",
+      "sha256": "14120dd393564e81859bcfeb8dd04cad3bdd17b3e47beab060b0df7fa6df5fa5"
+    },
+    {
+      "bytes": 40128,
+      "path": "df-streamed-preparation-runtime/optimization.patch",
+      "sha256": "010f509a1db358d97001c6a2de8c711b4d272cce37d81d9416171cfbaa4f173a"
+    },
+    {
+      "bytes": 1027,
+      "path": "measured-matrix-driver.patch",
+      "sha256": "c65a8a54843878d0bcdf06776fc52a375aedd93694e86315ab24eb75b2a6fd63"
+    }
+  ],
+  "schema": "vibeqc.evidence-archive.v1"
+}

@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda_eigensolver_probe.cu",
+  "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

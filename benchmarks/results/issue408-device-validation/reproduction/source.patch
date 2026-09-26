@@ -1,0 +1,1645 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 96f333b..18fae84 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -418,6 +418,8 @@ if(VIBEQC_ENABLE_CUDA)
+     src/scf/cuda/df_scf_library.cpp
+     src/scf/cuda/df_scf_diis.cpp
+     src/scf/cuda/df_eigensystem.cpp
++    src/scf/cuda/df_final_validation.cpp
++    src/scf/cuda/final_validation_kernels.cu
+     src/scf/cuda/df_uhf_scf.cpp
+     src/scf/cuda_eigensolver_probe.cu
+     src/scf/cuda_rhf.cpp
+diff --git a/cmake/VibeQCTests.cmake b/cmake/VibeQCTests.cmake
+index 5cfc0fa..18b1b1f 100644
+--- a/cmake/VibeQCTests.cmake
++++ b/cmake/VibeQCTests.cmake
+@@ -23,6 +23,10 @@ endfunction()
+ macro(vibeqc_add_native_tests)
+   enable_testing()
+   if(VIBEQC_ENABLE_CUDA)
++    # Run the same analytic/negative shared-policy suite through device algebra.
++    vibeqc_native_test(vibeqc_df_final_validation_tests tests/native/test_final_state.cpp
++                       LIBRARIES CUDA::cudart SKIP_77)
++    target_compile_definitions(vibeqc_df_final_validation_tests PRIVATE VIBEQC_TEST_DEVICE_FINAL_STATE=1)
+     vibeqc_native_test(vibeqc_df_density_seed_tests tests/native/test_df_density_seed.cpp
+                        LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver SKIP_77)
+     set_property(SOURCE "${VIBEQC_GRID_SOURCE}" src/dft/cuda_ks.cpp src/dft/cuda_xc.cpp
+diff --git a/python/vibeqc/resources_hf.py b/python/vibeqc/resources_hf.py
+index cc1926c..53754ea 100644
+--- a/python/vibeqc/resources_hf.py
++++ b/python/vibeqc/resources_hf.py
+@@ -33,6 +33,7 @@ from .resources import (
+ # Preserve that distinction in restart provenance; absence is not a claim
+ # that an older build implemented today's automatic execution policy.
+ _CUDA_SCHEDULE_EXTENSION_VARIABLES = (
++    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION",
+     "VIBEQC_DF_VALUE_RAW_MAPPING",
+     "VIBEQC_DF_VALUE_MATH",
+     "VIBEQC_DF_SEED_EXCHANGE",
+diff --git a/src/scf/cuda/df_eigensystem.cpp b/src/scf/cuda/df_eigensystem.cpp
+index 7f04b13..d782e61 100644
+--- a/src/scf/cuda/df_eigensystem.cpp
++++ b/src/scf/cuda/df_eigensystem.cpp
+@@ -16,6 +16,7 @@
+ #include "scf/cuda/df_scf_library.hpp"
+ #include "scf/cuda/eigensolver.hpp"
+ #include "scf/cuda_density_fitting_eigen.hpp"
++#include "scf/cuda_density_fitting_final_state.hpp"
+ 
+ namespace vibeqc::scf::cuda_df {
+ namespace {
+@@ -256,7 +257,8 @@ vibeqc_status solve_cuda_density_fitting_eigen(
+     auto vectors = column_major(packed, n);  // Transpose the layout, not the mathematical frame.
+     {
+       host::Region validation("eigenframe_validation", n);
+-      if (!solver::validate_eigen_frame(matrix, overlap, values, vectors, n, diagnostic, detail))
++      if (!validate_cuda_density_fitting_eigen_frame(plan, matrix, overlap, values, vectors,
++                                                     diagnostic, detail))
+         return VIBEQC_STATUS_NUMERICAL_FAILURE;
+     }
+     eigenvalues = std::move(values);
+@@ -268,6 +270,9 @@ vibeqc_status solve_cuda_density_fitting_eigen(
+   } catch (const std::overflow_error& error) {
+     detail = error.what();
+     return VIBEQC_STATUS_INVALID_ARGUMENT;
++  } catch (const std::runtime_error& error) {
++    detail = error.what();
++    return VIBEQC_STATUS_CUDA_ERROR;
+   }
+ }
+ }  // namespace vibeqc::scf
+diff --git a/src/scf/cuda/df_final_validation.cpp b/src/scf/cuda/df_final_validation.cpp
+new file mode 100644
+index 0000000..d4da868
+--- /dev/null
++++ b/src/scf/cuda/df_final_validation.cpp
+@@ -0,0 +1,485 @@
++#include "scf/cuda/df_final_validation.hpp"
++
++#include <algorithm>
++#include <cmath>
++#include <memory>
++#include <stdexcept>
++
++#include "runtime/cuda_component_trace.hpp"
++#include "runtime/host_component_trace.hpp"
++#include "runtime/resource_cuda.cuh"
++#include "scf/cuda/df_plan_internal.hpp"
++#include "scf/cuda/df_runtime.hpp"
++#include "scf/cuda/df_scf_state.hpp"
++#include "scf/cuda/final_validation_kernels.hpp"
++
++namespace vibeqc::scf::cuda_df {
++namespace {
++using reference::Matrix;
++namespace trace = runtime::cuda_trace;
++struct Workspace {
++  int device{-1};
++  double* storage{};
++  ValidationPartial* partial{};
++  std::size_t bytes{};
++  unsigned blocks{};
++  // Borrowed J/K are consumed synchronously by one tagged selection request.
++  std::optional<solver::FinalStateIdentity> physical_identity;
++  const Matrix* physical_hcore{};
++  ~Workspace() {
++    if (device >= 0) (void)cudaSetDevice(device);
++    (void)runtime::resource_cuda_free(storage);
++    (void)runtime::resource_cuda_free(partial);
++  }
++};
++void check(cudaError_t status, const char* operation) {
++  if (status == cudaErrorMemoryAllocation) throw std::bad_alloc();
++  if (status != cudaSuccess)
++    throw std::runtime_error(std::string(operation) + ": " + cudaGetErrorString(status));
++}
++void check(vibeqc_status status, const std::string& detail) {
++  if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
++  if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
++}
++Workspace& prepare(CudaDensityFittingJkPlan& plan) {
++  check(cudaSetDevice(plan.device_id), "select final-validation device");
++  cudaStreamCaptureStatus capture{};
++  check(cudaStreamIsCapturing(plan.stream, &capture), "inspect final-validation stream");
++  if (capture != cudaStreamCaptureStatusNone)
++    throw std::runtime_error("final validation requires an ordinary noncapturing stream");
++  if (!plan.final_validation) {
++    auto state = std::make_unique<Workspace>();
++    state->device = plan.device_id;
++    const auto allowance = df_final_validation_device_reservation(plan.nbf);
++    const auto storage_bytes = (9 * plan.nbf * plan.nbf + plan.nbf) * sizeof(double);
++    static_assert(sizeof(ValidationPartial) <= 128);
++    state->blocks = validation_block_count(plan.nbf);
++    const auto partial_bytes = (3 * state->blocks + 1) * sizeof(ValidationPartial);
++    state->bytes = storage_bytes + partial_bytes;
++    if (state->bytes > allowance)
++      throw std::runtime_error("final validation exceeds its admitted workspace");
++    std::string detail;
++    check(allocate_device(reinterpret_cast<void**>(&state->storage), storage_bytes,
++                          "allocate final-validation matrices", detail),
++          detail);
++    check(allocate_device(reinterpret_cast<void**>(&state->partial), partial_bytes,
++                          "allocate final-validation reductions", detail),
++          detail);
++    plan.final_validation = state.release();
++  }
++  return *static_cast<Workspace*>(plan.final_validation);
++}
++/** All pageable input/output buffers outlive this guard. Drain on every
++ * exceptional exit too, before publishing diagnostics or freeing staging. */
++struct Drain {
++  cudaStream_t stream;
++  bool pending{true};
++  ~Drain() {
++    if (pending) {
++      (void)cudaStreamSynchronize(stream);
++      trace::trace_counter("explicit_synchronizations", 1);
++    }
++  }
++  void finish() {
++    check(cudaStreamSynchronize(stream), "finish final validation");
++    trace::trace_counter("explicit_synchronizations", 1);
++    pending = false;
++  }
++};
++void upload(CudaDensityFittingJkPlan& plan, double* out, const Matrix& host) {
++  check(cudaMemcpyAsync(out, host.data(), host.size() * sizeof(double), cudaMemcpyHostToDevice,
++                        plan.stream),
++        "upload final-validation input");
++  trace::trace_counter("host_to_device_bytes", host.size() * sizeof(double));
++}
++Matrix packed(const Matrix& a, std::size_t n) {
++  if (a.size() != n * n) throw std::runtime_error("invalid final-validation matrix dimensions");
++  Matrix out(a.size());
++  for (std::size_t i = 0; i < n; ++i)
++    for (std::size_t j = 0; j < n; ++j) out[j * n + i] = a[i * n + j];
++  return out;
++}
++void gemm(CudaDensityFittingJkPlan& plan, const double* a, const double* b, double* out,
++          bool ta = false, bool tb = false, int rank = -1) {
++  const int n = static_cast<int>(plan.nbf);
++  const double one = 1, zero = 0;
++  if (rank == 0) {
++    check(cudaMemsetAsync(out, 0, plan.nbf * plan.nbf * sizeof(double), plan.stream),
++          "zero empty occupied product");
++    return;
++  }
++  const auto status =
++      cublasDgemm(plan.blas, ta ? CUBLAS_OP_T : CUBLAS_OP_N, tb ? CUBLAS_OP_T : CUBLAS_OP_N, n, n,
++                  rank < 0 ? n : rank, &one, a, n, b, n, &zero, out, n);
++  if (status != CUBLAS_STATUS_SUCCESS)
++    throw std::runtime_error("cuBLAS final-validation product failed: " + std::to_string(status));
++}
++ValidationInputs inputs(CudaDensityFittingJkPlan& plan, Workspace& w,
++                        const solver::FinalFrameCandidate* frame, std::size_t spin, double weight) {
++  const auto n = plan.nbf, count = n * n;
++  ValidationInputs in;
++  in.n = n;
++  in.weight = weight;
++  in.s = w.storage;
++  in.h = w.storage + count;
++  in.f = w.storage + 2 * count;
++  in.d = w.storage + 3 * count;
++  in.c = w.storage + 4 * count;
++  in.values = w.storage + 9 * count;
++  if (!frame) return in;
++  in.occupied = frame->identity.occupied.at(spin);
++  const auto& c = frame->spins.at(spin);
++  if (!c.vectors.empty() || !c.values.empty()) return in;
++  // Empty matrices are an explicit retained-frame request, never evidence
++  // based on dimensions. Recheck every token field against the owner.
++  CudaDfFinalStateToken current;
++  std::string detail;
++  const auto item = frame->identity.factor.reference - 1;
++  check(cuda_density_fitting_final_state_token(&plan, item, current, detail), detail);
++  if (current.identity != frame->identity || !frame->physical_origin ||
++      frame->fock_density_generation != current.identity.factor.density_generation - 1)
++    throw std::runtime_error("stale retained final-validation frame");
++  const auto& state = *static_cast<const PersistentScfState*>(plan.persistent_scf_state);
++  in.c = (spin ? state.d_final_beta_coefficients : state.d_final_alpha_coefficients) + item * count;
++  in.values = (spin ? state.d_final_beta_values : state.d_final_alpha_values) + item * n;
++  in.expected_density = in.d;
++  in.d = (spin                 ? state.d_beta_density
++          : state.unrestricted ? state.d_alpha_density
++                               : state.d_density) +
++         item * count;
++  in.generation = (spin ? state.d_final_beta_generation : state.d_final_alpha_generation) + item;
++  in.info = (spin ? state.d_final_beta_info : state.d_final_alpha_info) + item;
++  in.expected_generation = current.identity.factor.density_generation;
++  return in;
++}
++void physical_fock(CudaDensityFittingJkPlan& plan, Workspace& w,
++                   const solver::FinalStateIdentity& id, std::size_t spin) {
++  if (!w.physical_identity || *w.physical_identity != id ||
++      id.factor.basis != plan.factor_basis_identity ||
++      id.solve_epoch != plan.final_state_solve_epoch)
++    throw std::runtime_error("physical Fock belongs to another validation request");
++  const auto count = plan.nbf * plan.nbf, offset = (id.factor.reference - 1) * count;
++  launch_validation_fock(plan.stream, plan.nbf, w.storage + count, plan.coulomb + offset,
++                         (spin ? plan.beta_exchange : plan.alpha_exchange) + offset,
++                         id.model.spec.spin == FockSpin::Restricted ? .5 : 1,
++                         w.storage + 2 * count);
++}
++std::vector<Matrix> materialize(CudaDensityFittingJkPlan& plan,
++                                const solver::PhysicalFockFrame& fock) {
++  auto& w = prepare(plan);
++  if (!w.physical_hcore) throw std::runtime_error("missing physical Fock input");
++  const auto n = plan.nbf, count = n * n;
++  const auto h = packed(*w.physical_hcore, n);
++  std::vector<Matrix> result(fock.spins.size(), Matrix(count));
++  Drain drain{plan.stream};
++  upload(plan, w.storage + count, h);
++  for (std::size_t spin = 0; spin < result.size(); ++spin) {
++    physical_fock(plan, w, fock.identity, spin);
++    check(cudaMemcpyAsync(result[spin].data(), w.storage + 2 * count, count * sizeof(double),
++                          cudaMemcpyDeviceToHost, plan.stream),
++          "materialize physical Fock");
++    trace::trace_counter("device_to_host_bytes", count * sizeof(double));
++  }
++  drain.finish();
++  for (auto& f : result) f = packed(f, n);
++  return result;
++}
++void eigen_products(CudaDensityFittingJkPlan& plan, Workspace& w, ValidationInputs in,
++                    bool canonical) {
++  const auto count = plan.nbf * plan.nbf;
++  auto* a = w.storage + 5 * count;
++  auto* b = a + count;
++  auto* t = b + count;
++  auto* u = t + count;
++  gemm(plan, in.f, in.c, a);
++  gemm(plan, in.s, in.c, b);
++  gemm(plan, in.c, b, t, true);
++  if (canonical) gemm(plan, in.c, a, u, true);
++  launch_validation_eigen(plan.stream, in, a, b, t, canonical ? u : nullptr, w.partial);
++}
++bool eigen_diagnostic(const ValidationPartial& raw, solver::EigenFrameDiagnostic& out,
++                      std::string& detail) {
++  // Retained-owner corruption is a provider failure, as in detached snapshot
++  // reads. It must not masquerade as a numerical candidate needing correction.
++  if (raw.invalid & validation_input_failure)
++    throw std::runtime_error(
++        "CUDA final-state provider returned nonphysical, stale or mismatched data");
++  const double scale = raw.norm_f * raw.norm_c + raw.norm_rhs;
++  out.maximum_eigen_residual = raw.eigen;
++  out.maximum_metric_error = raw.metric;
++  out.scaled_eigen_residual = scale == 0 ? raw.norm_residual : raw.norm_residual / scale;
++  if (raw.invalid || !std::isfinite(scale) || !std::isfinite(raw.norm_residual)) {
++    detail = "nonfinite validation products, invalid eigen order or stale device frame";
++    return false;
++  }
++  return true;
++}
++ValidationPartial download(CudaDensityFittingJkPlan& plan, Workspace& w, unsigned stages) {
++  auto* device = w.partial + 3 * w.blocks;
++  launch_validation_finish(plan.stream, w.partial, device, stages, w.blocks);
++  check(cudaPeekAtLastError(), "launch final-validation reductions");
++  ValidationPartial result;
++  Drain drain{plan.stream};
++  check(cudaMemcpyAsync(&result, device, sizeof(result), cudaMemcpyDeviceToHost, plan.stream),
++        "read compact final-validation diagnostics");
++  trace::trace_counter("device_to_host_bytes", sizeof(result));
++  drain.finish();
++  return result;
++}
++bool products(CudaDensityFittingJkPlan& plan, const solver::FinalStateIdentity& current,
++              const Matrix& overlap, const Matrix& hcore, double nuclear,
++              const std::vector<Matrix>& density, const solver::PhysicalFockFrame& fock,
++              const solver::FinalFrameCandidate& frame, const solver::FinalStateLimits& limits,
++              solver::FinalStateDiagnostic& diagnostic, std::string& detail) {
++  for (const auto& c : frame.spins) {
++    if ((!c.vectors.empty() || !c.values.empty()) &&
++        (c.vectors.size() != plan.nbf * plan.nbf || c.values.size() != plan.nbf)) {
++      detail = "invalid final-validation orbital dimensions";
++      return false;
++    }
++  }
++  trace::TraceOperation trace(
++      "final_state_validation", plan.stream,
++      {1, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
++  auto& w = prepare(plan);
++  trace::trace_counter("workspace_bytes", w.bytes);
++  const auto n = plan.nbf, count = n * n;
++  const double weight = current.model.spec.spin == FockSpin::Restricted ? 2 : 1;
++  // Pack even approximately symmetric inputs faithfully; no transpose-based
++  // commutator shortcut assumes stronger symmetry than the shared contract.
++  const auto s = packed(overlap, n), h = packed(hcore, n);
++  Drain outer{plan.stream};
++  upload(plan, w.storage, s);
++  upload(plan, w.storage + count, h);
++  diagnostic.energy = nuclear;
++  diagnostic.eigenframes.resize(density.size());
++  for (std::size_t spin = 0; spin < density.size(); ++spin) {
++    auto in = inputs(plan, w, &frame, spin, weight);
++    const bool device_fock = fock.spins[spin].empty();
++    const auto f = device_fock ? Matrix{} : packed(fock.spins[spin], n);
++    const auto d = packed(density[spin], n);
++    const auto& orbitals = frame.spins[spin];
++    const auto c = orbitals.vectors.empty() ? Matrix{} : packed(orbitals.vectors, n);
++    if (!c.empty() && orbitals.values.size() != n) {
++      detail = "invalid final-validation eigenvalue dimensions";
++      return false;
++    }
++    Drain spin_drain{plan.stream};
++    if (device_fock) {
++      physical_fock(plan, w, current, spin);
++      in.physical_fock = true;
++    } else {
++      upload(plan, w.storage + 2 * count, f);
++    }
++    upload(plan, w.storage + 3 * count, d);
++    if (!c.empty()) {
++      upload(plan, w.storage + 4 * count, c);
++      upload(plan, w.storage + 9 * count, orbitals.values);
++    }
++    eigen_products(plan, w, in, limits.require_canonicality);
++    auto* a = w.storage + 5 * count;
++    auto* b = a + count;
++    auto* t = b + count;
++    auto* u = t + count;
++    launch_validation_columns(plan.stream, n, in.occupied, in.c, nullptr, weight, b);
++    gemm(plan, b, in.c, a, false, true, static_cast<int>(in.occupied));
++    gemm(plan, in.d, in.s, b);
++    gemm(plan, b, in.d, t);
++    launch_validation_density(plan.stream, in, a, b, t, w.partial + w.blocks);
++    gemm(plan, in.f, b, u);  // F(DS), reusing this request's checked DS.
++    gemm(plan, in.s, in.d, a);
++    gemm(plan, a, in.f, t);
++    launch_validation_commutator(plan.stream, n, u, t, w.partial + 2 * w.blocks);
++    const auto raw = download(plan, w, 3);
++    spin_drain.pending = false;
++    if (!eigen_diagnostic(raw, diagnostic.eigenframes[spin], detail)) return false;
++    diagnostic.maximum_density_error = std::max(diagnostic.maximum_density_error, raw.density);
++    diagnostic.maximum_canonical_error =
++        std::max(diagnostic.maximum_canonical_error, raw.canonical);
++    diagnostic.maximum_idempotency_error =
++        std::max(diagnostic.maximum_idempotency_error, raw.idempotency);
++    diagnostic.maximum_commutator = std::max(diagnostic.maximum_commutator, raw.commutator);
++    diagnostic.density_rms = std::max(diagnostic.density_rms, raw.norm_density / n);
++    diagnostic.maximum_trace_error =
++        std::max(diagnostic.maximum_trace_error, std::abs(raw.electrons - weight * in.occupied));
++    diagnostic.energy += raw.energy;
++    if (!std::isfinite(raw.norm_density) || !std::isfinite(raw.electrons) ||
++        !std::isfinite(raw.energy)) {
++      detail = "nonfinite final-state reduction";
++      return false;
++    }
++  }
++  outer.pending = false;
++  return true;
++}
++Matrix project(CudaDensityFittingJkPlan& plan, const reference::EigenResult& orbitals,
++               std::size_t occupied, double weight, bool weighted,
++               const solver::FinalFrameCandidate* frame = nullptr, std::size_t spin = 0) {
++  const auto n = plan.nbf, count = n * n;
++  if (occupied > n || (!orbitals.vectors.empty() && orbitals.values.size() != n))
++    throw std::runtime_error("invalid final-state projection dimensions");
++  auto& w = prepare(plan);
++  auto in = inputs(plan, w, frame, spin, weight);
++  const auto c = orbitals.vectors.empty() ? Matrix{} : packed(orbitals.vectors, n);
++  Matrix result(count);
++  Drain drain{plan.stream};
++  if (!c.empty()) {
++    upload(plan, w.storage + 4 * count, c);
++    upload(plan, w.storage + 9 * count, orbitals.values);
++  } else if (!frame) {
++    throw std::runtime_error("missing projection coefficients");
++  }
++  auto* columns = w.storage + 5 * count;
++  auto* output = columns + count;
++  launch_validation_columns(plan.stream, n, occupied, in.c, weighted ? in.values : nullptr, weight,
++                            columns);
++  gemm(plan, columns, in.c, output, false, true, static_cast<int>(occupied));
++  check(cudaPeekAtLastError(), "build final-state density");
++  check(cudaMemcpyAsync(result.data(), output, count * sizeof(double), cudaMemcpyDeviceToHost,
++                        plan.stream),
++        "read final-state density for host consumer");
++  trace::trace_counter("device_to_host_bytes", count * sizeof(double));
++  drain.finish();
++  return packed(result, n);
++}
++}  // namespace
++void destroy_final_validation(void*& opaque) noexcept {
++  delete static_cast<Workspace*>(opaque);
++  opaque = nullptr;
++}
++}  // namespace vibeqc::scf::cuda_df
++
++namespace vibeqc::scf {
++solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
++    CudaDensityFittingJkPlan* plan, const solver::FinalStateIdentity& current,
++    const std::vector<reference::Matrix>& density, const reference::Matrix& hcore) {
++  using namespace cuda_df;
++  if (!plan || current.factor.basis != plan->factor_basis_identity ||
++      current.solve_epoch != plan->final_state_solve_epoch || !current.factor.reference ||
++      current.factor.reference > plan->batch_size || density.size() != current.occupied.size() ||
++      (density.size() != 1 && density.size() != 2) || hcore.size() != plan->matrix_elements)
++    throw std::runtime_error("invalid physical device Fock request identity");
++  const auto expected_model = resolve_fock_build(
++      make_hf_fock_spec(density.size() == 1 ? FockSpin::Restricted : FockSpin::Unrestricted,
++                        FockApproximation::DensityFitted),
++      FockBackend::Cuda, 1e-12, plan->metric_relative_threshold);
++  if (current.model != expected_model)
++    throw std::runtime_error("physical device Fock model differs from the prepared HF provider");
++  auto& w = prepare(*plan);
++  w.physical_identity.reset();
++  w.physical_hcore = nullptr;
++  const auto item = current.factor.reference - 1, count = plan->matrix_elements;
++  for (const auto& d : density)
++    if (d.size() != count || !finite_values(d))
++      throw std::runtime_error("invalid physical device Fock density");
++  trace::TraceOperation trace(
++      "final_state_physical_fock", plan->stream,
++      {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
++  std::string detail;
++  bool retained = false;
++  if (density.size() == 1) {
++    Matrix j, k;
++    check(try_cuda_density_fitting_final_rhf_jk(plan, {1, current}, density[0], j, k, retained,
++                                                detail, false),
++          detail);
++  }
++  if (!retained) {
++    runtime::host_trace::Region dense("final_state_dense_jk", plan->nbf);
++    // Reuse the existing bounded item staging and device J/K operations;
++    // zero neighbors just as the host item adapter does. No output matrix
++    // crosses the host boundary merely to validate it.
++    Drain drain{plan->stream};
++    const auto bytes = plan->batch_size * count * sizeof(double);
++    check(cudaMemsetAsync(plan->primary_density, 0, bytes, plan->stream), "clear item density");
++    upload(*plan, plan->primary_density + item * count, density[0]);
++    if (density.size() == 1) {
++      check(execute_cuda_density_fitting_rhf_jk_device(plan, plan->primary_density, plan->coulomb,
++                                                       plan->alpha_exchange, detail, {},
++                                                       FockMatrixLayout::RowMajor),
++            detail);
++    } else {
++      check(cudaMemsetAsync(plan->secondary_density, 0, bytes, plan->stream),
++            "clear beta item density");
++      upload(*plan, plan->secondary_density + item * count, density[1]);
++      check(execute_cuda_density_fitting_uhf_jk_device(
++                plan, plan->primary_density, plan->secondary_density, plan->coulomb,
++                plan->alpha_exchange, plan->beta_exchange, detail, {}, FockMatrixLayout::RowMajor),
++            detail);
++    }
++    drain.finish();
++  }
++  w.physical_identity = current;
++  w.physical_hcore = &hcore;
++  return {current, true, std::vector<Matrix>(density.size())};
++}
++
++solver::FinalStateOperations cuda_density_fitting_final_state_operations(
++    CudaDensityFittingJkPlan* plan) {
++  if (!plan) throw std::invalid_argument("missing CUDA final-state plan");
++  solver::FinalStateOperations operations;
++  operations.materialize_fock = [plan](const auto& fock) {
++    return cuda_df::materialize(*plan, fock);
++  };
++  operations.products = [plan](const auto& id, const auto& s, const auto& h, double nuclear,
++                               const auto& d, const auto& f, const auto& c, const auto& limits,
++                               auto& diagnostic, auto& detail) {
++    return cuda_df::products(*plan, id, s, h, nuclear, d, f, c, limits, diagnostic, detail);
++  };
++  operations.eigen = [plan](const auto& f, const auto& s, const auto& c, auto& diagnostic,
++                            auto& detail) {
++    return validate_cuda_density_fitting_eigen_frame(plan, f, &s, c.values, c.vectors, diagnostic,
++                                                     detail);
++  };
++  operations.project = [plan](const auto& c, std::size_t occupied, double weight) {
++    return cuda_df::project(*plan, c, occupied, weight, false);
++  };
++  operations.weighted = [plan](const auto& id, const auto& frame) {
++    runtime::cuda_trace::TraceOperation trace(
++        "final_state_weighted_density", plan->stream,
++        {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
++    std::vector<reference::Matrix> result;
++    const double weight = id.model.spec.spin == FockSpin::Restricted ? 2 : 1;
++    for (std::size_t spin = 0; spin < id.occupied.size(); ++spin)
++      result.push_back(cuda_df::project(*plan, frame.spins[spin], id.occupied[spin], weight, true,
++                                        &frame, spin));
++    return result;
++  };
++  return operations;
++}
++
++bool validate_cuda_density_fitting_eigen_frame(CudaDensityFittingJkPlan* plan,
++                                               const reference::Matrix& matrix,
++                                               const reference::Matrix* overlap,
++                                               const reference::Matrix& values,
++                                               const reference::Matrix& coefficients,
++                                               solver::EigenFrameDiagnostic& diagnostic,
++                                               std::string& detail) {
++  using namespace cuda_df;
++  if (!plan || values.size() != plan->nbf || diagnostic.solver_info != 0) {
++    detail = "invalid CUDA eigen validation request";
++    return false;
++  }
++  trace::TraceOperation trace(
++      "eigenframe_validation", plan->stream,
++      {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
++  auto& w = prepare(*plan);
++  const auto n = plan->nbf, count = n * n;
++  Matrix identity;
++  if (!overlap) {
++    identity.assign(count, 0);
++    for (std::size_t i = 0; i < n; ++i) identity[i * n + i] = 1;
++  }
++  const auto f = packed(matrix, n), s = packed(overlap ? *overlap : identity, n),
++             c = packed(coefficients, n);
++  Drain drain{plan->stream};
++  upload(*plan, w.storage, s);
++  upload(*plan, w.storage + 2 * count, f);
++  upload(*plan, w.storage + 4 * count, c);
++  upload(*plan, w.storage + 9 * count, values);
++  eigen_products(*plan, w, inputs(*plan, w, nullptr, 0, 0), false);
++  const auto raw = download(*plan, w, 1);
++  drain.pending = false;
++  return eigen_diagnostic(raw, diagnostic, detail) &&
++         solver::accept_eigen_frame(diagnostic, detail);
++}
++}  // namespace vibeqc::scf
+diff --git a/src/scf/cuda/df_final_validation.hpp b/src/scf/cuda/df_final_validation.hpp
+new file mode 100644
+index 0000000..2f2f466
+--- /dev/null
++++ b/src/scf/cuda/df_final_validation.hpp
+@@ -0,0 +1,8 @@
++#pragma once
++
++#include "scf/cuda_density_fitting_final_state.hpp"
++
++namespace vibeqc::scf::cuda_df {
++/** One serialized workspace per prepared plan; never aliases captured state. */
++void destroy_final_validation(void*& opaque) noexcept;
++}  // namespace vibeqc::scf::cuda_df
+diff --git a/src/scf/cuda/df_plan_internal.hpp b/src/scf/cuda/df_plan_internal.hpp
+index 48889e0..a6c0057 100644
+--- a/src/scf/cuda/df_plan_internal.hpp
++++ b/src/scf/cuda/df_plan_internal.hpp
+@@ -110,6 +110,8 @@ struct CudaDensityFittingJkPlan {
+   // Ordinary AO setup/final eigen operations share the existing handles while
+   // retaining one bounded scratch frame, separate from captured SCF state.
+   void* ordinary_eigensystem{};
++  // Serialized FP64 final validation/projection storage, separate from graphs.
++  void* final_validation{};
+ };
+ 
+ }  // namespace vibeqc::scf
+diff --git a/src/scf/cuda/df_plan_lifetime.cpp b/src/scf/cuda/df_plan_lifetime.cpp
+index 7cc91d4..4164199 100644
+--- a/src/scf/cuda/df_plan_lifetime.cpp
++++ b/src/scf/cuda/df_plan_lifetime.cpp
+@@ -10,6 +10,7 @@
+ #include <vector>
+ 
+ #include "scf/cuda/df_eigensystem.hpp"
++#include "scf/cuda/df_final_validation.hpp"
+ #include "scf/cuda/df_plan_internal.hpp"
+ #include "scf/cuda/df_plan_setup.hpp"
+ #include "scf/cuda/df_scf_state.hpp"
+@@ -31,6 +32,7 @@ void release(CudaDensityFittingJkPlan& plan) noexcept {
+   if (plan.device_id >= 0) (void)cudaSetDevice(plan.device_id);
+   destroy_persistent_scf_state(plan.persistent_scf_state);
+   destroy_ordinary_eigensystem(plan.ordinary_eigensystem);
++  destroy_final_validation(plan.final_validation);
+   destroy_cuda_density_fitting_integral_source(plan.integral_source);
+   (void)runtime::resource_cuda_free(plan.inverse_square_roots);
+   (void)runtime::resource_cuda_free(plan.metric_eigenvectors);
+diff --git a/src/scf/cuda/df_plan_setup.cpp b/src/scf/cuda/df_plan_setup.cpp
+index 7d5d92b..d8974e9 100644
+--- a/src/scf/cuda/df_plan_setup.cpp
++++ b/src/scf/cuda/df_plan_setup.cpp
+@@ -570,7 +570,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
+            sizeof(std::uint32_t) +
+            (candidate->occupied_scf_reserved ? 2 * sizeof(std::uint32_t) + sizeof(int) : 0)) +
+       df_scf_workspace_allowance(nbf, batch_size) + matrix_bytes +  // graph bookkeeping
+-      df_eigen_device_reservation(nbf) + df_final_snapshot_device_reservation(nbf, batch_size);
++      df_eigen_device_reservation(nbf) + df_final_snapshot_device_reservation(nbf, batch_size) +
++      df_final_validation_device_reservation(nbf);
+   const std::size_t persistent_scf_bytes =
+       persistent_scf_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())
+           ? std::numeric_limits<std::size_t>::max()
+diff --git a/src/scf/cuda/df_scf_final_state.cpp b/src/scf/cuda/df_scf_final_state.cpp
+index c5186ac..3cd0124 100644
+--- a/src/scf/cuda/df_scf_final_state.cpp
++++ b/src/scf/cuda/df_scf_final_state.cpp
+@@ -171,7 +171,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+                                                     const std::vector<double>& density,
+                                                     std::vector<double>& coulomb,
+                                                     std::vector<double>& exchange, bool& used,
+-                                                    std::string& detail) {
++                                                    std::string& detail, bool download) {
+   using namespace runtime::cuda_trace;
+   used = false;
+   if (plan) plan->final_projection_token.reset();
+@@ -240,23 +240,25 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+   // Both D and the full retained C were committed under this generation. The
+   // strict selector still checks the resulting physical F[D] and eigenframe;
+   // if it changes D or generation, this exact identity gate refuses reuse.
+-  coulomb.resize(plan->matrix_elements);
+-  exchange.resize(plan->matrix_elements);
++  coulomb.resize(download ? plan->matrix_elements : 0);
++  exchange.resize(download ? plan->matrix_elements : 0);
+   status = build_coulomb(*plan, state->d_density, detail);
+   if (status == VIBEQC_STATUS_SUCCESS)
+     status = build_occupied_exchange(*plan, 0, state->d_final_alpha_coefficients,
+                                      current.identity.occupied[0], true, 2, plan->alpha_exchange,
+                                      detail);
+   if (status != VIBEQC_STATUS_SUCCESS) return status;
+-  error =
+-      cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost, plan->stream);
+-  if (error == cudaSuccess)
+-    error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes, cudaMemcpyDeviceToHost,
+-                            plan->stream);
++  if (download) {
++    error =
++        cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost, plan->stream);
++    if (error == cudaSuccess)
++      error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes, cudaMemcpyDeviceToHost,
++                              plan->stream);
++  }
+   const auto finished = cudaStreamSynchronize(plan->stream);
+   if (error == cudaSuccess) error = finished;
+   if (error != cudaSuccess) return cuda_failure(error, "download final retained J/K", detail);
+-  trace_counter("d2h_bytes", 2 * bytes);
++  trace_counter("d2h_bytes", download ? 2 * bytes : 0);
+   trace_counter("explicit_synchronizations", 1);
+   // The projection and final coefficients refer to precisely this density
+   // generation. Publishing after the successful drain excludes partial K.
+@@ -273,7 +275,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* plan,
+                                                     const CudaDfFinalStateToken& expected,
+                                                     CudaDfFinalStateSnapshot& snapshot,
+-                                                    std::string& detail) {
++                                                    std::string& detail, bool include_density) {
+   snapshot = {};
+   try {
+     CudaDfFinalStateToken current;
+@@ -300,13 +302,13 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
+     local.candidate.physical_origin = true;
+     local.candidate.fock_density_generation = current.identity.factor.density_generation - 1;
+     local.candidate.spins.resize(spins);
+-    local.density.resize(spins);
++    if (include_density) local.density.resize(spins);
+     // Allocate all pageable destinations before the first asynchronous copy,
+     // then always drain the stream before any local storage can be released.
+     for (std::size_t spin = 0; spin < spins; ++spin) {
+       local.candidate.spins[spin].vectors.resize(count);
+       local.candidate.spins[spin].values.resize(n);
+-      local.density[spin].resize(count);
++      if (include_density) local.density[spin].resize(count);
+     }
+     std::uint64_t generations[2]{};
+     int info[2]{};
+@@ -325,12 +327,14 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
+       copy(local.candidate.spins[spin].values.data(),
+            (spin ? state.d_final_beta_values : state.d_final_alpha_values) + item * n,
+            n * sizeof(double));
+-      copy(local.density[spin].data(),
+-           (spin                 ? state.d_beta_density
+-            : state.unrestricted ? state.d_alpha_density
+-                                 : state.d_density) +
+-               item * count,
+-           count * sizeof(double));
++      if (include_density) {
++        copy(local.density[spin].data(),
++             (spin                 ? state.d_beta_density
++              : state.unrestricted ? state.d_alpha_density
++                                   : state.d_density) +
++                 item * count,
++             count * sizeof(double));
++      }
+       copy(&generations[spin],
+            (spin ? state.d_final_beta_generation : state.d_final_alpha_generation) + item,
+            sizeof(std::uint64_t));
+@@ -344,7 +348,7 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
+       auto& frame = local.candidate.spins[spin];
+       if (generations[spin] != current.identity.factor.density_generation || info[spin] != 0 ||
+           !finite_values(frame.values) || !finite_values(frame.vectors) ||
+-          !finite_values(local.density[spin])) {
++          (include_density && !finite_values(local.density[spin]))) {
+         detail = "CUDA DF retained frame has stale generation, solver failure or nonfinite data";
+         return VIBEQC_STATUS_NUMERICAL_FAILURE;
+       }
+@@ -354,7 +358,8 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
+     }
+     runtime::cuda_trace::trace_counter(
+         "final_state_download_bytes",
+-        spins * ((2 * count + n) * sizeof(double) + sizeof(std::uint64_t) + sizeof(int)));
++        spins * (((include_density ? 2 : 1) * count + n) * sizeof(double) + sizeof(std::uint64_t) +
++                 sizeof(int)));
+     snapshot = std::move(local);
+     return VIBEQC_STATUS_SUCCESS;
+   } catch (const std::bad_alloc&) {
+diff --git a/src/scf/cuda/final_validation_kernels.cu b/src/scf/cuda/final_validation_kernels.cu
+new file mode 100644
+index 0000000..4a48f54
+--- /dev/null
++++ b/src/scf/cuda/final_validation_kernels.cu
+@@ -0,0 +1,167 @@
++#include <cmath>
++
++#include "scf/cuda/final_validation_kernels.hpp"
++
++namespace vibeqc::scf::cuda_df {
++namespace {
++constexpr unsigned threads = validation_threads;
++__device__ void add(double value, double& sum, double& correction) {
++  const double next = sum + value;
++  correction += fabs(sum) >= fabs(value) ? (sum - next) + value : (value - next) + sum;
++  sum = next;
++}
++__device__ ValidationPartial merge(ValidationPartial a, const ValidationPartial& b) {
++  a.norm_f = hypot(a.norm_f, b.norm_f);
++  a.norm_c = hypot(a.norm_c, b.norm_c);
++  a.norm_rhs = hypot(a.norm_rhs, b.norm_rhs);
++  a.norm_residual = hypot(a.norm_residual, b.norm_residual);
++  a.norm_density = hypot(a.norm_density, b.norm_density);
++  a.eigen = fmax(a.eigen, b.eigen);
++  a.metric = fmax(a.metric, b.metric);
++  a.canonical = fmax(a.canonical, b.canonical);
++  a.density = fmax(a.density, b.density);
++  a.idempotency = fmax(a.idempotency, b.idempotency);
++  a.commutator = fmax(a.commutator, b.commutator);
++  a.electrons += b.electrons;
++  a.energy += b.energy;
++  a.invalid |= b.invalid;
++  return a;
++}
++__device__ void store(ValidationPartial local, ValidationPartial* output) {
++  __shared__ ValidationPartial shared[threads];
++  shared[threadIdx.x] = local;
++  __syncthreads();
++  for (unsigned stride = threads / 2; stride; stride /= 2) {
++    if (threadIdx.x < stride)
++      shared[threadIdx.x] = merge(shared[threadIdx.x], shared[threadIdx.x + stride]);
++    __syncthreads();
++  }
++  if (!threadIdx.x) output[blockIdx.x] = shared[0];
++}
++__global__ void fock_kernel(std::size_t n, const double* h, const double* j, const double* exchange,
++                            double weight, double* f) {
++  for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < n * n;
++       k += gridDim.x * blockDim.x) {
++    const auto transposed = (k % n) * n + k / n;
++    f[k] = h[k] + (j[transposed] - weight * exchange[transposed]);
++  }
++}
++__global__ void eigen_kernel(ValidationInputs in, const double* fc, const double* sc,
++                             const double* gram, const double* canonical,
++                             ValidationPartial* output) {
++  ValidationPartial r;
++  if ((in.info && *in.info != 0) || (in.generation && *in.generation != in.expected_generation))
++    r.invalid = validation_input_failure;
++  for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < in.n * in.n;
++       k += gridDim.x * blockDim.x) {
++    const auto column = k / in.n, row = k % in.n;
++    const double rhs = sc[k] * in.values[column], residual = fc[k] - rhs;
++    const double metric = gram[k] - (row == column ? 1.0 : 0.0);
++    r.invalid |= !isfinite(in.f[k]) || !isfinite(in.c[k]) || !isfinite(in.s[k]) ||
++                 !isfinite(in.values[column]) || !isfinite(fc[k]) || !isfinite(sc[k]) ||
++                 !isfinite(gram[k]) || !isfinite(rhs) || !isfinite(residual) ||
++                 (column && in.values[column] < in.values[column - 1]);
++    if (in.expected_density && (!isfinite(in.d[k]) || in.d[k] != in.expected_density[k]))
++      r.invalid |= validation_input_failure;
++    if (in.generation && (!isfinite(in.c[k]) || !isfinite(in.values[column])))
++      r.invalid |= validation_input_failure;
++    if (in.physical_fock) {
++      const double other = in.f[column + row * in.n];
++      if (!isfinite(in.f[k]) ||
++          fabs(in.f[k] - other) > 1e-12 * fmax(1.0, fmax(fabs(in.f[k]), fabs(other))))
++        r.invalid |= validation_input_failure;
++    }
++    r.norm_f = hypot(r.norm_f, in.f[k]);
++    r.norm_c = hypot(r.norm_c, in.c[k]);
++    r.norm_rhs = hypot(r.norm_rhs, rhs);
++    r.norm_residual = hypot(r.norm_residual, residual);
++    r.eigen = fmax(r.eigen, fabs(residual));
++    r.metric = fmax(r.metric, fabs(metric));
++    if (canonical) {
++      const double error = canonical[k] - (row == column ? in.values[row] : 0.0);
++      r.invalid |= !isfinite(canonical[k]) || !isfinite(error);
++      r.canonical = fmax(r.canonical, fabs(error));
++    }
++  }
++  store(r, output);
++}
++__global__ void density_kernel(ValidationInputs in, const double* reconstructed, const double* ds,
++                               const double* dsd, ValidationPartial* output) {
++  ValidationPartial r;
++  double ec = 0, tc = 0;
++  for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < in.n * in.n;
++       k += gridDim.x * blockDim.x) {
++    const double drift = reconstructed[k] - in.d[k];
++    const double idempotency = dsd[k] - in.weight * in.d[k];
++    const double energy = in.d[k] * (.5 * in.h[k] + .5 * in.f[k]);
++    r.invalid |= !isfinite(reconstructed[k]) || !isfinite(ds[k]) || !isfinite(dsd[k]) ||
++                 !isfinite(drift) || !isfinite(idempotency) || !isfinite(energy);
++    r.norm_density = hypot(r.norm_density, drift);
++    r.density = fmax(r.density, fabs(drift));
++    r.idempotency = fmax(r.idempotency, fabs(idempotency));
++    if (k / in.n == k % in.n) add(ds[k], r.electrons, tc);
++    add(energy, r.energy, ec);
++  }
++  r.electrons += tc;
++  r.energy += ec;
++  store(r, output);
++}
++__global__ void commutator_kernel(std::size_t n, const double* fds, const double* sdf,
++                                  ValidationPartial* output) {
++  ValidationPartial r;
++  for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < n * n;
++       k += gridDim.x * blockDim.x) {
++    const double value = fds[k] - sdf[k];
++    r.invalid |= !isfinite(fds[k]) || !isfinite(sdf[k]) || !isfinite(value);
++    r.commutator = fmax(r.commutator, fabs(value));
++  }
++  store(r, output);
++}
++__global__ void finish_kernel(const ValidationPartial* partial, ValidationPartial* result,
++                              unsigned stages, unsigned blocks) {
++  ValidationPartial r;
++  double energy = 0, electrons = 0, ec = 0, tc = 0;
++  for (unsigned k = 0; k < stages * blocks; ++k) {
++    r = merge(r, partial[k]);
++    add(partial[k].energy, energy, ec);
++    add(partial[k].electrons, electrons, tc);
++  }
++  r.energy = energy + ec;
++  r.electrons = electrons + tc;
++  *result = r;
++}
++__global__ void columns_kernel(std::size_t n, std::size_t occupied, const double* c,
++                               const double* values, double weight, double* columns) {
++  for (std::size_t k = blockIdx.x * blockDim.x + threadIdx.x; k < n * n;
++       k += gridDim.x * blockDim.x) {
++    const auto column = k / n;
++    columns[k] = column < occupied ? c[k] * weight * (values ? values[column] : 1.0) : 0.0;
++  }
++}
++}  // namespace
++void launch_validation_fock(cudaStream_t s, std::size_t n, const double* h, const double* j,
++                            const double* k, double weight, double* f) {
++  fock_kernel<<<validation_block_count(n), threads, 0, s>>>(n, h, j, k, weight, f);
++}
++void launch_validation_eigen(cudaStream_t s, ValidationInputs in, const double* fc,
++                             const double* sc, const double* gram, const double* canonical,
++                             ValidationPartial* p) {
++  eigen_kernel<<<validation_block_count(in.n), threads, 0, s>>>(in, fc, sc, gram, canonical, p);
++}
++void launch_validation_density(cudaStream_t s, ValidationInputs in, const double* rec,
++                               const double* ds, const double* dsd, ValidationPartial* p) {
++  density_kernel<<<validation_block_count(in.n), threads, 0, s>>>(in, rec, ds, dsd, p);
++}
++void launch_validation_commutator(cudaStream_t s, std::size_t n, const double* fds,
++                                  const double* sdf, ValidationPartial* p) {
++  commutator_kernel<<<validation_block_count(n), threads, 0, s>>>(n, fds, sdf, p);
++}
++void launch_validation_finish(cudaStream_t s, ValidationPartial* p, ValidationPartial* r,
++                              unsigned stages, unsigned blocks) {
++  finish_kernel<<<1, 1, 0, s>>>(p, r, stages, blocks);
++}
++void launch_validation_columns(cudaStream_t s, std::size_t n, std::size_t occupied, const double* c,
++                               const double* values, double weight, double* out) {
++  columns_kernel<<<validation_block_count(n), threads, 0, s>>>(n, occupied, c, values, weight, out);
++}
++}  // namespace vibeqc::scf::cuda_df
+diff --git a/src/scf/cuda/final_validation_kernels.hpp b/src/scf/cuda/final_validation_kernels.hpp
+new file mode 100644
+index 0000000..3f2ab5a
+--- /dev/null
++++ b/src/scf/cuda/final_validation_kernels.hpp
+@@ -0,0 +1,55 @@
++#pragma once
++
++#include <cuda_runtime_api.h>
++
++#include <cstddef>
++#include <cstdint>
++
++namespace vibeqc::scf::cuda_df {
++// Fixed-size two-stage reductions keep the scratch independent of AO count.
++// Norms are merged with hypot, and signed traces/energies use compensation.
++inline constexpr unsigned validation_threads = 128;
++inline unsigned validation_block_count(std::size_t n) {
++  const auto blocks = (n * n + validation_threads - 1) / validation_threads;
++  return static_cast<unsigned>(blocks < 128 ? blocks : 128);
++}
++// Bit zero rejects numerical products; this bit denotes a broken provider
++// input/identity and must abort selection without attempting correction.
++inline constexpr int validation_input_failure = 2;
++struct ValidationPartial {
++  double norm_f{}, norm_c{}, norm_rhs{}, norm_residual{}, norm_density{};
++  double eigen{}, metric{}, canonical{}, density{}, idempotency{}, commutator{};
++  double electrons{}, energy{};
++  // A full-width status word leaves no unwritten trailing padding in the
++  // packet copied to the host (including under CUDA initcheck).
++  std::uint64_t invalid{};
++};
++struct ValidationInputs {
++  std::size_t n{}, occupied{};
++  double weight{};
++  const double *f{}, *s{}, *h{}, *d{}, *c{}, *values{};
++  const double* expected_density{};
++  const std::uint64_t* generation{};
++  const int* info{};
++  std::uint64_t expected_generation{};
++  bool physical_fock{};
++};
++// J/K use the existing row-major provider layout; validation uses column major.
++void launch_validation_fock(cudaStream_t stream, std::size_t n, const double* hcore,
++                            const double* coulomb, const double* exchange, double exchange_weight,
++                            double* fock);
++void launch_validation_eigen(cudaStream_t stream, ValidationInputs inputs, const double* fc,
++                             const double* sc, const double* gram, const double* canonical,
++                             ValidationPartial* partial);
++void launch_validation_density(cudaStream_t stream, ValidationInputs inputs,
++                               const double* reconstructed, const double* ds, const double* dsd,
++                               ValidationPartial* partial);
++void launch_validation_commutator(cudaStream_t stream, std::size_t n, const double* fds,
++                                  const double* sdf, ValidationPartial* partial);
++void launch_validation_finish(cudaStream_t stream, ValidationPartial* partial,
++                              ValidationPartial* result, unsigned stages, unsigned blocks);
++// Scale occupied columns before GEMM; negative orbital energies are supported.
++void launch_validation_columns(cudaStream_t stream, std::size_t n, std::size_t occupied,
++                               const double* c, const double* values, double weight,
++                               double* columns);
++}  // namespace vibeqc::scf::cuda_df
+diff --git a/src/scf/cuda_density_fitting_final_state.hpp b/src/scf/cuda_density_fitting_final_state.hpp
+index a7edac3..5ed0f52 100644
+--- a/src/scf/cuda_density_fitting_final_state.hpp
++++ b/src/scf/cuda_density_fitting_final_state.hpp
+@@ -1,5 +1,7 @@
+ #pragma once
+ 
++#include <algorithm>
++#include <cmath>
+ #include <limits>
+ #include <stdexcept>
+ 
+@@ -41,23 +43,63 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
+ /** Copy only the requested item's active-masked full C/epsilon and actual D.
+  * Requires exact current token identity before any transfer. Calls use the
+  * plan stream synchronously outside capture and never borrow graph scratch.
+- * Failure clears the snapshot. No C/Python result record is extended. */
++ * Failure clears the snapshot. Reference export may omit the already-public
++ * density after device validation. No C/Python result record is extended. */
+ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* plan,
+                                                     const CudaDfFinalStateToken& expected,
+                                                     CudaDfFinalStateSnapshot& snapshot,
+-                                                    std::string& detail);
++                                                    std::string& detail,
++                                                    bool include_density = true);
+ 
+ /** Try physical J/K from an exact current singleton RHF retained density/frame.
+  * Token, device generation and every supplied density entry must match. A
+  * correction step, stale token or unsupported plan returns used=false so the
+  * caller evaluates dense J/K. Successful reuse still evaluates physical F[D].
++ * With download=false the serialized final validator consumes the plan's J/K
++ * directly; completion and projection-lease publication retain their ordering.
+  */
+ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
+                                                     const CudaDfFinalStateToken& expected,
+                                                     const std::vector<double>& density,
+                                                     std::vector<double>& coulomb,
+                                                     std::vector<double>& exchange, bool& used,
+-                                                    std::string& detail);
++                                                    std::string& detail, bool download = true);
++
++/** Device algebra for the shared final-state selector. Matrices absent from
++ * a candidate resolve only through its exact current retained-state identity.
++ * Host outputs remain available to intentional force/reference consumers. */
++solver::FinalStateOperations cuda_density_fitting_final_state_operations(
++    CudaDensityFittingJkPlan* plan);
++
++/** Evaluate physical J/K into the existing plan, borrowing them for exactly
++ * this serialized validation request. Empty host F matrices are materialized
++ * only if a correction or reference export needs them. */
++solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
++    CudaDensityFittingJkPlan* plan, const solver::FinalStateIdentity& current,
++    const std::vector<reference::Matrix>& density, const reference::Matrix& hcore);
++
++/** Ordinary eigen-provider validation uses the same device products/gates,
++ * including during bounded final corrections and host DIIS recovery. */
++bool validate_cuda_density_fitting_eigen_frame(CudaDensityFittingJkPlan* plan,
++                                               const reference::Matrix& matrix,
++                                               const reference::Matrix* overlap,
++                                               const reference::Matrix& values,
++                                               const reference::Matrix& coefficients,
++                                               solver::EigenFrameDiagnostic& diagnostic,
++                                               std::string& detail);
++
++/** Nine serialized matrices plus one spectrum and bounded reduction storage.
++ * The conservative scalar allowance is checked against actual allocations. */
++inline std::size_t df_final_validation_device_reservation(std::size_t n) {
++  // Match one partial per 128 matrix elements, capped at 128 blocks. A
++  // 128-byte payload bound includes padding without exposing CUDA structs.
++  const long double elements = static_cast<long double>(n) * n;
++  const auto blocks = static_cast<std::size_t>(std::min(128.0L, std::ceil(elements / 128)));
++  const long double bytes = (9.0L * elements + n) * sizeof(double) + (3 * blocks + 1) * 128;
++  if (!n || bytes > static_cast<long double>(std::numeric_limits<std::size_t>::max()))
++    throw std::overflow_error("DF final validation storage size overflows");
++  return static_cast<std::size_t>(bytes);
++}
+ 
+ /** Two-spin upper bound shared by native planning and the prepared owner.
+  * Full C/epsilon snapshots and generation/info words are per item, unlike
+diff --git a/src/scf/cuda_density_fitting_stub.cpp b/src/scf/cuda_density_fitting_stub.cpp
+index 00bca49..9743beb 100644
+--- a/src/scf/cuda_density_fitting_stub.cpp
++++ b/src/scf/cuda_density_fitting_stub.cpp
+@@ -7,7 +7,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan*,
+                                                     const CudaDfFinalStateToken&,
+                                                     const std::vector<double>&,
+                                                     std::vector<double>&, std::vector<double>&,
+-                                                    bool& used, std::string&) {
++                                                    bool& used, std::string&, bool) {
+   used = false;
+   return VIBEQC_STATUS_SUCCESS;
+ }
+@@ -27,7 +27,7 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
+ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan*,
+                                                     const CudaDfFinalStateToken&,
+                                                     CudaDfFinalStateSnapshot& snapshot,
+-                                                    std::string& detail) {
++                                                    std::string& detail, bool) {
+   snapshot = {};
+   detail = "CUDA DF final-state snapshots are unavailable in this build";
+   return VIBEQC_STATUS_NOT_IMPLEMENTED;
+@@ -290,4 +290,20 @@ vibeqc_status execute_cuda_density_fitting_occupied_exchange(
+   return unavailable(nullptr, detail);
+ }
+ 
++solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
++    CudaDensityFittingJkPlan*, const solver::FinalStateIdentity&,
++    const std::vector<reference::Matrix>&, const reference::Matrix&) {
++  throw std::runtime_error("CUDA physical Fock evaluation is unavailable");
++}
++solver::FinalStateOperations cuda_density_fitting_final_state_operations(
++    CudaDensityFittingJkPlan*) {
++  throw std::runtime_error("CUDA final-state validation is unavailable");
++}
++bool validate_cuda_density_fitting_eigen_frame(CudaDensityFittingJkPlan*, const reference::Matrix&,
++                                               const reference::Matrix*, const reference::Matrix&,
++                                               const reference::Matrix&,
++                                               solver::EigenFrameDiagnostic&, std::string& detail) {
++  detail = "CUDA eigenframe validation is unavailable";
++  return false;
++}
+ }  // namespace vibeqc::scf
+diff --git a/src/scf/density_fitting.cpp b/src/scf/density_fitting.cpp
+index c984bbc..3b1c4d9 100644
+--- a/src/scf/density_fitting.cpp
++++ b/src/scf/density_fitting.cpp
+@@ -446,7 +446,8 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
+   const long double bytes =
+       static_cast<long double>(fixed_device_bytes) + control_bytes +
+       static_cast<long double>(df_eigen_device_reservation(nbf)) +
+-      static_cast<long double>(df_final_snapshot_device_reservation(nbf, batch_size)) +
++      static_cast<long double>(df_final_snapshot_device_reservation(nbf, batch_size) +
++                               df_final_validation_device_reservation(nbf)) +
+       static_cast<long double>(metric_bytes) * batch_size + solver_workspace_bytes +
+       (setup_doubles + contraction_doubles + one_electron_doubles) * sizeof(double);
+   if (bytes > static_cast<long double>(std::numeric_limits<std::size_t>::max())) {
+diff --git a/src/scf/rhf.cpp b/src/scf/rhf.cpp
+index d3fbd7b..3673d8a 100644
+--- a/src/scf/rhf.cpp
++++ b/src/scf/rhf.cpp
+@@ -516,19 +516,32 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+     const solver::PhysicalFockOperation& physical) {
+   result.converged = false;
+   const auto n = data.one_electron.nbf;
++  const auto enabled = [](const char* name) {
++    const char* value = std::getenv(name);
++    return value && value[0] == '1' && value[1] == '\0';
++  };
++  // Explicit reference selection is for independent diagnostics/causal runs.
++  // A device failure never selects it implicitly.
++  const bool reference_validation = enabled("VIBEQC_DF_REFERENCE_FINAL_VALIDATION");
++  const auto operations = reference_validation ? solver::FinalStateOperations{}
++                                               : cuda_density_fitting_final_state_operations(plan);
+   CudaDfFinalStateSnapshot snapshot;
+   solver::FinalStateIdentity identity;
+   if (device_candidate) {
++    host_trace::Region final_read("final_state_read", n);
+     CudaDfFinalStateToken token;
+     std::string detail;
+     auto status = cuda_density_fitting_final_state_token(plan, system, token, detail);
+-    if (status == VIBEQC_STATUS_SUCCESS)
+-      status = host_trace::call("final_state_read", [&] {
+-        return read_cuda_density_fitting_final_state(plan, token, snapshot, detail);
+-      });
++    if (status == VIBEQC_STATUS_SUCCESS && reference_validation)
++      status = read_cuda_density_fitting_final_state(plan, token, snapshot, detail);
++    if (status == VIBEQC_STATUS_SUCCESS && !reference_validation) {
++      snapshot.candidate = {token.identity, token.identity.factor.density_generation - 1, true, {}};
++      snapshot.candidate.spins.resize(density.size());
++    }
+     if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+     if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+-    if (snapshot.density != density || token.identity.occupied != occupied ||
++    if ((reference_validation && snapshot.density != density) ||
++        token.identity.occupied != occupied ||
+         token.identity.model.metric_relative_threshold !=
+             options.density_fitting_relative_threshold)
+       throw std::runtime_error(
+@@ -548,22 +561,40 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   const initial_guess::EigenOperation eigen = [&](const auto& f, const auto*, const auto*, auto) {
+     return final_df_eigen(f, data.one_electron.overlap, orthogonalizer, n, plan, system);
+   };
+-  const auto enabled = [](const char* name) {
+-    const char* value = std::getenv(name);
+-    return value && value[0] == '1' && value[1] == '\0';
+-  };
+   // Both diagnostic controls perform actual correction. The reference option
+   // changes the provider; it must never be satisfied by reusing the candidate.
+   const bool force =
+       enabled("VIBEQC_DF_FORCE_FINAL_REBUILD") || enabled("VIBEQC_DF_REFERENCE_FINAL_EIGEN");
++  const solver::PhysicalFockOperation device_physical = [&](const auto& current, const auto& d) {
++    return evaluate_cuda_density_fitting_final_fock(plan, current, d, data.one_electron.hcore);
++  };
+   auto selected = solver::select_final_state(
+       identity, data.one_electron.overlap, data.one_electron.hcore, orthogonalizer,
+       data.one_electron.nuclear_repulsion, std::move(density),
+-      device_candidate ? &snapshot.candidate : nullptr, physical, eigen,
++      device_candidate ? &snapshot.candidate : nullptr,
++      reference_validation ? physical : device_physical, eigen,
+       {options.density_tolerance, options.energy_tolerance, 16, options.export_physical_reference},
+-      options.compute_forces, force);
++      options.compute_forces, force, reference_validation ? nullptr : &operations);
+   if (selected.status == solver::FinalStateStatus::OutOfMemory) throw std::bad_alloc();
+   if (!selected.state) throw std::runtime_error(selected.detail);
++  if (options.export_physical_reference && selected.state->fock[0].empty()) {
++    selected.state->fock =
++        operations.materialize_fock({selected.state->identity, true, selected.state->fock});
++  }
++  if (options.export_physical_reference && selected.state->orbitals[0].vectors.empty()) {
++    // C/epsilon are public reference outputs only on request. The accepted
++    // identity must still match the retained owner before their download.
++    std::string detail;
++    const auto status = read_cuda_density_fitting_final_state(
++        plan, CudaDfFinalStateToken{1, selected.state->identity}, snapshot, detail, false);
++    if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
++    if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
++    selected.state->orbitals = std::move(snapshot.candidate.spins);
++  }
++  runtime::df_progress::number("final_fock_evaluations", selected.fock_evaluations);
++  runtime::df_progress::number("final_eigen_solves", selected.eigen_solves);
++  runtime::df_progress::number("final_density_updates", selected.density_updates);
++  runtime::df_progress::number("final_candidate_rejections", selected.candidate_rejections);
+   host_trace::Region accepted(selected.reused ? "final_state_reuse" : "final_state_corrected", n);
+   // The intrusive journal retains the actual physical gate at the returned
+   // determinant; ordinary endpoint timing adds neither formatting nor I/O.
+@@ -598,6 +629,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   const std::size_t n = data.one_electron.nbf;
+   CudaDfFinalStateToken response_token;
+   Matrix final_fock, weighted;
++  solver::FinalStateDiagnostic final_diagnostic;
+   EigenResult orbitals;
+   const auto execute_item_rhf_jk =
+       [&](const Matrix& item_density, std::vector<double>& item_coulomb,
+@@ -644,6 +676,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+     final_fock = std::move(state.fock[0]);
+     orbitals = std::move(state.orbitals[0]);
+     if (options.compute_forces) weighted = std::move(state.weighted_density[0]);
++    final_diagnostic = state.diagnostic;
+     result.energy = state.diagnostic.energy;
+     result.converged = true;
+   } else {
+@@ -683,7 +716,17 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+         sizeof(double),
+         posthf::checked_add(
+             posthf::checked_mul(options.compute_forces ? 6 : 5, posthf::checked_mul(n, n)), n));
+-    validate_physical_reference(*reference);
++    if (cuda_plan) {
++      // The selector already enforced export's stronger absolute canonicality
++      // and maximum-density gates on this exact state, before constructing W.
++      // The independent public validator remains for imported/CPU references.
++      if (!occupied || occupied >= n) throw std::invalid_argument("invalid reference occupation");
++      reference->commutator_residual = final_diagnostic.maximum_commutator;
++      reference->canonical_density_drift = final_diagnostic.maximum_density_error;
++      reference->eigen_residual = final_diagnostic.eigenframes[0].maximum_eigen_residual;
++    } else {
++      validate_physical_reference(*reference);
++    }
+     result.reference = std::move(reference);
+   }
+   if (!options.compute_forces) {
+diff --git a/src/scf/solver/eigen_frame.cpp b/src/scf/solver/eigen_frame.cpp
+index 650e354..4033740 100644
+--- a/src/scf/solver/eigen_frame.cpp
++++ b/src/scf/solver/eigen_frame.cpp
+@@ -53,8 +53,18 @@ bool validate_eigen_frame(const std::vector<double>& matrix, const std::vector<d
+   }
+   const double scale = matrix_norm * coefficient_norm + rhs_norm;
+   diagnostic.scaled_eigen_residual = scale == 0 ? residual_norm : residual_norm / scale;
+-  if (!std::isfinite(scale) || !std::isfinite(residual_norm) ||
+-      !std::isfinite(diagnostic.scaled_eigen_residual) ||
++  if (!std::isfinite(scale) || !std::isfinite(residual_norm)) {
++    detail = "DF eigenframe validation norm overflow";
++    return false;
++  }
++  return accept_eigen_frame(diagnostic, detail);
++}
++
++bool accept_eigen_frame(const EigenFrameDiagnostic& diagnostic, std::string& detail) {
++  if (diagnostic.solver_info != 0 || !std::isfinite(diagnostic.maximum_eigen_residual) ||
++      !std::isfinite(diagnostic.maximum_metric_error) ||
++      !std::isfinite(diagnostic.scaled_eigen_residual) || diagnostic.maximum_eigen_residual < 0 ||
++      diagnostic.maximum_metric_error < 0 || diagnostic.scaled_eigen_residual < 0 ||
+       diagnostic.maximum_eigen_residual > 1e-8 || diagnostic.maximum_metric_error > 1e-8 ||
+       diagnostic.scaled_eigen_residual > 1e-12) {
+     detail = "DF eigensystem failed physical eigen residual or metric orthogonality checks";
+diff --git a/src/scf/solver/eigen_frame.hpp b/src/scf/solver/eigen_frame.hpp
+index dc0d9c7..993ee0e 100644
+--- a/src/scf/solver/eigen_frame.hpp
++++ b/src/scf/solver/eigen_frame.hpp
+@@ -10,6 +10,10 @@ struct EigenFrameDiagnostic {
+   double maximum_eigen_residual{}, scaled_eigen_residual{}, maximum_metric_error{};
+   int solver_info{};
+ };
++/** Apply the common absolute/scaled gates to finite backend-produced evidence.
++ * Product overflow must be reported by the producer before calling this gate. */
++bool accept_eigen_frame(const EigenFrameDiagnostic& diagnostic, std::string& detail);
++
+ /** Validate the returned frame independently of the production eigen backend.
+  * A null overlap means I. The existing physical-reference absolute 1e-8
+  * eigen/metric gates also apply here, alongside a scaled 1e-12 residual.
+diff --git a/src/scf/solver/final_state.cpp b/src/scf/solver/final_state.cpp
+index 6094738..60043b3 100644
+--- a/src/scf/solver/final_state.cpp
++++ b/src/scf/solver/final_state.cpp
+@@ -50,11 +50,13 @@ bool valid_input(const FinalStateIdentity& current, const Matrix& overlap, const
+     if (current.occupied[spin] > n || !symmetric(density[spin], n)) return false;
+   return true;
+ }
+-bool valid_fock(const FinalStateIdentity& current, const PhysicalFockFrame& fock, std::size_t n) {
++bool valid_fock(const FinalStateIdentity& current, const PhysicalFockFrame& fock, std::size_t n,
++                bool device = false) {
+   return fock.physical && fock.identity == current &&
+          fock.spins.size() == current.occupied.size() &&
+-         std::all_of(fock.spins.begin(), fock.spins.end(),
+-                     [n](const auto& f) { return symmetric(f, n); });
++         std::all_of(fock.spins.begin(), fock.spins.end(), [n, device](const auto& f) {
++           return (device && f.empty()) || symmetric(f, n);
++         });
+ }
+ double physical_energy(const Matrix& hcore, double nuclear, const std::vector<Matrix>& density,
+                        const PhysicalFockFrame& fock) {
+@@ -70,7 +72,8 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
+                           const Matrix& hcore, double nuclear_energy,
+                           const std::vector<Matrix>& density, const PhysicalFockFrame& fock,
+                           const FinalFrameCandidate& orbitals, const FinalStateLimits& limits,
+-                          FinalStateDiagnostic& diagnostic, std::string& detail) {
++                          FinalStateDiagnostic& diagnostic, std::string& detail,
++                          const FinalStateOperations* operations) {
+   diagnostic = {};
+   detail.clear();
+   runtime::host_trace::Region trace("final_state_validation", dimension(overlap));
+@@ -79,8 +82,8 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
+     return false;
+   }
+   const auto n = dimension(overlap);
+-  if (!valid_fock(current, fock, n) || orbitals.identity != current || !orbitals.physical_origin ||
+-      !orbitals.fock_density_generation ||
++  if (!valid_fock(current, fock, n, operations != nullptr) || orbitals.identity != current ||
++      !orbitals.physical_origin || !orbitals.fock_density_generation ||
+       orbitals.fock_density_generation > current.factor.density_generation ||
+       orbitals.spins.size() != density.size()) {
+     detail =
+@@ -90,55 +93,75 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
+   const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
+   const double tolerance = std::min(1e-8, limits.density_tolerance);
+   diagnostic.eigenframes.resize(density.size());
+-  for (std::size_t spin = 0; spin < density.size(); ++spin) {
+-    const auto& frame = orbitals.spins[spin];
+-    if (!validate_eigen_frame(fock.spins[spin], &overlap, frame.values, frame.vectors, n,
+-                              diagnostic.eigenframes[spin], detail))
++  if (operations) {
++    if (!operations->products(current, overlap, hcore, nuclear_energy, density, fock, orbitals,
++                              limits, diagnostic, detail))
+       return false;
+-    const auto reconstructed =
+-        reference::density_from_orbitals(frame.vectors, n, current.occupied[spin], weight);
+-    const auto ds = reference::multiply(density[spin], overlap, n);
+-    const auto dsd = reference::multiply(ds, density[spin], n);
+-    const auto residual =
+-        reference::commutator_residual(fock.spins[spin], density[spin], overlap, n);
+-    if (!finite(reconstructed) || !finite(ds) || !finite(dsd) || !finite(residual)) {
+-      detail = "nonfinite final-state validation products";
++    if (diagnostic.eigenframes.size() != density.size()) {
++      detail = "final-state provider returned incomplete spin diagnostics";
+       return false;
+     }
+-    long double electrons = 0;
+-    double drift = 0;
+-    for (std::size_t row = 0; row < n; ++row) electrons += ds[row * n + row];
+-    for (std::size_t k = 0; k < n * n; ++k) {
+-      drift = std::hypot(drift, reconstructed[k] - density[spin][k]);
+-      diagnostic.maximum_density_error =
+-          std::max(diagnostic.maximum_density_error, std::abs(reconstructed[k] - density[spin][k]));
+-      diagnostic.maximum_commutator =
+-          std::max(diagnostic.maximum_commutator, std::abs(residual[k]));
+-      diagnostic.maximum_idempotency_error = std::max(diagnostic.maximum_idempotency_error,
+-                                                      std::abs(dsd[k] - weight * density[spin][k]));
+-    }
+-    diagnostic.density_rms = std::max(diagnostic.density_rms, drift / n);
+-    diagnostic.maximum_trace_error =
+-        std::max(diagnostic.maximum_trace_error,
+-                 std::abs(static_cast<double>(electrons - weight * current.occupied[spin])));
+-    if (limits.require_canonicality) {
+-      // Export's absolute canonicality gate can be stricter than the scaled
+-      // eigen residual in an ill-conditioned AO metric. Include it in state
+-      // selection so rejection enters correction before W/reference output.
+-      const auto fc = reference::multiply(fock.spins[spin], frame.vectors, n);
+-      const auto cfc = reference::multiply(reference::transpose(frame.vectors, n), fc, n);
+-      if (!finite(cfc)) {
+-        detail = "nonfinite final-state canonicality products";
++    for (const auto& frame : diagnostic.eigenframes)
++      if (!accept_eigen_frame(frame, detail)) return false;
++  } else {
++    for (std::size_t spin = 0; spin < density.size(); ++spin) {
++      const auto& frame = orbitals.spins[spin];
++      if (!validate_eigen_frame(fock.spins[spin], &overlap, frame.values, frame.vectors, n,
++                                diagnostic.eigenframes[spin], detail))
++        return false;
++      const auto reconstructed =
++          reference::density_from_orbitals(frame.vectors, n, current.occupied[spin], weight);
++      const auto ds = reference::multiply(density[spin], overlap, n);
++      const auto dsd = reference::multiply(ds, density[spin], n);
++      const auto residual =
++          reference::commutator_residual(fock.spins[spin], density[spin], overlap, n);
++      if (!finite(reconstructed) || !finite(ds) || !finite(dsd) || !finite(residual)) {
++        detail = "nonfinite final-state validation products";
+         return false;
+       }
+-      for (std::size_t row = 0; row < n; ++row)
+-        for (std::size_t column = 0; column < n; ++column)
+-          diagnostic.maximum_canonical_error =
+-              std::max(diagnostic.maximum_canonical_error,
+-                       std::abs(cfc[row * n + column] - (row == column ? frame.values[row] : 0.0)));
++      long double electrons = 0;
++      double drift = 0;
++      for (std::size_t row = 0; row < n; ++row) electrons += ds[row * n + row];
++      for (std::size_t k = 0; k < n * n; ++k) {
++        drift = std::hypot(drift, reconstructed[k] - density[spin][k]);
++        diagnostic.maximum_density_error = std::max(diagnostic.maximum_density_error,
++                                                    std::abs(reconstructed[k] - density[spin][k]));
++        diagnostic.maximum_commutator =
++            std::max(diagnostic.maximum_commutator, std::abs(residual[k]));
++        diagnostic.maximum_idempotency_error = std::max(
++            diagnostic.maximum_idempotency_error, std::abs(dsd[k] - weight * density[spin][k]));
++      }
++      diagnostic.density_rms = std::max(diagnostic.density_rms, drift / n);
++      diagnostic.maximum_trace_error =
++          std::max(diagnostic.maximum_trace_error,
++                   std::abs(static_cast<double>(electrons - weight * current.occupied[spin])));
++      if (limits.require_canonicality) {
++        // Export's absolute canonicality gate can be stricter than the scaled
++        // eigen residual in an ill-conditioned AO metric. Include it in state
++        // selection so rejection enters correction before W/reference output.
++        const auto fc = reference::multiply(fock.spins[spin], frame.vectors, n);
++        const auto cfc = reference::multiply(reference::transpose(frame.vectors, n), fc, n);
++        if (!finite(cfc)) {
++          detail = "nonfinite final-state canonicality products";
++          return false;
++        }
++        for (std::size_t row = 0; row < n; ++row)
++          for (std::size_t column = 0; column < n; ++column)
++            diagnostic.maximum_canonical_error = std::max(
++                diagnostic.maximum_canonical_error,
++                std::abs(cfc[row * n + column] - (row == column ? frame.values[row] : 0.0)));
++      }
++    }
++    diagnostic.energy = physical_energy(hcore, nuclear_energy, density, fock);
++  }
++  for (double value : {diagnostic.maximum_commutator, diagnostic.density_rms,
++                       diagnostic.maximum_trace_error, diagnostic.maximum_idempotency_error,
++                       diagnostic.maximum_density_error, diagnostic.maximum_canonical_error}) {
++    if (!std::isfinite(value) || value < 0) {
++      detail = "nonfinite or invalid final-state validation diagnostics";
++      return false;
+     }
+   }
+-  diagnostic.energy = physical_energy(hcore, nuclear_energy, density, fock);
+   if (!std::isfinite(diagnostic.energy) || !std::isfinite(diagnostic.density_rms) ||
+       !std::isfinite(diagnostic.maximum_trace_error) || diagnostic.maximum_commutator > tolerance ||
+       diagnostic.density_rms > tolerance || diagnostic.maximum_trace_error > 1e-8 ||
+@@ -153,18 +176,18 @@ bool validate_final_state(const FinalStateIdentity& current, const Matrix& overl
+   return true;
+ }
+ 
+-FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix& overlap,
+-                                       const Matrix& hcore, const Matrix& orthogonalizer,
+-                                       double nuclear_energy, std::vector<Matrix> density,
+-                                       const FinalFrameCandidate* candidate,
+-                                       const PhysicalFockOperation& evaluate,
+-                                       const initial_guess::EigenOperation& eigen,
+-                                       const FinalStateLimits& limits,
+-                                       bool compute_weighted_density, bool force_rebuild) {
++FinalStateSelection select_final_state(
++    FinalStateIdentity current, const Matrix& overlap, const Matrix& hcore,
++    const Matrix& orthogonalizer, double nuclear_energy, std::vector<Matrix> density,
++    const FinalFrameCandidate* candidate, const PhysicalFockOperation& evaluate,
++    const initial_guess::EigenOperation& eigen, const FinalStateLimits& limits,
++    bool compute_weighted_density, bool force_rebuild, const FinalStateOperations* operations) {
+   FinalStateSelection result;
+   try {
+     const auto n = dimension(overlap);
+     if (!evaluate || !eigen ||
++        (operations && (!operations->products || !operations->eigen || !operations->project ||
++                        !operations->weighted)) ||
+         !valid_input(current, overlap, hcore, nuclear_energy, density, limits) ||
+         !symmetric(orthogonalizer, n)) {
+       result.status = FinalStateStatus::InvalidInput;
+@@ -176,22 +199,34 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
+     double previous_energy = std::numeric_limits<double>::quiet_NaN();
+     for (unsigned step = 0;; ++step) {
+       ++result.fock_evaluations;
+-      const auto physical = runtime::host_trace::call("final_state_fock_build",
+-                                                      [&] { return evaluate(current, density); });
+-      if (!valid_fock(current, physical, n)) {
++      auto physical = runtime::host_trace::call("final_state_fock_build",
++                                                [&] { return evaluate(current, density); });
++      if (!valid_fock(current, physical, n, operations != nullptr)) {
+         result.status = FinalStateStatus::ProviderFailure;
+         result.detail = "physical provider did not evaluate the current tagged density";
+         return result;
+       }
+-      const double energy = physical_energy(hcore, nuclear_energy, density, physical);
++      FinalStateDiagnostic diagnostic;
++      const bool valid =
++          frame && validate_final_state(current, overlap, hcore, nuclear_energy, density, physical,
++                                        *frame, limits, diagnostic, result.detail, operations);
++      const auto materialize = [&] {
++        if (std::any_of(physical.spins.begin(), physical.spins.end(),
++                        [](const auto& f) { return f.empty(); })) {
++          if (!operations || !operations->materialize_fock)
++            throw std::runtime_error("missing physical Fock materialization provider");
++          physical.spins = operations->materialize_fock(physical);
++          if (!valid_fock(current, physical, n))
++            throw std::runtime_error("invalid materialized physical Fock");
++        }
++      };
++      if (!valid) materialize();
++      const double energy =
++          valid ? diagnostic.energy : physical_energy(hcore, nuclear_energy, density, physical);
+       if (!std::isfinite(energy)) {
+         result.detail = "nonfinite strict final-state energy";
+         return result;
+       }
+-      FinalStateDiagnostic diagnostic;
+-      const bool valid =
+-          frame && validate_final_state(current, overlap, hcore, nuclear_energy, density, physical,
+-                                        *frame, limits, diagnostic, result.detail);
+       diagnostic.energy_change = step ? std::abs(energy - previous_energy) : 0;
+       if (valid && !(force_rebuild && step == 0) &&
+           diagnostic.energy_change <= limits.energy_tolerance) {
+@@ -199,16 +234,26 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
+                                  {},      frame->spins,       std::move(diagnostic)};
+         if (compute_weighted_density) {
+           runtime::host_trace::Region weighted("final_state_weighted_density", n);
+-          const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
+-          for (std::size_t spin = 0; spin < state.orbitals.size(); ++spin) {
+-            auto w = reference::energy_weighted_density(state.orbitals[spin].vectors,
+-                                                        state.orbitals[spin].values, n,
+-                                                        current.occupied[spin], weight);
+-            if (!finite(w)) {
+-              result.detail = "nonfinite validated energy-weighted density";
++          if (operations) {
++            state.weighted_density = operations->weighted(current, *frame);
++            if (state.weighted_density.size() != current.occupied.size() ||
++                !std::all_of(state.weighted_density.begin(), state.weighted_density.end(),
++                             [n](const auto& w) { return w.size() == n * n && finite(w); })) {
++              result.detail = "invalid device energy-weighted density";
+               return result;
+             }
+-            state.weighted_density.push_back(std::move(w));
++          } else {
++            const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
++            for (std::size_t spin = 0; spin < state.orbitals.size(); ++spin) {
++              auto w = reference::energy_weighted_density(state.orbitals[spin].vectors,
++                                                          state.orbitals[spin].values, n,
++                                                          current.occupied[spin], weight);
++              if (!finite(w)) {
++                result.detail = "nonfinite validated energy-weighted density";
++                return result;
++              }
++              state.weighted_density.push_back(std::move(w));
++            }
+           }
+         }
+         result.state = std::move(state);
+@@ -224,6 +269,7 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
+         result.detail = "strict final-state correction exhausted without a consistent state";
+         return result;
+       }
++      materialize();
+       runtime::host_trace::Region correction("strict_final_correction", n);
+       const auto origin = current.factor.density_generation;
+       corrected.emplace();
+@@ -237,14 +283,25 @@ FinalStateSelection select_final_state(FinalStateIdentity current, const Matrix&
+       for (std::size_t spin = 0; spin < density.size(); ++spin) {
+         EigenFrameDiagnostic checked;
+         const auto& c = corrected->spins[spin];
+-        if (!validate_eigen_frame(physical.spins[spin], &overlap, c.values, c.vectors, n, checked,
+-                                  result.detail)) {
++        const bool valid_eigen =
++            operations
++                ? operations->eigen(physical.spins[spin], overlap, c, checked, result.detail) &&
++                      accept_eigen_frame(checked, result.detail)
++                : validate_eigen_frame(physical.spins[spin], &overlap, c.values, c.vectors, n,
++                                       checked, result.detail);
++        if (!valid_eigen) {
++          result.status = FinalStateStatus::ProviderFailure;
++          return result;
++        }
++        const double weight = current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0;
++        density[spin] = operations ? operations->project(c, current.occupied[spin], weight)
++                                   : reference::density_from_orbitals(
++                                         c.vectors, n, current.occupied[spin], weight);
++        if (!symmetric(density[spin], n)) {
+           result.status = FinalStateStatus::ProviderFailure;
++          result.detail = "invalid projected final-state density";
+           return result;
+         }
+-        density[spin] = reference::density_from_orbitals(
+-            c.vectors, n, current.occupied[spin],
+-            current.model.spec.spin == FockSpin::Restricted ? 2.0 : 1.0);
+       }
+       ++current.factor.orbital_generation;
+       ++current.factor.density_generation;
+diff --git a/src/scf/solver/final_state.hpp b/src/scf/solver/final_state.hpp
+index effeb12..4b37fc4 100644
+--- a/src/scf/solver/final_state.hpp
++++ b/src/scf/solver/final_state.hpp
+@@ -39,7 +39,10 @@ struct FinalFrameCandidate {
+ 
+ /** A physical evaluation at exactly the tagged density. Defaults fail closed.
+  * Providers must evaluate the passed D on their immutable target model; an
+- * old cached or extrapolated Fock cannot be relabeled as this evaluation. */
++ * old cached or extrapolated Fock cannot be relabeled as this evaluation.
++ * A backend operation may use empty host matrices for its tagged borrowed
++ * device products; it must check their finite/symmetric input contract and
++ * materialize them on demand for correction or public reference output. */
+ struct PhysicalFockFrame {
+   FinalStateIdentity identity;
+   bool physical{};
+@@ -64,6 +67,30 @@ struct FinalStateDiagnostic {
+   std::vector<EigenFrameDiagnostic> eigenframes;
+ };
+ 
++/** Synchronous backend algebra beneath the shared identity, acceptance and
++ * correction policy. An installed provider must supply every operation;
++ * exceptions are observable provider failures, never a reference fallback.
++ * Products return finite numerical evidence, not an acceptance decision.
++ * A provider may resolve empty candidate matrices from an exactly tagged
++ * retained owner; it must verify the device generations and solver status.
++ * Projection/W return host data for the existing density/force consumers. */
++struct FinalStateOperations {
++  // Materialize a borrowed physical F only for correction/export consumers.
++  std::function<std::vector<reference::Matrix>(const PhysicalFockFrame&)> materialize_fock;
++  std::function<bool(const FinalStateIdentity&, const reference::Matrix&, const reference::Matrix&,
++                     double, const std::vector<reference::Matrix>&, const PhysicalFockFrame&,
++                     const FinalFrameCandidate&, const FinalStateLimits&, FinalStateDiagnostic&,
++                     std::string&)>
++      products;
++  std::function<bool(const reference::Matrix&, const reference::Matrix&,
++                     const reference::EigenResult&, EigenFrameDiagnostic&, std::string&)>
++      eigen;
++  std::function<reference::Matrix(const reference::EigenResult&, std::size_t, double)> project;
++  std::function<std::vector<reference::Matrix>(const FinalStateIdentity&,
++                                               const FinalFrameCandidate&)>
++      weighted;
++};
++
+ /** Check current F, C/epsilon and D without diagonalizing or repairing inputs.
+  * The physical-reference 1e-8 absolute gates remain caps; a tighter requested
+  * density tolerance also applies to density drift and physical commutator.
+@@ -75,11 +102,13 @@ bool validate_final_state(const FinalStateIdentity& current, const reference::Ma
+                           const std::vector<reference::Matrix>& density,
+                           const PhysicalFockFrame& fock, const FinalFrameCandidate& orbitals,
+                           const FinalStateLimits& limits, FinalStateDiagnostic& diagnostic,
+-                          std::string& detail);
++                          std::string& detail, const FinalStateOperations* operations = nullptr);
+ 
+ /** Owned, validated output. W is empty unless requested after strict checks;
+  * no cached W is accepted as input. Consumers must preserve this identity when
+- * constructing factors or exporting a physical reference. */
++ * constructing factors or exporting a physical reference. A backend candidate
++ * may keep C/epsilon resident (empty host orbital arrays); the driver must
++ * materialize that exact identity when a public reference requests them. */
+ struct VerifiedFinalState {
+   FinalStateIdentity identity;
+   std::vector<reference::Matrix> density, fock, weighted_density;
+@@ -118,5 +147,6 @@ FinalStateSelection select_final_state(
+     const reference::Matrix& orthogonalizer, double nuclear_energy,
+     std::vector<reference::Matrix> density, const FinalFrameCandidate* candidate,
+     const PhysicalFockOperation& evaluate, const initial_guess::EigenOperation& eigen,
+-    const FinalStateLimits& limits, bool compute_weighted_density, bool force_rebuild = false);
++    const FinalStateLimits& limits, bool compute_weighted_density, bool force_rebuild = false,
++    const FinalStateOperations* operations = nullptr);
+ }  // namespace vibeqc::scf::solver

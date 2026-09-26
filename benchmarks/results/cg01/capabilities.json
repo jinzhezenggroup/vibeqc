@@ -1,0 +1,5122 @@
+{
+  "architecture": "sm_120",
+  "catalog_sha256": "70dad5ddccdfb93e7a61feee2003cff76828b626c6cb327ba95f2f6a91557907",
+  "schema": "vibeqc.validation.capabilities",
+  "schema_version": 1,
+  "shell_classes": [
+    {
+      "angular": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ssss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": false,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "subset_wick",
+            "schedule": "packed_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "psss first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "psss first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "psss first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "psss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "local_packed_streaming_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": false,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "subset_wick",
+            "schedule": "packed_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "psps first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "psps first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "psps first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "psps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "local_packed_streaming_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys2",
+            "schedule": "thread_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "ppss first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ppss first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ppss first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ppss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys2",
+            "schedule": "thread_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ppps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "ppps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ppps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ppps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "pppp first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "pppp first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "pppp first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "pppp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "dsss first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "dsss first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dsss first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dsss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys2",
+            "schedule": "thread_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dsps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dsps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dsps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dsps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "thread_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dspp first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dspp first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dspp first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dspp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dsds first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dsds first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dsds first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dsds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "component_lanes",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dpss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dpss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "thread_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dpps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dpps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dppp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dppp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "dppp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dppp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys4",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dpds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "dpds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys4",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpdp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dpdp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "dpdp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpdp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys4",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "ddss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ddss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys3",
+            "schedule": "component_lanes",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddps first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ddps first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ddps first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys4",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddpp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ddpp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ddpp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddpp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys4",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ddds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ddds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "mixed_fock",
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys4",
+            "schedule": "component_lanes",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dddp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dddp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "dddp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dddp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys5",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "contains_f": false,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dddd first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dddd first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "dddd first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dddd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [
+              "streaming_fock"
+            ],
+            "fock": true,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "rys5",
+            "schedule": "subgroup_tasks",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "fsss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fsss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "fsps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fsps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fspp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fspp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fspp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fspp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fsds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsdp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsdp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fsdp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsdp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        2,
+        2
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsdd first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsdd first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fsdd first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsdd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsfs first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsfs first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fsfs first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsfs",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "fpss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fpss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpps first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpps first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fpps first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "provisional",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": true,
+            "profile": "sm_120",
+            "profile_match": "exact",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "recurrence": "subset_wick",
+            "schedule": "component_lanes",
+            "status": "manifest_selected"
+          },
+          "selected": true
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fppp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fppp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fppp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fppp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fpds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpdp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpdp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpdp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpdp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpdd first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpdd first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpdd first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpdd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpfs first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpfs first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpfs first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpfs",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpfp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpfp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpfp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpfp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdss first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdss first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fdss first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdps first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdps first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fdps first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdpp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdpp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdpp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdpp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdds first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdds first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdds first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fddp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fddp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fddp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fddp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        2,
+        2
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fddd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdfs first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdfs first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdfs first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdfs",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdfp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdfd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffss first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffss first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ffss first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffss",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffps first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffps first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffps first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffps",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffpp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffpp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffpp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffpp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffds first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffds first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffds first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffds",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffdp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffdd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fffs",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fffp",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        2
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fffd",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "contains_f": true,
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffff",
+      "stages": {
+        "compilation": {
+          "reason": "attach #135/autotune toolchain-specific compilation evidence",
+          "status": "not-run"
+        },
+        "endpoint": {
+          "reason": "attach molecular evidence with actual loaded angular momenta",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": "attach independent class-isolated CUDA evidence; host self-checks do not establish this stage",
+          "status": "not-run"
+        },
+        "production": {
+          "acceptance_status": "requires-attached-evidence",
+          "manifest": {
+            "capabilities": [],
+            "fock": false,
+            "force": false,
+            "profile": null,
+            "profile_match": null,
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+            "reason": "not selected by the production manifest; endpoint/resource gates remain",
+            "status": "manifest_gap"
+          },
+          "selected": false
+        },
+        "representation": {
+          "reason": null,
+          "scope": "four-center ERI, first derivative, direct HF consumers",
+          "status": "pass"
+        },
+        "source": {
+          "provenance": "committed capability catalog",
+          "reason": null,
+          "schedules": [
+            "tiled_components"
+          ],
+          "status": "pass"
+        }
+      }
+    }
+  ]
+}

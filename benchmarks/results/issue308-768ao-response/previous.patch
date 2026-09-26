@@ -1,0 +1,210 @@
+diff --git a/docs/cuda_ownership.json b/docs/cuda_ownership.json
+index 865423a..63da88b 100644
+--- a/docs/cuda_ownership.json
++++ b/docs/cuda_ownership.json
+@@ -1517,7 +1517,7 @@
+         "benchmarks/results/cuda-ownership/df/README.md",
+         "benchmarks/results/issue308-shell-schedules/summary.json"
+       ],
+-      "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter. Opt-in shell-block lowering shares primitive geometry/Boys/moments across all 64 s/p/d/f triples with generated warp, packed and compact subgroup schedules and immediate weighted contraction.",
++      "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter. Shell-block lowering shares primitive geometry/Boys/moments across all 64 s/p/d/f triples with generated warp, packed and compact subgroup schedules and immediate weighted contraction; compact scheduling defaults on for qualified resident 192--384-AO sm_120 endpoints.",
+       "missing_capability": "None for the retired DF integral/coordinate-response duplicate. HF density-weight construction and the spectral inverse reverse map remain native method adapters; the separate df_response_weights entry owns their current device/GEMV path and opt-in control. An equivalent TensorIR method consumer is not integrated.",
+       "owner": "df_derivatives",
+       "retirement_condition": "Completed: removed coordinate-wise RHF/UHF production responses, their CUDA allocations and estimates, and the DF derivative selector after final numerical/resource/complete endpoint gates. Retain generated raw APIs and independent CPU/libcint oracles.",
+@@ -1646,7 +1646,7 @@
+     },
+     "df_response_weights": {
+       "owner": "scf_tensor",
+-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. VIBEQC_DF_RESPONSE_ALGEBRA=blas adds opt-in charge GEMV and density GEMM; scalar charge/density execution stays default until clean complete endpoint acceptance.",
++      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere.",
+       "generated_capability": "Existing generated two-/three-center values and coordinate-response consumers are reused unchanged. No new generated capability is introduced; a generic cuBLAS call does not constitute a generated method-equation migration.",
+       "missing_capability": "An equivalent bounded compiler-owned HF density/spectral response method consumer is not integrated. Final #206 cold/warm/changed-geometry and resident/constrained-memory endpoint acceptance remains open.",
+       "retained_duplicate_reason": "oracle",
+diff --git a/docs/cuda_ownership_current.json b/docs/cuda_ownership_current.json
+index 6648466..1063024 100644
+--- a/docs/cuda_ownership_current.json
++++ b/docs/cuda_ownership_current.json
+@@ -1,5 +1,5 @@
+ {
+-  "all_handwritten_scientific_lines": 11151,
++  "all_handwritten_scientific_lines": 11166,
+   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
+   "files": [
+     {
+@@ -598,20 +598,20 @@
+       "subsystem": "runtime"
+     },
+     {
+-      "bytes": 47490,
++      "bytes": 48769,
+       "code_lines": {
+         "fallback": 0,
+         "oracle": 0,
+         "performance_exception": 0,
+         "runtime": 0,
+-        "scientific": 807
++        "scientific": 822
+       },
+       "path": "src/scf/cuda/df_gradient_bridge.cu",
+-      "physical_lines": 855,
++      "physical_lines": 875,
+       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response, conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned. Opt-in bounded pinned host panels use event-protected recycling and blocked byte gathers; original drain/gather and gradient-copy probes retain causal attribution. Layout, budget and BLAS-provider glue remain in this conservative classification; no handwritten derivative evaluator is added.",
+       "regions": [],
+       "role": "scientific",
+-      "sha256": "fa8a55235e375c5fc950e620b0c40044866a555046be20377867020765102d91",
++      "sha256": "7aa758c0e75cbd3f112fb9a59d8202433279917cd8d67025781228949eda2d56",
+       "subsystem": "df_derivatives"
+     },
+     {
+@@ -3356,7 +3356,7 @@
+     "oracle": 10,
+     "performance_exception": 156,
+     "runtime": 9364,
+-    "scientific": 10985
++    "scientific": 11000
+   },
+   "migration_ledger": {
+     "ao_grid": {
+@@ -3383,14 +3383,14 @@
+         "benchmarks/results/cuda-ownership/df/README.md",
+         "benchmarks/results/issue308-shell-schedules/summary.json"
+       ],
+-      "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter. Opt-in shell-block lowering shares primitive geometry/Boys/moments across all 64 s/p/d/f triples with generated warp, packed and compact subgroup schedules and immediate weighted contraction.",
++      "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter. Shell-block lowering shares primitive geometry/Boys/moments across all 64 s/p/d/f triples with generated warp, packed and compact subgroup schedules and immediate weighted contraction; compact scheduling defaults on for qualified resident 192--384-AO sm_120 endpoints.",
+       "missing_capability": "None for the retired DF integral/coordinate-response duplicate. HF density-weight construction and the spectral inverse reverse map remain native method adapters; the separate df_response_weights entry owns their current device/GEMV path and opt-in control. An equivalent TensorIR method consumer is not integrated.",
+       "owner": "df_derivatives",
+       "retirement_condition": "Completed: removed coordinate-wise RHF/UHF production responses, their CUDA allocations and estimates, and the DF derivative selector after final numerical/resource/complete endpoint gates. Retain generated raw APIs and independent CPU/libcint oracles.",
+       "status": "retired"
+     },
+     "df_response_weights": {
+-      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. VIBEQC_DF_RESPONSE_ALGEBRA=blas adds opt-in charge GEMV and density GEMM; scalar charge/density execution stays default until clean complete endpoint acceptance.",
++      "current_default": "Plan-owned FP64 cuBLAS GEMV exchange metric dots on the existing stream and bounded raw-panel layout; native Coulomb/density response and spectral Frechet adapters remain. VIBEQC_DF_SERIAL_RESPONSE_DOT=1 explicitly selects the previous serial metric dot for ablation only. Charge GEMV/density GEMM and bounded pinned panels default on in the qualified resident 192--384-AO sm_120 regime; explicit scalar/pageable controls preserve the comparison route elsewhere.",
+       "evidence": [
+         "tests/python/test_df_response_weights_cuda.py",
+         "benchmarks/results/issue206-metric-gemv/README.md",
+@@ -3539,7 +3539,7 @@
+       "oracle": 0,
+       "performance_exception": 0,
+       "runtime": 265,
+-      "scientific": 807
++      "scientific": 822
+     },
+     "df_response_weights": {
+       "fallback": 0,
+diff --git a/docs/df_shell_derivatives.md b/docs/df_shell_derivatives.md
+index fd0deae..820e68c 100644
+--- a/docs/df_shell_derivatives.md
++++ b/docs/df_shell_derivatives.md
+@@ -2,9 +2,20 @@
+ 
+ `VIBEQC_DF_WEIGHTED_EXECUTION=shell` selects generated weighted three-center
+ derivatives across all 64 s/p/d/f shell classes. `shell-sp` retains the original
+-seven non-SSS s/p classes as a comparison subset. The default remains `generic`
+-until complete endpoint measurements qualify promotion. The initial s/p-only
+-prototype did not resolve the 192-to-384-AO force scaling problem in #308.
++seven non-SSS s/p classes as a comparison subset. Clean endpoints qualify the
++combined `shell` / `compact` / `blas` / `pinned-panels` default for resident
++192--384-AO sm_120 device-metric execution. Other sizes, backends, source-backed
++values, serial mappings and attribution probes retain the previous defaults.
++In particular, small UHF remains generic because pinned allocations and shell
++launches regress its complete endpoint. The initial s/p-only prototype did not
++resolve the 192-to-384-AO force scaling problem in #308.
++
++The measured 384-AO batch-one/four complete-force means fall from 12.007/47.905 s
++to 3.261/13.498 s with compact scheduling. Corresponding 192-to-384 ratios fall
++from 14.94/14.87 to 12.14/12.94. This is a material endpoint improvement, with
++substantial scaling work still remaining. The selection evidence, numerical
++gates and qualification scope are retained in
++`benchmarks/results/issue308-shell-schedules/`.
+ 
+ The scalar and shell consumers use the same generated primitive geometry and
+ Boys routine. The compiler builds each shell class's axis-moment cache from
+@@ -79,11 +90,18 @@ metric/subspace response cases, bounded budgets, and memory sanitization.
+ 
+ Two additional controls isolate the measured response bottlenecks:
+ 
+-| Control | Default | Alternative |
++| Control | Default outside the qualified regime | Alternative |
+ | --- | --- | --- |
+ | `VIBEQC_DF_RESPONSE_ALGEBRA` | `scalar` | `blas`: parallel charge GEMV and density GEMM |
+ | `VIBEQC_DF_RAW_STAGING` | `pageable` | `pinned-panels`: two bounded host panels |
+ 
++All four selectors override their respective defaults independently. To request
++the complete original comparison route, set `VIBEQC_DF_WEIGHTED_EXECUTION=generic`,
++`VIBEQC_DF_SHELL_SCHEDULE=warp`, `VIBEQC_DF_RESPONSE_ALGEBRA=scalar` and
++`VIBEQC_DF_RAW_STAGING=pageable`. Unset selectors are resolved from the native
++source, device and response dimensions; prepared provenance retains the explicit
++environment controls and the native source identity.
++
+ BLAS execution borrows the existing host-scalar handle and its owning stream.
+ Transpose flags preserve the original row-major contractions. Terms with
+ exactly zero exchange coefficients require no exchange products. The spectral
+diff --git a/src/scf/cuda/df_gradient_bridge.cu b/src/scf/cuda/df_gradient_bridge.cu
+index a7fbb57..3d8434c 100644
+--- a/src/scf/cuda/df_gradient_bridge.cu
++++ b/src/scf/cuda/df_gradient_bridge.cu
+@@ -534,15 +534,33 @@ vibeqc_status execute_cuda_df_hf_gradient(
+     arena.stream = reinterpret_cast<cudaStream_t>(stream_handle);
+     arena.owns_stream = false;
+     const auto o = arena.upload(host_o), x = arena.upload(host_a);
++    // Clean complete-force endpoints qualify this combined default only for
++    // resident 192--384-AO sm_120 execution. Small UHF regresses from launch and
++    // pinned-allocation overhead; other backends and source-backed/larger
++    // regimes need their own endpoint evidence. Explicit selectors stay usable
++    // everywhere. Attribution probes retain the original comparison defaults.
++    bool promoted_default = false;
++    const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
++    const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
++    const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
++    if (device_metric && schedule == 0 && !source && n >= 192 && n <= 384 &&
++        !(upload_diagnostic && *upload_diagnostic) &&
++        !(scatter_diagnostic && *scatter_diagnostic) &&
++        !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
++      cudaDeviceProp properties{};
++      check(cudaGetDeviceProperties(&properties, device));
++      promoted_default = properties.major == 12 && properties.minor == 0;
++    }
+     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
+-    const std::string_view execution = execution_control ? execution_control : "generic";
++    const std::string_view execution =
++        execution_control ? execution_control : (promoted_default ? "shell" : "generic");
+     if (execution != "generic" && execution != "shell-sp" && execution != "shell")
+       throw std::invalid_argument("unknown DF weighted execution (use generic, shell-sp or shell)");
+     const bool shell_execution = execution != "generic" && device_metric && schedule == 0;
+     const bool full_shell_domain = execution == "shell";
+     const char* shell_schedule_control = std::getenv("VIBEQC_DF_SHELL_SCHEDULE");
+     const std::string_view shell_schedule =
+-        shell_schedule_control ? shell_schedule_control : "warp";
++        shell_schedule_control ? shell_schedule_control : (promoted_default ? "compact" : "warp");
+     if (shell_schedule != "warp" && shell_schedule != "packed" && shell_schedule != "compact")
+       throw std::invalid_argument("unknown DF shell schedule (use warp, packed or compact)");
+     const unsigned shell_variant = shell_schedule == "warp"     ? 0
+@@ -596,7 +614,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
+       // Causal attribution controls, not production schedule candidates. Both
+       // drain prior work before a raw read; packed additionally exposes the
+       // CPU gather and a contiguous pinned H2D copy as separate intervals.
+-      // Default execution retains the original pageable strided submission.
++      // Probes retain the original pageable strided submission by default.
+       const char* upload_probe = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
+       const std::string_view probe = upload_probe ? upload_probe : "";
+       if (!probe.empty() && probe != "drain" && probe != "packed")
+@@ -604,7 +622,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
+       if (!probe.empty() && source)
+         throw std::invalid_argument("DF response upload probe requires resident host raw values");
+       const char* staging_control = std::getenv("VIBEQC_DF_RAW_STAGING");
+-      const std::string_view staging = staging_control ? staging_control : "pageable";
++      const std::string_view staging =
++          staging_control ? staging_control : (promoted_default ? "pinned-panels" : "pageable");
+       if (staging != "pageable" && staging != "pinned-panels")
+         throw std::invalid_argument("unknown DF raw staging (use pageable or pinned-panels)");
+       if (staging == "pinned-panels" && !source) {
+@@ -652,7 +671,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
+       const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
+       const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
+       const char* algebra_control = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
+-      const std::string_view algebra = algebra_control ? algebra_control : "scalar";
++      const std::string_view algebra =
++          algebra_control ? algebra_control : (promoted_default ? "blas" : "scalar");
+       if (algebra != "scalar" && algebra != "blas")
+         throw std::invalid_argument("unknown DF response algebra (use scalar or blas)");
+       check(contract_cuda_df_response_weights(

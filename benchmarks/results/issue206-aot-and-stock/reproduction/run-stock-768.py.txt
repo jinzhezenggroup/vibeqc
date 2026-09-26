@@ -1,0 +1,131 @@
+"""Smoke stock component wrappers after the fresh clean reference has passed.
+
+Run in its own finite Slurm allocation. Profiling and sampling are deliberately
+intrusive and separate from clean timing. Failure preserves the attempted run.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+from pathlib import Path
+
+
+def main():
+    assert os.environ.get("SLURM_JOB_ID")
+    root = Path.cwd()
+    case = "water-32mer-4s4-def2-svp-spherical"
+    reference = (
+        Path("/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/fresh-warm-remaining") / f"{case}-b1-forces.json"
+    )
+    # Refuse to profile a missing/failed clean cell; no replacement reference
+    # or looser tolerance is inferred from another workload.
+    data = json.loads(reference.read_text())
+    assert data["gate"]["passed"]
+    gates = data["settings"]["gates"]
+    pairs = data["accuracy"]["paired_warm_repeats"]
+    assert len(pairs) == 7 and all(
+        p["maximum_energy_error_hartree"] <= gates["maximum_energy_error_hartree"]
+        and p["maximum_force_error_hartree_per_bohr"]
+        <= gates["maximum_force_error_hartree_per_bohr"]
+        for p in pairs
+    )
+    out = root / ".artifacts/issue206/stock-diagnostic-768"
+    out.mkdir(exist_ok=False)
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith("VIBEQC_") and k != "CONTRACT_ENGINE"
+    }
+    env.update(
+        PYTHONPATH="python:.",
+        OMP_NUM_THREADS="1",
+        OPENBLAS_NUM_THREADS="1",
+        LD_LIBRARY_PATH="/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/cutensor/lib:"
+        "/group/software/cuda-12.9.1/lib64:" + env.get("LD_LIBRARY_PATH", ""),
+    )
+    profiler = "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/bin/nsys"
+    command = [
+        profiler,
+        "profile",
+        "--trace=cuda,nvtx",
+        "--cuda-graph-trace=node",
+        "--cuda-event-trace=false",
+        "--sample=none",
+        "--cpuctxsw=none",
+        "--capture-range=cudaProfilerApi",
+        "--capture-range-end=stop",
+        "--force-overwrite=false",
+        "--output",
+        str(out / "768-stock"),
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        '/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/stock-warm-diagnostics.py',
+        "--case",
+        case,
+        "--batch",
+        "1",
+        "--reference",
+        str(reference),
+        "--output",
+        str(out / "768-stock.json"),
+    ]
+    payload = {
+        "scope": __doc__,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "reference_sha256": hashlib.sha256(reference.read_bytes()).hexdigest(),
+        "command": command,
+        "status": "running",
+    }
+    manifest = out / "manifest.json"
+    manifest.write_text(json.dumps(payload, indent=2) + "\n")
+    with (out / "run.log").open("x") as stream:
+        run = subprocess.run(
+            command, env=env, stdout=stream, stderr=subprocess.STDOUT, check=False
+        )
+    payload.update(
+        exit_code=run.returncode,
+        status="passed" if run.returncode == 0 else "failed",
+        log_sha256=hashlib.sha256((out / "run.log").read_bytes()).hexdigest(),
+    )
+    manifest.write_text(json.dumps(payload, indent=2) + "\n")
+    if run.returncode:
+        raise SystemExit(run.returncode)
+    reports = [
+        "cuda_api_sum",
+        "cuda_gpu_kern_sum",
+        "cuda_gpu_mem_time_sum",
+        "cuda_gpu_mem_size_sum",
+        "nvtx_sum",
+    ]
+    with (out / "stats.log").open("x") as stream:
+        stats = subprocess.run(
+            [
+                profiler,
+                "stats",
+                "--report",
+                ",".join(reports),
+                "--format=csv",
+                "--output",
+                str(out / "768-stock"),
+                str(out / "768-stock.nsys-rep"),
+            ],
+            env=env,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+    payload["stats_exit_code"] = stats.returncode
+    payload["artifact_sha256"] = {
+        p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in out.iterdir()
+        if p.is_file() and p != manifest
+    }
+    manifest.write_text(json.dumps(payload, indent=2) + "\n")
+    raise SystemExit(stats.returncode)
+
+
+if __name__ == "__main__":
+    main()

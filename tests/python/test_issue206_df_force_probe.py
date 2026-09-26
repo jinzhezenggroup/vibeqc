@@ -1,0 +1,353 @@
+"""Hardware-free protocol checks for the #206 force ledger."""
+
+import copy
+import hashlib
+import json
+import os
+import sys
+import typing
+from pathlib import Path
+
+import pytest
+
+from benchmarks import issue206_df_force_probe as probe
+
+
+@pytest.fixture
+def protocol(tmp_path: typing.Any, monkeypatch: typing.Any) -> typing.Any:
+    """Use an identifiable fake binary; sample calls never touch CUDA."""
+    library = tmp_path / "libvibeqc.so"
+    library.write_bytes(b"protocol-only native library")
+    # main() selects this binary through the process environment. Register it
+    # with monkeypatch so later native tests recover their original library.
+    monkeypatch.setenv("VIBEQC_LIBRARY", str(library))
+    output = tmp_path / "ledger.json"
+    monkeypatch.setenv("SLURM_JOB_ID", "protocol-test")
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "probe",
+            "--case",
+            probe.CASES[0],
+            "--library",
+            str(library),
+            "--output",
+            str(output),
+        ],
+    )
+    energy = {
+        "seconds": 2.0,
+        "iterations": 4,
+        "converged": True,
+        "energy_hartree": -1.0,
+        "has_forces": False,
+    }
+    force = {**energy, "seconds": 5.5, "has_forces": True}
+    return library, output, energy, force
+
+
+@pytest.mark.parametrize("variable", ["SLURM_JOB_ID", "CUDA_VISIBLE_DEVICES"])
+def test_probe_requires_slurm_and_cuda_visibility(
+    protocol: typing.Any, monkeypatch: typing.Any, variable: typing.Any
+) -> None:
+    monkeypatch.delenv(variable)
+    with pytest.raises(SystemExit):
+        probe.main()
+
+
+def test_probe_writes_validated_force_increment_and_binary_identity(
+    protocol: typing.Any, monkeypatch: typing.Any
+) -> None:
+    library, output, energy, force = protocol
+    samples = iter([energy, force])
+
+    def sample(
+        case: typing.Any, properties: typing.Any, selected_library: typing.Any
+    ) -> typing.Any:
+        assert selected_library == library.resolve()
+        return next(samples)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    probe.main()
+    payload = json.loads(output.read_text())
+    record = payload["records"][0]
+    assert payload["schema"] == "vibeqc.issue206.df_force_ledger"
+    assert payload["version"] == 2
+    assert record["force_increment_seconds"] == 3.5
+    assert record["validation"]["valid"] is True
+    assert record["validation"]["energy_tolerance_hartree"] == 1e-10
+    assert payload["source"]["native_library"] == str(library.resolve())
+    assert (
+        payload["source"]["native_library_sha256"]
+        == hashlib.sha256(library.read_bytes()).hexdigest()
+    )
+    assert isinstance(payload["source"]["git_dirty"], bool)
+
+
+@pytest.mark.parametrize(
+    "which,field,value,match",
+    [
+        (0, "converged", False, "converge"),
+        (1, "converged", False, "converge"),
+        (1, "iterations", 5, "iteration"),
+        (1, "energy_hartree", -1.001, "energy parity"),
+        (0, "has_forces", True, "force outputs"),
+        (1, "has_forces", False, "force outputs"),
+        (0, "energy_hartree", float("nan"), "finite energies"),
+        (1, "seconds", float("inf"), "finite positive"),
+        (0, "seconds", 0.0, "finite positive"),
+    ],
+)
+def test_invalid_pairs_never_publish_a_ledger(
+    protocol: typing.Any,
+    monkeypatch: typing.Any,
+    which: typing.Any,
+    field: typing.Any,
+    value: typing.Any,
+    match: typing.Any,
+) -> None:
+    _, output, energy, force = protocol
+    samples = copy.deepcopy([energy, force])
+    samples[which][field] = value
+    sample_iter = iter(samples)
+    monkeypatch.setattr(probe, "_sample", lambda *args: next(sample_iter))
+    with pytest.raises(ValueError, match=match):
+        probe.main()
+    assert not output.exists()
+
+
+def test_changed_binary_never_publishes_a_ledger(
+    protocol: typing.Any, monkeypatch: typing.Any
+) -> None:
+    library, output, energy, force = protocol
+    samples = iter([energy, force])
+
+    def sample(*args: typing.Any) -> typing.Any:
+        library.write_bytes(b"different build during timing")
+        return next(samples)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    with pytest.raises(RuntimeError, match="changed during"):
+        probe.main()
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("variable", ("VIBEQC_DF_TRACE", "VIBEQC_DF_HOST_TRACE"))
+def test_unrequested_trace_cannot_contaminate_unprofiled_evidence(
+    protocol: typing.Any, monkeypatch: typing.Any, variable: typing.Any
+) -> None:
+    monkeypatch.setenv(variable, "unexpected.jsonl")
+    with pytest.raises(SystemExit):
+        probe.main()
+
+
+def test_positive_budget_is_applied_to_both_samples_and_recorded(
+    protocol: typing.Any, monkeypatch: typing.Any
+) -> None:
+    _, output, energy, force = protocol
+    monkeypatch.setattr(sys, "argv", [*sys.argv, "--memory-budget-bytes", "268435456"])
+    samples = iter([energy, force])
+
+    def sample(*args: typing.Any, memory_budget_bytes: typing.Any) -> typing.Any:
+        assert memory_budget_bytes == 268435456
+        return next(samples)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    probe.main()
+    assert (
+        json.loads(output.read_text())["execution"][
+            "density_fitting_memory_budget_bytes"
+        ]
+        == 268435456
+    )
+
+
+@pytest.mark.parametrize("omit_force", [False, True])
+@pytest.mark.parametrize(
+    "one_electron", ["one_electron_response", "one_electron_derivative_export"]
+)
+def test_trace_protocol_preserves_raw_evidence_and_requires_force_components(
+    protocol: typing.Any,
+    monkeypatch: typing.Any,
+    omit_force: typing.Any,
+    one_electron: typing.Any,
+) -> None:
+    library, output, energy, force = protocol
+    directory = output.parent / "traces"
+    monkeypatch.setattr(
+        sys, "argv", [*sys.argv, "--component-trace-dir", str(directory)]
+    )
+
+    def sample(
+        case: typing.Any, properties: typing.Any, selected_library: typing.Any
+    ) -> typing.Any:
+        assert selected_library == library.resolve()
+        operations = ["ri_j", "ri_k"]
+        if "forces" in properties and not omit_force:
+            operations.extend(["force_response", one_electron])
+        rows = []
+        for index, operation in enumerate(operations):
+            rows.append(
+                {
+                    "schema": "vibeqc.df_trace",
+                    "version": 1,
+                    "id": index,
+                    "operation": operation,
+                    "execution": "stream",
+                    "valid": True,
+                    "cuda_error": 0,
+                    "nvtx": True,
+                    "systems": 1,
+                    "system_offset": 0,
+                    "nbf": 2,
+                    "naux": 2,
+                    "source_backed": True,
+                    "streamed": True,
+                    "final_synchronization_ms": 1,
+                    "host_completion_ms": 3,
+                    "profiler_event_count": 2,
+                    "dropped_regions": 0,
+                    "dropped_tiles": 0,
+                    "regions": [
+                        {"name": operation, "parent": -1, "host_ms": 2, "gpu_ms": 2}
+                    ],
+                    "counters": {},
+                    "tiles": [],
+                }
+            )
+        Path(os.environ["VIBEQC_DF_TRACE"]).write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+        host = {
+            "schema": "vibeqc.df_host_trace",
+            "version": 1,
+            "id": 0,
+            "valid": True,
+            "regions": [
+                {
+                    "name": "reference_eigensolve",
+                    "reason": "core_guess",
+                    "parent": -1,
+                    "item": 0,
+                    "nbf": 2,
+                    "wall_ms": 1,
+                    "cpu_ms": 0.5,
+                    "finished": True,
+                    "failed": False,
+                }
+            ],
+        }
+        Path(os.environ["VIBEQC_DF_HOST_TRACE"]).write_text(json.dumps(host) + "\n")
+        return dict(force if "forces" in properties else energy)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    if omit_force:
+        with pytest.raises(ValueError, match="missing executed"):
+            probe.main()
+        assert not output.exists()
+    else:
+        probe.main()
+        payload = json.loads(output.read_text())
+        assert payload["execution"]["profiled"] is True
+        raw = payload["records"][0]["energy_plus_force"]["components"]["raw_trace"]
+        assert (
+            raw["sha256"] == hashlib.sha256(Path(raw["path"]).read_bytes()).hexdigest()
+        )
+        assert "force_attribution" in payload["records"][0]
+        with pytest.raises(FileExistsError):
+            probe.main()
+    assert "VIBEQC_DF_TRACE" not in os.environ
+    assert "VIBEQC_DF_HOST_TRACE" not in os.environ
+
+
+def test_traced_force_records_publish_selected_response_policy(
+    protocol: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Trace evidence must identify the executed route, not only its request."""
+    _library, output, energy, force = protocol
+    directory = output.parent / "policy-traces"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            *sys.argv,
+            "--component-trace-dir",
+            str(directory),
+            "--expected-response-policy",
+            "streamed",
+        ],
+    )
+
+    def sample(
+        case: object, properties: tuple[str, ...], selected_library: object
+    ) -> dict[str, object]:
+        operations = ["ri_j", "ri_k"]
+        if "forces" in properties:
+            operations.extend(["force_response", "one_electron_response"])
+        rows = []
+        for index, operation in enumerate(operations):
+            rows.append(
+                {
+                    "schema": "vibeqc.df_trace",
+                    "version": 1,
+                    "id": index,
+                    "operation": operation,
+                    "execution": "stream",
+                    "valid": True,
+                    "cuda_error": 0,
+                    "nvtx": True,
+                    "systems": 1,
+                    "system_offset": 0,
+                    "nbf": 2,
+                    "naux": 2,
+                    "source_backed": True,
+                    "streamed": True,
+                    "final_synchronization_ms": 1,
+                    "host_completion_ms": 3,
+                    "profiler_event_count": 2,
+                    "dropped_regions": 0,
+                    "dropped_tiles": 0,
+                    "regions": [
+                        {"name": operation, "parent": -1, "host_ms": 2, "gpu_ms": 2}
+                    ],
+                    "counters": {},
+                    "tiles": [],
+                }
+            )
+        Path(os.environ["VIBEQC_DF_TRACE"]).write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+        Path(os.environ["VIBEQC_DF_HOST_TRACE"]).write_text(
+            json.dumps(
+                {
+                    "schema": "vibeqc.df_host_trace",
+                    "version": 1,
+                    "id": 0,
+                    "valid": True,
+                    "regions": [
+                        {
+                            "name": "device_eigensolve",
+                            "reason": "iteration",
+                            "parent": -1,
+                            "item": 0,
+                            "nbf": 2,
+                            "wall_ms": 1,
+                            "cpu_ms": 0.5,
+                            "finished": True,
+                            "failed": False,
+                        }
+                    ],
+                }
+            )
+            + "\n"
+        )
+        return dict(force if "forces" in properties else energy)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    probe.main()
+    payload = json.loads(output.read_text())
+    invariants = payload["records"][0]["energy_plus_force"]["response_invariants"]
+    assert invariants[0]["policy"]["residency"] == "streamed"
+    assert invariants[0]["policy"]["storage"] == "streamed-source"

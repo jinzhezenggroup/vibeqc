@@ -1,0 +1,15 @@
+{
+  "current_default": "Generated two-/three-center center derivatives on shared normalized primitive/AO traversal; bounded cooperative weighted response is the sole CUDA HF force route.",
+  "evidence": [
+    "benchmarks/results/cuda-ownership/df/publication.json",
+    "benchmarks/results/cuda-ownership/df/validation.json",
+    "benchmarks/results/cuda-ownership/df/raw-source.json",
+    "benchmarks/results/cuda-ownership/df/README.md",
+    "benchmarks/results/issue308-shell-schedules/summary.json"
+  ],
+  "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter. Shell-block lowering shares primitive geometry/Boys/moments across all 64 s/p/d/f triples with generated warp, packed and compact subgroup schedules and immediate weighted contraction; compact scheduling defaults on for qualified resident 192--384-AO sm_120 endpoints.",
+  "missing_capability": "None for the retired DF integral/coordinate-response duplicate. HF density-weight construction and the spectral inverse reverse map remain native method adapters; the separate df_response_weights entry owns their current device/GEMV path and opt-in control. An equivalent TensorIR method consumer is not integrated.",
+  "owner": "df_derivatives",
+  "retirement_condition": "Completed: removed coordinate-wise RHF/UHF production responses, their CUDA allocations and estimates, and the DF derivative selector after final numerical/resource/complete endpoint gates. Retain generated raw APIs and independent CPU/libcint oracles.",
+  "status": "retired"
+}

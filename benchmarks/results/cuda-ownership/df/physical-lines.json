@@ -1,0 +1,21 @@
+{
+  "added": {
+    "runtime": 243,
+    "scientific": 23
+  },
+  "definition": "Nonblank/noncomment physical code lines, SequenceMatcher(autojunk=False); unchanged lines changing role are separate from physical edits.",
+  "net_role_delta": {
+    "fallback": 0,
+    "oracle": 0,
+    "performance_exception": 0,
+    "runtime": -164,
+    "scientific": -526
+  },
+  "removed": {
+    "runtime": 444,
+    "scientific": 512
+  },
+  "unchanged_lines_reclassified": {
+    "scientific -> runtime": 37
+  }
+}

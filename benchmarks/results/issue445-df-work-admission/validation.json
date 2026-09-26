@@ -1,0 +1,13 @@
+{
+  "cpu_tests_passed": 83,
+  "gpu_unique_tests_passed": 46,
+  "gpu_runs": [
+    {"record": "pytest-v2.xml", "sha256": "cd9789f3e94bf85ce447b57134c7c3b5f636004dc24a03f0ea5a9b676c2f4801", "tests": 45, "passed": 44, "failures": [{"test": "test_auto_requires_rank_reference_residency_and_reservation", "message": "subprocess.CalledProcessError: Command '['/home/jzzeng/tmp/df-followup-20260919/pytest-v2/test_auto_requires_rank_refere0/selector']' returned non-zero exit status 127."}]},
+    {"record": "pytest-v2-recheck.xml", "sha256": "219395839c1ef46522d7e10b31121272840b0e43f46d5c3985026fc11465f19e", "tests": 9, "passed": 9, "failures": []}
+  ],
+  "standalone_loader_repair": "The frozen .so was renamed while its SONAME remained libvibeqc.so.0. A search-path directory with that SONAME symlink fixed the standalone executable; no production source or numerical gate changed.",
+  "tested_library_sha256": "2f72792115ab26d4d909471677867991b612ebb4ecd8039a516a1610ca35ada8",
+  "compiler": "CUDA 12.9.1 sm_120 Release O3; fast compile off; generated DF enabled; Direct AOT off",
+  "agent": "ChatGPT",
+  "model": "GPT-6 Astra Pro"
+}

@@ -1,0 +1,72 @@
+{
+  "ao_count": null,
+  "batch_size": 3,
+  "benchmark": "profile_one_electron_force",
+  "case": "sp8",
+  "cuda_visible_devices": "0",
+  "density_tolerance": 1e-10,
+  "df_budget": 1048576,
+  "df_response": null,
+  "energies_hartree": [
+    -0.32493312878531644,
+    -0.32391758928052294,
+    -0.3228993586290365
+  ],
+  "energy_tolerance": 1e-12,
+  "fitted": true,
+  "maximum_absolute_force_hartree_per_bohr": 0.36413188122686935,
+  "mode": "generated_thread",
+  "repeats": 5,
+  "schema_version": 1,
+  "screening_tolerance": 1e-14,
+  "slurm_job_id": "9253",
+  "warm_median_seconds": 0.13388226693496108,
+  "warm_minimum_seconds": 0.12825056514702737,
+  "warm_samples": [
+    {
+      "iterations": [
+        2,
+        2,
+        2
+      ],
+      "repeat": 0,
+      "seconds": 0.13510966394096613
+    },
+    {
+      "iterations": [
+        2,
+        2,
+        2
+      ],
+      "repeat": 1,
+      "seconds": 0.134543671971187
+    },
+    {
+      "iterations": [
+        2,
+        2,
+        2
+      ],
+      "repeat": 2,
+      "seconds": 0.13388226693496108
+    },
+    {
+      "iterations": [
+        2,
+        2,
+        2
+      ],
+      "repeat": 3,
+      "seconds": 0.13053439394570887
+    },
+    {
+      "iterations": [
+        2,
+        2,
+        2
+      ],
+      "repeat": 4,
+      "seconds": 0.12825056514702737
+    }
+  ]
+}

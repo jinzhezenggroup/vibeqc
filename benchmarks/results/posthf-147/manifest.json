@@ -1,0 +1,26 @@
+{
+  "scientific_revision": "bf85a4176b3c232c0f6cfd0715b324f07761e3e6",
+  "slurm_job_id": "9001",
+  "sha256": {
+    "ci-python-summary.log": "3af8f11092b131f4cc97234f35e25dea72fc0647e5577d97a74be5b24378fab9",
+    "endpoints.log": "0a4cc5cc4e4fa58c61b098603d2c3e4d7b5342976c7d165213715e877dfe6bc7",
+    "evidence.json": "6f7ad361e827ce83df319a0a21f957dd7d9d277571e4d5212b90af466a37591f",
+    "focused-tests.log": "7b6196f09cab866d64e601f49c9a85378c024b4cd6928542a37c4b208deaeea5",
+    "gpu-tests.log": "47371f409b835f4af958053dfeeb06e2ed4156a10068acb551bfe775113843f6",
+    "h2-df-0.json": "e65c97092bd77c7482f4d156e72557e0cb2761f8fa27eeb35bebf7147c882e43",
+    "h2-df-1.json": "fb62bae639adcf34bb326f0c9ac3f78da14f150fe722d46a7d0ae3f7f1b66692",
+    "h2-native-cpu.json": "bd81f267a4f185d3307abf3620b2332222de5a3d043d2550498763993afe6fc1",
+    "h2-native-cuda.json": "d7f0dfd39f9579aa0f40f24b6d6452bbc00dc83f71c1f204cf64b79fc64155a3",
+    "lih-df-0.json": "01f36bd66f205fec4261daa50f57bc2dfec7bdc7943b352ebeb1644874ef33a4",
+    "lih-df-1.json": "2a4e7b665b6e86324147a8272664caa1a00a5c341c47ae726704f38bbd2c439d",
+    "lih-native-cpu.json": "75c45b4da0699341d0e98ae4a54a7ba3befaadfb3fb4e57362a93832cdbf0364",
+    "lih-native-cuda.json": "203576fc4a24543878b914d5507cdf90a75037b87f7b1a23a5561a8fe1359046",
+    "native-cpu-tests.log": "d71e838abd5f6edff2552a7c3d13deeb67ac5b401ba7b638c856a9feefb8a456",
+    "sanitizer-conventional.log": "18b797d536d542e63259477d6a93ba71a3e71811187ada88bbd5903bdd2686d5",
+    "sanitizer-df-full-f.log": "e1ac4df52717088dbc9753b458040299e5e597c8cd02849cc5f82513718c4591",
+    "water-df-0.json": "dfb70b6e4e5105cc927edbae11ff3a31acdf0e4aaf82bb254b3f4ebeb5979cc5",
+    "water-df-1.json": "318d5709421616f969a8856511c10dc5fc144c349d5f7bba415ee701b674689d",
+    "water-native-cpu.json": "80b51f7c83c21de5bd3d9ce012b8900995032534ee676ac70ba25a75b88ae30e",
+    "water-native-cuda.json": "e699c4be036a69f3f9ac78ad8fb90199d9565f85c752fb3b51c341c3522109df"
+  }
+}

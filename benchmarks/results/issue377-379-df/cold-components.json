@@ -1,0 +1,791 @@
+{
+  "scope": "intrusive cold diagnostic",
+  "seconds": 104.38396839704365,
+  "iterations": [21],
+  "energies": [-2438.3541410543426],
+  "cuda": {
+    "groups": [
+      {
+        "execution": "stream",
+        "operation": "one_electron_derivative_export",
+        "calls": 1,
+        "host_completion_ms": 58358.2613,
+        "final_synchronization_ms": 0.004368,
+        "gpu_inclusive_ms": 58357.6641,
+        "host_exclusive_ms": {
+          "one_electron_derivative_export": 0.4809620000014547,
+          "one_electron_and_nuclear_derivative_generation": 11.923124000000005,
+          "one_electron_derivative_output_and_synchronization": 58345.85281399996
+        },
+        "gpu_exclusive_ms": {
+          "one_electron_derivative_export": 2.427803730002779,
+          "one_electron_and_nuclear_derivative_generation": 57835.45536800001,
+          "one_electron_derivative_output_and_synchronization": 519.7809282699999
+        },
+        "counter_sums": {
+          "atom_coordinates": 288,
+          "device_to_host_bytes": 2949122304
+        },
+        "counter_maxima": {
+          "atom_coordinates": 288,
+          "device_to_host_bytes": 2949122304
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "production_eigensolve",
+        "calls": 7,
+        "host_completion_ms": 2723.797236,
+        "final_synchronization_ms": 0.050706999999999995,
+        "gpu_inclusive_ms": 2723.587342,
+        "host_exclusive_ms": {
+          "production_eigensolve": 2567.935334,
+          "workspace_setup": 1.893801,
+          "host_to_device": 4.030276,
+          "device_eigensolve": 124.57965,
+          "device_to_host": 24.636944999999997,
+          "generalized_transform": 0.584289,
+          "coefficient_backtransform": 0.08623399999999999
+        },
+        "gpu_exclusive_ms": {
+          "production_eigensolve": 2567.858320502,
+          "workspace_setup": 1.8585920200000001,
+          "host_to_device": 4.266880036,
+          "device_eigensolve": 133.9144613,
+          "device_to_host": 2.76710406,
+          "generalized_transform": 8.67040003,
+          "coefficient_backtransform": 4.251584052
+        },
+        "counter_sums": {
+          "device_eigensolves": 7,
+          "device_to_host_bytes": 33073180,
+          "host_to_device_bytes": 61341696
+        },
+        "counter_maxima": {
+          "device_eigensolves": 1,
+          "device_to_host_bytes": 4724740,
+          "host_to_device_bytes": 9437184
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_j",
+        "calls": 27,
+        "host_completion_ms": 131.276953,
+        "final_synchronization_ms": 114.90821900000002,
+        "gpu_inclusive_ms": 130.79260635,
+        "host_exclusive_ms": {
+          "ri_j": 0.24099199999999993,
+          "ri_j_gemm": 16.127742
+        },
+        "gpu_exclusive_ms": {
+          "ri_j": 0.10095639999999939,
+          "ri_j_gemm": 130.69164994999997
+        },
+        "counter_sums": {
+
+        },
+        "counter_maxima": {
+
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_k",
+        "calls": 7,
+        "host_completion_ms": 6066.656513999999,
+        "final_synchronization_ms": 6065.849625999999,
+        "gpu_inclusive_ms": 6066.538390000001,
+        "host_exclusive_ms": {
+          "ri_k": 0.47439099999999995,
+          "ri_k_gemm": 0.332497
+        },
+        "gpu_exclusive_ms": {
+          "ri_k": 106.71746599999994,
+          "ri_k_gemm": 5959.820924000001
+        },
+        "counter_sums": {
+
+        },
+        "counter_maxima": {
+
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "compact_eigensolve",
+        "calls": 21,
+        "host_completion_ms": 2343.810675,
+        "final_synchronization_ms": 45.424439,
+        "gpu_inclusive_ms": 364.754141,
+        "host_exclusive_ms": {
+          "compact_eigensolve": 2298.386236
+        },
+        "gpu_exclusive_ms": {
+          "compact_eigensolve": 364.754141
+        },
+        "counter_sums": {
+          "eigensystems": 21
+        },
+        "counter_maxima": {
+          "eigensystems": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "ri_j",
+        "calls": 1,
+        "host_completion_ms": 6.767726,
+        "final_synchronization_ms": 5e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "ri_j": 0.0013339999999999463,
+          "ri_j_gemm": 6.766342
+        },
+        "gpu_exclusive_ms": {
+
+        },
+        "counter_sums": {
+
+        },
+        "counter_maxima": {
+
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "ri_k_occupied",
+        "calls": 1,
+        "host_completion_ms": 0.090945,
+        "final_synchronization_ms": 2e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "ri_k_occupied": 0.027012000000000008,
+          "ri_k_occupied_gemm": 0.063913
+        },
+        "gpu_exclusive_ms": {
+
+        },
+        "counter_sums": {
+          "occupied_exchange_products": 768,
+          "occupied_factor_bytes": 983040,
+          "occupied_panel_cache_hits": 1,
+          "occupied_projection_products": 768,
+          "occupied_rank": 160
+        },
+        "counter_maxima": {
+          "occupied_exchange_products": 768,
+          "occupied_factor_bytes": 983040,
+          "occupied_panel_cache_hits": 1,
+          "occupied_projection_products": 768,
+          "occupied_rank": 160
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "graph_capture",
+        "operation": "compact_eigensolve",
+        "calls": 1,
+        "host_completion_ms": 0.299885,
+        "final_synchronization_ms": 3e-05,
+        "gpu_inclusive_ms": null,
+        "host_exclusive_ms": {
+          "compact_eigensolve": 0.299855
+        },
+        "gpu_exclusive_ms": {
+
+        },
+        "counter_sums": {
+          "eigensystems": 1
+        },
+        "counter_maxima": {
+          "eigensystems": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "ri_k_occupied",
+        "calls": 20,
+        "host_completion_ms": 4144.245387,
+        "final_synchronization_ms": 4143.260926999999,
+        "gpu_inclusive_ms": 4144.037734999998,
+        "host_exclusive_ms": {
+          "ri_k_occupied": 0.401633,
+          "ri_k_occupied_gemm": 0.5828270000000001
+        },
+        "gpu_exclusive_ms": {
+          "ri_k_occupied": 412.1504734,
+          "ri_k_occupied_gemm": 3731.8872616
+        },
+        "counter_sums": {
+          "occupied_exchange_products": 15360,
+          "occupied_factor_bytes": 19660800,
+          "occupied_panel_cache_hits": 20,
+          "occupied_projection_products": 15360,
+          "occupied_rank": 3200
+        },
+        "counter_maxima": {
+          "occupied_exchange_products": 768,
+          "occupied_factor_bytes": 983040,
+          "occupied_panel_cache_hits": 1,
+          "occupied_projection_products": 768,
+          "occupied_rank": 160
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "occupied_scf_provenance",
+        "calls": 1,
+        "host_completion_ms": 0.028174,
+        "final_synchronization_ms": 0.003196,
+        "gpu_inclusive_ms": 0.0196480006,
+        "host_exclusive_ms": {
+          "occupied_scf_provenance": 0.024978
+        },
+        "gpu_exclusive_ms": {
+          "occupied_scf_provenance": 0.0196480006
+        },
+        "counter_sums": {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 20,
+          "occupied_state_bytes": 983048,
+          "validated_density_generations": 1
+        },
+        "counter_maxima": {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 20,
+          "occupied_state_bytes": 983048,
+          "validated_density_generations": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "final_state_download",
+        "calls": 1,
+        "host_completion_ms": 4.316766,
+        "final_synchronization_ms": 0.003236,
+        "gpu_inclusive_ms": 4.29750395,
+        "host_exclusive_ms": {
+          "final_state_download": 4.31353
+        },
+        "gpu_exclusive_ms": {
+          "final_state_download": 4.29750395
+        },
+        "counter_sums": {
+          "final_state_download_bytes": 9443340
+        },
+        "counter_maxima": {
+          "final_state_download_bytes": 9443340
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      },
+      {
+        "execution": "stream",
+        "operation": "force_response",
+        "calls": 1,
+        "host_completion_ms": 6974.42697,
+        "final_synchronization_ms": 0.002936,
+        "gpu_inclusive_ms": 6974.33936,
+        "host_exclusive_ms": {
+          "force_response": 0.30462700000043696,
+          "response_allocation_and_uploads": 3.93805,
+          "response_weights": 0.06862300000011601,
+          "raw_value_resident_upload": 234.109166,
+          "raw_value_resident_transpose": 0.334531,
+          "metric_inverse": 5.035444,
+          "coulomb_response": 0.04261200000000001,
+          "coulomb_response_charge_dot": 0.092307,
+          "exchange_response_matrix_products": 696.9457990000006,
+          "exchange_response_metric_gemm": 0.659916,
+          "exchange_response_weight_gemm": 1.227343,
+          "three_center_derivative_contraction": 5901.09296,
+          "metric_frechet_response": 0.061768,
+          "metric_center_derivative_contraction": 118.752671,
+          "response_output_and_synchronization": 11.758223
+        },
+        "gpu_exclusive_ms": {
+          "force_response": 0.29416412000045966,
+          "response_allocation_and_uploads": 3.93555188,
+          "response_weights": 2.457084109999414,
+          "raw_value_resident_upload": 234.122375,
+          "raw_value_resident_transpose": 5.32697582,
+          "metric_inverse": 1.82851195,
+          "coulomb_response": 4.79980802,
+          "coulomb_response_charge_dot": 2.32105589,
+          "exchange_response_matrix_products": 1006.6288975999978,
+          "exchange_response_metric_gemm": 477.928101,
+          "exchange_response_weight_gemm": 406.300323,
+          "three_center_derivative_contraction": 4812.45264,
+          "metric_frechet_response": 3.82876801,
+          "metric_center_derivative_contraction": 12.0987196,
+          "response_output_and_synchronization": 0.016384
+        },
+        "counter_sums": {
+          "atom_coordinates": 288,
+          "density_upload_bytes": 4718592,
+          "device_to_host_bytes": 2304,
+          "host_to_device_bytes": 3628698912,
+          "metric_derivative_weight_bytes": 4718592,
+          "metric_derivative_weights": 589824,
+          "raw_resident_transpose_elements": 452984832,
+          "raw_value_bulk_uploads": 1,
+          "raw_value_upload_bytes": 3623878656,
+          "response_ao_matrix_products": 1536,
+          "response_auxiliary_blocks": 1,
+          "response_borrowed_jk_bytes": 10871635968,
+          "response_charge_blas_dots": 768,
+          "response_charge_dot_elements": 452984832,
+          "response_density_blas_products": 1536,
+          "response_host_to_device_bytes": 0,
+          "response_metric_blas_dots": 589824,
+          "response_metric_blas_gemms": 1,
+          "response_probe_total_device_bytes": 132236832,
+          "response_resident_auxiliary_tile": 768,
+          "response_resident_exchange_columns": 768,
+          "response_scratch_bytes": 132236832,
+          "response_weight_blas_gemms": 1,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 3623878656,
+          "three_center_derivative_weight_bytes": 3623878656,
+          "three_center_derivative_weights": 452984832,
+          "three_center_shell_panels": 1
+        },
+        "counter_maxima": {
+          "atom_coordinates": 288,
+          "density_upload_bytes": 4718592,
+          "device_to_host_bytes": 2304,
+          "host_to_device_bytes": 3628698912,
+          "metric_derivative_weight_bytes": 4718592,
+          "metric_derivative_weights": 589824,
+          "raw_resident_transpose_elements": 452984832,
+          "raw_value_bulk_uploads": 1,
+          "raw_value_upload_bytes": 3623878656,
+          "response_ao_matrix_products": 1536,
+          "response_auxiliary_blocks": 1,
+          "response_borrowed_jk_bytes": 10871635968,
+          "response_charge_blas_dots": 768,
+          "response_charge_dot_elements": 452984832,
+          "response_density_blas_products": 1536,
+          "response_host_to_device_bytes": 0,
+          "response_metric_blas_dots": 589824,
+          "response_metric_blas_gemms": 1,
+          "response_probe_total_device_bytes": 132236832,
+          "response_resident_auxiliary_tile": 768,
+          "response_resident_exchange_columns": 768,
+          "response_scratch_bytes": 132236832,
+          "response_weight_blas_gemms": 1,
+          "stream_synchronizations": 1,
+          "tensor_host_to_device_bytes": 3623878656,
+          "three_center_derivative_weight_bytes": 3623878656,
+          "three_center_derivative_weights": 452984832,
+          "three_center_shell_panels": 1
+        },
+        "logical_tiles": 0,
+        "repeated_tile_productions": 0
+      }
+    ],
+    "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+  },
+  "host": {
+    "exclusive_phases": {
+      "batch_execute": {
+        "calls": 1,
+        "wall_ms": 0.41723999999521766,
+        "cpu_ms": 0.4157799999957206
+      },
+      "run_rhf_density_fitting_cuda_bucket_impl": {
+        "calls": 1,
+        "wall_ms": 73267.69966700001,
+        "cpu_ms": 73258.67442700002
+      },
+      "prepare_item": {
+        "calls": 1,
+        "wall_ms": 0.01004,
+        "cpu_ms": 0.007814999989363969
+      },
+      "prepare_initial_frame": {
+        "calls": 1,
+        "wall_ms": 0.398785000000089,
+        "cpu_ms": 0.39525099997194957
+      },
+      "overlap_cache_miss": {
+        "calls": 1,
+        "wall_ms": 1.0909010000000308,
+        "cpu_ms": 1.0906260000069778
+      },
+      "overlap_orthogonalization": {
+        "calls": 1,
+        "wall_ms": 365.187979,
+        "cpu_ms": 365.16669699999227
+      },
+      "production_eigensystem": {
+        "calls": 7,
+        "wall_ms": 102.77913899999993,
+        "cpu_ms": 102.76875999998936
+      },
+      "device_eigensolve": {
+        "calls": 7,
+        "wall_ms": 124.60825500000001,
+        "cpu_ms": 124.50150899998391
+      },
+      "eigenframe_validation": {
+        "calls": 7,
+        "wall_ms": 2496.115765,
+        "cpu_ms": 2495.8487260000197
+      },
+      "initial_density": {
+        "calls": 1,
+        "wall_ms": 89.919171,
+        "cpu_ms": 89.90421500000423
+      },
+      "device_scf_submission_wait": {
+        "calls": 1,
+        "wall_ms": 7717.287028,
+        "cpu_ms": 7716.343395999999
+      },
+      "finalization": {
+        "calls": 1,
+        "wall_ms": 19.17027700000108,
+        "cpu_ms": 19.137859000042226
+      },
+      "final_state_read": {
+        "calls": 1,
+        "wall_ms": 7.892011,
+        "cpu_ms": 7.891388999993865
+      },
+      "final_state_fock_build": {
+        "calls": 6,
+        "wall_ms": 5245.7534510000005,
+        "cpu_ms": 5244.6293
+      },
+      "final_state_validation": {
+        "calls": 6,
+        "wall_ms": 5398.1588489999995,
+        "cpu_ms": 5396.884924999995
+      },
+      "strict_final_correction": {
+        "calls": 5,
+        "wall_ms": 2293.463499,
+        "cpu_ms": 2292.7472780000076
+      },
+      "final_state_weighted_density": {
+        "calls": 1,
+        "wall_ms": 91.256708,
+        "cpu_ms": 91.25179299999786
+      },
+      "final_state_corrected": {
+        "calls": 1,
+        "wall_ms": 0.000581,
+        "cpu_ms": 0.0005509999994046666
+      },
+      "force_response": {
+        "calls": 1,
+        "wall_ms": 7161.400937,
+        "cpu_ms": 7159.284264999997
+      }
+    },
+    "roots": [
+      {
+        "root_id": 0,
+        "name": "batch_execute",
+        "reason": "unspecified",
+        "parent": -1,
+        "item": -1,
+        "nbf": 0,
+        "wall_ms": 104382.610283,
+        "cpu_ms": 104366.944562,
+        "finished": true,
+        "failed": false
+      }
+    ],
+    "reference_eigensolves": [],
+    "eigensolves_by_reason": {
+
+    },
+    "device_eigensolves": [
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 3,
+            "name": "prepare_initial_frame"
+          },
+          {
+            "region": 4,
+            "name": "overlap_cache_miss"
+          },
+          {
+            "region": 5,
+            "name": "overlap_orthogonalization"
+          },
+          {
+            "region": 6,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "overlap",
+        "parent": 6,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 15.613746,
+        "cpu_ms": 15.612739999994574,
+        "finished": true,
+        "failed": false
+      },
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 3,
+            "name": "prepare_initial_frame"
+          },
+          {
+            "region": 9,
+            "name": "initial_density"
+          },
+          {
+            "region": 10,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "core_guess",
+        "parent": 10,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 17.661542,
+        "cpu_ms": 17.56519199999218,
+        "finished": true,
+        "failed": false
+      },
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 14,
+            "name": "finalization"
+          },
+          {
+            "region": 18,
+            "name": "strict_final_correction"
+          },
+          {
+            "region": 19,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "final_fock",
+        "parent": 19,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 18.295567,
+        "cpu_ms": 18.292966000004185,
+        "finished": true,
+        "failed": false
+      },
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 14,
+            "name": "finalization"
+          },
+          {
+            "region": 24,
+            "name": "strict_final_correction"
+          },
+          {
+            "region": 25,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "final_fock",
+        "parent": 25,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 18.227166,
+        "cpu_ms": 18.2253290000034,
+        "finished": true,
+        "failed": false
+      },
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 14,
+            "name": "finalization"
+          },
+          {
+            "region": 30,
+            "name": "strict_final_correction"
+          },
+          {
+            "region": 31,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "final_fock",
+        "parent": 31,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 18.249639,
+        "cpu_ms": 18.248423000002845,
+        "finished": true,
+        "failed": false
+      },
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 14,
+            "name": "finalization"
+          },
+          {
+            "region": 36,
+            "name": "strict_final_correction"
+          },
+          {
+            "region": 37,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "final_fock",
+        "parent": 37,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 18.319964,
+        "cpu_ms": 18.31830399999035,
+        "finished": true,
+        "failed": false
+      },
+      {
+        "root_id": 0,
+        "ancestors": [
+          {
+            "region": 0,
+            "name": "batch_execute"
+          },
+          {
+            "region": 1,
+            "name": "run_rhf_density_fitting_cuda_bucket_impl"
+          },
+          {
+            "region": 14,
+            "name": "finalization"
+          },
+          {
+            "region": 42,
+            "name": "strict_final_correction"
+          },
+          {
+            "region": 43,
+            "name": "production_eigensystem"
+          }
+        ],
+        "name": "device_eigensolve",
+        "reason": "final_fock",
+        "parent": 43,
+        "item": 0,
+        "nbf": 768,
+        "wall_ms": 18.240631,
+        "cpu_ms": 18.23855499999638,
+        "finished": true,
+        "failed": false
+      }
+    ],
+    "device_eigensolves_by_reason": {
+      "overlap": {
+        "calls": 1,
+        "failed_calls": 0,
+        "wall_ms": 15.613746,
+        "cpu_ms": 15.612739999994574
+      },
+      "core_guess": {
+        "calls": 1,
+        "failed_calls": 0,
+        "wall_ms": 17.661542,
+        "cpu_ms": 17.56519199999218
+      },
+      "final_fock": {
+        "calls": 5,
+        "failed_calls": 0,
+        "wall_ms": 91.332967,
+        "cpu_ms": 91.32357699999716
+      }
+    },
+    "interpretation": "Reference eigensolve leaf rows count actual calls, including failures. Item indices are local to the enclosing native bucket; root and ancestor IDs disambiguate ragged buckets; fleet worker items use source ordering. Host phases are exclusive within a root only. Concurrent worker roots overlap the waiting endpoint, so summed wall phases are not elapsed endpoint time. CPU and wall clocks overlap and must not be added to each other or CUDA events. CPU clock is null where thread CPU timing is unavailable. Use separate clean endpoint timings."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "retrieved": "2026-09-09",
+  "sources": [
+    {
+      "file": "nvidia-opencl.html",
+      "sha256": "c9c8e58a76ca6fc87dd48cc5b1caf10d0e0d7532ed8c15dfec34b0474dec24eb",
+      "bytes": 71806,
+      "url": "https://developer.nvidia.com/opencl",
+      "git_blob": null
+    },
+    {
+      "file": "cl.h",
+      "sha256": "16d09614cd7eef73b4094089cc4ce2af777181d3ffe9613473fb6d552234a4d1",
+      "bytes": 83360,
+      "url": "https://github.com/KhronosGroup/OpenCL-Headers/blob/main/CL/cl.h",
+      "git_blob": "8a803e3b8ab322a4a8aaae192543e2b87f04004f",
+      "immutable_blob_url": "https://api.github.com/repos/KhronosGroup/OpenCL-Headers/git/blobs/8a803e3b8ab322a4a8aaae192543e2b87f04004f"
+    },
+    {
+      "file": "cl_ext.h",
+      "sha256": "49f1d9cc497cb6d318c9c5a1201aada7ea6df53e5d0084cf4c3eeefee5235670",
+      "bytes": 166138,
+      "url": "https://github.com/KhronosGroup/OpenCL-Headers/blob/main/CL/cl_ext.h",
+      "git_blob": "657cca92a360e21ecc6d98ff3a854a5b1a0df524",
+      "immutable_blob_url": "https://api.github.com/repos/KhronosGroup/OpenCL-Headers/git/blobs/657cca92a360e21ecc6d98ff3a854a5b1a0df524"
+    },
+    {
+      "file": "opencl-runtime.asciidoc",
+      "sha256": "13a49b5a2a2a5d1a7509c565bc3b16921f3581064adf064c570621fb3b4c2c6e",
+      "bytes": 823145,
+      "url": "https://github.com/KhronosGroup/OpenCL-Docs/blob/main/api/opencl_runtime_layer.asciidoc",
+      "git_blob": "790a8c40b1bc7e7824f74b352a65c40c72035c34",
+      "immutable_blob_url": "https://api.github.com/repos/KhronosGroup/OpenCL-Docs/git/blobs/790a8c40b1bc7e7824f74b352a65c40c72035c34"
+    }
+  ]
+}

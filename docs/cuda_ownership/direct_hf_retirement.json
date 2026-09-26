@@ -1,0 +1,213 @@
+{
+  "schema": "vibeqc.direct-hf-retirement.v1",
+  "issue": 356,
+  "scope": "Current handwritten scientific CUDA under src/scf/cuda/direct_*; this overlay does not replace or reclassify the semantic CUDA ownership ledger.",
+  "families": [
+    {
+      "id": "bounded-direct-generic-fallback",
+      "status": "unsupported-fallback",
+      "capability": "Generic bounded Direct-HF Fock/force contraction for shell classes whose exact consumer is not selected by the active generated/native registry.",
+      "current_selector": "Default tuned bounded production must not enter this fallback for canonical s/p/d classes. It remains reachable for unpromoted higher-l classes, portable/unmeasured profiles, and explicit AOT class-filter diagnostics.",
+      "generated_alternative": "IntegralIR value/derivative programs plus the production shell-class registry cover the tuned canonical s/p/d domain; additional higher-l classes require numerical/resource/endpoint qualification before their generic fallback can retire.",
+      "schedule_requirements": "Preserve bounded topology traversal, symmetry, screening admission and output scatter without introducing a whole-quartet tensor. Production-qualified classes must fail closed rather than silently falling back to duplicate handwritten equations.",
+      "resource_profile": "The fallback remains O(N_shell^2) in stored topology and bounded in task state. Retirement requires generated classes to preserve those memory bounds as well as endpoint performance.",
+      "evidence": [
+        "docs/developer/shell_codegen.md",
+        "docs/developer/weighted_eri.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "Delete the generic scientific fallback only after every supported production angular domain has a generated/class-specific qualified consumer or a compiler-owned generic lowering; until then, keep it quarantined from already-qualified tuned s/p/d production.",
+      "files": [
+        "src/scf/cuda/direct_bounded_contraction.cuh",
+        "src/scf/cuda/direct_bounded_fallback.cu"
+      ]
+    },
+    {
+      "id": "bounded-direct-native-exceptions",
+      "status": "performance-exception",
+      "capability": "Exact bounded native schedules retained for the dddd production exception and low-order ssss/psss force execution.",
+      "current_selector": "The bounded runtime uses class-specific exact execution where the native schedule remains selected or where generated mathematics deliberately reuses the qualified native page scheduler. These paths are not the generic uncovered-class fallback.",
+      "generated_alternative": "Generated shell-class consumers and weighted-ERI derivative callables already overlap these classes; retirement depends on matching the exact page/stream schedule and complete endpoint behavior, not on source emission alone.",
+      "schedule_requirements": "Preserve direct pair-class enumeration, page-local screening, shared primitive work, bounded state, and single-counted force/Fock scatter while replacing only duplicate scientific algebra.",
+      "resource_profile": "Retained routes exist because queue materialization or generated class schedules can regress endpoint/resource behavior; promotion requires register/stack/shared-memory and complete-endpoint evidence.",
+      "evidence": [
+        "docs/developer/shell_codegen.md",
+        "docs/developer/weighted_eri.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "Retire each class-specific native scientific body when its generated consumer preserves the qualified streaming/page schedule and passes RHF/UHF numerical, resource and endpoint gates; scheduler-only runtime may remain native.",
+      "files": [
+        "src/scf/cuda/direct_bounded_dddd.cu",
+        "src/scf/cuda/direct_bounded_exact_force.cu"
+      ]
+    },
+    {
+      "id": "native-fock-and-jk",
+      "status": "performance-exception",
+      "capability": "Native Direct J/K and Fock contraction families, including the retained psss Fock fast path and higher-angular ERI helpers used by Fock consumers.",
+      "current_selector": "Generated shell classes are used where promoted; retained native Fock families remain selected for unpromoted or measured faster domains. The psss force geometry adapter is tracked under native-low-order-force; any retained psss Fock path is tracked separately by its actual Fock owner.",
+      "generated_alternative": "The existing IntegralIR/AOT class registry already represents the underlying ERI mathematics; psss Fock still needs generated shared-work execution that matches the historical fused primitive/Boys traversal.",
+      "schedule_requirements": "Share primitive/Boys work across Fock outputs, preserve symmetry/scatter semantics, and choose materialization/rematerialization from measured register and occupancy evidence rather than Direct-only shape tests.",
+      "resource_profile": "Register/shared-memory pressure and repeated primitive work are the primary retirement constraints; endpoint selection must consume generic target/resource evidence.",
+      "evidence": [
+        "docs/developer/shell_codegen.md",
+        "docs/maintainer/cuda_ownership.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "For each retained Fock family, demonstrate generated mathematical parity plus matched complete-endpoint non-regression; then delete the duplicate native scientific body unless an independently measured exception remains.",
+      "files": [
+        "src/scf/cuda/direct_cached_tensor_kernels.cu",
+        "src/scf/cuda/direct_fock_order2.cuh",
+        "src/scf/cuda/direct_fock_quartet.cuh",
+        "src/scf/cuda/direct_jk_kernels.cu",
+        "src/scf/cuda/direct_native_eri_order2.cuh",
+        "src/scf/cuda/direct_native_eri_order3.cuh",
+        "src/scf/cuda/direct_native_eri_order4.cuh",
+        "src/scf/cuda/direct_packed_fock_kernels.cu"
+      ]
+    },
+    {
+      "id": "native-low-order-force",
+      "status": "performance-exception",
+      "capability": "Direct-force density contraction, low-order Gaussian geometry/decay derivatives, and generic quartet coordinate recovery remain handwritten. Weighted IntegralIR owns the order-0/1/2/3 scalar force roots, not all native scientific composition that supplies them.",
+      "current_selector": "Order-0/1/2/3 exact shell workers consume compiler-generated Weighted IntegralIR force roots. The four adapters remain scientific because they construct Gaussian prefactors, Boys arguments, decay derivatives and operator-specific force composition; native density and generic quartet consumers remain tracked alongside them.",
+      "generated_alternative": "Weighted IntegralIR already owns the low-order force roots. Remaining retirement work includes their Gaussian geometry/decay inputs, shared RHF/UHF density contraction and generic quartet scientific composition under generated/shared scientific owners.",
+      "schedule_requirements": "Preserve symmetry-reduced density folding, center recovery, screening domain, bounded quartet traversal and single-counted atom scatter while keeping scheduler-only plumbing runtime-owned.",
+      "resource_profile": "Promotion must preserve the current bounded queue/tile memory profile and complete force endpoint behavior; ownership changes must not introduce materialized whole-quartet derivative tensors.",
+      "evidence": [
+        "docs/developer/weighted_eri.md",
+        "benchmarks/results/weighted-eri-144/README.md",
+        "benchmarks/results/issue356-psss-retirement/README.md"
+      ],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "Retire or narrowly reclassify native scientific regions only after their Gaussian geometry, decay derivatives, density contraction and coordinate-recovery semantics have qualified generated/shared scientific owners. A generated force-root call alone is insufficient; generic queueing and transport may remain runtime.",
+      "files": [
+        "src/scf/cuda/direct_force_density.cuh",
+        "src/scf/cuda/direct_force_low_order.cuh",
+        "src/scf/cuda/direct_force_order2.cuh",
+        "src/scf/cuda/direct_force_order3.cuh",
+        "src/scf/cuda/direct_force_quartet.cuh",
+        "src/scf/cuda/direct_native_psss.cuh"
+      ]
+    },
+    {
+      "id": "native-high-order-force",
+      "status": "performance-exception",
+      "capability": "Order-4/5/6 Direct force canonicalization, primitive contraction, pair algebra, complete primitive ERI-gradient composition, and the bounded high-order Coulomb recurrence are compiler-generated.",
+      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer and its compiler-emitted high-order Coulomb recurrence while retaining the existing queue/runtime schedule and selector semantics. The former order-two pair-gradient helper has no remaining production consumer.",
+      "generated_alternative": "The compiler emits the complete order-4/5/6 force-side consumer together with its shared high-order Coulomb workspace and recurrence support; no native high-order Coulomb mathematical owner remains.",
+      "schedule_requirements": "Use common multi-root sharing, live-range shortening, pressure-aware rematerialization/fission, and bounded pair-term storage; do not add an order-specific Direct optimizer.",
+      "resource_profile": "High register/stack pressure and repeated combinatorial traversal are the critical measured risks; peak workspace and actual recurrence walks must be reported with endpoint timing.",
+      "evidence": [
+        "docs/developer/second_integral_derivatives.md",
+        "docs/maintainer/cuda_ownership.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json",
+        "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py",
+        "python/vibeqc_compiler/integral/coulomb_recurrence_cuda.py"
+      ],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "The order-4/5/6 consumer body, high-order Coulomb recurrence, and orphaned order-two pair-gradient helper are retired from native scientific ownership. The remaining source-contraction helper stays tracked until its other production consumers have qualified generated replacements.",
+      "files": [
+        "src/scf/cuda/direct_native_source_contraction.cuh"
+      ]
+    },
+    {
+      "id": "shared-native-recurrence-support",
+      "status": "unsupported-fallback",
+      "capability": "Shared native Cartesian, shell-class, Hermite, pair and contraction helpers still needed by retained Direct scientific consumers.",
+      "current_selector": "These helpers are reached through retained native Direct families; they are not independently selected as a second public method path.",
+      "generated_alternative": "Common IntegralIR recurrence/spec ownership can replace these helpers only when every dependent production consumer has a generated lowering with equivalent sharing and resource behavior.",
+      "schedule_requirements": "Keep recurrence mathematics separate from queue/runtime plumbing, preserve shell symmetry and pair reuse, and avoid deleting shared helpers while any qualified fallback still depends on them.",
+      "resource_profile": "Compact pair geometry and bounded local intermediates are part of the existing performance envelope; a generated replacement must not multiply recurrence work or unbound local storage.",
+      "evidence": [
+        "docs/developer/shell_codegen.md",
+        "docs/maintainer/cuda_ownership.md"
+      ],
+      "required_compiler_capabilities": [
+        "#351 shared recurrence/spec ownership",
+        "#832 resource-aware lowering",
+        "#833 reusable schedules"
+      ],
+      "retirement_condition": "Delete a shared native helper only after all production consumers that depend on its scientific mathematics have qualified generated replacements; runtime-only traversal may remain native.",
+      "files": [
+        "src/scf/cuda/direct_native_cartesian.cuh",
+        "src/scf/cuda/direct_native_contraction.cuh",
+        "src/scf/cuda/direct_native_gradient_types.cuh",
+        "src/scf/cuda/direct_native_order2_shell.cuh",
+        "src/scf/cuda/direct_native_pair_order2.cuh",
+        "src/scf/cuda/direct_native_pair_order3.cuh",
+        "src/scf/cuda/direct_native_shell_class.cuh",
+        "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
+        "src/scf/cuda/direct_pair_cache.cu"
+      ]
+    },
+    {
+      "id": "direct-screening-policy",
+      "status": "scientific-policy",
+      "capability": "Density/Schwarz/page screening, exact bounded task admission, and bounds that define the admitted Direct-HF scientific work domain.",
+      "current_selector": "Direct-HF applies these policies while forming bounded/generated pages and active quartet domains; page/task enumeration is runtime structure, while its physical density/Schwarz admission remains scientific/controller policy rather than duplicate ERI algebra.",
+      "generated_alternative": "Generated consumers may consume the admitted domain, but retirement is not justified merely by moving the same policy into generated source.",
+      "schedule_requirements": "Preserve physical screening/error semantics independently from generic queue compaction and scheduling; coordinate changes with the numerical error-policy owners.",
+      "resource_profile": "Screening must remain work- and memory-bounded and expose active-domain/work counts; looser policy cannot be used to manufacture a performance win.",
+      "evidence": [
+        "docs/maintainer/cuda_ownership.md",
+        "docs/user/accuracy.md"
+      ],
+      "required_compiler_capabilities": [
+        "#173/#174/#175 numerical screening and error-policy contracts"
+      ],
+      "retirement_condition": "Retain as explicit scientific policy unless a shared policy owner replaces it with identical validated admission semantics; do not count a policy relocation as formula retirement.",
+      "files": [
+        "src/scf/cuda/direct_density_bounds.cu",
+        "src/scf/cuda/direct_page_screening.cuh",
+        "src/scf/cuda/direct_schwarz_kernels.cu",
+        "src/scf/cuda/direct_screening.cuh",
+        "src/scf/cuda/direct_bounded_pages.cu",
+        "src/scf/cuda/direct_bounded_tasks.cu"
+      ]
+    },
+    {
+      "id": "retained-reference-force-consumer",
+      "status": "unsupported-fallback",
+      "capability": "Matrix-direct RHF/UHF force fallback retained for unsupported non-quartet shell domains.",
+      "current_selector": "Default force execution no longer selects the small-HF persistent-ERI reference consumers: compute_forces disables persistent_eri so supported s-p-d-f domains use generated quartet/weighted-ERI force dispatch. The retained matrix-direct force kernels serve unsupported non-quartet force requests. Explicit physical-reference export returns before force dispatch and does not select these kernels.",
+      "generated_alternative": "Generated shell-class and weighted-ERI derivative consumers own the supported production force domain.",
+      "schedule_requirements": "No production scheduling claim remains for this fallback. Keep it isolated from the generated production selector and use it only where the generated quartet domain is unavailable.",
+      "resource_profile": "Unsupported force-domain coverage only; it no longer justifies retention through a small-HF production performance claim.",
+      "evidence": [
+        "docs/maintainer/cuda_ownership.md",
+        "docs/developer/weighted_eri.md",
+        "tests/python/test_direct_reference_force_retirement.py"
+      ],
+      "required_compiler_capabilities": [
+        "#356 generated force coverage for the remaining unsupported shell domains",
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "Remove when generated quartet/weighted-ERI consumers cover the remaining unsupported non-quartet force domains, with independent numerical qualification.",
+      "files": [
+        "src/scf/cuda/direct_reference_force.cu"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "scope": "Explicitly run the CUDA allocation-status test skipped by default.",
+  "slurm_job_id": "9875",
+  "cuda_visible_devices": "0",
+  "command": [
+    "env",
+    "VIBEQC_MP2_CUDA_TEST=1",
+    "ctest",
+    "--test-dir",
+    "build/cuda",
+    "-R",
+    "^vibeqc_mp2_cuda_status_tests$",
+    "--output-on-failure"
+  ],
+  "library_sha256": "7aed5066ca6de0ac8c6e700ab8571a7518f9ac88192b95b4517b2556ec24457f",
+  "status": "passed",
+  "test": {
+    "name": "vibeqc_mp2_cuda_status_tests",
+    "classname": "vibeqc_mp2_cuda_status_tests",
+    "time": "0.309811",
+    "status": "run"
+  },
+  "xml_sha256": "71eb5f4ef93f35c9fe399e9b0c388179ec42737c0b9542e08ef17d77bec87d5d",
+  "log_sha256": "c8d67049524ca34959c227810241d07f6cc23465cf9e3fc87821e61585f84fb2"
+}

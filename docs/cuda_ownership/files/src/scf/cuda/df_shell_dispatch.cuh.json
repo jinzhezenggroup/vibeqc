@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_shell_dispatch.cuh",
+  "reason": "Host launch-context and class-entry ABI shared by the light dispatcher and independently compiled generated class launchers; no scientific equations.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "df_derivatives"
+}

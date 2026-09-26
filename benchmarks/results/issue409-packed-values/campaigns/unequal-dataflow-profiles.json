@@ -1,0 +1,106 @@
+{
+  "scope": "Profile the passing unequal 96/464 physical-basis cell without a rebuild.\n\nEach representation runs in a fresh child process. CUPTI transfers and sampled\nprocess memory are intrusive diagnostics, never additional clean samples.\n",
+  "slurm_job_id": "9856",
+  "runner_sha256": "3af35786627d5ffb1501dad2f61092669c98a001f3ddce4fa430d6e538ab2621",
+  "checks": [
+    {
+      "name": "96-464-dense",
+      "command": [
+        "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/bin/nsys",
+        "profile",
+        "--trace=cuda,nvtx",
+        "--cuda-graph-trace=node",
+        "--cuda-event-trace=false",
+        "--sample=none",
+        "--cpuctxsw=none",
+        "--capture-range=cudaProfilerApi",
+        "--capture-range-end=stop",
+        "--force-overwrite=false",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-dense",
+        "/tmp/vibeqc-pr-review-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-dataflow-probe.py",
+        "--reference",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-reference.json",
+        "--storage",
+        "dense",
+        "--budget",
+        "0",
+        "--checkpoint",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.checkpoint",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-dense.json"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "7795365b2f879f444ddfc162b0fafdfc7fd62a7a20d4ce73377b0ba25e5f1173"
+    },
+    {
+      "name": "96-464-dense-stats",
+      "command": [
+        "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/bin/nsys",
+        "stats",
+        "--report",
+        "cuda_api_sum,cuda_gpu_kern_sum,cuda_gpu_mem_time_sum,cuda_gpu_mem_size_sum,nvtx_sum",
+        "--format=csv",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-dense",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-dense.nsys-rep"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "7511b54623b061fda93766e8e0c3025af48bb4d62d4c0630026ca43f1c7c317b"
+    },
+    {
+      "name": "96-464-packed",
+      "command": [
+        "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/bin/nsys",
+        "profile",
+        "--trace=cuda,nvtx",
+        "--cuda-graph-trace=node",
+        "--cuda-event-trace=false",
+        "--sample=none",
+        "--cpuctxsw=none",
+        "--capture-range=cudaProfilerApi",
+        "--capture-range-end=stop",
+        "--force-overwrite=false",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-packed",
+        "/tmp/vibeqc-pr-review-env/bin/python",
+        ".artifacts/issue409/stage2/unequal-dataflow-probe.py",
+        "--reference",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-reference.json",
+        "--storage",
+        "packed",
+        "--budget",
+        "0",
+        "--checkpoint",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-v2/water-tetramer-def2-svp-spherical-measure.checkpoint",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-packed.json"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "666965154489968676cdbc33bf9392b37b97919915579478b67108c2cf495543"
+    },
+    {
+      "name": "96-464-packed-stats",
+      "command": [
+        "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/bin/nsys",
+        "stats",
+        "--report",
+        "cuda_api_sum,cuda_gpu_kern_sum,cuda_gpu_mem_time_sum,cuda_gpu_mem_size_sum,nvtx_sum",
+        "--format=csv",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-packed",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/unequal-dataflow-profiles/96-464-packed.nsys-rep"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "735586ba7719e2e0442adff1e0260612c0def359482c0aa2a06741fb0dc22421"
+    }
+  ],
+  "admitted_clean_sha256": "a3dff6cd9d635edc3aec3ac42be7f236ab850f9d7b25e5f93c09bc34e7d2dc00",
+  "independent_reference_sha256": "f9b7b8b9ca7c22521594cb4759f53c9d866ea8eebdd2680828bfdc49880fae4f",
+  "status": "passed"
+}

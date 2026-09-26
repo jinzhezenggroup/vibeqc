@@ -1,0 +1,18 @@
+{
+  "owner": "cosx_exchange",
+  "current_default": "Explicit internal energy-only CUDA RHF/UHF provider; never AUTO/default and not exposed by the public Fock ABI.",
+  "generated_capability": "Existing compiler-owned AO grid policy supplies device AO values, and the generated one-electron unit-charge nuclear-attraction family supplies the independent-center ESP scalar reused with the COSX sign convention.",
+  "missing_capability": "Prepared batching, proposal-hook semantics, local screening, analytic derivatives, public/hybrid-DFT method exposure, and matched large-system RI-K crossover evidence.",
+  "retirement_condition": "Retain the independent CPU discrete oracle and explicit prepared energy-only provider until a common generated/tensor lowering matches numerical, resource and endpoint gates; do not promote AUTO or gradients without separate evidence.",
+  "evidence": [
+    "docs/reference/cosx_reference.md",
+    "docs/developer/fock_build.md",
+    "tests/native/test_cosx_cuda.cu",
+    "tests/native/test_cosx_fock_provider.cpp",
+    "tests/native/test_cosx_scf.cpp",
+    ".agents/notes/implemented/performance/2026-09-19-cosx-native-cuda-candidate.md",
+    ".agents/notes/implemented/architecture/2026-09-19-cosx-prepared-provider.md",
+    ".agents/notes/implemented/architecture/2026-09-19-cosx-energy-scf.md"
+  ],
+  "status": "experimental_energy_scf"
+}

@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_queue_scan.cu",
+  "reason": "Borrowed direct task metadata, indexing, queue scans/materialization or diagnostic counters; no integral recurrence.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "direct_integrals"
+}

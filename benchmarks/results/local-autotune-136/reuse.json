@@ -1,0 +1,72 @@
+{
+  "active_bundle_preserved_on_failure": true,
+  "archive_sha256": "8ae1ec8d34b7b4229b874473a426e9a6f9c9e1eadab990e61ef66f9258461442",
+  "budget_failure": {
+    "failure": "Command '['/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python', '-m', 'vibeqc._autotune_worker', '/home/jzzeng/codes/qc-local-autotune/build/local-reuse136/cache/run-ujtaw27d/workload.json', '/home/jzzeng/codes/qc-local-autotune/build/local-reuse136/cache/run-ujtaw27d/work.json', '--profile']' timed out after 1 seconds",
+    "installed": null,
+    "reason": null,
+    "report": "/home/jzzeng/codes/qc-local-autotune/build/local-reuse136/cache/run-ujtaw27d/report.json"
+  },
+  "cleared_diagnostics": {
+    "identity": "sm_120",
+    "kernels": [],
+    "rejected": [],
+    "source": "official"
+  },
+  "diagnostics": {
+    "directory": "/home/jzzeng/codes/qc-local-autotune/build/local-reuse136/cache/bundles/f189604fcf617b25479706b0bff74b5448bda4b7919062709a962459cae00549",
+    "identity": "f189604fcf617b25479706b0bff74b5448bda4b7919062709a962459cae00549",
+    "kernels": [
+      {
+        "consumer": "fock",
+        "gates": {
+          "endpoint": "pass",
+          "numerical": "pass",
+          "performance": "pass",
+          "resources": "pass",
+          "target": "pass"
+        },
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "block_threads": 128,
+          "component_tile": 27,
+          "kind": "subgroup_tasks",
+          "maximum_registers": 0,
+          "minimum_blocks_per_sm": 0,
+          "pair_orientation": "canonical",
+          "pair_storage": "materialized",
+          "shared_coulomb": true,
+          "tasks_per_warp": 8,
+          "unroll_pair_terms": true
+        },
+        "schedule_hash": "75de86e17dc62043eecacc7f4c792ac7adba9420e05c56d4c170c0a61ff83e7d",
+        "shell_class": "ppps",
+        "source_hash": "c344aefd9707864e91d88bef9d32303b4c1c115002accd63ed69e0f680f507ab"
+      }
+    ],
+    "rejected": [],
+    "source": "local"
+  },
+  "incompatible_diagnostics": {
+    "identity": "sm_120",
+    "kernels": [],
+    "rejected": [
+      "GPU, runtime, driver, native source, or ABI identity changed"
+    ],
+    "source": "official"
+  },
+  "maximum_energy_error": 4.263256414560601e-14,
+  "maximum_force_error": 1.0016987239680475e-13,
+  "no_work": {
+    "failure": null,
+    "installed": null,
+    "reason": "runtime did not report direct shell-class work for this execution path",
+    "report": "/home/jzzeng/codes/qc-local-autotune/build/local-reuse136/cache/run-c3524yvo/report.json"
+  },
+  "passed": true,
+  "profile_identity": "f189604fcf617b25479706b0bff74b5448bda4b7919062709a962459cae00549",
+  "slurm_job_id": "8963"
+}

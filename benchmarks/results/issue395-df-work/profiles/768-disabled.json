@@ -1,0 +1,421 @@
+{
+  "scope": "Actual Nsight kernel activities from the disabled detailed-counter capture.",
+  "sqlite_sha256": "3633333f46314ca2ed280b7bd1dc617fc387811b94ae07194e5858ae858d53b3",
+  "trace_sha256": "ce8689d1302e60f82e77626c95897df16d7f319b1d70727bf0bb78d05bce8517",
+  "classes": [
+    {
+      "angular": [
+        0,
+        0,
+        0
+      ],
+      "gpu_ms": 133.89826800000003,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 4,
+        "shell_tasks_per_block": 32
+      },
+      "resources": [
+        {
+          "registers_per_thread": 132,
+          "static_shared_bytes": 8960,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        0,
+        0,
+        1
+      ],
+      "gpu_ms": 60.50982499999999,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 4,
+        "shell_tasks_per_block": 32
+      },
+      "resources": [
+        {
+          "registers_per_thread": 144,
+          "static_shared_bytes": 13312,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        0,
+        0,
+        2
+      ],
+      "gpu_ms": 23.243965999999997,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 8,
+        "shell_tasks_per_block": 16
+      },
+      "resources": [
+        {
+          "registers_per_thread": 252,
+          "static_shared_bytes": 9728,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        1,
+        0,
+        0
+      ],
+      "gpu_ms": 126.22631,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 4,
+        "shell_tasks_per_block": 32
+      },
+      "resources": [
+        {
+          "registers_per_thread": 148,
+          "static_shared_bytes": 11776,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        1,
+        0,
+        1
+      ],
+      "gpu_ms": 194.333622,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 16,
+        "shell_tasks_per_block": 8
+      },
+      "resources": [
+        {
+          "registers_per_thread": 142,
+          "static_shared_bytes": 5056,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        1,
+        0,
+        2
+      ],
+      "gpu_ms": 83.318464,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 254,
+          "static_shared_bytes": 3968,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        1,
+        1,
+        0
+      ],
+      "gpu_ms": 103.88801099999999,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 16,
+        "shell_tasks_per_block": 8
+      },
+      "resources": [
+        {
+          "registers_per_thread": 142,
+          "static_shared_bytes": 5056,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        1,
+        1,
+        1
+      ],
+      "gpu_ms": 102.999751,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 158,
+          "static_shared_bytes": 5120,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        1,
+        1,
+        2
+      ],
+      "gpu_ms": 44.635376,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 246,
+          "static_shared_bytes": 8576,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        0,
+        0
+      ],
+      "gpu_ms": 49.028335999999996,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 8,
+        "shell_tasks_per_block": 16
+      },
+      "resources": [
+        {
+          "registers_per_thread": 252,
+          "static_shared_bytes": 7808,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        0,
+        1
+      ],
+      "gpu_ms": 86.048241,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 254,
+          "static_shared_bytes": 3680,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        0,
+        2
+      ],
+      "gpu_ms": 28.211556,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 252,
+          "static_shared_bytes": 5984,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        1,
+        0
+      ],
+      "gpu_ms": 92.449048,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 254,
+          "static_shared_bytes": 3680,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        1,
+        1
+      ],
+      "gpu_ms": 86.57202000000002,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 252,
+          "static_shared_bytes": 7904,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        1,
+        2
+      ],
+      "gpu_ms": 38.72685800000001,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 246,
+          "static_shared_bytes": 13472,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        2,
+        0
+      ],
+      "gpu_ms": 17.409592000000004,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 252,
+          "static_shared_bytes": 5984,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        2,
+        1
+      ],
+      "gpu_ms": 21.320307,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 246,
+          "static_shared_bytes": 13472,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2
+      ],
+      "gpu_ms": 10.734633,
+      "launches": 13,
+      "schedule": {
+        "variant": 2,
+        "component_lanes": 32,
+        "shell_tasks_per_block": 4
+      },
+      "resources": [
+        {
+          "registers_per_thread": 246,
+          "static_shared_bytes": 23264,
+          "dynamic_shared_bytes": 0,
+          "local_bytes_per_thread": 0,
+          "block_threads": 128
+        }
+      ]
+    }
+  ]
+}

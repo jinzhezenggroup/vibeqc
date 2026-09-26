@@ -1,0 +1,32 @@
+[
+  {
+    "aos": 192,
+    "values": 7077888,
+    "bytes": 56623104,
+    "maximum_absolute_error": 0.0,
+    "all_finite": true,
+    "master_sha256": "7884f11f747c5aed5a44510094506bd5a2155513ab29b050a2eea3284272fcff",
+    "candidate_sha256": "7884f11f747c5aed5a44510094506bd5a2155513ab29b050a2eea3284272fcff",
+    "bit_identical": true
+  },
+  {
+    "aos": 384,
+    "values": 56623104,
+    "bytes": 452984832,
+    "maximum_absolute_error": 0.0,
+    "all_finite": true,
+    "master_sha256": "41e2ff1fe4c346cf2b1250bf659fb4afb0d0b658c878e775cc25760ccc7d58b5",
+    "candidate_sha256": "41e2ff1fe4c346cf2b1250bf659fb4afb0d0b658c878e775cc25760ccc7d58b5",
+    "bit_identical": true
+  },
+  {
+    "aos": 768,
+    "values": 452984832,
+    "bytes": 3623878656,
+    "maximum_absolute_error": 0.0,
+    "all_finite": true,
+    "master_sha256": "41acd30de1ecbc8fc24af17059b02fb069086878914989761fdc2e94a840f2b7",
+    "candidate_sha256": "41acd30de1ecbc8fc24af17059b02fb069086878914989761fdc2e94a840f2b7",
+    "bit_identical": true
+  }
+]

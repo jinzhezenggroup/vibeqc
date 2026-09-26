@@ -1,0 +1,356 @@
+{
+  "scope": "intrusive attribution",
+  "case": "oh-def2-svp-spherical-uhf",
+  "aos": 19,
+  "batch": 1,
+  "source_identity": "7616b7256832df1cbb6f1a8baa0ba2e20f9d708e56cbfd297f46dbb05ea8cfe3",
+  "library_sha256": "96e5fb31ba68bb9fba79d6b83cf5fc958d954ed236f8a7359aacb89f65b39107",
+  "library": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-shell-block/v5/libvibeqc.so",
+  "git_head": "92140cbe5e471d1fa3b906be848c5f5a122909b9",
+  "git_status": " M docs/cuda_ownership.json\n M docs/cuda_ownership_current.json\n M docs/df_shell_derivatives.md\n M src/scf/cuda/df_gradient_bridge.cu\n?? benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.png\n?? build-mixed/\n?? uv.lock\n",
+  "runner_sha256": "1db61fcd3052d0282549911ad91c6fd1721886f616fe10fd5851a0be64642c10",
+  "slurm_job_id": "9606",
+  "cuda_visible_devices": "0",
+  "controls": {
+    "VIBEQC_RESOURCE_CUDA_TEST": "1",
+    "VIBEQC_DF_DERIVATIVE_CUDA_TEST": "1",
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-mixed-precision/.artifacts/issue308-shell-block/v5/libvibeqc.so"
+  },
+  "reference": "benchmarks/results/issue206-metric-gemv/measurements/19ao-b1-forces-blas.json",
+  "reference_sha256": "3981a00e20e1684779035efef8f188730b2392cd82367a83b8a6e3ae2090074d",
+  "scientific_settings": {
+    "case": "oh-def2-svp-spherical-uhf",
+    "ao_count": 19,
+    "batch_size": 1,
+    "method": "uhf",
+    "charge": 0,
+    "multiplicity": 2,
+    "basis_representation": "spherical",
+    "auxiliary_basis": "same as orbital basis",
+    "density_fitting_relative_threshold": 1e-10,
+    "density_tolerance": 1e-10,
+    "energy_tolerance": 1e-12,
+    "max_iterations": 100,
+    "vibeqc_screening_tolerance": 1e-12
+  },
+  "warm_start_policy": "fixed post-cold density, one untimed replay before measurement",
+  "samples": [
+    {
+      "candidate": null,
+      "controls": {
+        "VIBEQC_DF_WEIGHTED_EXECUTION": null,
+        "VIBEQC_DF_SHELL_SCHEDULE": null,
+        "VIBEQC_DF_RESPONSE_ALGEBRA": null,
+        "VIBEQC_DF_RAW_STAGING": null
+      },
+      "seconds": 0.008618520107120275,
+      "iterations": [
+        2
+      ],
+      "warm_start_used": [
+        true
+      ],
+      "warm_start_fallback": [
+        false
+      ],
+      "energies_hartree": [
+        -75.53279657890785
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            3.87595093171043e-12,
+            -3.4120930233711594e-12,
+            0.01297818727475595
+          ],
+          [
+            -3.8759509317104e-12,
+            3.412093023371145e-12,
+            -0.012978187274755977
+          ]
+        ]
+      ],
+      "maximum_energy_error_hartree": 7.958078640513122e-13,
+      "maximum_force_error_hartree_per_bohr": 3.875371960883874e-12,
+      "metric": [
+        {
+          "bucket_id": 0,
+          "system_index": 0,
+          "effective_rank": 19,
+          "absolute_threshold": 1.758188832386568e-08,
+          "condition_number": 958.6575716113367,
+          "solver_device_workspace_bytes": 650000,
+          "solver_host_workspace_bytes": 0,
+          "device_resident_bytes": 2621539,
+          "peak_device_bytes": 3329455,
+          "host_resident_bytes": 1095225,
+          "peak_host_bytes": 1153293,
+          "auxiliary_tile": 19,
+          "streamed": false
+        }
+      ],
+      "components": {
+        "groups": [
+          {
+            "execution": "stream",
+            "operation": "final_state_download",
+            "calls": 1,
+            "host_completion_ms": 0.086116,
+            "final_synchronization_ms": 0.003267,
+            "gpu_inclusive_ms": 0.0754240006,
+            "host_exclusive_ms": {
+              "final_state_download": 0.082849
+            },
+            "gpu_exclusive_ms": {
+              "final_state_download": 0.0754240006
+            },
+            "counter_sums": {
+              "final_state_download_bytes": 11880
+            },
+            "counter_maxima": {
+              "final_state_download_bytes": 11880
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_j",
+            "calls": 1,
+            "host_completion_ms": 0.047161,
+            "final_synchronization_ms": 0.003186,
+            "gpu_inclusive_ms": 0.039264001,
+            "host_exclusive_ms": {
+              "ri_j": 0.006904,
+              "ri_j_gemm": 0.037071
+            },
+            "gpu_exclusive_ms": {
+              "ri_j": 0.007807999900000001,
+              "ri_j_gemm": 0.0314560011
+            },
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "ri_k",
+            "calls": 2,
+            "host_completion_ms": 0.126534,
+            "final_synchronization_ms": 0.02536,
+            "gpu_inclusive_ms": 0.1130880006,
+            "host_exclusive_ms": {
+              "ri_k": 0.03898499999999999,
+              "ri_k_gemm": 0.06218900000000001
+            },
+            "gpu_exclusive_ms": {
+              "ri_k": 0.042048001700000004,
+              "ri_k_gemm": 0.0710399989
+            },
+            "counter_sums": {},
+            "counter_maxima": {},
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          },
+          {
+            "execution": "stream",
+            "operation": "force_response",
+            "calls": 1,
+            "host_completion_ms": 5.049224,
+            "final_synchronization_ms": 0.003296,
+            "gpu_inclusive_ms": 5.04211187,
+            "host_exclusive_ms": {
+              "force_response": 0.06453400000000009,
+              "response_allocation_and_uploads": 0.138726,
+              "response_weights": 0.018112000000000128,
+              "metric_inverse": 0.011121,
+              "coulomb_response": 0.01656000000000002,
+              "raw_value_slice_upload": 0.350544,
+              "coulomb_response_charge_dot": 0.169075,
+              "coulomb_response_weights": 0.008918,
+              "exchange_response_matrix_products": 0.465462,
+              "exchange_response_weights_and_metric": 0.35727,
+              "exchange_response_metric_dot": 0.48187199999999997,
+              "three_center_derivative_contraction": 0.012053,
+              "metric_frechet_response": 0.020489,
+              "metric_center_derivative_contraction": 0.008897,
+              "response_output_and_synchronization": 2.922295
+            },
+            "gpu_exclusive_ms": {
+              "force_response": 0.06803178570000057,
+              "response_allocation_and_uploads": 0.135199994,
+              "response_weights": 0.14963214694999927,
+              "metric_inverse": 0.0087360004,
+              "coulomb_response": 0.03286398078000008,
+              "raw_value_slice_upload": 0.11235200001999998,
+              "coulomb_response_charge_dot": 0.44073600320000006,
+              "coulomb_response_weights": 0.00409599999,
+              "exchange_response_matrix_products": 0.40537599886000003,
+              "exchange_response_weights_and_metric": 0.28665600448,
+              "exchange_response_metric_dot": 0.4400960000200001,
+              "three_center_derivative_contraction": 2.45724797,
+              "metric_frechet_response": 0.0186240003,
+              "metric_center_derivative_contraction": 0.470687985,
+              "response_output_and_synchronization": 0.0117760003
+            },
+            "counter_sums": {
+              "atom_coordinates": 6,
+              "density_upload_bytes": 8664,
+              "device_to_host_bytes": 48,
+              "host_to_device_bytes": 65804,
+              "metric_derivative_weight_bytes": 2888,
+              "metric_derivative_weights": 361,
+              "raw_value_cache_hits": 38,
+              "raw_value_reuse_bytes": 109744,
+              "raw_value_upload_bytes": 54872,
+              "response_ao_matrix_products": 76,
+              "response_auxiliary_blocks": 1,
+              "response_charge_dot_elements": 20577,
+              "response_charge_scalar_dots": 57,
+              "response_density_scalar_products": 76,
+              "response_host_to_device_bytes": 0,
+              "response_metric_blas_dots": 722,
+              "response_probe_total_device_bytes": 141852,
+              "response_scratch_bytes": 141852,
+              "stream_synchronizations": 1,
+              "tensor_host_to_device_bytes": 54872,
+              "three_center_derivative_weight_bytes": 54872,
+              "three_center_derivative_weights": 6859
+            },
+            "counter_maxima": {
+              "atom_coordinates": 6,
+              "density_upload_bytes": 8664,
+              "device_to_host_bytes": 48,
+              "host_to_device_bytes": 65804,
+              "metric_derivative_weight_bytes": 2888,
+              "metric_derivative_weights": 361,
+              "raw_value_cache_hits": 38,
+              "raw_value_reuse_bytes": 109744,
+              "raw_value_upload_bytes": 54872,
+              "response_ao_matrix_products": 76,
+              "response_auxiliary_blocks": 1,
+              "response_charge_dot_elements": 20577,
+              "response_charge_scalar_dots": 57,
+              "response_density_scalar_products": 76,
+              "response_host_to_device_bytes": 0,
+              "response_metric_blas_dots": 722,
+              "response_probe_total_device_bytes": 141852,
+              "response_scratch_bytes": 141852,
+              "stream_synchronizations": 1,
+              "tensor_host_to_device_bytes": 54872,
+              "three_center_derivative_weight_bytes": 54872,
+              "three_center_derivative_weights": 6859
+            },
+            "logical_tiles": 0,
+            "repeated_tile_productions": 0
+          }
+        ],
+        "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+      },
+      "trace_sha256": "9dfb91ccd394cabea85f1db468495817b62f9e3bdd78d259e82cc7a62422c8ee",
+      "host_components": {
+        "exclusive_phases": {
+          "batch_execute": {
+            "calls": 1,
+            "wall_ms": 0.019387000000000043,
+            "cpu_ms": 0.017542999999898612
+          },
+          "run_uhf_density_fitting_cuda_bucket_impl": {
+            "calls": 1,
+            "wall_ms": 0.00840700000000183,
+            "cpu_ms": 0.00810499999992409
+          },
+          "prepare_item": {
+            "calls": 1,
+            "wall_ms": 0.004689,
+            "cpu_ms": 0.004729000000036621
+          },
+          "prepare_initial_frame": {
+            "calls": 1,
+            "wall_ms": 0.0030259999999999996,
+            "cpu_ms": 0.003026000000128093
+          },
+          "overlap_cache_hit": {
+            "calls": 1,
+            "wall_ms": 0.000611,
+            "cpu_ms": 0.0006209999999784444
+          },
+          "initial_density": {
+            "calls": 1,
+            "wall_ms": 0.002184,
+            "cpu_ms": 0.0021739999999104143
+          },
+          "device_scf_submission_wait": {
+            "calls": 1,
+            "wall_ms": 2.33559,
+            "cpu_ms": 2.3357000000000516
+          },
+          "finalization": {
+            "calls": 1,
+            "wall_ms": 0.016970999999999847,
+            "cpu_ms": 0.016179999999921257
+          },
+          "final_state_read": {
+            "calls": 1,
+            "wall_ms": 0.153354,
+            "cpu_ms": 0.1534570000000235
+          },
+          "final_state_fock_build": {
+            "calls": 1,
+            "wall_ms": 0.277201,
+            "cpu_ms": 0.2774709999999736
+          },
+          "final_state_validation": {
+            "calls": 1,
+            "wall_ms": 0.087999,
+            "cpu_ms": 0.08803500000009734
+          },
+          "final_state_weighted_density": {
+            "calls": 1,
+            "wall_ms": 0.003788,
+            "cpu_ms": 0.003786999999921825
+          },
+          "final_state_reuse": {
+            "calls": 1,
+            "wall_ms": 0.000341,
+            "cpu_ms": 0.0003410000000148017
+          },
+          "force_response": {
+            "calls": 1,
+            "wall_ms": 5.498286,
+            "cpu_ms": 5.498402000000069
+          }
+        },
+        "roots": [
+          {
+            "root_id": 0,
+            "name": "batch_execute",
+            "reason": "unspecified",
+            "parent": -1,
+            "item": -1,
+            "nbf": 0,
+            "wall_ms": 8.411834,
+            "cpu_ms": 8.40957099999995,
+            "finished": true,
+            "failed": false
+          }
+        ],
+        "reference_eigensolves": [],
+        "eigensolves_by_reason": {},
+        "device_eigensolves": [],
+        "device_eigensolves_by_reason": {},
+        "interpretation": "Reference eigensolve leaf rows count actual calls, including failures. Item indices are local to the enclosing native bucket; root and ancestor IDs disambiguate ragged buckets; fleet worker items use source ordering. Host phases are exclusive within a root only. Concurrent worker roots overlap the waiting endpoint, so summed wall phases are not elapsed endpoint time. CPU and wall clocks overlap and must not be added to each other or CUDA events. CPU clock is null where thread CPU timing is unavailable. Use separate clean endpoint timings."
+      },
+      "host_trace_sha256": "1601fd5ee8c2029b2c83c29895ccab037955c17ef5ac1dbbe7efe736f823b52d"
+    }
+  ],
+  "candidate_order": null,
+  "source_patch_sha256": "7f83b3dc0623345fcdc7c83774a0bac45696108d749fbe720a1aea99ea0be18e",
+  "cold_iterations": [
+    20
+  ],
+  "prime_iterations": [
+    2
+  ]
+}

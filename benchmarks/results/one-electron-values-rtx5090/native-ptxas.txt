@@ -1,0 +1,143 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN6vibeqc3scf55_GLOBAL__N__696201d7_22_one_electron_values_cu_d166286e17shell_warp_valuesENS0_21OneElectronDeviceViewEPdS3_S3_S3_' for 'sm_120'
+ptxas info    : Function properties for _ZN6vibeqc3scf55_GLOBAL__N__696201d7_22_one_electron_values_cu_d166286e17shell_warp_valuesENS0_21OneElectronDeviceViewEPdS3_S3_S3_
+    176 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 200 registers, used 0 barriers, 176 bytes cumulative stack size
+ptxas info    : Compile time = 46020.969 ms
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_00ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_01ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_02ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_03ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_10ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_11ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_12ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_13ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_20ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_21ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_22ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_23ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_30ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_31ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_32ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_33ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_00ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_01ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_02ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_03ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_10ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_11ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_12ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_13ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_20ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_21ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_22ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_23ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_30ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_31ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_32ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_33ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_ZN6vibeqc3scf55_GLOBAL__N__696201d7_22_one_electron_values_cu_d166286e13thread_valuesENS0_21OneElectronDeviceViewEPKiS4_mPdS5_S5_S5_' for 'sm_120'
+ptxas info    : Function properties for _ZN6vibeqc3scf55_GLOBAL__N__696201d7_22_one_electron_values_cu_d166286e13thread_valuesENS0_21OneElectronDeviceViewEPKiS4_mPdS5_S5_S5_
+    176 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 180 registers, used 0 barriers, 176 bytes cumulative stack size
+ptxas info    : Compile time = 45008.324 ms
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_00ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_01ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_02ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_03ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_10ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_11ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_12ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_13ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_20ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_21ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_22ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_23ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_30ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_31ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_32ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron13attraction_33ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_00ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_01ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_02ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_03ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_10ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_11ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_12ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_13ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_20ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_21ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_22ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_23ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_30ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_31ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_32ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf22generated_one_electron18overlap_kinetic_33ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

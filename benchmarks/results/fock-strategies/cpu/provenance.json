@@ -1,0 +1,1617 @@
+{
+  "baseline": {
+    "build": {
+      "CMAKE_BUILD_TYPE": "Release",
+      "CMAKE_CUDA_ARCHITECTURES": "120",
+      "CMAKE_CUDA_COMPILER": "/group/software/cuda-12.9.1/bin/nvcc",
+      "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+      "VIBEQC_AOT_PROFILE": "auto",
+      "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+      "VIBEQC_CUDA_SPLIT_COMPILE_THREADS": "1",
+      "VIBEQC_ENABLE_AOT_SHELLS": "ON"
+    },
+    "cpu": "AMD EPYC 7K62 48-Core Processor",
+    "cuda_visible_devices": "0",
+    "cxx": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+    "dirty": false,
+    "environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VIBEQC_LIBRARY": "${baseline_checkout}/.artifacts/overhead-cuda-build/libvibeqc.so",
+      "VIBEQC_PROFILE": "off"
+    },
+    "filters": {
+      "approximation": null,
+      "case": null,
+      "endpoint": null,
+      "spin": null
+    },
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "native_source_identity": "8debe0b6c49717e8d68cc1fa41a2b75f71928fe86dbabfadb58eea4c42ccde1a",
+    "numpy": "2.4.6",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "prepared_diagnostics": [
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      }
+    ],
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]",
+    "revision": "3da58410bb02a903ea6341a7caac0afc9314355b",
+    "slurm_job_id": "9137"
+  },
+  "candidate": {
+    "build": {
+      "CMAKE_BUILD_TYPE": "Release",
+      "CMAKE_CUDA_ARCHITECTURES": "120",
+      "CMAKE_CUDA_COMPILER": "/group/software/cuda-12.9.1/bin/nvcc",
+      "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+      "VIBEQC_AOT_PROFILE": "auto",
+      "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+      "VIBEQC_CUDA_SPLIT_COMPILE_THREADS": "1",
+      "VIBEQC_ENABLE_AOT_SHELLS": "ON"
+    },
+    "cpu": "AMD EPYC 7K62 48-Core Processor",
+    "cuda_visible_devices": "0",
+    "cxx": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+    "dirty": false,
+    "environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VIBEQC_LIBRARY": "${candidate_checkout}/.artifacts/overhead-cuda-build/libvibeqc.so",
+      "VIBEQC_PROFILE": "off"
+    },
+    "filters": {
+      "approximation": null,
+      "case": null,
+      "endpoint": null,
+      "spin": null
+    },
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "native_source_identity": "62a3c3743c86564191b54821e76a6d4f0f1e527e96ef4f80709e28069d10c303",
+    "numpy": "2.4.6",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "prepared_diagnostics": [
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "H",
+            [
+              0,
+              0,
+              -0.7
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              0,
+              0.7
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "h2",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "rhf",
+        "state": {
+          "charge": 0,
+          "multiplicity": 1
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "exact",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 1
+      },
+      {
+        "approximation": "density_fitted",
+        "atoms": [
+          [
+            "O",
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              -1.43233673,
+              1.10715266
+            ]
+          ],
+          [
+            "H",
+            [
+              0,
+              1.43233673,
+              1.10715266
+            ]
+          ]
+        ],
+        "basis": "sto-3g",
+        "case": "water",
+        "controls": {
+          "density_tolerance": 1e-08,
+          "energy_tolerance": 1e-10,
+          "max_iterations": 100,
+          "screening_tolerance": 1e-12
+        },
+        "density_fitting": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "device": "cpu",
+        "eigensolver": {
+          "entries": [],
+          "reason": "no records exposed by this route"
+        },
+        "spin": "uhf",
+        "state": {
+          "charge": 1,
+          "multiplicity": 2
+        },
+        "system_count": 4
+      }
+    ],
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]",
+    "revision": "913fb20a25aab87363b19e9d788580230493b688",
+    "slurm_job_id": "9137"
+  },
+  "publication_normalization": {
+    "VIBEQC_LIBRARY": "Checkout-specific absolute prefixes replaced with baseline/candidate checkout placeholders. Exact source revisions, native source hashes, build configuration and toolchain identities are retained."
+  }
+}

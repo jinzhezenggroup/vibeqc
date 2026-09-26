@@ -1,0 +1,14 @@
+{
+  "current_default": "Generated Rys values only; bounded transformed outputs use compiler-directed four-lane primitive groups across eight source terms per warp.",
+  "evidence": [
+    "benchmarks/results/generated-df-values-142/promotion.json",
+    "benchmarks/results/generated-df-values-142/README.md",
+    "benchmarks/results/cuda-ownership/df/publication.json",
+    "docs/developer/df_tuning.md"
+  ],
+  "generated_capability": "All two-/three-center values through f and public spherical transforms instantiate the same rank-generic normalized traversal as derivatives. Diagnostic specialized polynomial/Rys values through total angular degree two and raw 1/4/32-lane schedules share the same compiler scalar IR and Direct/DF batch qualification helpers; no value candidate is promoted.",
+  "missing_capability": "None for promoted DF values; shared ERI/Dual recurrences remain for Direct and separately gated one-electron derivatives.",
+  "owner": "df_values",
+  "retirement_condition": "Completed: legacy Hermite value selection/dispatch and parallel DF derivative recurrence/contraction are removed; retain metric factors, planning and cuBLAS/cuSOLVER runtime.",
+  "status": "retired"
+}

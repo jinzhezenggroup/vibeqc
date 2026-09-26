@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_values.cu",
+  "reason": "Launch adapter instantiating generated value policy on shared pair schedules; no operator arithmetic.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "one_electron_values"
+}

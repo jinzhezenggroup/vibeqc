@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d3_atm.hpp",
+  "role": "oracle",
+  "subsystem": "d3_dispersion",
+  "reason": "Standalone CPU/device D3(BJ)-ATM scientific owner with analytic three-body geometry, smooth-cutoff, and coordination-number response derivatives. The arithmetic is independently qualified and is admitted by production only through the explicit d3.bj-atm capability.",
+  "regions": []
+}

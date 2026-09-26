@@ -1,0 +1,94 @@
+{
+  "issue": 170,
+  "base_commit": "9d6d44236e4a09205afbdd1cbcc6f43b8014084d",
+  "implementation_commit": "1c551ddb46bdf377fcae573eb5e9ca746af0d081",
+  "final_candidate_head": "af5313627c178ab4a1cd791093dff8dc6e5f6c92",
+  "final_candidate_gpu_source_equivalence": {
+    "status": "byte_identical",
+    "rerun_status": "not_run_platform_scheduling_blocked",
+    "files": {
+      "python/vibeqc_compiler/integral/bounded_component.py": "9aa34bc4689a0391376c49e5f45102c12fb0d495a9e6fadd6301d57fee14cb48",
+      "python/vibeqc_compiler/integral/shell_class.py": "2d32caa12b457af45c44a45c9eb1fa85ad640a3529ff6cb5398a6794af3e4239",
+      "tests/python/test_high_angular.py": "63a949350c23b481f7de05dbfb63cb897ad66b13a2a7dcc5f9070967ea28248a"
+    },
+    "platform_blocker": "qz 4090 and H200 notebook requests were unschedulable under the available node-memory/priority constraints; all pending requests were stopped"
+  },
+  "environment": {
+    "python": "3.11.16",
+    "pyscf": "2.14.0",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_memory_mib": 49140,
+    "compute_capability": "8.9",
+    "driver": "550.163.01",
+    "cuda_toolkit": "12.9.86",
+    "cuda_architecture": "sm_89",
+    "gpu_notebook": "issue-0170-higher-l-4090",
+    "gpu_node": "qb-prod-4090-gpu117",
+    "gpu_uuid": "GPU-21fdb213-4048-e5f6-3bb2-ea28f46230c5"
+  },
+  "cpu": {
+    "focused_oracle": {
+      "passed": 2,
+      "failed": 0
+    },
+    "high_angular_suite": {
+      "passed": 38,
+      "skipped_cuda_only": 6,
+      "failed": 0
+    },
+    "gsss_xxxx": {
+      "compile_seconds": 0.1998196616768837,
+      "source_bytes": 26987,
+      "binary_bytes": 19824
+    },
+    "molecular_endpoints": [
+      {
+        "method": "rhf",
+        "representation": "cartesian",
+        "nao": 17,
+        "energy_error_hartree": 2.842170943040401e-14,
+        "max_force_error_hartree_per_bohr": 6.144507125327436e-11
+      },
+      {
+        "method": "rhf",
+        "representation": "spherical",
+        "nao": 11,
+        "energy_error_hartree": 1.7763568394002505e-14,
+        "max_force_error_hartree_per_bohr": 7.303824212101517e-12
+      },
+      {
+        "method": "df-rhf",
+        "representation": "cartesian",
+        "energy_error_hartree": 7.283063041541027e-14,
+        "max_force_error_hartree_per_bohr": 1.9162449405030202e-13
+      },
+      {
+        "method": "df-rhf",
+        "representation": "spherical",
+        "energy_error_hartree": 1.7763568394002505e-14,
+        "max_force_error_hartree_per_bohr": 1.3666845433135677e-13
+      }
+    ]
+  },
+  "cuda": {
+    "selected_tests_passed": 6,
+    "selected_tests_failed": 0,
+    "gsss_xxxx": {
+      "compile_seconds": 2.074195149994921,
+      "source_bytes": 50160,
+      "binary_bytes": 1210768,
+      "registers": 128,
+      "stack_bytes": 48,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "shared_bytes": 0,
+      "local_bytes": 0
+    }
+  },
+  "promotion": {
+    "native_cuda_g_admitted": false,
+    "fixed_55_class_catalog_changed": false,
+    "default_binary_changed": false,
+    "reason": "real-device scalar correctness/resource evidence is positive, but there is no complete higher-l CUDA molecular endpoint or profitability evidence"
+  }
+}

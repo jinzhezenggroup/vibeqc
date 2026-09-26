@@ -1,0 +1,1086 @@
+{
+  "expression_hash": "9002efc57f1a1984fbe1eba723befaae22b89a9f958d32a95f88f30d96b4ffec",
+  "features": [
+    "rho_a",
+    "rho_b",
+    "sigma_aa",
+    "sigma_ab",
+    "sigma_bb",
+    "tau_a",
+    "tau_b"
+  ],
+  "fp64": "--fmad=false; no fast math",
+  "functional": {
+    "components": [
+      [
+        "GGA_X_PBE",
+        "1"
+      ]
+    ],
+    "derivative_orders": [
+      0,
+      1,
+      2
+    ],
+    "domain": "interior-v1: no clipping; see docs/xc_expressions.md",
+    "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
+    "exact_exchange": "0",
+    "expression_source_sha256": "38b1cb754d18059f418a5564957e97c6ab05228d189a2b7ca99d572658a882b8",
+    "features": [
+      "rho_a",
+      "rho_b",
+      "sigma_aa",
+      "sigma_ab",
+      "sigma_bb",
+      "tau_a",
+      "tau_b"
+    ],
+    "identifier": "GGA_X_PBE",
+    "ingredients": [
+      "rho",
+      "sigma"
+    ],
+    "license": "MPL-2.0",
+    "long_range_exchange": "0",
+    "range_omega": "0",
+    "source_manifest_sha256": "230cd37e89428f0d5df736f875608819ffdff526912dfaa58fcb7f80d163804c",
+    "spin": "polarized",
+    "version": "libxc-7.0.0/interior-v1"
+  },
+  "generator_sources": {
+    "src/dft/xc_runtime.cuh": "2df50a599bd0cdc33ae2aca48d29b06364283253f55d5d8fc338d3e5c04bcd55",
+    "src/tensor/cuda_runtime.cuh": "363ea27949c7af9a817b9592c802d4b181914df4cff8139e477d082810beb220",
+    "tools/vibeqc_codegen/cuda.py": "bda10be331c5fb77af6205623e42d0ef2175ed17e78717373351615eaf94957c",
+    "tools/vibeqc_codegen/expr.py": "16bdd5312fd1746eb8f2eb55aa94c11729c37db9dfb2f67ca71d9bc3595efd90",
+    "tools/vibeqc_xc/cuda_emit.py": "b6dc6ed4748e4e4bb3499b04201ee69281c9d04798b1c1e1051d929273350168"
+  },
+  "groups": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    [
+      10
+    ],
+    [
+      11
+    ],
+    [
+      12
+    ],
+    [
+      13
+    ],
+    [
+      14
+    ],
+    [
+      15
+    ],
+    [
+      16
+    ],
+    [
+      17
+    ],
+    [
+      18
+    ],
+    [
+      19
+    ],
+    [
+      20
+    ],
+    [
+      21
+    ],
+    [
+      22
+    ],
+    [
+      23
+    ],
+    [
+      24
+    ],
+    [
+      25
+    ],
+    [
+      26
+    ],
+    [
+      27
+    ],
+    [
+      28
+    ],
+    [
+      29
+    ],
+    [
+      30
+    ],
+    [
+      31
+    ],
+    [
+      32
+    ],
+    [
+      33
+    ],
+    [
+      34
+    ],
+    [
+      35
+    ]
+  ],
+  "identity": "fe40347294b8b828dcfcba23a4c3e323a45aa279ed9f3c0c4dbe1b01b3c74c16",
+  "layout": "FP64 feature/output-major, contiguous point lanes",
+  "outputs": [
+    [],
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      0,
+      4
+    ],
+    [
+      0,
+      5
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      1,
+      4
+    ],
+    [
+      1,
+      5
+    ],
+    [
+      1,
+      6
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      2,
+      4
+    ],
+    [
+      2,
+      5
+    ],
+    [
+      2,
+      6
+    ],
+    [
+      3,
+      3
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      3,
+      6
+    ],
+    [
+      4,
+      4
+    ],
+    [
+      4,
+      5
+    ],
+    [
+      4,
+      6
+    ],
+    [
+      5,
+      5
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      6,
+      6
+    ]
+  ],
+  "placement": "inline_single_use",
+  "schema": 1,
+  "static_models": [
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 22,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 24,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {
+          "add": 7,
+          "multiply": 11,
+          "power": 4,
+          "reciprocal": 2
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 24,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 22
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 15,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 21,
+        "estimated_peak_live_values": 1,
+        "materialized_value_count": 1,
+        "operation_counts": {
+          "add": 4,
+          "multiply": 11,
+          "power": 4,
+          "reciprocal": 2
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 21,
+        "estimated_peak_live_values": 5,
+        "materialized_value_count": 16
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 15,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 21,
+        "estimated_peak_live_values": 1,
+        "materialized_value_count": 1,
+        "operation_counts": {
+          "add": 4,
+          "multiply": 11,
+          "power": 4,
+          "reciprocal": 2
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 21,
+        "estimated_peak_live_values": 5,
+        "materialized_value_count": 16
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 5,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 10,
+        "estimated_peak_live_values": 2,
+        "materialized_value_count": 2,
+        "operation_counts": {
+          "add": 1,
+          "multiply": 6,
+          "power": 2,
+          "reciprocal": 1
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 10,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 7
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 5,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 10,
+        "estimated_peak_live_values": 2,
+        "materialized_value_count": 2,
+        "operation_counts": {
+          "add": 1,
+          "multiply": 6,
+          "power": 2,
+          "reciprocal": 1
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 10,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 7
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 22,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 35,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 4,
+        "operation_counts": {
+          "add": 6,
+          "multiply": 20,
+          "power": 6,
+          "reciprocal": 3
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 35,
+        "estimated_peak_live_values": 7,
+        "materialized_value_count": 26
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 12,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 23,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 4,
+        "operation_counts": {
+          "add": 3,
+          "multiply": 14,
+          "power": 4,
+          "reciprocal": 2
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 23,
+        "estimated_peak_live_values": 7,
+        "materialized_value_count": 16
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 22,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 35,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 4,
+        "operation_counts": {
+          "add": 6,
+          "multiply": 20,
+          "power": 6,
+          "reciprocal": 3
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 35,
+        "estimated_peak_live_values": 7,
+        "materialized_value_count": 26
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 12,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 23,
+        "estimated_peak_live_values": 4,
+        "materialized_value_count": 4,
+        "operation_counts": {
+          "add": 3,
+          "multiply": 14,
+          "power": 4,
+          "reciprocal": 2
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 23,
+        "estimated_peak_live_values": 7,
+        "materialized_value_count": 16
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 6,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 12,
+        "estimated_peak_live_values": 2,
+        "materialized_value_count": 2,
+        "operation_counts": {
+          "add": 1,
+          "multiply": 8,
+          "power": 2,
+          "reciprocal": 1
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 12,
+        "estimated_peak_live_values": 5,
+        "materialized_value_count": 8
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 6,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 12,
+        "estimated_peak_live_values": 2,
+        "materialized_value_count": 2,
+        "operation_counts": {
+          "add": 1,
+          "multiply": 8,
+          "power": 2,
+          "reciprocal": 1
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 12,
+        "estimated_peak_live_values": 5,
+        "materialized_value_count": 8
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    },
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 0,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0,
+        "operation_counts": {}
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 0,
+        "estimated_peak_live_values": 0,
+        "materialized_value_count": 0
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    }
+  ],
+  "threads": 128,
+  "variant": "baseline"
+}

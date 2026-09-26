@@ -1,0 +1,21 @@
+{
+  "archive_sha256": "87f89407655909011bb0fbc0457563d80845d9f4628e69633c4c913549337554",
+  "archive_bytes": 194480,
+  "raw_manifest_members_verified": 51,
+  "git_source_verification": {
+    "baseline": {
+      "commit": "2bf9a2a4784fc79f6048ec9c4e74701e1caa92ec",
+      "verified_inputs": 1460,
+      "dereferenced_symlinks": {
+        "tools/vibeqc_codegen/production_shell_classes.json": "python/vibeqc_compiler/integral/production_shell_classes.json"
+      }
+    },
+    "candidate": {
+      "commit": "f10e7346839f059521c4a4800ae1a0655e21f1fd",
+      "verified_inputs": 1463,
+      "dereferenced_symlinks": {
+        "tools/vibeqc_codegen/production_shell_classes.json": "python/vibeqc_compiler/integral/production_shell_classes.json"
+      }
+    }
+  }
+}

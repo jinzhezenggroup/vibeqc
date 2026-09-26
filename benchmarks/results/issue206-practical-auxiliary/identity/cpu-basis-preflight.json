@@ -1,0 +1,33 @@
+{
+  "scope": "CPU-only basis conversion and metric/rank preflight; no GPU or performance qualification",
+  "pyscf_version": "2.14.0",
+  "pyscf_license": "Apache-2.0",
+  "rows": [
+    {
+      "case_geometry": "water-tetramer-def2-svp-spherical",
+      "orbital": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+      "auxiliary": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+      "nao": 96,
+      "naux": 464,
+      "metric_extrema": [
+        6.695226884588835e-05,
+        363.8717575141369
+      ],
+      "condition": 5434793.529577048,
+      "rank_at_native_default_1e10": 464
+    },
+    {
+      "case_geometry": "oh-def2-svp-spherical-uhf",
+      "orbital": "edfff0272c174420667062a64f555c855cd4bf7228c1656bb2f169d9929e9f66",
+      "auxiliary": "3029575a4a8d38b5f48e06891a765e8b0c4d75d36314380c62f596e7c80c7547",
+      "nao": 19,
+      "naux": 93,
+      "metric_extrema": [
+        6.817477331318213e-05,
+        115.63063560204083
+      ],
+      "condition": 1696091.2370160054,
+      "rank_at_native_default_1e10": 93
+    }
+  ]
+}

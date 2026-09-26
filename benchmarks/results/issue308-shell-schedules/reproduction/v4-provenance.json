@@ -1,0 +1,15 @@
+{
+  "source_identity": "770bc08476c62091bbf2273b6bf82005146a6fb9491af5b652ed7e94d60e79fa",
+  "library_sha256": "ec0f8fda41173d9a5f2cf93d67fb835e24cb4713ab5b21e04a8070454576702f",
+  "source_patch_sha256": "ef16961a9d9ac8e6ec4e2e8848e10abd23223016f2313bc3ce0eece65d170060",
+  "runner_sha256": "1db61fcd3052d0282549911ad91c6fd1721886f616fe10fd5851a0be64642c10",
+  "git_head": "672ec474727a380a2294afd8c3c37ad6e04a98fa",
+  "changes_since_v3": [
+    "Integrate master through b4a18af via PR B 672ec47.",
+    "Gather pinned panels in bounded groups of 128 AO-pair rows, with contiguous column stores and no new buffer.",
+    "Remove a redundant zero-exchange branch; mathematics and numerical gates unchanged."
+  ],
+  "cpu_tests": "138 passed: 128 independent generated-arithmetic cases and 10 ownership checks",
+  "compiled_shell_variants": 192,
+  "maximum_compiled_shared_bytes": 48624
+}

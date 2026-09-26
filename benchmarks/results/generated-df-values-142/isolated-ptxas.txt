@@ -1,0 +1,26 @@
+ptxas info    : 126112 bytes gmem
+ptxas info    : Compiling entry function 'df_fixture_values' for 'sm_120'
+ptxas info    : Function properties for df_fixture_values
+    160 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 130 registers, used 0 barriers, 160 bytes cumulative stack size
+ptxas info    : Compile time = 408.573 ms
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df11axis_momentEjjjdddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df13df_rys2_rootsEdPdj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df13df_rys3_rootsEdPdj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df13df_rys4_rootsEdPdj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df13df_rys5_rootsEdPdj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df5valueILj1EEEdddRKNS1_4Vec3ES5_S5_RKNS1_7AngularES8_S8_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df5valueILj2EEEdddRKNS1_4Vec3ES5_S5_RKNS1_7AngularES8_S8_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df5valueILj3EEEdddRKNS1_4Vec3ES5_S5_RKNS1_7AngularES8_S8_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df5valueILj4EEEdddRKNS1_4Vec3ES5_S5_RKNS1_7AngularES8_S8_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf12generated_df5valueILj5EEEdddRKNS1_4Vec3ES5_S5_RKNS1_7AngularES8_S8_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

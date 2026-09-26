@@ -1,0 +1,346 @@
+diff --git a/docs/cuda_ownership_current.json b/docs/cuda_ownership_current.json
+index 64919ce..ee91e44 100644
+--- a/docs/cuda_ownership_current.json
++++ b/docs/cuda_ownership_current.json
+@@ -1,5 +1,5 @@
+ {
+-  "all_handwritten_scientific_lines": 10852,
++  "all_handwritten_scientific_lines": 10880,
+   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
+   "files": [
+     {
+@@ -598,20 +598,20 @@
+       "subsystem": "runtime"
+     },
+     {
+-      "bytes": 31522,
++      "bytes": 32222,
+       "code_lines": {
+         "fallback": 0,
+         "oracle": 0,
+         "performance_exception": 0,
+         "runtime": 0,
+-        "scientific": 554
++        "scientific": 564
+       },
+       "path": "src/scf/cuda/df_gradient_bridge.cu",
+-      "physical_lines": 574,
++      "physical_lines": 584,
+       "reason": "External-weight staging and ABI around native HF density/spectral-inverse response; conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned.",
+       "regions": [],
+       "role": "scientific",
+-      "sha256": "b78d59808ee48bb00f149c3844183ace56e8362be9e9c20c1489725abca0f0ef",
++      "sha256": "a82becf1b5043195f9a785dbe8121a003b174c0ca2f91bcbbefc8cc009411b60",
+       "subsystem": "df_derivatives"
+     },
+     {
+@@ -710,37 +710,37 @@
+       "subsystem": "scf_tensor"
+     },
+     {
+-      "bytes": 12815,
++      "bytes": 13988,
+       "code_lines": {
+         "fallback": 0,
+         "oracle": 0,
+         "performance_exception": 0,
+         "runtime": 0,
+-        "scientific": 217
++        "scientific": 230
+       },
+       "path": "src/scf/cuda/df_response_weights.cu",
+-      "physical_lines": 248,
++      "physical_lines": 266,
+       "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
+       "regions": [],
+       "role": "scientific",
+-      "sha256": "fa90a9e65fddf6763c1ca02bafc9b0ee02b00bd85b727bbd590e9c75e5915d03",
++      "sha256": "81b69af34db32cc66c5e4e4f69fefa404d9270d122c35946e7f61cf041b418a4",
+       "subsystem": "df_derivatives"
+     },
+     {
+-      "bytes": 1918,
++      "bytes": 2436,
+       "code_lines": {
+         "fallback": 0,
+         "oracle": 0,
+         "performance_exception": 0,
+         "runtime": 0,
+-        "scientific": 18
++        "scientific": 23
+       },
+       "path": "src/scf/cuda/df_response_weights.cuh",
+-      "physical_lines": 41,
++      "physical_lines": 52,
+       "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
+       "regions": [],
+       "role": "scientific",
+-      "sha256": "868361eba5eccaf19db1aa6c4e6d4c3d01b57bdbea3871fdd23f4b85ebba536c",
++      "sha256": "6ccb97436e83c80b07e2e760b1d86477d3eb05fc46b670f30488a6be19af2769",
+       "subsystem": "df_derivatives"
+     },
+     {
+@@ -3303,7 +3303,7 @@
+     "oracle": 0,
+     "performance_exception": 156,
+     "runtime": 9169,
+-    "scientific": 10696
++    "scientific": 10724
+   },
+   "migration_ledger": {
+     "ao_grid": {
+@@ -3470,7 +3470,7 @@
+       "oracle": 0,
+       "performance_exception": 0,
+       "runtime": 87,
+-      "scientific": 789
++      "scientific": 817
+     },
+     "df_values": {
+       "fallback": 0,
+diff --git a/docs/density_fitting.md b/docs/density_fitting.md
+index aec1056..8357f6e 100644
+--- a/docs/density_fitting.md
++++ b/docs/density_fitting.md
+@@ -222,6 +222,14 @@ uploads with `tensor_host_to_device_bytes` and `response_host_to_device_bytes`.
+ Transfer, regeneration, derivative contraction and synchronization costs remain
+ part of the complete force endpoint.
+ 
++The exchange metric contraction uses the plan's existing cuBLAS handle to dot
++the bounded raw panel against each density response. Its output stride updates
++the existing metric response, preserving Coulomb and both spin contributions.
++`VIBEQC_DF_SERIAL_RESPONSE_DOT=1` restores the original per-output serial dot
++kernel for an independent arithmetic ablation under the same scratch bound.
++Both paths retain FP64 and the complete spectral response. Provider failures
++propagate through stream cleanup; they do not select the serial calculation.
++
+ ### Compact DIIS and numerical recovery
+ 
+ Production CUDA DF SCF honors the requested DIIS history inside the compact
+diff --git a/src/scf/cuda/df_force_response.cpp b/src/scf/cuda/df_force_response.cpp
+index 3537493..9a1cce3 100644
+--- a/src/scf/cuda/df_force_response.cpp
++++ b/src/scf/cuda/df_force_response.cpp
+@@ -42,10 +42,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+     const CudaDfMetricView metric{
+         plan->inverse_square_roots + offset, plan->metric_eigenvectors + offset,
+         plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold};
+-    return execute_cuda_df_hf_gradient(
+-        plan->device_id, reinterpret_cast<void*>(plan->stream), plan->integral_source, system,
+-        orbital, auxiliary, raw_a, {}, {}, terms, plan->metric_relative_threshold, schedule,
+-        maximum_bytes, maximum_auxiliary_tile, derivative, detail, resources, &metric);
++    return execute_cuda_df_hf_gradient(plan->device_id, reinterpret_cast<void*>(plan->stream),
++                                       plan->integral_source, system, orbital, auxiliary, raw_a, {},
++                                       {}, terms, plan->metric_relative_threshold, schedule,
++                                       maximum_bytes, maximum_auxiliary_tile, derivative, detail,
++                                       resources, &metric, reinterpret_cast<void*>(plan->blas));
+   }
+   // Copies isolate one system's spectral reverse map from the packed batch.
+   // Charge them while the bounded HF/derivative bridge is also alive.
+diff --git a/src/scf/cuda/df_gradient_bridge.cu b/src/scf/cuda/df_gradient_bridge.cu
+index e22199e..221fc1b 100644
+--- a/src/scf/cuda/df_gradient_bridge.cu
++++ b/src/scf/cuda/df_gradient_bridge.cu
+@@ -1,5 +1,6 @@
+ #include <algorithm>
+ #include <cmath>
++#include <cstdlib>
+ #include <limits>
+ #include <stdexcept>
+ 
+@@ -336,7 +337,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
+     const std::vector<double>& inverse, std::span<const DensityFittingDensityResponse> terms,
+     double relative_threshold, unsigned schedule, std::size_t maximum_bytes,
+     std::size_t maximum_auxiliary_tile, std::vector<double>& gradient, std::string& detail,
+-    DfGradientResources* resources, const CudaDfMetricView* device_metric) {
++    DfGradientResources* resources, const CudaDfMetricView* device_metric, void* blas_handle) {
+   detail.clear();
+   if (resources) *resources = {};
+   const auto n = molecule::ao_count(orbital), a = molecule::ao_count(auxiliary),
+@@ -348,6 +349,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
+       a > maximum / a || n * n > maximum / a || atoms > maximum / 3 ||
+       atoms != auxiliary.atoms.size() || (source && !device_metric) ||
+       (!source && raw_a.size() != n * n * a) ||
++      (device_metric && (!blas_handle || n * n > index_limit)) ||
+       (device_metric ? (!device_metric->inverse_square_root || !device_metric->eigenvectors ||
+                         !device_metric->eigenvalues)
+                      : (metric.size() != a * a || inverse.size() != a * a)) ||
+@@ -439,8 +441,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
+                                          arena.stats.density_host_to_device_bytes);
+       preparation.finish();
+       runtime::cuda_trace::TraceRegion response_weights("response_weights", arena.stream);
++      const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
++      const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
+       check(contract_cuda_df_response_weights(
+           n, a, terms, densities, *device_metric, tile, workspace, arena.stream,
++          reinterpret_cast<cublasHandle_t>(blas_handle), serial_dot,
+           [&](std::size_t p, double* values) {
+             if (source) {
+               const auto status = generate_cuda_density_fitting_raw_tile(
+@@ -560,6 +565,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
+     detail = std::string("generated DF-HF CUDA failure: ") + cudaGetErrorString(error.status);
+     return error.status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
+                                                      : VIBEQC_STATUS_CUDA_ERROR;
++  } catch (const CudaDfResponseBlasFailure& error) {
++    detail = "generated DF-HF metric response cuBLAS failure (status " +
++             std::to_string(static_cast<int>(error.status)) + ")";
++    return error.status == CUBLAS_STATUS_ALLOC_FAILED ? VIBEQC_STATUS_OUT_OF_MEMORY
++                                                      : VIBEQC_STATUS_CUDA_ERROR;
+   } catch (const std::bad_alloc&) {
+     detail = "generated DF-HF response exceeded its allocation budget";
+     return VIBEQC_STATUS_OUT_OF_MEMORY;
+diff --git a/src/scf/cuda/df_response_weights.cu b/src/scf/cuda/df_response_weights.cu
+index 8297130..3d9860d 100644
+--- a/src/scf/cuda/df_response_weights.cu
++++ b/src/scf/cuda/df_response_weights.cu
+@@ -8,9 +8,10 @@ namespace {
+ constexpr unsigned threads = 128;
+ unsigned blocks(std::size_t size) { return static_cast<unsigned>((size + threads - 1) / threads); }
+ 
+-/** All small contractions keep a fixed summation order per output element.
+- * They intentionally avoid atomics and unbounded GEMM workspace. Integral
+- * generation and the derivative consumer remain the existing #142/#143 paths.
++/** Scalar kernels preserve their original per-output summation order. The
++ * exchange metric dot uses the plan's cuBLAS GEMV below, with this scalar
++ * kernel retained for ablation. Both routes use the same bounded raw panel;
++ * integral generation and the derivative consumer are unchanged.
+  */
+ __global__ void inverse_kernel(std::size_t a, const double* x, double* inverse) {
+   const auto ij = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+@@ -140,7 +141,8 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
+ cudaError_t contract_cuda_df_response_weights(
+     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
+-    cudaStream_t stream, const std::function<void(std::size_t, double*)>& read_values,
++    cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot,
++    const std::function<void(std::size_t, double*)>& read_values,
+     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
+         consume) {
+   const auto matrix = n * n, aa = a * a;
+@@ -221,8 +223,24 @@ cudaError_t contract_cuda_df_response_weights(
+                                                       stream);
+         exchange_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
+             matrix, a, begin, count, q, coefficient, inverse, response, weights);
+-        exchange_metric_kernel<<<blocks(count), threads, 0, stream>>>(
+-            matrix, a, begin, count, q, coefficient, raw, response, bar_inverse);
++        runtime::cuda_trace::TraceRegion metric_dot("exchange_response_metric_dot", stream);
++        if (serial_metric_dot) {
++          runtime::cuda_trace::trace_counter("response_metric_serial_dots", count);
++          exchange_metric_kernel<<<blocks(count), threads, 0, stream>>>(
++              matrix, a, begin, count, q, coefficient, raw, response, bar_inverse);
++        } else {
++          // raw[P,ij] is also column-major [ij,P]. Its transpose contracts
++          // every retained P against R_Q without a serial AO-pair loop per P.
++          // The output stride writes bar_inverse[P,Q] in its existing layout;
++          // beta=1 preserves Coulomb and previous spin contributions.
++          const double alpha = -coefficient, beta = 1.0;
++          const auto status =
++              cublasDgemv(blas, CUBLAS_OP_T, static_cast<int>(matrix), static_cast<int>(count),
++                          &alpha, raw, static_cast<int>(matrix), response, 1, &beta,
++                          bar_inverse + begin * a + q, static_cast<int>(a));
++          if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
++          runtime::cuda_trace::trace_counter("response_metric_blas_dots", count);
++        }
+       }
+     }
+     error = cudaGetLastError();
+diff --git a/src/scf/cuda/df_response_weights.cuh b/src/scf/cuda/df_response_weights.cuh
+index 74706fa..f8a726f 100644
+--- a/src/scf/cuda/df_response_weights.cuh
++++ b/src/scf/cuda/df_response_weights.cuh
+@@ -1,6 +1,7 @@
+ #ifndef VIBEQC_SCF_CUDA_DF_RESPONSE_WEIGHTS_CUH
+ #define VIBEQC_SCF_CUDA_DF_RESPONSE_WEIGHTS_CUH
+ 
++#include <cublas_v2.h>
+ #include <cuda_runtime.h>
+ 
+ #include <functional>
+@@ -11,6 +12,11 @@
+ 
+ namespace vibeqc::scf {
+ 
++/** Preserve the provider status across the bridge's stream-draining cleanup. */
++struct CudaDfResponseBlasFailure {
++  cublasStatus_t status;
++};
++
+ /** Device scratch in doubles, excluding borrowed densities and metric factors.
+  * The caller validates size products before using this allocation-free interface.
+  * There are four metric matrices, three AO matrices, two auxiliary blocks and
+@@ -28,12 +34,17 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
+  * The spectral Frechet map includes retained/discarded subspace motion, using
+  * the exact eigensystem and cutoff that defined the plan's metric transform.
+  * The owner must reject unresolved rank crossings before calling this routine.
++ * blas is the plan-owned host-scalar handle already bound to stream. The
++ * serial_metric_dot ablation retains the original fixed-order dot kernel.
+  * Return the first CUDA launch error; the caller drains before freeing scratch.
++ * A cuBLAS failure throws CudaDfResponseBlasFailure so its allocation status
++ * survives cleanup and cannot trigger an unrequested numerical fallback.
+  */
+ cudaError_t contract_cuda_df_response_weights(
+     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
+-    cudaStream_t stream, const std::function<void(std::size_t, double*)>& read_values,
++    cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot,
++    const std::function<void(std::size_t, double*)>& read_values,
+     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
+         consume);
+ 
+diff --git a/src/scf/cuda_df_gradient.hpp b/src/scf/cuda_df_gradient.hpp
+index 229f401..d29e5f3 100644
+--- a/src/scf/cuda_df_gradient.hpp
++++ b/src/scf/cuda_df_gradient.hpp
+@@ -63,6 +63,8 @@ vibeqc_status execute_cuda_df_gradient_tile(int device, const core::System& orbi
+  * device_metric selects device response contractions, with source generation
+  * or bounded uploads from raw_a. Without it, the compatibility raw-value
+  * adapter reports its bounded host response staging.
++ * Device response borrows blas_handle from the same plan, already bound to
++ * stream with host scalar pointer mode; no handle or workspace is created here.
+  * No coordinate-indexed A/M derivative tensors are formed or downloaded.
+  * maximum_bytes bounds this bridge's numeric host/device scratch separately
+  * from the caller's plan; an active resource ledger also enforces total device
+@@ -75,6 +77,6 @@ vibeqc_status execute_cuda_df_hf_gradient(
+     std::span<const DensityFittingDensityResponse> terms, double relative_threshold,
+     unsigned schedule, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
+     std::vector<double>& gradient, std::string& detail, DfGradientResources* resources = nullptr,
+-    const CudaDfMetricView* device_metric = nullptr);
++    const CudaDfMetricView* device_metric = nullptr, void* blas_handle = nullptr);
+ }  // namespace vibeqc::scf
+ #endif
+diff --git a/tests/python/test_df_response_weights_cuda.py b/tests/python/test_df_response_weights_cuda.py
+index 2301a87..895f158 100644
+--- a/tests/python/test_df_response_weights_cuda.py
++++ b/tests/python/test_df_response_weights_cuda.py
+@@ -18,8 +18,9 @@ pytestmark = pytest.mark.skipif(
+ @pytest.mark.parametrize("method", ("rhf", "uhf"))
+ @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
+ @pytest.mark.parametrize("budget", (0, 64 << 20))
++@pytest.mark.parametrize("metric_dot", ("blas", "serial"))
+ def test_response_route_and_host_ablation(
+-    method, representation, budget, monkeypatch, tmp_path
++    method, representation, budget, metric_dot, monkeypatch, tmp_path
+ ):
+     """Switch only force-weight placement, including reuse of a warm value plan.
+ 
+@@ -29,6 +30,9 @@ def test_response_route_and_host_ablation(
+     from pyscf import gto, scf
+ 
+     assert os.environ.get("SLURM_JOB_ID")
++    monkeypatch.setenv(
++        "VIBEQC_DF_SERIAL_RESPONSE_DOT", "1" if metric_dot == "serial" else "0"
++    )
+     atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8)), ("H", (1.7, 0, -0.6))]
+     if method == "uhf":
+         atoms.pop()
+@@ -85,6 +89,10 @@ def test_response_route_and_host_ablation(
+             assert bool(uploaded) == (on_device and not budget)
+             assert uploaded == counters["tensor_host_to_device_bytes"]
+             assert bool(counters["response_host_to_device_bytes"]) != on_device
++            for dot in ("blas", "serial"):
++                assert bool(counters.get(f"response_metric_{dot}_dots", 0)) == (
++                    on_device and metric_dot == dot
++                )
+             if step and not budget:
+                 progress = summarize_progress(read_progress(progress_path))
+                 assert "host:df_plan_setup" not in progress["phases"]

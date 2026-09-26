@@ -1,0 +1,380 @@
+{
+  "auxiliaries": {
+    "jfit": "def2-universal-jfit",
+    "jkfit": "def2-universal-jkfit",
+    "rifit": "def2-tzvp-rifit"
+  },
+  "description": "def2-TZVP",
+  "elements": {
+    "79": {
+      "ecp_electrons": 60,
+      "ecp_potentials": [
+        {
+          "angular_momentum": [
+            3
+          ],
+          "coefficients": [
+            [
+              "30.49008890",
+              "5.17107381"
+            ]
+          ],
+          "ecp_type": "scalar_ecp",
+          "gaussian_exponents": [
+            "4.78982000",
+            "2.39491000"
+          ],
+          "r_exponents": [
+            2,
+            2
+          ]
+        },
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "426.84667920",
+              "37.00708285",
+              "-30.49008890",
+              "-5.17107381"
+            ]
+          ],
+          "ecp_type": "scalar_ecp",
+          "gaussian_exponents": [
+            "13.20510000",
+            "6.60255000",
+            "4.78982000",
+            "2.39491000"
+          ],
+          "r_exponents": [
+            2,
+            2,
+            2,
+            2
+          ]
+        },
+        {
+          "angular_momentum": [
+            1
+          ],
+          "coefficients": [
+            [
+              "261.19958038",
+              "26.96249604",
+              "-30.49008890",
+              "-5.17107381"
+            ]
+          ],
+          "ecp_type": "scalar_ecp",
+          "gaussian_exponents": [
+            "10.45202000",
+            "5.22601000",
+            "4.78982000",
+            "2.39491000"
+          ],
+          "r_exponents": [
+            2,
+            2,
+            2,
+            2
+          ]
+        },
+        {
+          "angular_momentum": [
+            2
+          ],
+          "coefficients": [
+            [
+              "124.79066561",
+              "16.30072573",
+              "-30.49008890",
+              "-5.17107381"
+            ]
+          ],
+          "ecp_type": "scalar_ecp",
+          "gaussian_exponents": [
+            "7.85110000",
+            "3.92555000",
+            "4.78982000",
+            "2.39491000"
+          ],
+          "r_exponents": [
+            2,
+            2,
+            2,
+            2
+          ]
+        }
+      ],
+      "electron_shells": [
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "0.20749231108",
+              "-0.33267893394",
+              "0.38302817958"
+            ]
+          ],
+          "exponents": [
+            "30.000000000",
+            "27.000000000",
+            "14.746824331"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "5.6017248938"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "1.3874162443"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.62923031957"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.14027517613"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.49379413761E-01"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            1
+          ],
+          "coefficients": [
+            [
+              "0.15001711880",
+              "-0.23609813183",
+              "0.31458896948",
+              "-0.57279670446"
+            ]
+          ],
+          "exponents": [
+            "15.500000000",
+            "14.000000000",
+            "6.4227368205",
+            "1.6595601681"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            1
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.79402913993"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            1
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.35125155397"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            1
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.45000000000E-01"
+          ],
+          "function_type": "gto",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            2
+          ],
+          "coefficients": [
+            [
+              "0.40145559502E-01",
+              "-0.93690906606E-01",
+              "0.31746282317",
+              "0.46795192483"
+            ]
+          ],
+          "exponents": [
+            "9.5524098656",
+            "7.2698886937",
+            "1.7746496789",
+            "0.79960541055"
+          ],
+          "function_type": "gto_spherical",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            2
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.33252279372"
+          ],
+          "function_type": "gto_spherical",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            2
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.12445133105"
+          ],
+          "function_type": "gto_spherical",
+          "region": ""
+        },
+        {
+          "angular_momentum": [
+            3
+          ],
+          "coefficients": [
+            [
+              "1.0000000"
+            ]
+          ],
+          "exponents": [
+            "0.7248200"
+          ],
+          "function_type": "gto_spherical",
+          "region": ""
+        }
+      ],
+      "references": [
+        {
+          "reference_description": "Common base shells for def2-TZV*",
+          "reference_keys": [
+            "weigend2005a"
+          ]
+        },
+        {
+          "reference_description": "Additional functions to form def2-TZVP",
+          "reference_keys": [
+            "weigend2005a"
+          ]
+        },
+        {
+          "reference_description": "ECP basis set for Ahlrichs def2",
+          "reference_keys": [
+            "andrae1990a"
+          ]
+        }
+      ]
+    }
+  },
+  "family": "ahlrichs",
+  "function_types": [
+    "gto",
+    "gto_spherical",
+    "scalar_ecp"
+  ],
+  "molssi_bse_schema": {
+    "schema_type": "complete",
+    "schema_version": "0.1"
+  },
+  "name": "def2-TZVP",
+  "names": [
+    "def2-TZVP"
+  ],
+  "revision_date": "2018-09-07",
+  "revision_description": "Data from Turbomole 7.3",
+  "role": "orbital",
+  "tags": [],
+  "version": "1"
+}

@@ -1,0 +1,1173 @@
+"""Owned native shell-tile sources behind the CG02 raw-block contract."""
+
+from __future__ import annotations
+
+import ctypes as ct
+import threading
+import typing
+from dataclasses import asdict
+from itertools import product
+from math import prod
+
+import numpy as np
+from vibeqc import Atom, Calculator, _native
+from vibeqc.profiles import canonical_hash
+from vibeqc_compiler.common.native_call import checked_native_call
+from vibeqc_compiler.integral.blocks import (
+    BlockRequest,
+    BlockResponse,
+    BlockStatus,
+    RawBlock,
+    ShellTile,
+    TensorLayout,
+)
+from vibeqc_compiler.integral.ir import IntegralIR, OperatorSpec
+from vibeqc_compiler.integral.shell_signature import (
+    BasisShell,
+    CenterBinding,
+    ShellSignature,
+    checked_index,
+)
+
+from .reference import immutable
+
+# Through-g Hermite/Coulomb recurrences have bounded dimensions. This separate
+# conservative allowance includes their numeric scratch, not Python/C++ object
+# headers or allocator rounding. It is independent of molecular/tile size.
+CPU_SOURCE_SCRATCH = 8 << 20
+_KIND = {
+    "overlap": 0,
+    "hcore": 1,
+    "four_center_eri": 2,
+    "coulomb_metric": 3,
+    "three_center_eri": 4,
+}
+_DOUBLE = ct.POINTER(ct.c_double)
+_SIZE = ct.POINTER(ct.c_size_t)
+_UINT64 = ct.POINTER(ct.c_uint64)
+
+
+def pointer(array: typing.Any) -> typing.Any:
+    return array.ctypes.data_as(_DOUBLE)
+
+
+_C_INT_MAX = 2 ** (8 * ct.sizeof(ct.c_int) - 1) - 1
+_C_SIZE_T_MAX = 2 ** (8 * ct.sizeof(ct.c_size_t)) - 1
+
+
+def _valid_cuda_device(value: typing.Any) -> typing.Any:
+    return type(value) is int and 0 <= value <= _C_INT_MAX
+
+
+def _valid_size_t_budget(value: typing.Any) -> typing.Any:
+    return type(value) is int and 1 <= value <= _C_SIZE_T_MAX
+
+
+class NativeSource:
+    """Copy a normalized system into a values-only CPU source; no AO N**4 cache.
+
+    Native system/context handles used for construction can be destroyed
+    immediately. The independent source remains valid until ``close``. All
+    public tensor values use the supplied basis convention and no screening.
+    """
+
+    backend = "cpu-reference-native-shell-tiles"
+    supported_operators = frozenset(_KIND)
+    _fixed_fields = frozenset(
+        (
+            "atoms",
+            "shells",
+            "auxiliary_shells",
+            "charge",
+            "multiplicity",
+            "electron_count",
+            "representation",
+            "geometry_hash",
+            "basis_hash",
+            "auxiliary_hash",
+            "identity",
+            "shell_sizes",
+            "auxiliary_sizes",
+            "nbf",
+            "naux",
+            "numeric_bytes",
+        )
+    )
+
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
+        if name in self._fixed_fields and name in self.__dict__:
+            raise AttributeError(
+                "source scientific state is immutable; construct a new source"
+            )
+        super().__setattr__(name, value)
+
+    def __init__(
+        self,
+        atoms: typing.Any,
+        basis: typing.Any = "sto-3g",
+        *,
+        auxiliary_basis: typing.Any = None,
+        charge: typing.Any = 0,
+        multiplicity: typing.Any = None,
+        representation: typing.Any = "cartesian",
+    ) -> None:
+        self.atoms = tuple(Atom.from_value(a) for a in atoms)
+        calculator = Calculator(basis=basis, basis_representation=representation)
+        self.shells = calculator._shells_for_atoms(self.atoms)
+        if auxiliary_basis is not None:
+            # This source ABI has one representation for both AO spaces. A
+            # loaded auxiliary record must not silently lose its own choice.
+            from vibeqc.calculator import _snapshot_basis
+
+            auxiliary_basis = _snapshot_basis(auxiliary_basis, representation)
+        self.auxiliary_shells = (
+            ()
+            if auxiliary_basis is None
+            else calculator._shells_for_atoms(self.atoms, auxiliary_basis)
+        )
+        if any(s.angular_momentum > 4 for s in (*self.shells, *self.auxiliary_shells)):
+            raise ValueError("post-HF sources support through g")
+        self.representation = (
+            "real_spherical" if representation == "spherical" else representation
+        )
+        self.charge = charge
+        self.electron_count = sum(a.atomic_number for a in self.atoms) - charge
+        default_multiplicity = 1 if self.electron_count % 2 == 0 else 2
+        self.multiplicity = (
+            default_multiplicity if multiplicity is None else multiplicity
+        )
+        if (
+            type(self.multiplicity) is not int
+            or self.multiplicity < 1
+            or self.multiplicity > self.electron_count + 1
+            or (self.electron_count + self.multiplicity - 1) % 2
+        ):
+            raise ValueError("multiplicity is incompatible with the electron count")
+        self.geometry_hash = canonical_hash([asdict(a) for a in self.atoms])
+        self.basis_hash = canonical_hash(
+            {
+                "shells": [asdict(s) for s in self.shells],
+                "representation": self.representation,
+            }
+        )
+        self.auxiliary_hash = (
+            canonical_hash(
+                {
+                    "shells": [asdict(s) for s in self.auxiliary_shells],
+                    "representation": self.representation,
+                }
+            )
+            if self.auxiliary_shells
+            else None
+        )
+        self.identity = canonical_hash(
+            {
+                "geometry": self.geometry_hash,
+                "basis": self.basis_hash,
+                "auxiliary": self.auxiliary_hash,
+                "charge": charge,
+                "multiplicity": self.multiplicity,
+                "screening": 0,
+                "backend": self.backend,
+            }
+        )
+        self.shell_sizes = tuple(self._size(s) for s in self.shells)
+        self.auxiliary_sizes = tuple(self._size(s) for s in self.auxiliary_shells)
+        self.nbf = sum(self.shell_sizes)
+        self.naux = sum(self.auxiliary_sizes)
+        inventories = (*self.shells, *self.auxiliary_shells)
+
+        def cartesian(s: typing.Any) -> typing.Any:
+            return (s.angular_momentum + 1) * (s.angular_momentum + 2) // 2
+
+        # Count normalized/native and original/Python coefficients, all owned
+        # geometry copies, AoView angular/normalization data, and a complete
+        # Cartesian expansion for each public AO, including numeric indices.
+        # The expansion bound deliberately overcounts sparse spherical terms.
+        self.numeric_bytes = (
+            128 * len(self.atoms)
+            + 64 * len(inventories)
+            + 32 * sum(len(s.primitives) for s in inventories)
+            + 32 * sum(cartesian(s) for s in inventories)
+            + 16 * sum(self._size(s) * cartesian(s) for s in inventories)
+        )
+        self._library = calculator._library
+        self._lock = threading.RLock()
+        self._handle = ct.c_void_p()
+        lib = self._library
+        lib.vibeqc_posthf_source_create_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_void_p,
+            ct.POINTER(ct.c_void_p),
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_source_destroy_v1.argtypes = [ct.c_void_p]
+        lib.vibeqc_posthf_source_destroy_v1.restype = None
+        lib.vibeqc_posthf_source_read_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _SIZE,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_integral_derivatives_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_integral_derivatives_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_gradient_tile_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            ct.c_uint,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_one_electron_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _DOUBLE,
+            _DOUBLE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_uint,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            _UINT64,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_weighted_eri_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_uhf_density_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            ct.c_int,
+            ct.c_uint,
+            ct.c_double,
+            ct.c_int,
+            ct.c_double,
+            _DOUBLE,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_rhf_density_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            ct.c_int,
+            ct.c_uint,
+            ct.c_double,
+            ct.c_int,
+            ct.c_double,
+            _DOUBLE,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        context, orbital, auxiliary = ct.c_void_p(), ct.c_void_p(), ct.c_void_p()
+        _native.check(
+            lib,
+            lib.vibeqc_context_create(
+                ct.byref(calculator._context_descriptor()), ct.byref(context)
+            ),
+        )
+        try:
+            # Multiplicity only validates the system descriptor here; sources
+            # are also usable with imported references and synthetic tensors.
+            multiplicity = self.multiplicity
+            orbital = calculator._create_native_system(
+                context, self.atoms, charge, multiplicity
+            )
+            if auxiliary_basis is not None:
+                auxiliary = calculator._create_native_system(
+                    context, self.atoms, charge, multiplicity, auxiliary_basis
+                )
+            self._call(
+                "vibeqc_posthf_source_create_v1",
+                orbital,
+                auxiliary,
+                ct.byref(self._handle),
+            )
+        finally:
+            if orbital:
+                lib.vibeqc_system_destroy(orbital)
+            if auxiliary:
+                lib.vibeqc_system_destroy(auxiliary)
+            lib.vibeqc_context_destroy(context)
+
+    def _size(self, shell: typing.Any) -> typing.Any:
+        l = shell.angular_momentum
+        return (
+            2 * l + 1
+            if self.representation == "real_spherical"
+            else (l + 1) * (l + 2) // 2
+        )
+
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
+        checked_native_call(getattr(self._library, name), *args)
+
+    def _check_open(self) -> None:
+        if not self._handle:
+            raise RuntimeError("integral source is closed")
+
+    def close(self) -> None:
+        """Release owned native basis state; existing detached values survive."""
+        with self._lock:
+            if self._handle:
+                self._library.vibeqc_posthf_source_destroy_v1(self._handle)
+                self._handle = ct.c_void_p()
+
+    def __enter__(self) -> typing.Any:
+        self._check_open()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        if hasattr(self, "_lock"):
+            self.close()
+
+    def _read(
+        self, kind: typing.Any, begin: typing.Any, shape: typing.Any
+    ) -> typing.Any:
+        """Private contiguous global-AO adapter; dimensions checked natively."""
+        if kind not in _KIND or len(begin) != len(shape) or not 2 <= len(shape) <= 4:
+            raise ValueError("invalid raw tile operator/rank")
+        if any(type(i) is not int or i < 0 for i in (*begin, *shape)):
+            raise ValueError("raw tile offsets/extents must be nonnegative integers")
+        if len(shape) != (
+            4 if kind == "four_center_eri" else 3 if kind == "three_center_eri" else 2
+        ):
+            raise ValueError("raw operator/rank mismatch")
+        for value in (*begin, *shape):
+            checked_index(value, "raw tile index")
+        if prod(shape) > (1 << 28):
+            raise ValueError("raw tile exceeds bounded source hard limit")
+        b = (ct.c_size_t * 4)(*begin, *((0,) * (4 - len(begin))))
+        c = (ct.c_size_t * 4)(*shape, *((1,) * (4 - len(shape))))
+        out = np.empty(shape, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_source_read_v1",
+                self._handle,
+                _KIND[kind],
+                b,
+                c,
+                pointer(out),
+                out.size,
+            )
+        return out
+
+    def integral_derivatives(
+        self, *, output_budget_bytes: typing.Any = 256 << 20
+    ) -> typing.Any:
+        """Dense small-system derivative oracle with an output-size guard.
+
+        The guard covers the returned NumPy buffer only.  The independent CPU
+        evaluator is intentionally dense and does not provide a bounded-memory
+        production execution path.
+        """
+
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError(
+                "derivative oracle output budget must be a positive integer"
+            )
+        if self.nbf > 12:
+            raise ValueError("derivative oracle supports at most 12 AOs")
+        ncoord = 3 * len(self.atoms)
+        n2 = self.nbf**2
+        n4 = n2**2
+        output_elements = ncoord * (2 * n2 + n4 + 1)
+        output_bytes = output_elements * np.dtype(np.float64).itemsize
+        if output_bytes > output_budget_bytes:
+            raise ValueError("derivative oracle output exceeds its output budget")
+        output = np.empty(output_elements, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_integral_derivatives_v1",
+                self._handle,
+                output_budget_bytes,
+                pointer(output),
+                output.size,
+            )
+        offset = 0
+
+        def take(shape: typing.Any) -> typing.Any:
+            nonlocal offset
+            size = prod(shape)
+            value = output[offset : offset + size].reshape(shape)
+            offset += size
+            return immutable(value)
+
+        return {
+            "overlap": take((ncoord, self.nbf, self.nbf)),
+            "hcore": take((ncoord, self.nbf, self.nbf)),
+            "eri": take((ncoord, self.nbf, self.nbf, self.nbf, self.nbf)),
+            "nuclear": take((ncoord,)),
+        }
+
+    def df_integral_derivatives(
+        self, *, output_budget_bytes: typing.Any = 256 << 20
+    ) -> typing.Any:
+        """Dense small-system DF derivative oracle with an output-size guard."""
+
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError("DF derivative oracle output budget must be positive")
+        if self.nbf > 12 or not self.naux or self.naux > 32:
+            raise ValueError(
+                "DF derivative oracle supports at most 12 AOs and 32 auxiliaries"
+            )
+        ncoord = 3 * len(self.atoms)
+        n2 = self.nbf**2
+        na2 = self.naux**2
+        elements = ncoord * (2 * n2 + n2 * self.naux + na2 + 1)
+        if elements * np.dtype(np.float64).itemsize > output_budget_bytes:
+            raise ValueError("DF derivative oracle output exceeds its output budget")
+        output = np.empty(elements, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_df_integral_derivatives_v1",
+                self._handle,
+                output_budget_bytes,
+                pointer(output),
+                output.size,
+            )
+        offset = 0
+
+        def take(shape: typing.Any) -> typing.Any:
+            nonlocal offset
+            size = prod(shape)
+            value = output[offset : offset + size].reshape(shape)
+            offset += size
+            return immutable(value)
+
+        return {
+            "overlap": take((ncoord, self.nbf, self.nbf)),
+            "hcore": take((ncoord, self.nbf, self.nbf)),
+            "three_center": take((ncoord, self.nbf, self.nbf, self.naux)),
+            "metric": take((ncoord, self.naux, self.naux)),
+            "nuclear": take((ncoord,)),
+        }
+
+    def df_gradient_tile_cuda(
+        self,
+        kind: typing.Any,
+        range_descriptor: typing.Any,
+        weights: typing.Any,
+        *,
+        device_id: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
+        """Contract one strided raw-A or metric weight tile through #143."""
+
+        if type(kind) is not int or kind not in (0, 1):
+            raise ValueError("DF gradient tile kind must be raw A or metric M")
+        descriptor_values = tuple(range_descriptor)
+        maximum_size = 2 ** (8 * ct.sizeof(ct.c_size_t)) - 1
+        if len(descriptor_values) != 4 or any(
+            type(item) is not int or item < 0 or item > maximum_size
+            for item in descriptor_values
+        ):
+            raise ValueError("DF gradient tile range is invalid")
+        descriptor = np.ascontiguousarray(descriptor_values, dtype=np.uintp)
+        raw_weights = np.asarray(weights)
+        if np.iscomplexobj(raw_weights):
+            raise ValueError("DF gradient tile weights must be real")
+        value = np.ascontiguousarray(raw_weights, dtype=np.float64).reshape(-1)
+        if (
+            descriptor.shape != (4,)
+            or descriptor[1] < 1
+            or descriptor[2] < 1
+            or descriptor[3] < 1
+            or not len(value)
+            or not np.isfinite(value).all()
+        ):
+            raise ValueError("DF gradient tile range/weights are invalid")
+        if not _valid_cuda_device(device_id) or not _valid_size_t_budget(
+            stage_budget_bytes
+        ):
+            raise ValueError("DF gradient tile requires valid device/budget")
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_df_gradient_tile_cuda_v1",
+                self._handle,
+                device_id,
+                kind,
+                descriptor.ctypes.data_as(_SIZE),
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
+
+    def one_electron_gradient_cuda(
+        self,
+        *,
+        overlap_weights: typing.Any = None,
+        kinetic_weights: typing.Any = None,
+        attraction_weights: typing.Any = None,
+        device_id: typing.Any = 0,
+        schedule: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
+        """Contract fixed S/T/V AO cotangents with generated CUDA derivatives.
+
+        Each optional weight is a real finite ``[AO,AO]`` matrix. At least one
+        must be supplied. The stage budget is owned by the native generated
+        consumer; caller weights/output, source ownership, Python objects, CUDA
+        context and allocator rounding are excluded. Returned diagnostics are
+        measured by that consumer, not inferred from the requested budget.
+        """
+
+        def checked(name: typing.Any, weights: typing.Any) -> typing.Any:
+            if weights is None:
+                return None
+            raw = np.asarray(weights)
+            if np.iscomplexobj(raw):
+                raise ValueError(f"{name} one-electron gradient weights must be real")
+            value = np.ascontiguousarray(raw, dtype=np.float64)
+            if value.shape != (self.nbf, self.nbf) or not np.isfinite(value).all():
+                raise ValueError(
+                    f"{name} one-electron gradient requires finite [AO,AO] weights"
+                )
+            return value
+
+        blocks = tuple(
+            checked(name, value)
+            for name, value in (
+                ("overlap", overlap_weights),
+                ("kinetic", kinetic_weights),
+                ("attraction", attraction_weights),
+            )
+        )
+        if all(value is None for value in blocks):
+            raise ValueError("one-electron CUDA gradient requires at least one weight")
+        if (
+            not _valid_cuda_device(device_id)
+            or type(schedule) is not int
+            or schedule not in (0, 1, 2, 3)
+            or not _valid_size_t_budget(stage_budget_bytes)
+        ):
+            raise ValueError(
+                "one-electron CUDA gradient requires valid device/schedule/budget"
+            )
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        resources = np.zeros(6, dtype=np.uint64)
+        pointers = tuple(None if value is None else pointer(value) for value in blocks)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_one_electron_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                *pointers,
+                self.nbf * self.nbf,
+                schedule,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+                resources.ctypes.data_as(_UINT64),
+                resources.size,
+            )
+        names = (
+            "device_bytes",
+            "host_numeric_bytes",
+            "host_to_device_bytes",
+            "device_to_host_bytes",
+            "synchronous_uploads",
+            "stream_synchronizations",
+        )
+        return immutable(gradient), {
+            name: int(value) for name, value in zip(names, resources, strict=True)
+        }
+
+    def weighted_eri_gradient_cuda(
+        self,
+        weights: typing.Any,
+        *,
+        device_id: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
+        """Stream fixed public-AO weights through the #144 CUDA consumer.
+
+        The stage budget includes numeric candidate, offset, expansion, record,
+        upload and result storage. Caller weights/output, owned system state,
+        object headers, CUDA context and allocator overhead are excluded.
+        Complex weights are rejected before conversion because casting would
+        discard the supplied cotangent's imaginary component.
+        """
+
+        raw_weights = np.asarray(weights)
+        if np.iscomplexobj(raw_weights):
+            raise ValueError("weighted ERI gradient weights must be real")
+        value = np.ascontiguousarray(raw_weights, dtype=np.float64)
+        if value.shape != (self.nbf,) * 4 or not np.isfinite(value).all():
+            raise ValueError("weighted ERI gradient requires finite [AO]*4 weights")
+        if not _valid_cuda_device(device_id) or not _valid_size_t_budget(
+            stage_budget_bytes
+        ):
+            raise ValueError("weighted ERI gradient requires valid device/budget")
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_weighted_eri_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
+
+    def weighted_eri_shell_gradient_cuda(
+        self,
+        shell_indices: typing.Any,
+        weights: typing.Any,
+        *,
+        device_id: typing.Any = 0,
+        stage_budget_bytes: typing.Any = 16 << 20,
+    ) -> typing.Any:
+        """Contract one public shell-quartet weight block through #144.
+
+        Stage accounting includes numeric expansion/record/result storage and
+        excludes caller weights/output, system ownership, object headers, CUDA
+        context and allocator overhead.
+        Only real cotangents are supported; complex inputs fail before casting.
+        """
+
+        try:
+            index_values = tuple(shell_indices)
+        except TypeError as error:
+            raise ValueError(
+                "weighted ERI shell gradient requires four in-range integer shell indices"
+            ) from error
+        # Validate before uintp conversion so fractional or overflowing values
+        # cannot select a different quartet. NumPy integer scalars remain valid.
+        if len(index_values) != 4 or any(
+            isinstance(index, (bool, np.bool_))
+            or not isinstance(index, (int, np.integer))
+            or not 0 <= index < len(self.shells)
+            for index in index_values
+        ):
+            raise ValueError(
+                "weighted ERI shell gradient requires four in-range integer shell indices"
+            )
+        indices = np.ascontiguousarray(index_values, dtype=np.uintp)
+        shape = tuple(self.shell_sizes[int(index)] for index in indices)
+        raw_weights = np.asarray(weights)
+        if np.iscomplexobj(raw_weights):
+            raise ValueError("weighted ERI shell weights must be real")
+        value = np.ascontiguousarray(raw_weights, dtype=np.float64)
+        if value.shape != shape or not np.isfinite(value).all():
+            raise ValueError(
+                "weighted ERI shell weights have the wrong shape or values"
+            )
+        if not _valid_cuda_device(device_id) or not _valid_size_t_budget(
+            stage_budget_bytes
+        ):
+            raise ValueError("weighted ERI shell gradient requires valid device/budget")
+        gradient = np.empty((4, 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                indices.ctypes.data_as(_SIZE),
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
+
+    def requests(
+        self,
+        kind: typing.Any,
+        *,
+        axis_tile: typing.Any = 2,
+        budget_bytes: typing.Any = 1 << 20,
+    ) -> typing.Any:
+        """Yield bounded CG02 requests, including partial shell-component tiles."""
+        if type(axis_tile) is not int or axis_tile < 1:
+            raise ValueError("axis_tile must be positive")
+        if kind not in ("four_center_eri", "three_center_eri", "coulomb_metric"):
+            raise ValueError("unsupported CG02 value operator")
+        roles = OperatorSpec(
+            kind,
+            tuple(
+                range(
+                    4
+                    if kind == "four_center_eri"
+                    else 3
+                    if kind == "three_center_eri"
+                    else 2
+                )
+            ),
+        ).basis_roles
+        inventories = [
+            self.auxiliary_shells if r == "auxiliary" else self.shells for r in roles
+        ]
+        for shell_indices in product(*(range(len(s)) for s in inventories)):
+            selected = tuple(inventories[k][s] for k, s in enumerate(shell_indices))
+            bindings = tuple(
+                CenterBinding(k, s.atom_index) for k, s in enumerate(selected)
+            )
+            signature = ShellSignature(
+                tuple(
+                    BasisShell(k, k, s.angular_momentum, roles[k], self.representation)
+                    for k, s in enumerate(selected)
+                ),
+                bindings,
+            )
+            full = signature.component_shape
+            for begin in product(*(range(0, n, axis_tile) for n in full)):
+                shape = tuple(min(axis_tile, n - b) for n, b in zip(full, begin))
+                consumer = RawBlock(
+                    TensorLayout(signature.tensor_indices, shape), budget_bytes
+                )
+                ir = IntegralIR(
+                    signature,
+                    OperatorSpec(kind, tuple(range(len(full)))),
+                    None,
+                    (consumer,),
+                )
+                yield BlockRequest(
+                    f"{self.identity}:{shell_indices}:{begin}",
+                    ir,
+                    ShellTile(begin, shape),
+                    shell_indices=shell_indices,
+                )
+
+    def global_offsets(self, request: typing.Any) -> typing.Any:
+        """Resolve validated shell-local CG02 indices into public AO positions."""
+        if (
+            request.shell_indices is None
+            or request.integral.derivative is not None
+            or not isinstance(request.consumer, RawBlock)
+        ):
+            raise ValueError(
+                "source requires runtime shells and a values-only raw consumer"
+            )
+        result = []
+        for slot, (role, index, local) in enumerate(
+            zip(
+                request.integral.operator.basis_roles,
+                request.shell_indices,
+                request.tile.offsets,
+            )
+        ):
+            shells = self.auxiliary_shells if role == "auxiliary" else self.shells
+            sizes = self.auxiliary_sizes if role == "auxiliary" else self.shell_sizes
+            if index >= len(shells):
+                raise ValueError("shell index outside source")
+            declared = request.integral.signature.shells[slot]
+            if (
+                declared.angular != shells[index].angular_momentum
+                or declared.convention != self.representation
+                or request.center_bindings[slot].atom_index != shells[index].atom_index
+            ):
+                raise ValueError("CG02 shell metadata does not match the owned source")
+            result.append(sum(sizes[:index]) + local)
+        return tuple(result)
+
+    def execute(self, request: typing.Any) -> typing.Any:
+        """Return the existing CG02 response with explicit successful metadata."""
+        kind = request.integral.operator.family.value
+        if (
+            request.integral.derivative is not None
+            or kind not in self.supported_operators
+        ):
+            return BlockResponse(
+                request,
+                BlockStatus.UNSUPPORTED,
+                reason=f"{self.backend} does not implement the requested operator/derivative",
+            )
+        begin = self.global_offsets(request)
+        values = self._read(kind, begin, request.tile.shape)
+        # Honor the request layout/sign, including padded physical storage.
+        from vibeqc_compiler.integral.blocks import assemble_raw_block
+
+        return assemble_raw_block(request, values.ravel())
+
+    def tile(self, request: typing.Any) -> typing.Any:
+        """Read a dense FP64 provider tile through the CG02 response contract."""
+        response = self.execute(request)
+        if not isinstance(response, BlockResponse) or response.status != BlockStatus.OK:
+            raise RuntimeError("raw integral tile is unavailable")
+        return np.fromiter(response.values, dtype=np.float64).reshape(
+            request.tile.shape
+        )
+
+    def one_electron(self) -> typing.Any:
+        """Return only O(N**2) S/h matrices; no derivative/four-index allocation."""
+        return tuple(
+            self._read(k, (0, 0), (self.nbf, self.nbf)) for k in ("overlap", "hcore")
+        )
+
+    def rhf_density(
+        self,
+        *,
+        backend: typing.Any = "cpu",
+        device_id: typing.Any = 0,
+        max_iterations: typing.Any = 100,
+        tolerance: typing.Any = 1e-11,
+        df: typing.Any = False,
+        metric_threshold: typing.Any = 1e-10,
+    ) -> typing.Any:
+        """Run the existing HF solver and export a detached density.
+
+        The existing CPU HF solver is a small-system dense oracle. Its setup
+        memory is outside the subsequent bounded integral-provider budget.
+        CUDA execution must run under the caller's GPU allocation.
+        """
+        if (
+            backend not in ("cpu", "cuda")
+            or type(max_iterations) is not int
+            or not 0 < max_iterations < 1 << 32
+            or not 0 < tolerance <= 1e-6
+        ):
+            raise ValueError("invalid RHF export controls")
+        density = np.empty((self.nbf, self.nbf))
+        scalars = np.empty(4)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_rhf_density_v1",
+                self._handle,
+                int(backend == "cuda"),
+                device_id,
+                max_iterations,
+                tolerance,
+                int(df),
+                metric_threshold,
+                pointer(density),
+                density.size,
+                pointer(scalars),
+            )
+        return density, {
+            "energy": float(scalars[0]),
+            "energy_change": float(scalars[1]),
+            "density_rms": float(scalars[2]),
+            "iterations": int(scalars[3]),
+            "backend": backend,
+        }
+
+    def uhf_density(
+        self,
+        *,
+        backend: typing.Any = "cpu",
+        device_id: typing.Any = 0,
+        max_iterations: typing.Any = 100,
+        tolerance: typing.Any = 1e-11,
+        df: typing.Any = False,
+        metric_threshold: typing.Any = 1e-10,
+    ) -> typing.Any:
+        """Run UHF and export detached alpha then beta AO densities.
+
+        This small-system snapshot bridge preserves the native UHF spin order
+        for checked host canonicalization. It does not claim device response.
+        """
+        if (
+            backend not in ("cpu", "cuda")
+            or type(max_iterations) is not int
+            or not 0 < max_iterations < 1 << 32
+            or not 0 < tolerance <= 1e-6
+        ):
+            raise ValueError("invalid UHF export controls")
+        density = np.empty((2, self.nbf, self.nbf))
+        scalars = np.empty(4)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_uhf_density_v1",
+                self._handle,
+                int(backend == "cuda"),
+                device_id,
+                max_iterations,
+                tolerance,
+                int(df),
+                metric_threshold,
+                pointer(density),
+                density.size,
+                pointer(scalars),
+            )
+        return density, {
+            "energy": float(scalars[0]),
+            "energy_change": float(scalars[1]),
+            "density_rms": float(scalars[2]),
+            "iterations": int(scalars[3]),
+            "backend": backend,
+        }
+
+
+class CudaDFSource(NativeSource):
+    """CG05 generated DF M/A source with explicit host or device consumption.
+
+    Host raw-tile reads are the compatibility/oracle route. A CUDA consumer may
+    instead take one-way ownership of the prepared native generated source,
+    after which raw host reads fail closed.
+    """
+
+    backend = "cuda-generated-df-values"
+    supported_operators = frozenset(("coulomb_metric", "three_center_eri"))
+
+    def __init__(
+        self,
+        *args: typing.Any,
+        device_id: typing.Any = 0,
+        tile_capacity: typing.Any = 512,
+        source_budget_bytes: typing.Any = 128 << 20,
+        **kwargs: typing.Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._df_handle = ct.c_void_p()
+        if (
+            type(tile_capacity) is not int
+            or tile_capacity < 1
+            or type(source_budget_bytes) is not int
+            or source_budget_bytes < 1
+        ):
+            raise ValueError("positive generated DF source capacity/budget required")
+        lib = self._library
+        lib.vibeqc_posthf_df_create_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            ct.c_size_t,
+            ct.c_size_t,
+            ct.POINTER(ct.c_void_p),
+            _SIZE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_destroy_v1.argtypes = [ct.c_void_p]
+        lib.vibeqc_posthf_df_destroy_v1.restype = None
+        lib.vibeqc_posthf_df_read_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _SIZE,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        diagnostics = (ct.c_size_t * 4)()
+        self._call(
+            "vibeqc_posthf_df_create_v1",
+            self._handle,
+            device_id,
+            tile_capacity,
+            source_budget_bytes,
+            ct.byref(self._df_handle),
+            diagnostics,
+        )
+        self.source_host_peak_bytes = int(diagnostics[0])
+        self.source_device_bytes = int(diagnostics[1])
+        self.device_id = device_id
+        object.__setattr__(
+            self,
+            "numeric_bytes",
+            self.numeric_bytes + self.source_host_peak_bytes + self.source_device_bytes,
+        )
+        self.tile_capacity = tile_capacity
+        lib.vibeqc_posthf_df_metrics_v1.argtypes = [
+            ct.c_void_p,
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_metrics_v2.argtypes = [
+            ct.c_void_p,
+            ct.POINTER(ct.c_uint64),
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_create_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_double,
+            ct.POINTER(ct.c_void_p),
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_execute_v1.argtypes = [
+            ct.c_void_p,
+            _DOUBLE,
+            ct.c_size_t,
+            _DOUBLE,
+            _DOUBLE,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_metrics_v1.argtypes = [
+            ct.c_void_p,
+            ct.POINTER(ct.c_uint64),
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
+        lib.vibeqc_posthf_df_rhf_jk_plan_destroy_v1.argtypes = [ct.c_void_p]
+        lib.vibeqc_posthf_df_rhf_jk_plan_destroy_v1.restype = None
+        self._device_handoff = False
+
+    def _read(
+        self, kind: typing.Any, begin: typing.Any, shape: typing.Any
+    ) -> typing.Any:
+        if kind in ("overlap", "hcore"):
+            return super()._read(kind, begin, shape)
+        if kind not in ("coulomb_metric", "three_center_eri"):
+            raise ValueError("generated DF source does not provide conventional ERIs")
+        if len(begin) != len(shape) or any(
+            type(i) is not int or i < 0 for i in (*begin, *shape)
+        ):
+            raise ValueError("invalid DF tile")
+        if len(shape) != (3 if kind == "three_center_eri" else 2):
+            raise ValueError("DF operator/rank mismatch")
+        for value in (*begin, *shape):
+            checked_index(value, "DF tile index")
+        if kind == "three_center_eri" and prod(shape) > self.tile_capacity:
+            raise MemoryError("generated DF tile exceeds prepared capacity")
+        with self._lock:
+            self._check_open()
+            if not self._df_handle:
+                raise RuntimeError("generated DF source is closed")
+            out = np.empty(shape)
+            b = (ct.c_size_t * 4)(*begin, *((0,) * (4 - len(begin))))
+            n = (ct.c_size_t * 4)(*shape, *((1,) * (4 - len(shape))))
+            self._call(
+                "vibeqc_posthf_df_read_v1",
+                self._df_handle,
+                _KIND[kind],
+                b,
+                n,
+                pointer(out),
+                out.size,
+            )
+            return out
+
+    def source_metrics(self) -> typing.Any:
+        """Cumulative generated-value traffic for the explicit compatibility source."""
+        with self._lock:
+            self._check_open()
+            counters = (ct.c_uint64 * 5)()
+            values = np.empty(3)
+            self._call(
+                "vibeqc_posthf_df_metrics_v2",
+                self._df_handle,
+                counters,
+                len(counters),
+                pointer(values),
+                values.size,
+            )
+            return {
+                "generated_bytes": int(counters[0]),
+                "d2h_bytes": int(counters[1]),
+                "tile_count": int(counters[2]),
+                "host_staged_tiles": int(counters[3]),
+                "device_handoffs": int(counters[4]),
+                "subsequent_h2d_bytes": 0,
+                "generation_ms": float(values[0]),
+                "transfer_ms": float(values[1]),
+                "endpoint_ms": float(values[2]),
+                "host_setup_peak_bytes": self.source_host_peak_bytes,
+                "device_bytes": self.source_device_bytes,
+                "execution_path": (
+                    "device-resident-handoff"
+                    if counters[4]
+                    else "host-staged-compatibility"
+                ),
+            }
+
+    def _create_device_rhf_jk_plan(self, threshold: typing.Any) -> typing.Any:
+        """Transfer this generated source into one device-resident J/K consumer."""
+        with self._lock:
+            self._check_open()
+            if self._device_handoff:
+                raise RuntimeError(
+                    "generated DF source already has a device-resident consumer"
+                )
+            handle = ct.c_void_p()
+            diagnostics = np.empty(6)
+            # The native source-transfer API consumes the generator on both
+            # success and setup failure, so make that lifetime transition
+            # observable before invoking it.
+            self._device_handoff = True
+            self._call(
+                "vibeqc_posthf_df_rhf_jk_plan_create_v1",
+                self._df_handle,
+                threshold,
+                ct.byref(handle),
+                pointer(diagnostics),
+            )
+            return handle, diagnostics
+
+    def close(self) -> None:
+        with self._lock:
+            if getattr(self, "_df_handle", None):
+                self._library.vibeqc_posthf_df_destroy_v1(self._df_handle)
+                self._df_handle = ct.c_void_p()
+            super().close()

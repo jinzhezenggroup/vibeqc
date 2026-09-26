@@ -1,0 +1,8 @@
+{
+  "binary_sha256": "c842986569a64418663854f134e64011cf5438879be700a38f40797845a45207",
+  "cuda_visible_devices": "0",
+  "git_head": "6e07db0831a5971f696909e8a8613e2c6825f613",
+  "scope": "Fresh run; no historical benchmark records or aggregates are reused",
+  "slurm_job_id": "9253",
+  "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994"
+}

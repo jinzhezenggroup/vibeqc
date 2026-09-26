@@ -1,0 +1,14 @@
+trim trailing whitespace.......................................................Passed
+fix end of files...............................................................Passed
+check yaml.....................................................................Passed
+check json.....................................................................Passed
+check for merge conflicts......................................................Passed
+check for broken symlinks......................................................Passed
+check toml.....................................................................Passed
+Check tracked evidence retention and review size...............................Passed
+Check scientific compiler dependency directions................................Passed
+Check native CUDA ownership inventory and source anchors.......................Passed
+Check shared SCF dependency directions.........................................Passed
+ruff (legacy alias)............................................................Passed
+ruff format....................................................................Passed
+clang-format...................................................................Passed

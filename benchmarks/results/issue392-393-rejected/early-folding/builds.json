@@ -1,0 +1,25 @@
+{
+  "baseline": {
+    "libvibeqc.so": {"bytes": 205297872, "sha256": "518054273aeff308c3981c815da5e8f6d8fbe85f6f5d759200f65e007230e2c2"},
+    "source.patch": {"path": "../../issue395-df-work/reproduction/source.patch", "bytes": 43898, "sha256": "02944c0ec4633b711813caa61f6ac8fe1db2c10b0c43b156b6a6b59c0fd5639e"},
+    "generated_df_shell_derivatives.cuh": {"bytes": 56942, "sha256": "e29856d48b92371c98e70aaf094888442db3f9f911d2dd18c2cd327bdf04df18"},
+    "source_patch_base": "23091a4575c3b2bf9288ae00bb173935a51364c3"
+  },
+  "direct": {
+    "libvibeqc.so": {"bytes": 205381144, "sha256": "781612355c2af188f683812cc5dc3961bd0e094970c3688d3895227138929b1f"},
+    "vibeqc_df_shell_pairs_tests": {"bytes": 73760, "sha256": "4020486ddea6640f703a512ba19a75ae163fde5d517e6a7f0a3aacffe79664a2"},
+    "generated_df_shell_derivatives.cuh": {"bytes": 57244, "sha256": "afc13118f982c2a9bb275b5fd05fc5c36b9725906e16b4d1dfdb076210b7c0ae"},
+    "source.patch": {"path": "direct-source.patch", "bytes": 3149, "sha256": "ce29be62cb015868faa7936107d4b2f5064dddd68d1aad28fb8879a9997c6403"},
+    "source_patch_base": "c5475c49b331c989fbe0aafb3ce19685d7cb254d",
+    "compile_preset": "cuda-release-sm120; default Release flags, no split-compile change"
+  },
+  "register": {
+    "libvibeqc.so": {"bytes": 205213208, "sha256": "5fcf2a220617fa0ee205bd592881a655259e3cf503159d524a1dae3980aa0f7e"},
+    "vibeqc_df_shell_pairs_tests": {"bytes": 73760, "sha256": "3da580b09aecb1a11826f8fa0834df6a9d831f0153a7ecddd0250597c446f753"},
+    "generated_df_shell_derivatives.cuh": {"bytes": 57244, "sha256": "afc13118f982c2a9bb275b5fd05fc5c36b9725906e16b4d1dfdb076210b7c0ae"},
+    "source.patch": {"path": "register-source.patch", "bytes": 8947, "sha256": "7f35c4adc9c2ce160f30cc945000031e958a50e69f34a0ca3ecabd6ecbaa9fb5"},
+    "source_patch_base": "c5475c49b331c989fbe0aafb3ce19685d7cb254d",
+    "compile_preset": "cuda-release-sm120; default Release flags, no split-compile change",
+    "test_fixture_followup": "Rebuilt only the native test with merged #395 packet assertions; qualified library is byte-identical."
+  }
+}

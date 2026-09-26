@@ -1,0 +1,184 @@
+{
+  "issue": 170,
+  "base_commit": "a50f93665081a7e2804f84aa617e6b3db7228aa4",
+  "implementation_commit": "e8d6a006de601370feeab4702fd5b3c0f250d206",
+  "environment": {
+    "gpu": "RTX 4090",
+    "cuda_architecture": "sm_89",
+    "cuda_toolkit": "12.9",
+    "python": "3.11.16",
+    "pyscf": "2.14.0",
+    "native_cuda_fast_compile": true,
+    "native_cuda_aot": false,
+    "scalar_compilation": "-O1",
+    "aot_promotion": false
+  },
+  "checks": {
+    "final-build-cpu": 0,
+    "final-ctest-cpu": 0,
+    "final-regression-cpu": 0,
+    "final-high-angular": 0,
+    "baseline-mixed-precision": 1,
+    "final-build-cuda": 0,
+    "final-ctest-cuda": 8,
+    "final-external-basis-cuda": 0
+  },
+  "results": [
+    {
+      "representation": "cartesian",
+      "nao": 17,
+      "energy": -2.570680756936717,
+      "energy_error": 2.930988785010413e-14,
+      "force_error": 6.14440720525522e-11,
+      "seconds": 37.368752770125866
+    },
+    {
+      "representation": "spherical",
+      "nao": 11,
+      "energy": -2.2954611763791934,
+      "energy_error": 1.7763568394002505e-14,
+      "force_error": 7.303824212101517e-12,
+      "seconds": 37.243875209242105
+    },
+    {
+      "method": "df-rhf",
+      "representation": "cartesian",
+      "energy_error": 7.37188088351104e-14,
+      "force_error": 1.9884094371036554e-13
+    },
+    {
+      "method": "df-rhf",
+      "representation": "spherical",
+      "energy_error": 1.9539925233402755e-14,
+      "force_error": 1.376676550535194e-13
+    },
+    {
+      "backend": "cpu",
+      "family": "overlap",
+      "compile_seconds": 0.16428954154253006,
+      "source_bytes": 3576,
+      "binary_bytes": 15608,
+      "registers": 0,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cuda",
+      "family": "overlap",
+      "compile_seconds": 1.0534814335405827,
+      "source_bytes": 8890,
+      "binary_bytes": 1050744,
+      "registers": 50,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cpu",
+      "family": "kinetic",
+      "compile_seconds": 0.18246078863739967,
+      "source_bytes": 11690,
+      "binary_bytes": 15608,
+      "registers": 0,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cuda",
+      "family": "kinetic",
+      "compile_seconds": 1.1075301840901375,
+      "source_bytes": 19963,
+      "binary_bytes": 1067128,
+      "registers": 56,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cpu",
+      "family": "nuclear_attraction",
+      "compile_seconds": 1.3929300419986248,
+      "source_bytes": 176847,
+      "binary_bytes": 73080,
+      "registers": 0,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cuda",
+      "family": "nuclear_attraction",
+      "compile_seconds": 3.0445567555725574,
+      "source_bytes": 229500,
+      "binary_bytes": 1448208,
+      "registers": 255,
+      "spill_store_bytes": 9960,
+      "spill_load_bytes": 10880,
+      "stack_bytes": 2544
+    },
+    {
+      "backend": "cpu",
+      "family": "coulomb_metric",
+      "compile_seconds": 0.22223534062504768,
+      "source_bytes": 20096,
+      "binary_bytes": 19832,
+      "registers": 0,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cuda",
+      "family": "coulomb_metric",
+      "compile_seconds": 1.1951844841241837,
+      "source_bytes": 24369,
+      "binary_bytes": 1091704,
+      "registers": 108,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 80
+    },
+    {
+      "backend": "cpu",
+      "family": "three_center_eri",
+      "compile_seconds": 0.1933126486837864,
+      "source_bytes": 9774,
+      "binary_bytes": 15736,
+      "registers": 0,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "backend": "cuda",
+      "family": "three_center_eri",
+      "compile_seconds": 1.2540843412280083,
+      "source_bytes": 21618,
+      "binary_bytes": 1091856,
+      "registers": 60,
+      "spill_store_bytes": 0,
+      "spill_load_bytes": 0,
+      "stack_bytes": 48
+    },
+    {
+      "scope": "pytest process and compiler children; includes PySCF/runtime",
+      "wall_seconds": 122.70940566807985,
+      "max_child_rss_kib": 553940,
+      "user_seconds": 119.38694,
+      "system_seconds": 3.217806
+    }
+  ],
+  "known_baseline_failures": [
+    {
+      "test": "vibeqc_mixed_precision_tests",
+      "configuration": "sm_89, AOT disabled (portable profile has no promoted kernels)",
+      "unchanged_base_commit": "a50f93665081a7e2804f84aa617e6b3db7228aa4",
+      "baseline_exit": 1,
+      "implementation_exit": 1,
+      "diagnostic": "cached plan did not enter isolated Fock mode: CUDA runtime error",
+      "reason": "The isolated bounded Fock diagnostic requires full shell-class coverage; the sm_89 generic configuration does not supply it. No production manifest or CUDA Fock kernel was changed."
+    }
+  ]
+}

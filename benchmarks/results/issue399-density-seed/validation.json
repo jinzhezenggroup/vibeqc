@@ -1,0 +1,148 @@
+{
+  "release_build": {
+    "log": "/tmp/issue399-v2-build.log",
+    "sha256": "4c90c82040c6f527e391a6694bbbdbb6a9cb1c843d328a62069fa7b2fad0cbe9",
+    "bytes": 5206,
+    "passed": true
+  },
+  "native_density_seed": {
+    "log": ".artifacts/issue399/v2/native-test.log",
+    "sha256": "cb665f9855d42d7e4902c14d9c8d11a618cf1d15443ef72afc708cdedb50ca08",
+    "bytes": 1041,
+    "passed": true,
+    "fixtures": [
+      {
+        "fixture": 0,
+        "accepted": 1,
+        "rank": 2,
+        "k_max": 3.469446951953614e-18,
+        "k_rms": 6.915275752771539e-19,
+        "fock_max": 1.734723475976807e-18,
+        "reconstruction_max": 2.7755575615628914e-16
+      },
+      {
+        "fixture": 1,
+        "accepted": 1,
+        "rank": 2,
+        "k_max": 9.75781955236954e-19,
+        "k_rms": 2.4870020024633726e-19,
+        "fock_max": 4.87890977618477e-19,
+        "reconstruction_max": 9.71445146547012e-17
+      },
+      {
+        "fixture": 2,
+        "accepted": 1,
+        "rank": 0,
+        "k_max": 0,
+        "k_rms": 0,
+        "fock_max": 0,
+        "reconstruction_max": 0
+      },
+      {
+        "fixture": 3,
+        "accepted": 0,
+        "rank": 3,
+        "k_max": 0,
+        "k_rms": 0,
+        "fock_max": 0,
+        "reconstruction_max": null
+      },
+      {
+        "fixture": 4,
+        "accepted": 0,
+        "rank": 0,
+        "k_max": 0,
+        "k_rms": 0,
+        "fock_max": 0,
+        "reconstruction_max": null
+      },
+      {
+        "fixture": 5,
+        "accepted": 1,
+        "rank": 2,
+        "k_max": 7.936359902593892e-17,
+        "k_rms": 3.329297866242707e-17,
+        "fock_max": 3.968179951296946e-17,
+        "reconstruction_max": 3.2751579226442118e-15
+      },
+      {
+        "fixture": 6,
+        "accepted": 0,
+        "rank": 8,
+        "k_max": 0,
+        "k_rms": 0,
+        "fock_max": 0,
+        "reconstruction_max": null
+      },
+      {
+        "fixture": 7,
+        "accepted": 0,
+        "rank": 2,
+        "k_max": 0,
+        "k_rms": 0,
+        "fock_max": 0,
+        "reconstruction_max": null
+      },
+      {
+        "final_retained_identity_gates": "passed"
+      }
+    ]
+  },
+  "memcheck": {
+    "log": ".artifacts/issue399/v2/memcheck.log",
+    "sha256": "d919aca28823a32d0138a82bf15fd79829f693856dc4b9ef5a8d829c07b6675a",
+    "bytes": 1103,
+    "errors": 0
+  },
+  "gpu_regression": {
+    "log": ".artifacts/issue399/v2/gpu-regression.log",
+    "sha256": "69310fad30a86df8ecec4098b53f9e15bf67507388af549fb563a659c46b4c20",
+    "bytes": 282,
+    "passed": 82,
+    "controls": {
+      "VIBEQC_DF_EXCHANGE": "occupied",
+      "VIBEQC_DF_SEED_EXCHANGE": "factor",
+      "VIBEQC_DF_FINAL_EXCHANGE": "occupied"
+    },
+    "coverage": [
+      "RHF/UHF and rank-zero spin",
+      "batch and constrained/source-backed plans",
+      "force/property/geometry replays",
+      "metric rank loss",
+      "changed model/policy recovery",
+      "retry eigensolver, iteration limits and failure isolation",
+      "exact automatic selector domain"
+    ]
+  },
+  "cpu_reference_and_tools": {
+    "log": "/tmp/issue399-tools-tests.log",
+    "sha256": "63372f0f2be251f85f30e5a244e362e68416146eb59c9310b0871b46db3fa6e3",
+    "bytes": 99,
+    "passed": 65
+  },
+  "checkpoint_and_resources": {
+    "log": "/tmp/issue399-python.log",
+    "sha256": "d7b855b8671b986cf8e1c475d7f872549b97e77918f3c6ed0dd7030512ba8c02",
+    "bytes": 111,
+    "passed": 61,
+    "skipped": 2
+  },
+  "selector": {
+    "log": ".artifacts/issue399/v2/selector.log",
+    "sha256": "3275522a65c60210c9aee3615ac7c007be3d0dd63b9902e872ac3dd10094cc3d",
+    "bytes": 98,
+    "passed": 1
+  },
+  "corrected_harness_failure": {
+    "log": ".artifacts/issue399/v1/gpu-regression.log",
+    "sha256": "7588f82fe8cc0de2a06782c784abf1ea1e077c7d0458f40272b17000cc60822c",
+    "bytes": 7690,
+    "passed_before_failure": 54,
+    "reason": "Separately linked selector could not start because frozen library lacked libvibeqc.so.0 SONAME alias. Alias added; final 82-case suite and separate selector pass."
+  },
+  "native_harness_corrections": [
+    "Use same nonblocking plan stream for asynchronous result readback.",
+    "Transpose row-major nonsymmetric fixture before internal column-major SCF upload.",
+    "Report reconstruction only for accepted factors."
+  ]
+}

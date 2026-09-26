@@ -1,0 +1,1096 @@
+diff --git a/src/scf/cuda/df_force_response.cpp b/src/scf/cuda/df_force_response.cpp
+index d018a9f..8a02a5b 100644
+--- a/src/scf/cuda/df_force_response.cpp
++++ b/src/scf/cuda/df_force_response.cpp
+@@ -10,14 +10,129 @@
+ #include <vector>
+ 
+ #include "molecule/basis.hpp"
++#include "runtime/cuda_component_trace.hpp"
+ #include "scf/cuda/df_plan_internal.hpp"
+ #include "scf/cuda/df_runtime.hpp"
++#include "scf/cuda/df_scf_state.hpp"
++#include "scf/cuda_density_fitting_final_state.hpp"
+ #include "scf/cuda_df_gradient.hpp"
+ #include "scf/density_fitting.hpp"
+ 
+ namespace vibeqc::scf {
+ using namespace cuda_df;
+ 
++namespace {
++/** Validate a method-authorized canonical density before lending SCF factors.
++ * Tokens bind owner/geometry, epoch, system, model and occupations. Exact
++ * comparison with the actual device density excludes corrected determinants;
++ * dimension equality or a nearby physical residual cannot authorize reuse.
++ */
++vibeqc_status select_occupied_response_factors(CudaDensityFittingJkPlan& plan, std::size_t system,
++                                               const CudaDfFinalStateToken* requested,
++                                               std::span<const DensityFittingDensityResponse> terms,
++                                               std::size_t maximum_bytes,
++                                               CudaDfResponseBuffers& buffers,
++                                               std::string& detail) {
++  auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state);
++  if (!requested || !state || !state->occupied_exchange || !plan.occupied_scf_reserved ||
++      !state->final_frames_available)
++    return VIBEQC_STATUS_SUCCESS;
++  CudaDfFinalStateToken current;
++  const auto status = cuda_density_fitting_final_state_token(&plan, system, current, detail);
++  if (status == VIBEQC_STATUS_OUT_OF_MEMORY) return status;
++  if (status != VIBEQC_STATUS_SUCCESS || current != *requested) {
++    detail.clear();
++    return VIBEQC_STATUS_SUCCESS;
++  }
++  const auto spins = state->unrestricted ? 2U : 1U, first = state->unrestricted ? 1U : 0U;
++  const auto matrix = plan.nbf * plan.nbf;
++  if (terms.size() != (state->unrestricted ? 3U : 1U) || terms[0].density.size() != matrix ||
++      terms[0].coulomb_coefficient != 1.0 ||
++      (state->unrestricted && terms[0].exchange_coefficient != 0.0) ||
++      spins * matrix * sizeof(double) > maximum_bytes)
++    return VIBEQC_STATUS_SUCCESS;
++  const auto rank = [&](unsigned spin) {
++    return static_cast<std::size_t>(spin ? state->factor_beta_ranks[system]
++                                         : state->factor_alpha_ranks[system]);
++  };
++  std::size_t projected = 0;
++  for (unsigned spin = 0; spin < spins; ++spin) {
++    const auto t = first + spin;
++    const auto r = rank(spin);
++    if (r > plan.nbf || terms[t].density.size() != matrix ||
++        terms[t].exchange_coefficient != (state->unrestricted ? .5 : .25) ||
++        (state->unrestricted && terms[t].coulomb_coefficient != 0.0) ||
++        current.identity.occupied[spin] != r)
++      return VIBEQC_STATUS_SUCCESS;
++    projected += r * r;
++  }
++  // Both spin projections coexist in one existing tensor. Saturated UHF
++  // ranks that exceed this capacity keep the dense reference route.
++  if (projected > buffers.elements_per_buffer / plan.naux) return VIBEQC_STATUS_SUCCESS;
++  try {
++    std::vector<double> canonical(spins * matrix);
++    std::uint32_t generations[2]{};
++    auto error = cudaSetDevice(plan.device_id);
++    runtime::cuda_trace::TraceOperation trace("occupied_response_provenance", plan.stream,
++                                              {1, plan.nbf, plan.naux, false, false, system});
++    const auto copy = [&](void* output, const void* input, std::size_t bytes) {
++      if (error == cudaSuccess)
++        error = cudaMemcpyAsync(output, input, bytes, cudaMemcpyDeviceToHost, plan.stream);
++    };
++    for (unsigned spin = 0; spin < spins; ++spin) {
++      copy(canonical.data() + spin * matrix,
++           (spin                  ? state->d_beta_density
++            : state->unrestricted ? state->d_alpha_density
++                                  : state->d_density) +
++               system * matrix,
++           matrix * sizeof(double));
++      copy(&generations[spin],
++           (spin ? state->d_beta_factor_generation : state->d_alpha_factor_generation) + system,
++           sizeof(std::uint32_t));
++    }
++    const auto drained = cudaStreamSynchronize(plan.stream);
++    if (error == cudaSuccess) error = drained;
++    if (error != cudaSuccess) return cuda_failure(error, "validate DF response factors", detail);
++    runtime::cuda_trace::trace_counter("factor_validation_download_bytes",
++                                       spins * (matrix * sizeof(double) + sizeof(std::uint32_t)));
++    for (unsigned spin = 0; spin < spins; ++spin) {
++      // SCF factor generations count committed iterations from zero; the
++      // final-state protocol counts the imported density as generation one.
++      if (generations[spin] != state->final_iterations[system] ||
++          static_cast<std::uint64_t>(generations[spin]) + 1 !=
++              current.identity.factor.density_generation ||
++          !std::equal(terms[first + spin].density.begin(), terms[first + spin].density.end(),
++                      canonical.begin() + spin * matrix))
++        return VIBEQC_STATUS_SUCCESS;
++    }
++    if (state->unrestricted)
++      for (std::size_t k = 0; k < matrix; ++k)
++        if (terms[0].density[k] != canonical[k] + canonical[matrix + k])
++          return VIBEQC_STATUS_SUCCESS;
++    for (unsigned spin = 0; spin < spins; ++spin) {
++      const auto r = rank(spin);
++      const auto* coefficients = spin ? state->d_beta_factor : state->d_alpha_factor;
++      if (r && !coefficients) return VIBEQC_STATUS_SUCCESS;
++      buffers.occupied_factors[first + spin] = {
++          coefficients
++              ? coefficients +
++                    system * plan.nbf * (spin ? state->beta_factor_rank : state->alpha_factor_rank)
++              : nullptr,
++          r, state->unrestricted ? 1.0 : 2.0};
++    }
++    buffers.occupied_response = true;
++    runtime::cuda_trace::trace_counter("validated_density_generations", spins);
++    runtime::cuda_trace::trace_counter("density_generation",
++                                       current.identity.factor.density_generation);
++    runtime::cuda_trace::trace_counter("solve_epoch", current.identity.solve_epoch);
++    return VIBEQC_STATUS_SUCCESS;
++  } catch (const std::bad_alloc&) {
++    detail = "DF response factor validation exceeded host storage";
++    return VIBEQC_STATUS_OUT_OF_MEMORY;
++  }
++}
++}  // namespace
++
+ // Both value providers borrow forward device factors and bounded bridge
+ // scratch. The explicit host adapter remains available for diagnostic ablation.
+ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+@@ -25,7 +140,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+     const core::System& auxiliary, std::span<const double> raw_a,
+     const std::vector<double>& raw_metric, std::span<const DensityFittingDensityResponse> terms,
+     unsigned schedule, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
+-    std::vector<double>& derivative, std::string& detail, DfGradientResources* resources) {
++    std::vector<double>& derivative, std::string& detail, DfGradientResources* resources,
++    const CudaDfFinalStateToken* final_state) {
+   if (resources) *resources = {};
+   if (!plan || system >= plan->batch_size || molecule::ao_count(orbital) != plan->nbf ||
+       molecule::ao_count(auxiliary) != plan->naux) {
+@@ -47,7 +163,14 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+                             plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
+                             plan->auxiliary_tile_values && plan->exchange_intermediate &&
+                             plan->exchange_contributions;
+-  bool borrow = storage == "jk-scratch";
++  const char* space_control = std::getenv("VIBEQC_DF_RESPONSE_SPACE");
++  const std::string_view space = space_control ? space_control : "auto";
++  if (space != "auto" && space != "dense" && space != "occupied") {
++    detail = "unknown DF response space (use auto, dense or occupied)";
++    return VIBEQC_STATUS_INVALID_ARGUMENT;
++  }
++  bool borrow =
++      storage == "jk-scratch" || (space == "occupied" && full_scratch && storage != "panel");
+   if (storage == "auto" && full_scratch && schedule == 0 && plan->nbf == 768 && plan->naux == 768 &&
+       plan->batch_size == 1 && terms.size() == 1) {
+     // Promote only the measured large RHF endpoint. Explicit comparison
+@@ -86,6 +209,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+     buffers = {plan->auxiliary_tile_values, plan->exchange_contributions,
+                plan->exchange_intermediate, plan->tensor_elements_per_system};
+   }
++  if (borrow && space == "occupied") {
++    const auto selected = select_occupied_response_factors(*plan, system, final_state, terms,
++                                                           maximum_bytes, buffers, detail);
++    if (selected != VIBEQC_STATUS_SUCCESS) return selected;
++  }
+   if (plan->integral_source || !host_weights) {
+     if (!plan->metric_response_valid[system]) {
+       detail = "DF metric rank crossing: retained/discarded subspaces are unresolved";
+diff --git a/src/scf/cuda/df_gradient_bridge.cu b/src/scf/cuda/df_gradient_bridge.cu
+index 1292cec..c0a81cd 100644
+--- a/src/scf/cuda/df_gradient_bridge.cu
++++ b/src/scf/cuda/df_gradient_bridge.cu
+@@ -491,6 +491,23 @@ vibeqc_status execute_cuda_df_hf_gradient(
+     detail = "invalid borrowed resident DF response tensors";
+     return VIBEQC_STATUS_INVALID_ARGUMENT;
+   }
++  if (borrowed && borrowed->occupied_response) {
++    if (terms.size() > borrowed->occupied_factors.size()) {
++      detail = "too many occupied DF response descriptors";
++      return VIBEQC_STATUS_INVALID_ARGUMENT;
++    }
++    std::size_t projected = 0;
++    for (std::size_t t = 0; t < terms.size(); ++t) {
++      const auto& factor = borrowed->occupied_factors[t];
++      if (factor.rank > n || (factor.rank && !factor.coefficients) ||
++          !std::isfinite(factor.density_scale) || factor.density_scale < 0 ||
++          factor.rank * factor.rank > borrowed->elements_per_buffer / a - projected) {
++        detail = "invalid occupied DF response factor or borrowed capacity";
++        return VIBEQC_STATUS_INVALID_ARGUMENT;
++      }
++      projected += factor.rank * factor.rank;
++    }
++  }
+   for (const auto& term : terms) {
+     if (term.density.size() != n * n || !std::isfinite(term.coulomb_coefficient) ||
+         !std::isfinite(term.exchange_coefficient)) {
+@@ -609,7 +626,9 @@ vibeqc_status execute_cuda_df_hf_gradient(
+       const auto tile =
+           std::min({a, capacity, maximum_auxiliary_tile ? maximum_auxiliary_tile : a});
+       const auto consume_tile =
+-          borrowed ? std::min(a, maximum_auxiliary_tile ? maximum_auxiliary_tile : a) : tile;
++          borrowed && !borrowed->occupied_response
++              ? std::min(a, maximum_auxiliary_tile ? maximum_auxiliary_tile : a)
++              : tile;
+       auto* densities = static_cast<double*>(arena.allocate(terms.size() * n * n * sizeof(double)));
+       for (std::size_t t = 0; t < terms.size(); ++t) {
+         check(cudaMemcpyAsync(densities + t * n * n, terms[t].density.data(),
+diff --git a/src/scf/cuda/df_plan.cpp b/src/scf/cuda/df_plan.cpp
+index d2decd4..94814cd 100644
+--- a/src/scf/cuda/df_plan.cpp
++++ b/src/scf/cuda/df_plan.cpp
+@@ -109,7 +109,9 @@ unsigned cuda_density_fitting_scf_diis_history(const CudaDensityFittingJkPlan* p
+ }
+ 
+ bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* plan) noexcept {
+-  return plan != nullptr && plan->occupied_scf_reserved == df_occupied_exchange_requested();
++  return plan != nullptr &&
++         plan->occupied_scf_reserved ==
++             df_occupied_exchange_requested(plan->nbf, plan->naux, plan->batch_size);
+ }
+ 
+ bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan* plan, std::size_t item,
+diff --git a/src/scf/cuda/df_plan_setup.cpp b/src/scf/cuda/df_plan_setup.cpp
+index 09e3f24..0fec3d9 100644
+--- a/src/scf/cuda/df_plan_setup.cpp
++++ b/src/scf/cuda/df_plan_setup.cpp
+@@ -175,7 +175,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
+     return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
+   }
+ 
+-  const bool occupied_scf_reserved = df_occupied_exchange_requested();
++  const bool occupied_scf_reserved = df_occupied_exchange_requested(nbf, naux, batch_size);
+   cudaError_t cuda_error = cudaSetDevice(device_id);
+   if (cuda_error != cudaSuccess) {
+     return fail_before_plan(cuda_failure(cuda_error, "select CUDA DF device", detail));
+diff --git a/src/scf/cuda/df_response_weights.cu b/src/scf/cuda/df_response_weights.cu
+index 306ee8e..8dcabb2 100644
+--- a/src/scf/cuda/df_response_weights.cu
++++ b/src/scf/cuda/df_response_weights.cu
+@@ -291,6 +291,152 @@ static cudaError_t contract_resident_response(
+   return cudaSuccess;
+ }
+ 
++/** Exact low-rank contraction for generation-validated canonical densities.
++ * C is column-major and D=w C C^T. Raw slices keep every metric direction:
++ * T_Q=C^T A_Q C, U_P=sum_Q V_PQ T_Q. The metric adjoint is -cK*w^2*T^T*T;
++ * only a bounded panel of C U_P C^T is expanded for generated derivatives.
++ * All rank-squared storage borrows already charged resident J/K buffers.
++ */
++static cudaError_t contract_occupied_response(
++    std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
++    const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
++    cudaStream_t stream, cublasHandle_t blas, const CudaDfResponseBuffers& buffers,
++    std::span<const double> raw_host,
++    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
++        consume) {
++  const auto matrix = n * n, aa = a * a;
++  auto* inverse = workspace;
++  auto* bar_inverse = inverse + aa;
++  auto* metric_temp = bar_inverse + aa;
++  auto* transformed = metric_temp + aa;
++  auto* temporary = transformed + aa;
++  auto* weights = temporary + 3 * matrix;
++  auto* charges = weights + 2 * tile * matrix;
++  auto* potentials = charges + terms.size() * a;
++  auto* raw = buffers.raw_auxiliary_major;
++  auto* projected = buffers.exchange_response;
++  auto* transformed_projected = buffers.staging_weights;
++  const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
++  const double one = 1, zero = 0;
++  const auto checked = [](cublasStatus_t status) {
++    if (status != CUBLAS_STATUS_SUCCESS) throw CudaDfResponseBlasFailure{status};
++  };
++  {
++    runtime::cuda_trace::TraceRegion upload("raw_value_resident_upload", stream);
++    auto error = cudaMemcpyAsync(transformed_projected, raw_host.data(), raw_host.size_bytes(),
++                                 cudaMemcpyHostToDevice, stream);
++    if (error != cudaSuccess) return error;
++    runtime::cuda_trace::trace_counter("raw_value_upload_bytes", raw_host.size_bytes());
++    runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 1);
++  }
++  {
++    runtime::cuda_trace::TraceRegion transpose("raw_value_resident_transpose", stream);
++    // The existing gather supports both NVIDIA and providers without GEAM.
++    cuda_df::launch_gather_auxiliary_tile_kernel(blocks(matrix * a), threads, 0, stream, matrix, a,
++                                                 0, 0, a, transformed_projected, raw);
++  }
++  inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
++  auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
++  if (error != cudaSuccess) return error;
++  {
++    runtime::cuda_trace::TraceRegion charge("coulomb_response_charge_dot", stream);
++    checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, static_cast<int>(terms.size()), mi,
++                        &one, raw, mi, densities, mi, &zero, charges, ai));
++    potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
++                                                                       charges, potentials);
++    for (std::size_t t = 0; t < terms.size(); ++t)
++      if (terms[t].coulomb_coefficient != 0)
++        coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(a, terms[t].coulomb_coefficient,
++                                                                  charges + t * a, bar_inverse);
++  }
++  std::size_t retained = 0;
++  for (std::size_t t = 0; t < terms.size(); ++t) {
++    const auto& factor = buffers.occupied_factors[t];
++    const auto r = factor.rank, rr = r * r;
++    if (!r || terms[t].exchange_coefficient == 0) continue;
++    const auto ri = static_cast<int>(r), rri = static_cast<int>(rr);
++    const double coefficient =
++        terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
++    {
++      runtime::cuda_trace::TraceRegion products("exchange_response_occupied_products", stream);
++      for (std::size_t q = 0; q < a; ++q) {
++        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ri, ni, &one, raw + q * matrix, ni,
++                            factor.coefficients, ni, &zero, temporary, ni));
++        checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ri, ri, ni, &one, factor.coefficients,
++                            ni, temporary, ni, &zero, projected + q * rr, ri));
++      }
++      runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2 * a);
++      runtime::cuda_trace::trace_counter("response_occupied_projection_flops",
++                                         2 * a * (n * n * r + n * rr));
++    }
++    {
++      runtime::cuda_trace::TraceRegion dot("exchange_response_occupied_metric_gemm", stream);
++      const double alpha = -coefficient;
++      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, rri, &alpha, projected, rri,
++                          projected, rri, &one, bar_inverse, ai));
++    }
++    {
++      runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);
++      checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
++                          inverse, ai, &zero, transformed_projected + retained, rri));
++    }
++    retained += a * rr;
++    runtime::cuda_trace::trace_counter("response_occupied_rank", r);
++  }
++  runtime::cuda_trace::trace_counter("response_occupied_projected_elements", retained);
++  runtime::cuda_trace::trace_counter("response_occupied_projected_bytes",
++                                     retained * sizeof(double));
++  runtime::cuda_trace::trace_counter("response_pseudo_density_peak_elements", tile * matrix);
++  runtime::cuda_trace::trace_counter("response_full_weight_tensor_elements", 0);
++  for (std::size_t begin = 0; begin < a; begin += tile) {
++    const auto count = std::min(tile, a - begin);
++    error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
++    if (error != cudaSuccess) return error;
++    std::size_t offset = 0;
++    for (std::size_t t = 0; t < terms.size(); ++t) {
++      if (terms[t].coulomb_coefficient != 0)
++        coulomb_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
++            matrix, a, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
++            potentials + t * a, weights);
++      const auto& factor = buffers.occupied_factors[t];
++      const auto r = factor.rank, rr = r * r;
++      if (!r || terms[t].exchange_coefficient == 0) continue;
++      const auto ri = static_cast<int>(r);
++      const double alpha =
++          -2 * terms[t].exchange_coefficient * factor.density_scale * factor.density_scale;
++      runtime::cuda_trace::TraceRegion expand("exchange_response_pseudo_density_products", stream);
++      for (std::size_t p = 0; p < count; ++p) {
++        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, ni, ri, ri, &one, factor.coefficients,
++                            ni, transformed_projected + offset + (begin + p) * rr, ri, &zero,
++                            temporary, ni));
++        checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_T, ni, ni, ri, &alpha, temporary, ni,
++                            factor.coefficients, ni, &one, weights + p * matrix, ni));
++      }
++      offset += a * rr;
++      runtime::cuda_trace::trace_counter("response_pseudo_density_products", 2 * count);
++      runtime::cuda_trace::trace_counter("response_pseudo_density_flops",
++                                         2 * count * (n * rr + n * n * r));
++    }
++    runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
++    consume(0, {begin, matrix, 1, a}, count * matrix, weights);
++  }
++  runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
++  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
++                                                             metric_temp);
++  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
++                                                             transformed);
++  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 2, metric, transformed,
++                                                             metric_temp);
++  metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 3, metric, metric_temp,
++                                                             bar_inverse);
++  symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
++  error = cudaGetLastError();
++  if (error != cudaSuccess) return error;
++  reverse.finish();
++  consume(1, {}, aa, bar_inverse);
++  return cudaSuccess;
++}
++
+ cudaError_t contract_cuda_df_response_weights(
+     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
+     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
+@@ -298,6 +444,9 @@ cudaError_t contract_cuda_df_response_weights(
+     const std::function<void(std::size_t, double*)>& read_values,
+     const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
+     const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host) {
++  if (borrowed && borrowed->occupied_response)
++    return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
++                                      *borrowed, raw_host, consume);
+   if (borrowed)
+     return contract_resident_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
+                                       *borrowed, raw_host, consume);
+diff --git a/src/scf/cuda/df_rhf_scf.cpp b/src/scf/cuda/df_rhf_scf.cpp
+index 8570204..5b667eb 100644
+--- a/src/scf/cuda/df_rhf_scf.cpp
++++ b/src/scf/cuda/df_rhf_scf.cpp
+@@ -85,7 +85,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+     return cuda_failure(cuda_error, "select CUDA DF device", detail);
+   }
+   bool occupied_exchange = false;
+-  const auto policy_status = occupied_scf_policy(*plan, occupied_exchange, detail);
++  const auto policy_status = occupied_scf_policy(*plan, occupied_exchange, detail, occupied);
+   if (policy_status != VIBEQC_STATUS_SUCCESS) return policy_status;
+   PersistentScfState* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
+   const bool compatible =
+diff --git a/src/scf/cuda/df_scf_factor.cpp b/src/scf/cuda/df_scf_factor.cpp
+index b8dc113..1ef7328 100644
+--- a/src/scf/cuda/df_scf_factor.cpp
++++ b/src/scf/cuda/df_scf_factor.cpp
+@@ -13,13 +13,26 @@
+ namespace vibeqc::scf::cuda_df {
+ 
+ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
+-                                  std::string& detail) {
++                                  std::string& detail, std::span<const std::int32_t> alpha,
++                                  std::span<const std::int32_t> beta) {
+   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
+   enabled = df_occupied_exchange_requested();
+-  if (value && !enabled && std::string(value) != "dense") {
+-    detail = "VIBEQC_DF_EXCHANGE must be dense or occupied";
++  if (value && !enabled && std::string(value) != "dense" && std::string(value) != "auto") {
++    detail = "VIBEQC_DF_EXCHANGE must be auto, dense or occupied";
+     return VIBEQC_STATUS_INVALID_ARGUMENT;
+   }
++  if (df_occupied_exchange_auto_requested() && plan.occupied_scf_reserved && plan.nbf == 768 &&
++      plan.naux == 768 && plan.batch_size == 1 && alpha.size() == 1 && alpha[0] == 160 &&
++      beta.empty() && !plan.integral_source && !plan.streamed && plan.row_tile == plan.nbf &&
++      plan.auxiliary_tile == plan.naux) {
++    // This qualification is deliberately an exact measured domain, including
++    // rank/reference and backend identity, rather than an AO-only threshold.
++    cudaDeviceProp properties{};
++    const auto error = cudaGetDeviceProperties(&properties, plan.device_id);
++    if (error != cudaSuccess) return cuda_failure(error, "DF exchange device identity", detail);
++    enabled = properties.major == 12 && properties.minor == 0 &&
++              std::strcmp(properties.name, "NVIDIA GeForce RTX 5090") == 0;
++  }
+   if (enabled && !plan.occupied_scf_reserved) {
+     detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
+     return VIBEQC_STATUS_INVALID_ARGUMENT;
+diff --git a/src/scf/cuda/df_scf_factor.hpp b/src/scf/cuda/df_scf_factor.hpp
+index 366f95b..8e3ec8c 100644
+--- a/src/scf/cuda/df_scf_factor.hpp
++++ b/src/scf/cuda/df_scf_factor.hpp
+@@ -1,5 +1,7 @@
+ #pragma once
+ 
++#include <span>
++
+ #include "scf/cuda/df_plan_internal.hpp"
+ #include "scf/cuda/df_scf_state.hpp"
+ 
+@@ -7,7 +9,8 @@ namespace vibeqc::scf::cuda_df {
+ 
+ /** Explicit opt-in until fixed-K and complete endpoint evidence selects policy. */
+ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
+-                                  std::string& detail);
++                                  std::string& detail, std::span<const std::int32_t> alpha = {},
++                                  std::span<const std::int32_t> beta = {});
+ vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                    const std::vector<std::int32_t>& alpha,
+                                    const std::vector<std::int32_t>& beta, std::string& detail);
+diff --git a/src/scf/cuda/df_scf_final_state.cpp b/src/scf/cuda/df_scf_final_state.cpp
+index 7aa68f7..7d39ea5 100644
+--- a/src/scf/cuda/df_scf_final_state.cpp
++++ b/src/scf/cuda/df_scf_final_state.cpp
+@@ -134,7 +134,8 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
+     return VIBEQC_STATUS_INVALID_ARGUMENT;
+   }
+   bool occupied_exchange = false;
+-  const auto policy = occupied_scf_policy(*plan, occupied_exchange, detail);
++  const auto policy = occupied_scf_policy(*plan, occupied_exchange, detail,
++                                          state->final_alpha_occupied, state->final_beta_occupied);
+   if (policy != VIBEQC_STATUS_SUCCESS) return policy;
+   if (occupied_exchange != state->occupied_exchange) {
+     detail = "CUDA DF exchange policy changed after the retained solve";
+diff --git a/src/scf/cuda/df_source_internal.hpp b/src/scf/cuda/df_source_internal.hpp
+index 1650206..6e7584c 100644
+--- a/src/scf/cuda/df_source_internal.hpp
++++ b/src/scf/cuda/df_source_internal.hpp
+@@ -6,6 +6,7 @@
+ #include <vector>
+ 
+ #include "runtime/resource_cuda.cuh"
++#include "scf/cuda/df_source_kernels.hpp"
+ #include "scf/cuda/metadata_upload.hpp"
+ #include "scf/cuda/packed_basis.hpp"
+ #include "scf/cuda_density_fitting.hpp"
+@@ -32,8 +33,8 @@ struct CudaDensityFittingIntegralSourceImpl {
+   std::size_t cartesian_naux{};
+   std::size_t dummy_index{};
+   DeviceBatch batch{};
+-  const double* orbital_to_cartesian{};
+-  const double* auxiliary_to_cartesian{};
++  const DfPublicAoExpansion* orbital_to_cartesian{};
++  const DfPublicAoExpansion* auxiliary_to_cartesian{};
+   // Host mirror used only to translate a public per-system derivative index;
+   // the packed DeviceBatch pointer cannot be dereferenced by host code.
+   std::vector<std::int64_t> host_atom_offsets;
+diff --git a/src/scf/cuda/df_source_kernels.cu b/src/scf/cuda/df_source_kernels.cu
+index e888276..f2df26b 100644
+--- a/src/scf/cuda/df_source_kernels.cu
++++ b/src/scf/cuda/df_source_kernels.cu
+@@ -118,9 +118,9 @@ __global__ void build_cuda_df_transformed_tile_kernel(
+     std::size_t public_nbf, std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+-    const double* orbital_to_cartesian, const double* auxiliary_to_cartesian,
+-    const double* inverse_square_root, bool apply_metric_transform, double* output,
+-    unsigned mapping = 0U) {
++    const DfPublicAoExpansion* orbital_to_cartesian,
++    const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
++    bool apply_metric_transform, double* output, unsigned mapping = 0U) {
+   const unsigned lanes = !Derivative && mapping == 2U ? 32U : 1U;
+   const unsigned lane = threadIdx.x % lanes;
+   const std::size_t element =
+@@ -137,12 +137,9 @@ __global__ void build_cuda_df_transformed_tile_kernel(
+   // The source stores transforms for every system contiguously.  A fleet can
+   // legitimately mix different shell layouts while keeping the same public
+   // AO dimensions, so never reuse system zero's transform for later items.
+-  const std::size_t orbital_transform_stride = public_nbf * cartesian_orbital_count;
+-  const std::size_t auxiliary_transform_stride = public_naux * cartesian_auxiliary_count;
+-  const double* system_orbital_to_cartesian =
+-      orbital_to_cartesian + system * orbital_transform_stride;
+-  const double* system_auxiliary_to_cartesian =
+-      auxiliary_to_cartesian + system * auxiliary_transform_stride;
++  const auto& first_expansion = orbital_to_cartesian[system * public_nbf + public_first];
++  const auto& second_expansion = orbital_to_cartesian[system * public_nbf + public_second];
++  const auto* system_auxiliary_to_cartesian = auxiliary_to_cartesian + system * public_naux;
+   double value = 0.0;
+   const std::size_t source_begin = apply_metric_transform ? 0U : auxiliary;
+   const std::size_t source_end = apply_metric_transform ? public_naux : source_begin + 1U;
+@@ -161,20 +158,16 @@ __global__ void build_cuda_df_transformed_tile_kernel(
+   for (std::size_t source = source_begin + lane / primitive_lanes; source < source_end;
+        source += source_lanes) {
+     double transformed_raw = 0.0;
+-    for (std::size_t first = 0; first < cartesian_orbital_count; ++first) {
+-      const double first_coefficient =
+-          system_orbital_to_cartesian[public_first * cartesian_orbital_count + first];
+-      if (first_coefficient == 0.0) continue;
+-      for (std::size_t second = 0; second < cartesian_orbital_count; ++second) {
+-        const double second_coefficient =
+-            system_orbital_to_cartesian[public_second * cartesian_orbital_count + second];
+-        if (second_coefficient == 0.0) continue;
+-        for (std::size_t cartesian_auxiliary = 0; cartesian_auxiliary < cartesian_auxiliary_count;
+-             ++cartesian_auxiliary) {
+-          const double auxiliary_coefficient =
+-              system_auxiliary_to_cartesian[source * cartesian_auxiliary_count +
+-                                            cartesian_auxiliary];
+-          if (auxiliary_coefficient == 0.0) continue;
++    const auto& auxiliary_expansion = system_auxiliary_to_cartesian[source];
++    for (unsigned i = 0; i < first_expansion.count; ++i) {
++      const auto first = first_expansion.cartesian[i];
++      const double first_coefficient = first_expansion.coefficients[i];
++      for (unsigned j = 0; j < second_expansion.count; ++j) {
++        const auto second = second_expansion.cartesian[j];
++        const double second_coefficient = second_expansion.coefficients[j];
++        for (unsigned k = 0; k < auxiliary_expansion.count; ++k) {
++          const auto cartesian_auxiliary = auxiliary_expansion.cartesian[k];
++          const double auxiliary_coefficient = auxiliary_expansion.coefficients[k];
+           const double raw = contracted_df<Derivative, false>(
+               batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first),
+               static_cast<std::int32_t>(second),
+@@ -206,8 +199,8 @@ __global__ void build_cuda_df_metric_source_kernel(
+     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
+     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+     std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+-    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output,
+-    unsigned mapping = 0U) {
++    std::int64_t derivative_coordinate, const DfPublicAoExpansion* auxiliary_to_cartesian,
++    double* output, unsigned mapping = 0U) {
+   const unsigned lanes = !Derivative && mapping == 2U ? 32U : 1U;
+   const unsigned lane = threadIdx.x % lanes;
+   const std::size_t element =
+@@ -220,20 +213,15 @@ __global__ void build_cuda_df_metric_source_kernel(
+       (components_contiguous ? element % auxiliary_row_count : element / public_naux);
+   const std::size_t second =
+       components_contiguous ? element / auxiliary_row_count : element % public_naux;
+-  const std::size_t auxiliary_transform_stride = public_naux * cartesian_auxiliary_count;
+-  const double* system_auxiliary_to_cartesian =
+-      auxiliary_to_cartesian + system * auxiliary_transform_stride;
++  const auto& first_expansion = auxiliary_to_cartesian[system * public_naux + first];
++  const auto& second_expansion = auxiliary_to_cartesian[system * public_naux + second];
+   double value = 0.0;
+-  for (std::size_t cartesian_first = 0; cartesian_first < cartesian_auxiliary_count;
+-       ++cartesian_first) {
+-    const double first_coefficient =
+-        system_auxiliary_to_cartesian[first * cartesian_auxiliary_count + cartesian_first];
+-    if (first_coefficient == 0.0) continue;
+-    for (std::size_t cartesian_second = 0; cartesian_second < cartesian_auxiliary_count;
+-         ++cartesian_second) {
+-      const double second_coefficient =
+-          system_auxiliary_to_cartesian[second * cartesian_auxiliary_count + cartesian_second];
+-      if (second_coefficient == 0.0) continue;
++  for (unsigned i = 0; i < first_expansion.count; ++i) {
++    const auto cartesian_first = first_expansion.cartesian[i];
++    const double first_coefficient = first_expansion.coefficients[i];
++    for (unsigned j = 0; j < second_expansion.count; ++j) {
++      const auto cartesian_second = second_expansion.cartesian[j];
++      const double second_coefficient = second_expansion.coefficients[j];
+       const double raw = contracted_df<Derivative, true>(
+           batch, static_cast<std::int32_t>(system),
+           static_cast<std::int32_t>(cartesian_orbital_count + cartesian_first),
+@@ -275,8 +263,8 @@ void launch_build_cuda_df_metric_source_kernel(
+     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
+     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+     std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+-    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output,
+-    unsigned mapping) {
++    std::int64_t derivative_coordinate, const DfPublicAoExpansion* auxiliary_to_cartesian,
++    double* output, unsigned mapping) {
+   if (derivative) {
+     build_cuda_df_metric_source_kernel<true><<<grid, block, shared_bytes, stream>>>(
+         batch, cartesian_orbital_count, cartesian_auxiliary_count, public_naux, dummy_index, system,
+@@ -296,9 +284,9 @@ void launch_build_cuda_df_transformed_tile_kernel(
+     std::size_t public_nbf, std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+-    const double* orbital_to_cartesian, const double* auxiliary_to_cartesian,
+-    const double* inverse_square_root, bool apply_metric_transform, double* output,
+-    unsigned mapping) {
++    const DfPublicAoExpansion* orbital_to_cartesian,
++    const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
++    bool apply_metric_transform, double* output, unsigned mapping) {
+   if (derivative) {
+     build_cuda_df_transformed_tile_kernel<true><<<grid, block, shared_bytes, stream>>>(
+         batch, cartesian_orbital_count, cartesian_auxiliary_count, public_nbf, public_naux,
+diff --git a/src/scf/cuda/df_source_kernels.hpp b/src/scf/cuda/df_source_kernels.hpp
+index bb22588..83ecfbc 100644
+--- a/src/scf/cuda/df_source_kernels.hpp
++++ b/src/scf/cuda/df_source_kernels.hpp
+@@ -5,10 +5,22 @@
+ #include <cstddef>
+ #include <cstdint>
+ 
++#include "molecule/basis.hpp"
+ #include "scf/cuda/packed_basis.hpp"
+ 
+ namespace vibeqc::scf::cuda_execution {
+ 
++/** Shell-local public AO expansion into the existing normalized Cartesian ABI.
++ * One record per public AO and per batch item; indices remain in Cartesian
++ * order so contraction summation is unchanged. Cartesian public AOs have
++ * exactly one term. The normalized basis owner defines the finite s--f bound.
++ */
++struct DfPublicAoExpansion {
++  std::uint32_t count{};
++  std::int32_t cartesian[molecule::kMaximumAoExpansionTerms]{};
++  double coefficients[molecule::kMaximumAoExpansionTerms]{};
++};
++
+ /** Host-callable DF generation boundary. Callers own valid ranges, device buffers, stream ordering
+  * and last-error inspection. */
+ /** Submit the selected value/coordinate-response specialization with the caller's launch geometry.
+@@ -27,8 +39,8 @@ void launch_build_cuda_df_metric_source_kernel(
+     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
+     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+     std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+-    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output,
+-    unsigned mapping = 0U);
++    std::int64_t derivative_coordinate, const DfPublicAoExpansion* auxiliary_to_cartesian,
++    double* output, unsigned mapping = 0U);
+ 
+ /** Submit the selected value/coordinate-response specialization with the caller's launch geometry.
+  */
+@@ -38,8 +50,8 @@ void launch_build_cuda_df_transformed_tile_kernel(
+     std::size_t public_nbf, std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+-    const double* orbital_to_cartesian, const double* auxiliary_to_cartesian,
+-    const double* inverse_square_root, bool apply_metric_transform, double* output,
+-    unsigned mapping = 0U);
++    const DfPublicAoExpansion* orbital_to_cartesian,
++    const DfPublicAoExpansion* auxiliary_to_cartesian, const double* inverse_square_root,
++    bool apply_metric_transform, double* output, unsigned mapping = 0U);
+ 
+ }  // namespace vibeqc::scf::cuda_execution
+diff --git a/src/scf/cuda/df_source_setup.cpp b/src/scf/cuda/df_source_setup.cpp
+index 57f910a..8f7487d 100644
+--- a/src/scf/cuda/df_source_setup.cpp
++++ b/src/scf/cuda/df_source_setup.cpp
+@@ -30,40 +30,36 @@ bool cuda_df_shell_domain(const core::System& system, const char* role, std::str
+ 
+ namespace {
+ 
+-/** Build public-row/Cartesian-column transforms from normalized AO expansions. */
+-std::vector<double> make_public_to_cartesian_transform(const core::System& system) {
+-  const std::size_t public_count = molecule::ao_count(system);
+-  const std::size_t cartesian_count = molecule::cartesian_ao_count(system);
+-  std::size_t transform_elements = 0;
+-  if (!checked_multiply(public_count, cartesian_count, transform_elements)) {
+-    throw std::overflow_error("DF public-basis transform dimensions overflow");
+-  }
+-  std::vector<double> transform(transform_elements, 0.0);
+-  std::size_t public_offset = 0;
+-  std::size_t cartesian_offset = 0;
+-  for (const core::Shell& shell : system.shells) {
+-    const std::vector<molecule::CartesianComponent> components =
+-        molecule::cartesian_components(shell.angular_momentum);
++/** Pack only nonzero normalized expansion terms, preserving Cartesian order.
++ * Sorting reproduces the old dense scan's summation order even when the
++ * scientific expansion lists its terms in a different order.
++ */
++std::vector<DfPublicAoExpansion> make_public_to_cartesian_transform(const core::System& system) {
++  const auto public_count = molecule::ao_count(system);
++  std::vector<DfPublicAoExpansion> transform(public_count);
++  std::size_t public_offset = 0, cartesian_offset = 0;
++  for (const auto& shell : system.shells) {
++    const auto components = molecule::cartesian_components(shell.angular_momentum);
+     const auto expansions =
+         molecule::ao_expansions(shell.angular_momentum, system.basis_representation);
+-    for (const molecule::AoExpansion& expansion : expansions) {
+-      for (const molecule::CartesianExpansionTerm& term : expansion) {
+-        const auto component = std::find(components.begin(), components.end(), term.component);
+-        if (component == components.end()) {
+-          throw std::invalid_argument(
+-              "DF public-basis transform references an unknown Cartesian AO");
+-        }
+-        const std::size_t cartesian =
+-            cartesian_offset + static_cast<std::size_t>(component - components.begin());
+-        transform[public_offset * cartesian_count + cartesian] = term.coefficient;
++    for (const auto& expansion : expansions) {
++      auto& packed = transform.at(public_offset++);
++      for (std::size_t component = 0; component < components.size(); ++component) {
++        const auto term = std::find_if(expansion.begin(), expansion.end(), [&](const auto& entry) {
++          return entry.component == components[component];
++        });
++        if (term == expansion.end() || term->coefficient == 0.0) continue;
++        if (packed.count == molecule::kMaximumAoExpansionTerms)
++          throw std::invalid_argument("DF public AO expansion exceeds normalized basis bound");
++        packed.cartesian[packed.count] = static_cast<std::int32_t>(cartesian_offset + component);
++        packed.coefficients[packed.count++] = term->coefficient;
+       }
+-      ++public_offset;
++      if (!packed.count) throw std::invalid_argument("empty DF public AO expansion");
+     }
+     cartesian_offset += components.size();
+   }
+-  if (public_offset != public_count || cartesian_offset != cartesian_count) {
++  if (public_offset != public_count || cartesian_offset != molecule::cartesian_ao_count(system))
+     throw std::invalid_argument("DF public-basis transform dimensions are inconsistent");
+-  }
+   return transform;
+ }
+ 
+@@ -268,27 +264,25 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
+   // transform would silently corrupt every later source replay.
+   std::size_t orbital_transform_elements = 0;
+   std::size_t auxiliary_transform_elements = 0;
+-  if (!checked_multiply(public_nbf, cartesian_nbf, orbital_transform_elements) ||
+-      !checked_multiply(public_naux, cartesian_naux, auxiliary_transform_elements) ||
++  if (!checked_multiply(public_nbf, sizeof(DfPublicAoExpansion), orbital_transform_elements) ||
++      !checked_multiply(public_naux, sizeof(DfPublicAoExpansion), auxiliary_transform_elements) ||
+       !checked_multiply(batch_size, orbital_transform_elements, orbital_transform_elements) ||
+       !checked_multiply(batch_size, auxiliary_transform_elements, auxiliary_transform_elements)) {
+     detail = "bounded DF source transform dimensions overflow size_t";
+     return VIBEQC_STATUS_OUT_OF_MEMORY;
+   }
+-  std::vector<double> orbital_transform;
+-  std::vector<double> auxiliary_transform;
++  std::vector<DfPublicAoExpansion> orbital_transform;
++  std::vector<DfPublicAoExpansion> auxiliary_transform;
+   try {
+-    orbital_transform.resize(orbital_transform_elements);
+-    auxiliary_transform.resize(auxiliary_transform_elements);
++    orbital_transform.resize(orbital_transform_elements / sizeof(DfPublicAoExpansion));
++    auxiliary_transform.resize(auxiliary_transform_elements / sizeof(DfPublicAoExpansion));
+     for (std::size_t system = 0; system < batch_size; ++system) {
+-      const std::vector<double> orbital_item =
+-          make_public_to_cartesian_transform(orbital_systems[system]);
+-      const std::vector<double> auxiliary_item =
+-          make_public_to_cartesian_transform(auxiliary_systems[system]);
++      const auto orbital_item = make_public_to_cartesian_transform(orbital_systems[system]);
++      const auto auxiliary_item = make_public_to_cartesian_transform(auxiliary_systems[system]);
+       std::copy(orbital_item.begin(), orbital_item.end(),
+-                orbital_transform.begin() + system * public_nbf * cartesian_nbf);
++                orbital_transform.begin() + system * public_nbf);
+       std::copy(auxiliary_item.begin(), auxiliary_item.end(),
+-                auxiliary_transform.begin() + system * public_naux * cartesian_naux);
++                auxiliary_transform.begin() + system * public_naux);
+     }
+   } catch (const std::bad_alloc&) {
+     detail = "host allocation failed for bounded DF source transforms";
+@@ -298,17 +292,19 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
+     return VIBEQC_STATUS_INVALID_ARGUMENT;
+   }
+   void* orbital_transform_device = nullptr;
+-  vibeqc_status status =
+-      source_upload(*candidate, orbital_transform.data(), orbital_transform.size() * sizeof(double),
+-                    &orbital_transform_device, detail);
++  vibeqc_status status = source_upload(*candidate, orbital_transform.data(),
++                                       orbital_transform.size() * sizeof(DfPublicAoExpansion),
++                                       &orbital_transform_device, detail);
+   if (status != VIBEQC_STATUS_SUCCESS) return status;
+   void* auxiliary_transform_device = nullptr;
+   status = source_upload(*candidate, auxiliary_transform.data(),
+-                         auxiliary_transform.size() * sizeof(double), &auxiliary_transform_device,
+-                         detail);
++                         auxiliary_transform.size() * sizeof(DfPublicAoExpansion),
++                         &auxiliary_transform_device, detail);
+   if (status != VIBEQC_STATUS_SUCCESS) return status;
+-  candidate->orbital_to_cartesian = static_cast<const double*>(orbital_transform_device);
+-  candidate->auxiliary_to_cartesian = static_cast<const double*>(auxiliary_transform_device);
++  candidate->orbital_to_cartesian =
++      static_cast<const DfPublicAoExpansion*>(orbital_transform_device);
++  candidate->auxiliary_to_cartesian =
++      static_cast<const DfPublicAoExpansion*>(auxiliary_transform_device);
+ 
+   try {
+     metrics.resize(metric_total_elements);
+@@ -418,8 +414,8 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
+   // Each transform helper briefly materializes one public-to-Cartesian item
+   // before copying it into the packed arrays. Charge that per-item temporary
+   // in addition to the retained batch transforms.
+-  host_peak += static_cast<long double>(public_nbf) * cartesian_nbf * sizeof(double);
+-  host_peak += static_cast<long double>(public_naux) * cartesian_naux * sizeof(double);
++  host_peak += static_cast<long double>(public_nbf) * sizeof(DfPublicAoExpansion);
++  host_peak += static_cast<long double>(public_naux) * sizeof(DfPublicAoExpansion);
+   // Recompute retained bytes after all metadata uploads have populated the
+   // device-allocation pointer vector.  The dynamic pointer array is small but
+   // is still host state owned by the source and must not disappear from the
+diff --git a/src/scf/cuda/df_uhf_scf.cpp b/src/scf/cuda/df_uhf_scf.cpp
+index 8d831e6..b76348c 100644
+--- a/src/scf/cuda/df_uhf_scf.cpp
++++ b/src/scf/cuda/df_uhf_scf.cpp
+@@ -94,7 +94,8 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
+     return cuda_failure(cuda_error, "select CUDA DF device", detail);
+   }
+   bool occupied_exchange = false;
+-  const auto policy_status = occupied_scf_policy(*plan, occupied_exchange, detail);
++  const auto policy_status =
++      occupied_scf_policy(*plan, occupied_exchange, detail, alpha_occupied, beta_occupied);
+   if (policy_status != VIBEQC_STATUS_SUCCESS) return policy_status;
+   PersistentScfState* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
+   const bool compatible =
+diff --git a/src/scf/cuda_density_fitting.hpp b/src/scf/cuda_density_fitting.hpp
+index 1cbf164..00e74f8 100644
+--- a/src/scf/cuda_density_fitting.hpp
++++ b/src/scf/cuda_density_fitting.hpp
+@@ -13,6 +13,7 @@
+ #include "vibeqc/vibeqc.h"
+ 
+ namespace vibeqc::scf {
++struct CudaDfFinalStateToken;
+ 
+ struct CudaDensityFittingJkPlan;
+ struct CudaDensityFittingIntegralSource;
+@@ -69,7 +70,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+     const core::System& auxiliary, std::span<const double> raw_a, const std::vector<double>& metric,
+     std::span<const DensityFittingDensityResponse> terms, unsigned schedule,
+     std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile, std::vector<double>& derivative,
+-    std::string& detail, DfGradientResources* resources = nullptr);
++    std::string& detail, DfGradientResources* resources = nullptr,
++    const CudaDfFinalStateToken* final_state = nullptr);
+ 
+ /**
+  * Prepare a device-resident source for bounded DF tile generation.
+diff --git a/src/scf/cuda_density_fitting_stub.cpp b/src/scf/cuda_density_fitting_stub.cpp
+index 3709650..137e07b 100644
+--- a/src/scf/cuda_density_fitting_stub.cpp
++++ b/src/scf/cuda_density_fitting_stub.cpp
+@@ -41,7 +41,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
+     CudaDensityFittingJkPlan*, std::size_t, const core::System&, const core::System&,
+     std::span<const double>, const std::vector<double>&,
+     std::span<const DensityFittingDensityResponse>, unsigned, std::size_t, std::size_t,
+-    std::vector<double>&, std::string& detail, DfGradientResources*) {
++    std::vector<double>&, std::string& detail, DfGradientResources*, const CudaDfFinalStateToken*) {
+   detail = "CUDA DF generated response is unavailable in this build";
+   return VIBEQC_STATUS_NOT_IMPLEMENTED;
+ }
+diff --git a/src/scf/cuda_df_gradient.hpp b/src/scf/cuda_df_gradient.hpp
+index 65a7c9e..e70733d 100644
+--- a/src/scf/cuda_df_gradient.hpp
++++ b/src/scf/cuda_df_gradient.hpp
+@@ -1,5 +1,6 @@
+ #ifndef VIBEQC_SCF_CUDA_DF_GRADIENT_HPP
+ #define VIBEQC_SCF_CUDA_DF_GRADIENT_HPP
++#include <array>
+ #include <cstddef>
+ #include <span>
+ #include <string>
+@@ -26,11 +27,22 @@ struct CudaDfMetricView {
+  * stream orders the last J/K use, this complete force, and the next SCF use;
+  * the synchronous bridge drains on success and failure before returning.
+  */
++/** Borrow of one canonical column-major C, with D=density_scale*C*C^T.
++ * The plan owner validates the method token, exact density and device
++ * generation before constructing this view. A zero-rank spin has no pointer.
++ */
++struct CudaDfOccupiedResponseFactor {
++  const double* coefficients{};
++  std::size_t rank{};
++  double density_scale{};
++};
+ struct CudaDfResponseBuffers {
+   double* staging_weights{};
+   double* raw_auxiliary_major{};
+   double* exchange_response{};
+   std::size_t elements_per_buffer{};
++  bool occupied_response{};
++  std::array<CudaDfOccupiedResponseFactor, 3> occupied_factors{};
+ };
+ /** Owned numeric staging and explicit transfers, excluding caller weights/system data. */
+ struct DfGradientResources {
+diff --git a/src/scf/density_fitting.cpp b/src/scf/density_fitting.cpp
+index 6674cc8..c984bbc 100644
+--- a/src/scf/density_fitting.cpp
++++ b/src/scf/density_fitting.cpp
+@@ -874,7 +874,7 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
+                                                   std::size_t memory_budget_bytes,
+                                                   std::size_t fixed_device_bytes,
+                                                   bool generated_source) {
+-  const bool occupied_exchange = df_occupied_exchange_requested();
++  const bool occupied_exchange = df_occupied_exchange_requested(nbf, naux, batch_size);
+   if (batch_size == 0 || nbf == 0 || naux == 0 || occupied == 0) {
+     throw std::invalid_argument("DF planner dimensions must all be positive");
+   }
+@@ -1025,7 +1025,19 @@ std::size_t density_fitting_source_metadata_bytes(std::size_t batch, std::size_t
+   add(shells, 29);  // center/angular values and three shell offset arrays
+   add(cartesian_aos, 20 + 11 * molecule::kMaximumAoExpansionTerms);
+   add(primitives, 16);
+-  add(transform_elements, 8);
++  // The v1 caller supplies the historical dense-transform element bound.
++  // Keep that ABI conservative while also covering fixed-size sparse records
++  // for very small Cartesian bases, where a record can exceed a dense row.
++  std::size_t dense_bytes = 0, sparse_bytes = 0;
++  if (!checked_multiply(transform_elements, 8, dense_bytes) ||
++      !checked_multiply(
++          cartesian_aos,
++          sizeof(std::uint32_t) +
++              molecule::kMaximumAoExpansionTerms * (sizeof(std::int32_t) + sizeof(double)) +
++              alignof(double) - 1,
++          sparse_bytes))
++    throw std::overflow_error("DF transform metadata overflows size_t");
++  add(std::max(dense_bytes, sparse_bytes), 1);
+   return bytes;
+ }
+ 
+diff --git a/src/scf/df_exchange_policy.hpp b/src/scf/df_exchange_policy.hpp
+index 95812b6..c74a00f 100644
+--- a/src/scf/df_exchange_policy.hpp
++++ b/src/scf/df_exchange_policy.hpp
+@@ -1,18 +1,27 @@
+ #pragma once
+ 
++#include <cstddef>
+ #include <cstdlib>
+ #include <cstring>
+ 
+ namespace vibeqc::scf {
+ 
+-/** CPU-safe reservation policy shared by the shape planner and CUDA owner.
+- * Only the explicit opt-in reserves occupied SCF state. The execution entry
+- * point separately rejects invalid values; an unset policy retains dense
+- * capacity. Callers snapshot this once for each planning transaction.
++/** An unset policy is auto; explicit dense/occupied remain comparison controls. */
++inline bool df_occupied_exchange_auto_requested() noexcept {
++  const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
++  return !value || std::strcmp(value, "auto") == 0;
++}
++
++/** CPU-safe conservative reservation before device, rank and plan admission.
++ * Only the measured potential 768/768 batch-one domain reserves in auto mode.
++ * Runtime additionally checks reference, occupied rank, full resident shape
++ * and the exact measured device. Reservation alone never authorizes factors.
+  */
+-inline bool df_occupied_exchange_requested() noexcept {
++inline bool df_occupied_exchange_requested(std::size_t nbf = 0, std::size_t naux = 0,
++                                           std::size_t batch = 0) noexcept {
+   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
+-  return value != nullptr && std::strcmp(value, "occupied") == 0;
++  return (value && std::strcmp(value, "occupied") == 0) ||
++         (df_occupied_exchange_auto_requested() && nbf == 768 && naux == 768 && batch == 1);
+ }
+ 
+ }  // namespace vibeqc::scf
+diff --git a/src/scf/rhf.cpp b/src/scf/rhf.cpp
+index 7a0e07d..adef39b 100644
+--- a/src/scf/rhf.cpp
++++ b/src/scf/rhf.cpp
+@@ -412,7 +412,8 @@ Matrix generated_one_electron_hf_gradient(const DensityFittingScfData& data, con
+ /** Form DF weights and contract before entering any legacy fallback guard. */
+ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFittingJkPlan* plan,
+                                 std::size_t system, const Matrix& density,
+-                                const Matrix* beta = nullptr) {
++                                const Matrix* beta = nullptr,
++                                const CudaDfFinalStateToken* final_state = nullptr) {
+   Matrix gradient;
+ #if VIBEQC_HAS_CUDA
+   if (!data.df_gradient_orbital) return gradient;
+@@ -433,7 +434,7 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
+   const auto status = execute_cuda_density_fitting_generated_force_response(
+       plan, system, *data.df_gradient_orbital, *data.df_gradient_auxiliary, data.raw.three_center,
+       data.raw.metric, terms, data.df_gradient_mapping,
+-      data.df_gradient_budget - spin_staging_bytes, 0, gradient, detail);
++      data.df_gradient_budget - spin_staging_bytes, 0, gradient, detail, nullptr, final_state);
+   if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+   if (status != VIBEQC_STATUS_SUCCESS || gradient.size() != data.raw.ncoord)
+     throw std::runtime_error(detail.empty() ? "generated DF response failed" : detail);
+@@ -443,6 +444,7 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
+   (void)system;
+   (void)density;
+   (void)beta;
++  (void)final_state;
+ #endif
+   return gradient;
+ }
+@@ -563,6 +565,22 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   if (selected.status == solver::FinalStateStatus::OutOfMemory) throw std::bad_alloc();
+   if (!selected.state) throw std::runtime_error(selected.detail);
+   host_trace::Region accepted(selected.reused ? "final_state_reuse" : "final_state_corrected", n);
++  // The intrusive journal retains the actual physical gate at the returned
++  // determinant; ordinary endpoint timing adds neither formatting nor I/O.
++  const char* journal = std::getenv("VIBEQC_DF_PROGRESS_TRACE");
++  if (journal && *journal) {
++    const auto record = [](const char* name, double value) {
++      char text[64];
++      std::snprintf(text, sizeof(text), "%.17g", value);
++      runtime::df_progress::label(name, text);
++    };
++    record("final_maximum_commutator", selected.state->diagnostic.maximum_commutator);
++    record("final_density_rms", selected.state->diagnostic.density_rms);
++    record("final_maximum_idempotency_error", selected.state->diagnostic.maximum_idempotency_error);
++    runtime::df_progress::number("final_density_generation",
++                                 selected.state->identity.factor.density_generation);
++    runtime::df_progress::number("final_solve_epoch", selected.state->identity.solve_epoch);
++  }
+   return std::move(*selected.state);
+ }
+ 
+@@ -578,6 +596,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   (void)cuda_plan;
+ #endif
+   const std::size_t n = data.one_electron.nbf;
++  CudaDfFinalStateToken response_token;
+   Matrix final_fock, weighted;
+   EigenResult orbitals;
+   const auto execute_item_rhf_jk =
+@@ -613,6 +632,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+     auto state =
+         select_cuda_df_final_state(data, orthogonalizer, {density}, {occupied}, options, result,
+                                    cuda_plan, cuda_system, device_candidate, physical);
++    response_token.identity = state.identity;
+     density = std::move(state.density[0]);
+     final_fock = std::move(state.fock[0]);
+     orbitals = std::move(state.orbitals[0]);
+@@ -668,7 +688,8 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   // The CUDA response is the sole device path; failures propagate before force
+   // assembly. The independent CPU calculation below serves CPU callers only.
+   const Matrix generated_one_electron = generated_one_electron_hf_gradient(data, density, weighted);
+-  const Matrix generated_df = generated_df_hf_gradient(data, cuda_plan, cuda_system, density);
++  const Matrix generated_df =
++      generated_df_hf_gradient(data, cuda_plan, cuda_system, density, nullptr, &response_token);
+   if (cuda_plan != nullptr) {
+     if (generated_df.size() != data.raw.ncoord)
+       throw std::runtime_error("generated DF response has invalid coordinate dimensions");
+@@ -718,6 +739,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   (void)cuda_plan;
+ #endif
+   const std::size_t n = data.one_electron.nbf;
++  CudaDfFinalStateToken response_token;
+   Matrix alpha_fock;
+   Matrix beta_fock, alpha_weighted, beta_weighted;
+   EigenResult alpha_orbitals, beta_orbitals;
+@@ -762,6 +784,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+     auto state = select_cuda_df_final_state(data, orthogonalizer, {alpha_density, beta_density},
+                                             {alpha_occupied, beta_occupied}, options, result,
+                                             cuda_plan, cuda_system, device_candidate, physical);
++    response_token.identity = state.identity;
+     alpha_density = std::move(state.density[0]);
+     beta_density = std::move(state.density[1]);
+     alpha_fock = std::move(state.fock[0]);
+@@ -805,8 +828,8 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   }
+   const Matrix generated_one_electron = generated_one_electron_hf_gradient(
+       data, alpha_density, alpha_weighted, &beta_density, &beta_weighted);
+-  const Matrix generated_df =
+-      generated_df_hf_gradient(data, cuda_plan, cuda_system, alpha_density, &beta_density);
++  const Matrix generated_df = generated_df_hf_gradient(data, cuda_plan, cuda_system, alpha_density,
++                                                       &beta_density, &response_token);
+   if (cuda_plan != nullptr) {
+     if (generated_df.size() != data.raw.ncoord)
+       throw std::runtime_error("generated DF response has invalid coordinate dimensions");

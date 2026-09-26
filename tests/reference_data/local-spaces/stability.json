@@ -1,0 +1,28 @@
+{
+  "first_generated_at": "2026-09-08T23:25:10.586188+00:00",
+  "first_record_hash": "73f9428da1a9540bff2f6c79f314a3fec32e34bd76ff6c07798447e9ba166f6f",
+  "rows": [
+    {
+      "coefficient_max_difference": 0.0,
+      "name": "h2",
+      "objective_difference": 0.0
+    },
+    {
+      "coefficient_max_difference": 0.0,
+      "name": "water",
+      "objective_difference": 0.0
+    },
+    {
+      "coefficient_max_difference": 0.0,
+      "name": "lih",
+      "objective_difference": 0.0
+    },
+    {
+      "coefficient_max_difference": 0.0,
+      "name": "f_heh",
+      "objective_difference": 0.0
+    }
+  ],
+  "second_generated_at": "2026-09-08T23:35:54.671822+00:00",
+  "second_record_hash": "c372150eb3bf60da5cf2091c12cfc4b1ba4586d353819ca839113a56b0536e38"
+}

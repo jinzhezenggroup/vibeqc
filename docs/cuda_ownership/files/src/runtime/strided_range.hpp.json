@@ -1,0 +1,6 @@
+{
+  "path": "src/runtime/strided_range.hpp",
+  "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions.",
+  "role": "runtime",
+  "subsystem": "runtime"
+}

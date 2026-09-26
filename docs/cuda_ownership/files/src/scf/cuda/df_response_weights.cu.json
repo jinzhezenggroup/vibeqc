@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_response_weights.cu",
+  "reason": "Native HF response execution adapter and FP64 cuBLAS/runtime scheduling. Method-level Coulomb/exchange A/M weight kernels and spectral Frechet arithmetic are compiler-generated; resident/occupied/packed paths retain bounded storage, BLAS, tiling, stream and callback policy.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "df_response_weights"
+}

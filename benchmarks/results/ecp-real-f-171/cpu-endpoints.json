@@ -1,0 +1,208 @@
+{
+  "device": "cpu",
+  "python": "3.11.14",
+  "pyscf": "2.14.0",
+  "numpy": "2.4.6",
+  "library_sha256": "7dff77e0eea8e1d37f6f0987a280fd114bfee32cfe5c3eda154beb31cfc4f76e",
+  "fixture_sha256": "3821971095e1eb9b5e15fce327c99b6643ae26368b2cefc434255669677c9f78",
+  "driver_sha256": "63e3d2a381e526e859a3901f176bc21c49637cd1835251998f64efd98730c531",
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           43 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  48\nOn-line CPU(s) list:                     0-47\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7K62 48-Core Processor\nCPU family:                              23\nModel:                                   49\nThread(s) per core:                      1\nCore(s) per socket:                      48\nSocket(s):                               1\nStepping:                                0\nFrequency boost:                         enabled\nCPU max MHz:                             2600.0000\nCPU min MHz:                             1500.0000\nBogoMIPS:                                5190.02\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es ibpb_exit_to_user\nVirtualization:                          AMD-V\nL1d cache:                               1.5 MiB (48 instances)\nL1i cache:                               1.5 MiB (48 instances)\nL2 cache:                                24 MiB (48 instances)\nL3 cache:                                192 MiB (12 instances)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-47\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; untrained return thunk; SMT disabled\nVulnerability Spec rstack overflow:      Mitigation; SMT disabled\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace\n",
+  "timing_scope": "one synchronous fresh Calculator singlepoint, no warmup; no performance claim",
+  "grids": [
+    [
+      160,
+      32,
+      64
+    ],
+    [
+      224,
+      44,
+      88
+    ]
+  ],
+  "cases": [
+    {
+      "symbol": "Au",
+      "method": "rhf",
+      "atoms_bohr": [
+        [
+          "Au",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.0
+          ]
+        ]
+      ],
+      "charge": 0,
+      "multiplicity": 1,
+      "core_electrons": 60,
+      "nelectron": 20,
+      "nao": 23,
+      "basis_identity": "55cfa38364ec39b54d013c2069478eec137eae963ced9828bf75367264f4147e",
+      "parameter_sha256": "618e1d76ee6ec1af1f846befb9ca9da96b54c8bbac109033cf5b34414b615642",
+      "errors": {
+        "local_matrix": 8.615330671091215e-14,
+        "nonlocal_matrix": 1.3589129821411916e-13,
+        "energy": 6.536993168992922e-13,
+        "force": 9.742739948137569e-11,
+        "net_force": 4.440892098500626e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 1.3100631690576847e-14,
+        "nonlocal_matrix_max_abs": 9.059419880941277e-14,
+        "local_derivative_max_abs": 1.942890293094024e-16,
+        "nonlocal_derivative_max_abs": 3.3306690738754696e-15
+      },
+      "energy": -135.0789877480781,
+      "reference_energy": -135.07898774807745,
+      "reference_initial_guess_energies": {
+        "minao": -135.07898774807745,
+        "1e": -135.07898774807745,
+        "atom": -135.07898774807757
+      },
+      "scf_options": {
+        "energy_tolerance": 1e-12,
+        "density_tolerance": 1e-10,
+        "max_iterations": 200
+      },
+      "forces": [
+        [
+          -0.0026694544763176675,
+          -0.0035592726350861525,
+          -0.025181853893231132
+        ],
+        [
+          0.002669454476317612,
+          0.0035592726350861525,
+          0.025181853893231576
+        ]
+      ],
+      "reference_forces": [
+        [
+          -0.00266945446598596,
+          -0.003559272621314946,
+          -0.02518185379580684
+        ],
+        [
+          0.0026694544659860153,
+          0.003559272621315057,
+          0.025181853795804177
+        ]
+      ],
+      "singlepoint_ms": 61500.24838699028,
+      "resource_status": "feasible",
+      "resource_diagnostic": null,
+      "resource_peak_bytes": {
+        "host": 91290288,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 91290288
+      },
+      "budgeted_execution": true,
+      "device_ledger": null
+    },
+    {
+      "symbol": "Au",
+      "method": "uhf",
+      "atoms_bohr": [
+        [
+          "Au",
+          [
+            0.13,
+            -0.21,
+            0.17
+          ]
+        ],
+        [
+          "H",
+          [
+            0.43,
+            0.19,
+            3.0
+          ]
+        ]
+      ],
+      "charge": -1,
+      "multiplicity": 2,
+      "core_electrons": 60,
+      "nelectron": 21,
+      "nao": 23,
+      "basis_identity": "55cfa38364ec39b54d013c2069478eec137eae963ced9828bf75367264f4147e",
+      "parameter_sha256": "618e1d76ee6ec1af1f846befb9ca9da96b54c8bbac109033cf5b34414b615642",
+      "errors": {
+        "local_matrix": 8.615330671091215e-14,
+        "nonlocal_matrix": 1.3589129821411916e-13,
+        "energy": 5.968558980384842e-13,
+        "force": 1.0416245643796174e-10,
+        "net_force": 8.881784197001252e-16
+      },
+      "quadrature_difference": {
+        "local_matrix_max_abs": 1.3100631690576847e-14,
+        "nonlocal_matrix_max_abs": 9.059419880941277e-14,
+        "local_derivative_max_abs": 1.942890293094024e-16,
+        "nonlocal_derivative_max_abs": 3.3306690738754696e-15
+      },
+      "energy": -135.07752161148522,
+      "reference_energy": -135.07752161148463,
+      "reference_initial_guess_energies": {
+        "minao": -135.07752161148463,
+        "1e": -135.0775216114847,
+        "atom": -135.0775216114847
+      },
+      "scf_options": {
+        "energy_tolerance": 1e-12,
+        "density_tolerance": 1e-10,
+        "max_iterations": 200
+      },
+      "forces": [
+        [
+          -0.005180456943582212,
+          -0.0069072759247736926,
+          -0.04886897716776506
+        ],
+        [
+          0.0051804569435821846,
+          0.006907275924773637,
+          0.04886897716776595
+        ]
+      ],
+      "reference_forces": [
+        [
+          -0.005180456932537186,
+          -0.006907275910049915,
+          -0.048868977063603936
+        ],
+        [
+          0.0051804569325371586,
+          0.006907275910049804,
+          0.04886897706360349
+        ]
+      ],
+      "singlepoint_ms": 61013.42616416514,
+      "resource_status": "feasible",
+      "resource_diagnostic": null,
+      "resource_peak_bytes": {
+        "host": 91307216,
+        "device": 0,
+        "pinned": 0,
+        "pageable": 91307216
+      },
+      "budgeted_execution": true,
+      "device_ledger": null
+    }
+  ]
+}

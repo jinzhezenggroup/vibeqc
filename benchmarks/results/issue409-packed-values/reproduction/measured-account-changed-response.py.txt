@@ -1,0 +1,92 @@
+"""Explain the completed changed-geometry diagnostic without retiming clean work.
+
+Top-level response durations are intrusive observations. Exclusive child scopes
+partition one parent and must never be added to the parent a second time.
+Semantic element counters describe executed logical work, not DRAM traffic.
+"""
+
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+root = Path(".artifacts/issue409")
+collector_path = Path("benchmarks/experiments/issue409-packed-values/collect.py")
+spec = importlib.util.spec_from_file_location("collector", collector_path)
+collector = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(collector)
+clean = root / "rebuild-v2/768-changed-clean.json"
+companion = root / "rebuild-768-changed-diagnostics"
+data = collector.bind_changed_diagnostics(clean, companion)
+assert data is not None
+rows = []
+for sample in data["diagnostics"]:
+    groups = {
+        g["operation"]: g
+        for g in sample["components"]["groups"]
+        if g["execution"] == "stream"
+    }
+    assert sample["iterations"] == 9
+    assert groups["density_exchange_seed"]["counter_sums"]["accepted"] == 1
+    assert groups["ri_j"]["calls"] == 16
+    assert groups["ri_k"]["calls"] == 6
+    assert groups["ri_k_occupied"]["calls"] == 10
+    response = groups["force_response"]
+    counters = response["counter_sums"]
+    rows.append(
+        {
+            "policy": sample["policy"],
+            "intrusive_endpoint_seconds": sample["seconds"],
+            "intrusive_response_seconds": response["host_completion_ms"] / 1000,
+            "response_exclusive_host_ms": response["host_exclusive_ms"],
+            "response_semantic_counters": {
+                k: v
+                for k, v in counters.items()
+                if k.startswith(
+                    ("raw_", "response_", "tensor_", "host_to_device", "device_to_host")
+                )
+            },
+            "occupied_seed_accepted": True,
+            "scf_updates": sample["iterations"],
+            "eager_J": groups["ri_j"]["calls"],
+            "eager_dense_K": groups["ri_k"]["calls"],
+            "eager_occupied_K": groups["ri_k_occupied"]["calls"],
+            "occupied_provenance": groups["occupied_scf_provenance"]["counter_sums"],
+            "metric": sample["metric"],
+        }
+    )
+assert rows[0]["response_semantic_counters"]["response_ao_matrix_products"] == 1536
+assert rows[1]["response_semantic_counters"]["response_ao_matrix_products"] == 118272
+assert rows[1]["response_semantic_counters"]["response_auxiliary_blocks"] == 77
+sources = [
+    Path("src/scf/cuda/df_force_response.cpp"),
+    Path("src/scf/cuda/df_gradient_bridge.cu"),
+    Path("src/scf/cuda/df_response_weights.cu"),
+]
+report = {
+    "scope": __doc__,
+    "runner_sha256": sha(Path(__file__)),
+    "binding": data["diagnostic_companion"],
+    "publishing_source_hashes": {str(p): sha(p) for p in sources},
+    "source_scope": "Publishing source is a verified format-only transformation of the measured frozen source.",
+    "observations": rows,
+    "interpretation": [
+        "Both arms accept the occupied seed, retain occupied SCF exchange and perform the same 16 J/K calls. Seed rejection is not the cause of this measured regression.",
+        "Both arms take six final density corrections. Dense response borrows full all-Q scratch; packed response executes bounded raw loading with 77 auxiliary blocks and 77 times as many AO response products.",
+        "The packed response unpacks 35,326,918,656 logical matrix elements. Reusing immutable raw A avoids regeneration but does not bound repeated algebraic work.",
+        "The guarded packed scratch borrow requires a valid occupied response factor. Its bounded fallback also falls outside the automatic 768-AO borrowed shell/BLAS domain, explaining the observed scalar products and generic derivative consumption.",
+        "This diagnostic identifies the executed fallback and expensive scopes; it is not a counterfactual intervention measuring how much each policy change would save.",
+    ],
+}
+(companion / "response-attribution.json").write_text(
+    json.dumps(report, indent=2) + "\n"
+)
+print(
+    "Retained validated changed-response account:",
+    [(r["policy"], r["intrusive_response_seconds"]) for r in rows],
+)

@@ -1,0 +1,1348 @@
+{
+  "baseline/384-clean": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": null,
+    "cold_seconds": 13.104021778795868,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [2.646759351948276, 2.6428140019997954, 2.639753781957552, 2.6413182269316167, 2.639963279943913],
+        "median_seconds": 2.6413182269316167,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.238976514918228e-11,
+        "density_rms": [
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13]
+        ]
+      }
+    }
+  },
+  "baseline/768-clean": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": null,
+    "cold_seconds": 101.99294736795127,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [6.422674529021606, 6.458386527840048, 6.452452043071389, 6.434008966898546, 6.436193603789434],
+        "median_seconds": 6.436193603789434,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": 1.2921612911609426e-10,
+        "density_rms": [
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13]
+        ]
+      }
+    }
+  },
+  "normal/384-normal": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "3985f3aaa44108759dcb1488b4880301ee0bfe4ec7b9142126170a8a436d3a9c"
+    },
+    "cold_seconds": 10.781501768855378,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [0.9108507200144231, 0.9185074169654399, 0.9204009058885276, 0.9306385051459074, 0.9281595069915056],
+        "median_seconds": 0.9204009058885276,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.0463630789890885e-12,
+        "maximum_force_error": 7.298863900426222e-11,
+        "density_rms": [
+          [1.8487830447163214e-13],
+          [1.8487830447163214e-13],
+          [1.8487830447163214e-13],
+          [1.8487830447163214e-13],
+          [1.8487830447163214e-13]
+        ]
+      }
+    }
+  },
+  "normal/768-normal": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "638cf6ad1d0f08bc29198c739c7237c4fcbc24d35bc8e69e58f2c2dfe720fd33"
+    },
+    "cold_seconds": 85.51364098698832,
+    "cold_iterations": [24],
+    "policies": {
+      "auto": {
+        "seconds": [5.313046609051526, 5.308092445135117, 5.304384731221944, 5.298674811143428, 5.310177731094882],
+        "median_seconds": 5.308092445135117,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.9108272176235914e-11,
+        "maximum_force_error": 1.3576106905333063e-10,
+        "density_rms": [
+          [2.1774072887082614e-13],
+          [2.1774072887082614e-13],
+          [2.1774072887082614e-13],
+          [2.1774072887082614e-13],
+          [2.1774072887082614e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_DIIS_DOTS-energy": {
+    "scope": "clean endpoint",
+    "properties": ["energy"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.099417255958542,
+    "cold_iterations": [20],
+    "policies": {
+      "serial": {
+        "seconds": [0.47493174113333225, 0.4763390200678259, 0.47751186485402286, 0.4776628860272467, 0.47193293599411845],
+        "median_seconds": 0.4763390200678259,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": null,
+        "density_rms": [
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [0.4514330020174384, 0.4555543221067637, 0.4555570469237864, 0.45541061903350055, 0.45517898816615343],
+        "median_seconds": 0.45541061903350055,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": null,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_DIIS_DOTS": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.131732831010595,
+    "cold_iterations": [20],
+    "policies": {
+      "serial": {
+        "seconds": [0.9429669780656695, 0.9421973549760878, 0.9502502549439669, 0.9506982571911067, 0.9353705369867384],
+        "median_seconds": 0.9429669780656695,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.013932399630885e-11,
+        "density_rms": [
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13],
+          [1.8477212366449168e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [0.9142881771549582, 0.9224119998980314, 0.9195556391496211, 0.9281346728093922, 0.9158792039379478],
+        "median_seconds": 0.9195556391496211,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.4263174562893e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_RAW_REUSE": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.08472170890309,
+    "cold_iterations": [20],
+    "policies": {
+      "off": {
+        "seconds": [0.9480283581651747, 0.9583548300433904, 0.9551071841269732, 0.9554718788713217, 0.941777478903532],
+        "median_seconds": 0.9551071841269732,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.426850363341121e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [0.9224301560316235, 0.9196840371005237, 0.9283192569855601, 0.9120337679050863, 0.9223741949535906],
+        "median_seconds": 0.9223741949535906,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.427205634709001e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_RESIDENT_EXCHANGE-energy": {
+    "scope": "clean endpoint",
+    "properties": ["energy"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.116454009898007,
+    "cold_iterations": [20],
+    "policies": {
+      "legacy": {
+        "seconds": [0.4541073590517044, 0.4514805169310421, 0.4541803798638284, 0.45062319096177816, 0.4535126860719174],
+        "median_seconds": 0.4535126860719174,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": null,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [0.45517929014749825, 0.4540491229854524, 0.4555060169659555, 0.4513736320659518, 0.4554197150282562],
+        "median_seconds": 0.45517929014749825,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": null,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_RESIDENT_EXCHANGE": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.111964716110379,
+    "cold_iterations": [20],
+    "policies": {
+      "legacy": {
+        "seconds": [0.9404052081517875, 0.9583659849595279, 0.9406939509790391, 0.9403067911043763, 0.9568443791940808],
+        "median_seconds": 0.9406939509790391,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.426672727657181e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      },
+      "flat": {
+        "seconds": [1.0928039541468024, 1.0999000479932874, 1.099364950088784, 1.0926780430600047, 1.0953062039334327],
+        "median_seconds": 1.0953062039334327,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.649266120345443e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      },
+      "full": {
+        "seconds": [0.9599034520797431, 0.9418171518482268, 0.9589086461346596, 0.9541512329597026, 0.9424653649330139],
+        "median_seconds": 0.9541512329597026,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.42578454923748e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [0.9597385090310127, 0.9419851910788566, 0.9558594250120223, 0.949764234945178, 0.9418856280390173],
+        "median_seconds": 0.949764234945178,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.427205634709001e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_RESPONSE_BATCHING": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.102273127995431,
+    "cold_iterations": [20],
+    "policies": {
+      "off": {
+        "seconds": [0.9195545150432736, 0.9197079020086676, 0.9287859769538045, 0.922305973013863, 0.9215510950889438],
+        "median_seconds": 0.9215510950889438,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.427738541760821e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [0.9132833010517061, 0.9218426649458706, 0.9123240059707314, 0.9132754569873214, 0.9285939631517977],
+        "median_seconds": 0.9132833010517061,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.426850363341121e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/384-VIBEQC_DF_RESPONSE_STORAGE": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 12.920047309016809,
+    "cold_iterations": [20],
+    "policies": {
+      "panel": {
+        "seconds": [2.535422056913376, 2.5430524919647723, 2.542279568966478, 2.5465057359542698, 2.539347439073026],
+        "median_seconds": 2.542279568966478,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.540577620119727e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      },
+      "jk-scratch": {
+        "seconds": [0.9098935630172491, 0.921271177008748, 0.9185212219599634, 0.929045976838097, 0.9263172619976103],
+        "median_seconds": 0.921271177008748,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 1.8189894035458565e-12,
+        "maximum_force_error": 8.427560906076881e-11,
+        "density_rms": [
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13],
+          [1.8474528473427995e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-DIIS-legacy-endpoint": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.58862926415168,
+    "cold_iterations": [21],
+    "policies": {
+      "serial": {
+        "seconds": [5.693970100954175, 5.693689888110384, 5.703966453904286, 5.706854754826054, 5.712580025196075],
+        "median_seconds": 5.703966453904286,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": 1.4767340301979903e-10,
+        "density_rms": [
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [5.607191171962768, 5.610799502115697, 5.632147306809202, 5.627464226912707, 5.640855761012062],
+        "median_seconds": 5.627464226912707,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": 1.3674029096522045e-10,
+        "density_rms": [
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-DIIS-legacy-energy": {
+    "scope": "clean endpoint",
+    "properties": ["energy"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.5535836131312,
+    "cold_iterations": [21],
+    "policies": {
+      "serial": {
+        "seconds": [3.5781958729494363, 3.5821040850132704, 3.585719791939482, 3.587628217879683, 3.589004351058975],
+        "median_seconds": 3.585719791939482,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": null,
+        "density_rms": [
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13],
+          [2.1340320129405774e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [3.4983370709232986, 3.4993376629427075, 3.502712890971452, 3.5060306962113827, 3.495818263851106],
+        "median_seconds": 3.4993376629427075,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": null,
+        "density_rms": [
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-VIBEQC_DF_DIIS_DOTS": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": false,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.43382286909036,
+    "cold_iterations": [21],
+    "policies": {
+      "serial": {
+        "seconds": [5.98374911211431, 5.97554891789332, 5.9767618018668145, 5.990963542135432, 5.996698800008744],
+        "median_seconds": 5.98374911211431,
+        "iterations": [
+          [5],
+          [5],
+          [5],
+          [5],
+          [5]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": 1.3736888709869888e-10,
+        "density_rms": [
+          [6.455730297718579e-15],
+          [6.455730297718579e-15],
+          [6.455730297718579e-15],
+          [6.455730297718579e-15],
+          [6.455730297718579e-15]
+        ]
+      },
+      "auto": {
+        "seconds": [5.340852440102026, 5.321083568036556, 5.319820881122723, 5.327034278074279, 5.34074091585353],
+        "median_seconds": 5.327034278074279,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.2777871382513295e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-VIBEQC_DF_RAW_REUSE": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.44524067803286,
+    "cold_iterations": [21],
+    "policies": {
+      "off": {
+        "seconds": [5.561190371867269, 5.564686049008742, 5.5742762689478695, 5.601645337184891, 5.591742978896946],
+        "median_seconds": 5.5742762689478695,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.2780713553456335e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [5.329254179960117, 5.342168885981664, 5.336021235911176, 5.336897672852501, 5.326486253878102],
+        "median_seconds": 5.336021235911176,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.2778581925249055e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-VIBEQC_DF_RESIDENT_EXCHANGE-energy": {
+    "scope": "clean endpoint",
+    "properties": ["energy"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.58175058104098,
+    "cold_iterations": [21],
+    "policies": {
+      "legacy": {
+        "seconds": [3.5004096052143723, 3.5020224661566317, 3.5006930897943676, 3.4997365451417863, 3.4953365370165557],
+        "median_seconds": 3.5004096052143723,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": null,
+        "density_rms": [
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [3.445661613950506, 3.4629706568084657, 3.4517015719320625, 3.461919151013717, 3.4491036150138825],
+        "median_seconds": 3.4517015719320625,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": null,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-VIBEQC_DF_RESIDENT_EXCHANGE": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.5206422668416,
+    "cold_iterations": [21],
+    "policies": {
+      "legacy": {
+        "seconds": [5.589795510051772, 5.611745279980823, 5.596581217832863, 5.600308717926964, 5.6254918340127915],
+        "median_seconds": 5.600308717926964,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.956301952712238e-11,
+        "maximum_force_error": 1.3674206732205985e-10,
+        "density_rms": [
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13],
+          [2.134109821577992e-13]
+        ]
+      },
+      "flat": {
+        "seconds": [5.667779212119058, 5.666689028963447, 5.688671714859083, 5.680125247919932, 5.680531679885462],
+        "median_seconds": 5.680125247919932,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.448263956677076e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      },
+      "full": {
+        "seconds": [5.573922766139731, 5.569363059941679, 5.575739265885204, 5.573863802012056, 5.584921948146075],
+        "median_seconds": 5.573922766139731,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.2777871382513295e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [5.586647639982402, 5.580722785089165, 5.5613146959804, 5.569400893058628, 5.570334994001314],
+        "median_seconds": 5.570334994001314,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.2777516111145415e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      }
+    }
+  },
+  "ablations/768-VIBEQC_DF_RESPONSE_BATCHING": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.52632828895003,
+    "cold_iterations": [21],
+    "policies": {
+      "off": {
+        "seconds": [5.492984557989985, 5.517330578062683, 5.533147434936836, 5.538011404918507, 5.510090692900121],
+        "median_seconds": 5.517330578062683,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.29594150515e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      },
+      "auto": {
+        "seconds": [5.341697363881394, 5.35187654197216, 5.333461474161595, 5.329374860972166, 5.33517902600579],
+        "median_seconds": 5.33517902600579,
+        "iterations": [
+          [3],
+          [3],
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 3.865352482534945e-11,
+        "maximum_force_error": 1.2781424096192096e-10,
+        "density_rms": [
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13],
+          [2.1351466208716564e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-forward-center": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.078087305882946,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [1.0650156820192933, 1.0557952320668846],
+        "median_seconds": 1.060405457043089,
+        "iterations": [
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.648733213293623e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-forward-legacy": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.198246556799859,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [1.1245329161174595, 1.1283834630157799],
+        "median_seconds": 1.1264581895666197,
+        "iterations": [
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.649621391713323e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-forward-shared": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.112664388958365,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [1.0845797930378467, 1.0865868071559817],
+        "median_seconds": 1.0855833000969142,
+        "iterations": [
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.650331934449083e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-reverse-center": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.092578135197982,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [1.0605768389068544, 1.0673048819880933, 1.0688927830196917],
+        "median_seconds": 1.0673048819880933,
+        "iterations": [
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.649088484661503e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-reverse-legacy": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.173769218847156,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [1.1285902610979974, 1.128207344096154, 1.1276158159598708],
+        "median_seconds": 1.128207344096154,
+        "iterations": [
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.649266120345443e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-reverse-shared": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    },
+    "cold_seconds": 11.14850228279829,
+    "cold_iterations": [20],
+    "policies": {
+      "auto": {
+        "seconds": [1.0761204629670829, 1.077469555893913, 1.079105406999588],
+        "median_seconds": 1.077469555893913,
+        "iterations": [
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 2.2737367544323206e-12,
+        "maximum_force_error": 6.648910848977563e-11,
+        "density_rms": [
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13],
+          [1.8481918666648954e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/768-forward-center": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.51713591301814,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [5.4170194619800895, 5.449850397882983],
+        "median_seconds": 5.433434929931536,
+        "iterations": [
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.4481929024035e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/768-forward-legacy": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 102.132186365081,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [5.980266427155584, 5.994897427968681],
+        "median_seconds": 5.9875819275621325,
+        "iterations": [
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.448184020619303e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/768-forward-shared": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.74261003592983,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [5.581232212949544, 5.594774391967803],
+        "median_seconds": 5.588003302458674,
+        "iterations": [
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.448166257050909e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/768-reverse-center": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.5302254750859,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [5.4129694970324636, 5.452457044972107, 5.435644557932392],
+        "median_seconds": 5.435644557932392,
+        "iterations": [
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.448121848129924e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/768-reverse-legacy": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 102.25077842408791,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [5.952449530130252, 5.975089061073959, 5.981639286968857],
+        "median_seconds": 5.975089061073959,
+        "iterations": [
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.448263956677076e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/768-reverse-shared": {
+    "scope": "clean endpoint",
+    "properties": ["energy", "forces"],
+    "common_iteration_branch": true,
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    },
+    "cold_seconds": 101.77216004603542,
+    "cold_iterations": [21],
+    "policies": {
+      "auto": {
+        "seconds": [5.58287375792861, 5.5938795250840485, 5.595353349111974],
+        "median_seconds": 5.5938795250840485,
+        "iterations": [
+          [3],
+          [3],
+          [3]
+        ],
+        "maximum_energy_error": 4.001776687800884e-11,
+        "maximum_force_error": 1.448308365598061e-10,
+        "density_rms": [
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13],
+          [2.1347450253740485e-13]
+        ]
+      }
+    }
+  },
+  "derivatives/384-combined-legacy": {
+    "scope": "Sequential owner reconstruction, ABCCBA blocks; two then three samples per variant",
+    "seconds": [1.1245329161174595, 1.1283834630157799, 1.1285902610979974, 1.128207344096154, 1.1276158159598708],
+    "median_seconds": 1.128207344096154,
+    "iterations": [
+      [3],
+      [3],
+      [3],
+      [3],
+      [3]
+    ],
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    }
+  },
+  "derivatives/384-combined-shared": {
+    "scope": "Sequential owner reconstruction, ABCCBA blocks; two then three samples per variant",
+    "seconds": [1.0845797930378467, 1.0865868071559817, 1.0761204629670829, 1.077469555893913, 1.079105406999588],
+    "median_seconds": 1.079105406999588,
+    "iterations": [
+      [3],
+      [3],
+      [3],
+      [3],
+      [3]
+    ],
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    }
+  },
+  "derivatives/384-combined-center": {
+    "scope": "Sequential owner reconstruction, ABCCBA blocks; two then three samples per variant",
+    "seconds": [1.0650156820192933, 1.0557952320668846, 1.0605768389068544, 1.0673048819880933, 1.0688927830196917],
+    "median_seconds": 1.0650156820192933,
+    "iterations": [
+      [3],
+      [3],
+      [3],
+      [3],
+      [3]
+    ],
+    "density_sha256": {
+      "density_0": "90c4beddd055f1ffe2c600298ef060dc6ad286cbc17d04a909d0698006177e47"
+    }
+  },
+  "derivatives/768-combined-legacy": {
+    "scope": "Sequential owner reconstruction, ABCCBA blocks; two then three samples per variant",
+    "seconds": [5.980266427155584, 5.994897427968681, 5.952449530130252, 5.975089061073959, 5.981639286968857],
+    "median_seconds": 5.980266427155584,
+    "iterations": [
+      [3],
+      [3],
+      [3],
+      [3],
+      [3]
+    ],
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    }
+  },
+  "derivatives/768-combined-shared": {
+    "scope": "Sequential owner reconstruction, ABCCBA blocks; two then three samples per variant",
+    "seconds": [5.581232212949544, 5.594774391967803, 5.58287375792861, 5.5938795250840485, 5.595353349111974],
+    "median_seconds": 5.5938795250840485,
+    "iterations": [
+      [3],
+      [3],
+      [3],
+      [3],
+      [3]
+    ],
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    }
+  },
+  "derivatives/768-combined-center": {
+    "scope": "Sequential owner reconstruction, ABCCBA blocks; two then three samples per variant",
+    "seconds": [5.4170194619800895, 5.449850397882983, 5.4129694970324636, 5.452457044972107, 5.435644557932392],
+    "median_seconds": 5.435644557932392,
+    "iterations": [
+      [3],
+      [3],
+      [3],
+      [3],
+      [3]
+    ],
+    "density_sha256": {
+      "density_0": "09b2516e07b8483b47ac9607b9c30abc3485d2dfe7da92ca8f541017614738d9"
+    }
+  }
+}

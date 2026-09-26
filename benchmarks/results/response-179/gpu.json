@@ -1,0 +1,228 @@
+{
+  "schema": "vibeqc.response-evidence",
+  "version": 1,
+  "case": "water",
+  "device": "cuda",
+  "python": "3.12.12",
+  "numpy": "2.3.4",
+  "source_identity": "1e5ccd57dc527825ab2fa3b30ec0069b60cf566b9c00e1213b0bc4962ff50b1f",
+  "reference_identity": "f683e9af874af6f45524db4e737a3a9ec1862b11f7ffa977547d1bb1a8c9cbfe",
+  "problem_identity": "7d9555dd28916b1d97fbf42f9849ca94cadaa0e631611e58d463f1cd873a6a0e",
+  "operator_identity": "d090811961779a56afdffcbb77504152ae182cf4e5a640002f12d958e57e02a7",
+  "operator_backend": "30fb01eb952dbeee62c8400c827a44670a10f6439f73b3560b855ea131400bb0",
+  "operator_backend_label": "native-cuda-df-streamed-jk",
+  "matrix_free": true,
+  "metric_identity": "63d9839ed5a8ecd661543e181eafb7be46f5756d5aee5b3f9e6355027ed7dfce",
+  "source_metrics": {
+    "generation_ms": 1785.7368325591087,
+    "transfer_ms": 41.41203190758824,
+    "host_setup_peak_bytes": 11709,
+    "device_bytes": 3042
+  },
+  "backend_statistics": {
+    "actions": 195,
+    "seconds": 5.144572457298636,
+    "peak_bytes": 1170588,
+    "device_resident_bytes": 594440,
+    "host_resident_bytes": 1872
+  },
+  "provider_statistics": {
+    "transformations": 3,
+    "hits": 0,
+    "peak_bytes": 8418695,
+    "source_tiles": 3888,
+    "source_seconds": 2.068685244768858,
+    "transformation_seconds": 0.07183753699064255
+  },
+  "dimension": 10,
+  "rhs_count": 4,
+  "rhs_rank": 4,
+  "dot_identity_error": 0.0,
+  "finite_rotation_error": 8.166911970210309e-10,
+  "strategies": {
+    "sequential": {
+      "strategy": "sequential",
+      "converged": true,
+      "seconds": 2.1262447722256184,
+      "operator_actions": 80,
+      "peak_workspace_bytes": 11528,
+      "rhs_rank": 4,
+      "rank_deficient_rhs": false,
+      "solutions": [
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 7.69040150138272e-15,
+          "relative_residual": 2.2597045450244046e-15,
+          "operator_actions": 20,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.265958271920681,
+          "operator_seconds": 0.5304548442363739,
+          "workspace_bytes": 8008
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 1.187864057110763e-14,
+          "relative_residual": 4.151723389148056e-15,
+          "operator_actions": 20,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.26552329398691654,
+          "operator_seconds": 0.5299340281635523,
+          "workspace_bytes": 8008
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 8.012677031996693e-15,
+          "relative_residual": 2.690843250475983e-15,
+          "operator_actions": 20,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.26553299836814404,
+          "operator_seconds": 0.5299658514559269,
+          "workspace_bytes": 8008
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 7.073845001898774e-15,
+          "relative_residual": 2.755925743692974e-15,
+          "operator_actions": 20,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.26557786390185356,
+          "operator_seconds": 0.5300364643335342,
+          "workspace_bytes": 8008
+        }
+      ],
+      "maximum_solution_error": 5.917488721252084e-14
+    },
+    "blocked": {
+      "strategy": "blocked",
+      "converged": true,
+      "seconds": 0.6904230155050755,
+      "operator_actions": 26,
+      "peak_workspace_bytes": 9928,
+      "rhs_rank": 4,
+      "rank_deficient_rhs": false,
+      "solutions": [
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 6,
+          "residual_norm": 2.3402733105928555e-14,
+          "relative_residual": 6.8765281443305064e-15,
+          "operator_actions": 26,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.00033232569694519043,
+          "operator_seconds": 0.5830340273678303,
+          "workspace_bytes": 9928
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 6,
+          "residual_norm": 4.7143129111125744e-14,
+          "relative_residual": 1.6477073331467664e-14,
+          "operator_actions": 26,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.00033232569694519043,
+          "operator_seconds": 0.5830340273678303,
+          "workspace_bytes": 9928
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 6,
+          "residual_norm": 1.0024319614847092e-14,
+          "relative_residual": 3.366399602593696e-15,
+          "operator_actions": 26,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.00033232569694519043,
+          "operator_seconds": 0.5830340273678303,
+          "workspace_bytes": 9928
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 6,
+          "residual_norm": 1.0277994609368348e-14,
+          "relative_residual": 4.004242378775997e-15,
+          "operator_actions": 26,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.00033232569694519043,
+          "operator_seconds": 0.5830340273678303,
+          "workspace_bytes": 9928
+        }
+      ],
+      "maximum_solution_error": 6.661338147750939e-14
+    },
+    "recycled": {
+      "strategy": "recycled",
+      "converged": true,
+      "seconds": 2.232008231803775,
+      "operator_actions": 84,
+      "peak_workspace_bytes": 12168,
+      "rhs_rank": 4,
+      "rank_deficient_rhs": false,
+      "solutions": [
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 7.69040150138272e-15,
+          "relative_residual": 2.2597045450244046e-15,
+          "operator_actions": 21,
+          "recycled_vectors": 0,
+          "orthogonalization_seconds": 0.26549528166651726,
+          "operator_seconds": 0.5566988568753004,
+          "workspace_bytes": 8008
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 9.770002042155375e-15,
+          "relative_residual": 3.4147296357379796e-15,
+          "operator_actions": 21,
+          "recycled_vectors": 8,
+          "orthogonalization_seconds": 0.2654900774359703,
+          "operator_seconds": 0.5563700646162033,
+          "workspace_bytes": 8008
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 2.690177219164995e-14,
+          "relative_residual": 9.034240596329783e-15,
+          "operator_actions": 21,
+          "recycled_vectors": 8,
+          "orthogonalization_seconds": 0.2654870543628931,
+          "operator_seconds": 0.5563951935619116,
+          "workspace_bytes": 8008
+        },
+        {
+          "converged": true,
+          "reason": "converged",
+          "iterations": 10,
+          "residual_norm": 2.7879174632934262e-14,
+          "relative_residual": 1.0861551965471682e-14,
+          "operator_actions": 21,
+          "recycled_vectors": 8,
+          "orthogonalization_seconds": 0.2654251866042614,
+          "operator_seconds": 0.5563087519258261,
+          "workspace_bytes": 8008
+        }
+      ],
+      "maximum_solution_error": 6.061817714453355e-14
+    }
+  },
+  "not_run": {
+    "native_gpu_direct_four_center_jk": "the real-device path uses the streamed native CUDA DF J/K plan; a direct four-center GPU response backend is not promoted here"
+  },
+  "elapsed_seconds": 8.127931596711278
+}

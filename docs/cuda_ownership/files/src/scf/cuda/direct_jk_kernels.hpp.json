@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_jk_kernels.hpp",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Borrowed direct J/K kernel ABI and shared reduction width.",
+  "regions": []
+}

@@ -1,0 +1,293 @@
+{
+  "schema": "vibeqc.ecp-baseline-measurements.v1",
+  "date": "2026-09-12",
+  "source_base_revision": "6b3b640978717232bb2ed4475fb62e20c1b1c573",
+  "source_state": "uncommitted implementation at measurement time; no performance promotion",
+  "cpu": {
+    "device": "cpu",
+    "python": "3.11.16",
+    "pyscf": "2.14.0",
+    "machine": "x86_64",
+    "library_sha256": "1c612c98928ab9aba97dbbbdef5402a70c7795ef172f2d375fa2694884fe29fd",
+    "grid": {
+      "radial": 160,
+      "polar": 32,
+      "azimuth": 64
+    },
+    "refined_grid": {
+      "radial": 224,
+      "polar": 44,
+      "azimuth": 88
+    },
+    "atoms_bohr": [
+      [
+        "Na",
+        [
+          0.13,
+          -0.21,
+          0.17
+        ]
+      ],
+      [
+        "H",
+        [
+          0.43,
+          0.19,
+          3.2
+        ]
+      ]
+    ],
+    "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+    "timing_scope": "warm synchronous API including context, metadata, allocations and transfers",
+    "component_timing": "other coefficients zeroed; full local/projector engine retained",
+    "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI Retpoline\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+    "quadrature_difference": {
+      "local_matrix_max_abs": 3.4681684607518193e-12,
+      "nonlocal_matrix_max_abs": 8.604228440844963e-16,
+      "local_derivative_max_abs": 2.025903750313418e-11,
+      "nonlocal_derivative_max_abs": 2.636779683484747e-16
+    },
+    "libcint_matrix_max_abs": 3.468857145971782e-12,
+    "cpu_gpu_max_abs": {
+      "local": 0.0,
+      "nonlocal_": 0.0,
+      "local_derivative": 0.0,
+      "nonlocal_derivative": 0.0
+    },
+    "components": {
+      "local_value": {
+        "median_ms": 129.04460914433002,
+        "samples_ms": [
+          131.11834600567818,
+          128.64478770643473,
+          129.04460914433002
+        ]
+      },
+      "local_gradient": {
+        "median_ms": 167.722609359771,
+        "samples_ms": [
+          169.2877230234444,
+          167.722609359771,
+          167.0239232480526
+        ]
+      },
+      "nonlocal_value": {
+        "median_ms": 126.20741780847311,
+        "samples_ms": [
+          125.6566527299583,
+          126.20741780847311,
+          126.94525299593806
+        ]
+      },
+      "nonlocal_gradient": {
+        "median_ms": 158.90521835535765,
+        "samples_ms": [
+          160.23882571607828,
+          158.90521835535765,
+          158.55188108980656
+        ]
+      }
+    },
+    "hf": [
+      {
+        "method": "rhf",
+        "timing": {
+          "median_ms": 1665.4051318764687,
+          "samples_ms": [
+            1664.9777479469776,
+            1665.4051318764687,
+            1678.6491060629487
+          ]
+        },
+        "energy_abs_error": 2.4424906541753444e-15,
+        "force_max_abs_error": 2.4544463683717765e-12,
+        "resource_peak_bytes": {
+          "host": 3815888,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 3815888
+        }
+      },
+      {
+        "method": "uhf",
+        "timing": {
+          "median_ms": 1774.883423000574,
+          "samples_ms": [
+            1782.1776322089136,
+            1774.883423000574,
+            1774.2977058514953
+          ]
+        },
+        "energy_abs_error": 4.440892098500626e-16,
+        "force_max_abs_error": 9.783840404509192e-16,
+        "resource_peak_bytes": {
+          "host": 3818480,
+          "device": 0,
+          "pinned": 0,
+          "pageable": 3818480
+        }
+      }
+    ]
+  },
+  "cuda": {
+    "device": "cuda",
+    "python": "3.11.16",
+    "pyscf": "2.14.0",
+    "machine": "x86_64",
+    "library_sha256": "86732de23b9efbf9c5db3518a0f74c5680a0ae2585ce9f82737c3950d0af8611",
+    "grid": {
+      "radial": 160,
+      "polar": 32,
+      "azimuth": 64
+    },
+    "refined_grid": {
+      "radial": 224,
+      "polar": 44,
+      "azimuth": 88
+    },
+    "atoms_bohr": [
+      [
+        "Na",
+        [
+          0.13,
+          -0.21,
+          0.17
+        ]
+      ],
+      [
+        "H",
+        [
+          0.43,
+          0.19,
+          3.2
+        ]
+      ]
+    ],
+    "basis_identity": "db0c31afbe471a5226c8812ad76d230d268906e3c7db4890e544da1077444f48",
+    "timing_scope": "warm synchronous API including context, metadata, allocations and transfers",
+    "component_timing": "other coefficients zeroed; full local/projector engine retained",
+    "cpu": "Architecture:                         x86_64\nCPU op-mode(s):                       32-bit, 64-bit\nAddress sizes:                        52 bits physical, 57 bits virtual\nByte Order:                           Little Endian\nCPU(s):                               128\nOn-line CPU(s) list:                  0-127\nVendor ID:                            GenuineIntel\nModel name:                           INTEL(R) XEON(R) GOLD 6530\nCPU family:                           6\nModel:                                207\nThread(s) per core:                   2\nCore(s) per socket:                   32\nSocket(s):                            2\nStepping:                             2\nFrequency boost:                      enabled\nCPU max MHz:                          4000.0000\nCPU min MHz:                          800.0000\nBogoMIPS:                             4200.00\nFlags:                                fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                       VT-x\nL1d cache:                            3 MiB (64 instances)\nL1i cache:                            2 MiB (64 instances)\nL2 cache:                             128 MiB (64 instances)\nL3 cache:                             320 MiB (2 instances)\nNUMA node(s):                         2\nNUMA node0 CPU(s):                    0-31,64-95\nNUMA node1 CPU(s):                    32-63,96-127\nVulnerability Gather data sampling:   Not affected\nVulnerability Itlb multihit:          Not affected\nVulnerability L1tf:                   Not affected\nVulnerability Mds:                    Not affected\nVulnerability Meltdown:               Not affected\nVulnerability Mmio stale data:        Not affected\nVulnerability Reg file data sampling: Not affected\nVulnerability Retbleed:               Not affected\nVulnerability Spec rstack overflow:   Not affected\nVulnerability Spec store bypass:      Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:             Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:             Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS SW sequence; BHI Retpoline\nVulnerability Srbds:                  Not affected\nVulnerability Tsx async abort:        Not affected\n",
+    "gpu": "NVIDIA GeForce RTX 4090, 570.195.03",
+    "quadrature_difference": {
+      "local_matrix_max_abs": 3.4681684607518193e-12,
+      "nonlocal_matrix_max_abs": 8.604228440844963e-16,
+      "local_derivative_max_abs": 2.0259030564240277e-11,
+      "nonlocal_derivative_max_abs": 2.636779683484747e-16
+    },
+    "libcint_matrix_max_abs": 3.4688432681839743e-12,
+    "cpu_gpu_max_abs": {
+      "local": 3.469446951953614e-18,
+      "nonlocal_": 1.3877787807814457e-17,
+      "local_derivative": 3.469446951953614e-18,
+      "nonlocal_derivative": 6.938893903907228e-18
+    },
+    "components": {
+      "local_value": {
+        "median_ms": 90.47781117260456,
+        "samples_ms": [
+          89.58358410745859,
+          90.90054081752896,
+          90.47781117260456
+        ]
+      },
+      "local_gradient": {
+        "median_ms": 197.4858632311225,
+        "samples_ms": [
+          200.89386869221926,
+          197.4858632311225,
+          196.8159549869597
+        ]
+      },
+      "nonlocal_value": {
+        "median_ms": 88.9148348942399,
+        "samples_ms": [
+          88.82804587483406,
+          88.9148348942399,
+          89.1409651376307
+        ]
+      },
+      "nonlocal_gradient": {
+        "median_ms": 196.67594693601131,
+        "samples_ms": [
+          201.17393601685762,
+          196.67594693601131,
+          195.67353324964643
+        ]
+      }
+    },
+    "hf": [
+      {
+        "method": "rhf",
+        "timing": {
+          "median_ms": 1049.4176368229091,
+          "samples_ms": [
+            1062.864270992577,
+            1049.4176368229091,
+            1044.6142093278468
+          ]
+        },
+        "energy_abs_error": 1.9984014443252818e-15,
+        "force_max_abs_error": 5.538694503037789e-13,
+        "resource_peak_bytes": {
+          "host": 2835520,
+          "device": 2343376,
+          "pinned": 0,
+          "pageable": 2835520,
+          "device:0": 2343376
+        }
+      },
+      {
+        "method": "uhf",
+        "timing": {
+          "median_ms": 1042.7318890579045,
+          "samples_ms": [
+            1045.438758097589,
+            1042.7318890579045,
+            1042.5125882029533
+          ]
+        },
+        "energy_abs_error": 4.440892098500626e-16,
+        "force_max_abs_error": 8.396061623727746e-16,
+        "resource_peak_bytes": {
+          "host": 2876992,
+          "device": 2378528,
+          "pinned": 0,
+          "pageable": 2876992,
+          "device:0": 2378528
+        }
+      }
+    ]
+  },
+  "validation": {
+    "ecp_cuda": {
+      "passed": 25,
+      "failed": 0
+    },
+    "cpu_affected_basis_resources": {
+      "passed": 79,
+      "skipped": 3
+    },
+    "compiler_fock_resource_regressions": {
+      "passed": 281,
+      "skipped": 2
+    },
+    "ctest_cpu": {
+      "passed": 16,
+      "failed": 0
+    },
+    "ctest_cuda": {
+      "passed": 18,
+      "failed": 1,
+      "failure": "vibeqc_mixed_precision_tests: cached plan did not enter isolated Fock mode: CUDA runtime error",
+      "pre_ecp_build_reproduced": true
+    }
+  },
+  "implementation_sources_sha256": {
+    "src/integrals/ecp.cpp": "f775bb0ecc0241958982f0cd7edbed0e50540727851a38158be4cd1400cba87b",
+    "src/integrals/ecp_cuda.cu": "f5f95bcd294d3b47a7f722bd48e552a527b4593ff20e44694d227d40f9f430e8",
+    "src/api/c_api_ecp.cpp": "0c4d42f274896cddd516aee6311fdfacdd5f6bd72abd78b33bcbcb912bb789cc",
+    "python/vibeqc/ecp.py": "99ef1a002af7734a6110d6255ead91338b8975add31c582ef6d40f1d459b1893",
+    "python/vibeqc_compiler/integral/ecp.py": "0b8354209ff189645abb2b282455f53832e76a587f184407925c34fba691127e",
+    "tools/benchmark_ecp.py": "51346ee2ccca8b6a24d34861eaadb4094c8bfd1e6def18c27147eb3f71530c89"
+  }
+}

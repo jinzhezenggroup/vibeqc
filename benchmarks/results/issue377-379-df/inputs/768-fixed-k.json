@@ -1,0 +1,8 @@
+{
+  "case": "water-32mer-4s4-def2-svp-spherical",
+  "checkpoint_sha256": "aaa3f184c368b97f50512e59afc9525c16856937e07d5b4f483c50b21fd80851",
+  "input_sha256": "c6e7764b50585db21fb538dfe2d6ab4e21d09678f1e997f754c8f60420897e67",
+  "occupied_rank": 160,
+  "orthogonality_error": 1.3798823195187992e-12,
+  "energy": -2438.354141054296
+}

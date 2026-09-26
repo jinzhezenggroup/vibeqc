@@ -1,0 +1,711 @@
+diff --git a/include/vibeqc/vibeqc.h b/include/vibeqc/vibeqc.h
+index 58dcc83..3772317 100644
+--- a/include/vibeqc/vibeqc.h
++++ b/include/vibeqc/vibeqc.h
+@@ -664,7 +664,7 @@ VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
+ VIBEQC_API void vibeqc_system_destroy(vibeqc_system* system);
+ 
+ /** Scalar Gaussian residual ECP: c r^(power-2) exp(-exponent r^2).
+- * channel=-1 is local, 0..2 is a nonlocal projector difference.
++ * channel=-1 is local, 0..3 is a nonlocal projector difference.
+  * Core counts are atom-major and must leave positive effective ionic charges.
+  * All buffers are copied; existing all-electron system_create ABI is unchanged. */
+ typedef struct vibeqc_ecp_term {
+diff --git a/python/vibeqc/ecp.py b/python/vibeqc/ecp.py
+index d416518..9116025 100644
+--- a/python/vibeqc/ecp.py
++++ b/python/vibeqc/ecp.py
+@@ -38,9 +38,9 @@ def resolve_ecp(basis, atoms):
+         if len(set(channels)) != len(channels):
+             raise ValueError("duplicate ECP angular channel")
+         local = max(channels)
+-        if local > 3:
++        if local > 4:
+             raise NotImplementedError(
+-                "ECP local channel must be s/p/d/f; projectors at most d"
++                "ECP local channel must be s/p/d/f/g; projectors at most f"
+             )
+         if any(s.angular_momentum > 3 for s in element.shells):
+             raise NotImplementedError("ECP execution supports orbital s/p/d/f shells")
+diff --git a/python/vibeqc/resources_hf.py b/python/vibeqc/resources_hf.py
+index 565cc3d..9995967 100644
+--- a/python/vibeqc/resources_hf.py
++++ b/python/vibeqc/resources_hf.py
+@@ -175,7 +175,7 @@ def _ecp_workspace(item):
+     points = 2 * 44 * 44
+     return checked_bytes(
+         32 * n * n * (1 + d)
+-        + 32 * n * (points + 9)
++        + 32 * n * (points + 16)
+         + 256 * (points + 224 + n + orbital["primitives"] + orbital["ecp_terms"])
+         + 4096,
+         "ECP two-grid workspace",
+diff --git a/python/vibeqc_compiler/integral/ecp_grid.py b/python/vibeqc_compiler/integral/ecp_grid.py
+index cb0908e..d93092b 100644
+--- a/python/vibeqc_compiler/integral/ecp_grid.py
++++ b/python/vibeqc_compiler/integral/ecp_grid.py
+@@ -1,4 +1,4 @@
+-"""Compiler-owned bounded ECP host quadrature and real s/p/d harmonics.
++"""Compiler-owned bounded ECP host quadrature and real s/p/d/f harmonics.
+ 
+ The root iteration and grid traversal are finite compiler schedules. Scalar
+ recurrences, coordinate transforms and normalization use the common DAG.
+@@ -8,7 +8,7 @@ The independent CPU ECP oracle deliberately retains its own implementation.
+ import math
+ 
+ from .expr import Graph
+-from .ir import ECP_MAX_ORBITAL_ANGULAR
++from .ir import ECP_MAX_ORBITAL_ANGULAR, ECP_MAX_PROJECTOR_ANGULAR
+ from .scalar_c import ScalarCEmitter
+ from .shell_spec import cartesian_components
+ 
+@@ -27,6 +27,13 @@ def harmonic_roots():
+         math.sqrt(5 / (16 * math.pi)) * (3 * z * z - 1),
+         math.sqrt(15 / (4 * math.pi)) * x * z,
+         math.sqrt(15 / (16 * math.pi)) * (x * x - y * y),
++        math.sqrt(35 / (32 * math.pi)) * y * (3 * x * x - y * y),
++        math.sqrt(105 / (4 * math.pi)) * x * y * z,
++        math.sqrt(21 / (32 * math.pi)) * y * (5 * z * z - 1),
++        math.sqrt(7 / (16 * math.pi)) * z * (5 * z * z - 3),
++        math.sqrt(21 / (32 * math.pi)) * x * (5 * z * z - 1),
++        math.sqrt(105 / (16 * math.pi)) * z * (x * x - y * y),
++        math.sqrt(35 / (32 * math.pi)) * x * (x * x - 3 * y * y),
+     )
+ 
+ 
+@@ -110,7 +117,9 @@ def emit_ecp_grid_cpp():
+         "inline void ecp_harmonics(double x, double y, double z, double* out) {",
+     ]
+     graph, roots = harmonic_roots()
+-    lines += _assign(graph, roots, [f"out[{i}]" for i in range(9)]) + ["}"]
++    lines += _assign(
++        graph, roots, [f"out[{i}]" for i in range((ECP_MAX_PROJECTOR_ANGULAR + 1) ** 2)]
++    ) + ["}"]
+     lines += [
+         "template<class Radial>",
+         "inline Radial ecp_radial_node(double z, double weight) {",
+diff --git a/python/vibeqc_compiler/integral/ecp_projector.py b/python/vibeqc_compiler/integral/ecp_projector.py
+index a13f1ed..9e6a08d 100644
+--- a/python/vibeqc_compiler/integral/ecp_projector.py
++++ b/python/vibeqc_compiler/integral/ecp_projector.py
+@@ -9,7 +9,7 @@ The native adapter owns scheduling, storage and physical-atom scatter.
+ from .ecp import emit_ecp_ao_cuda
+ from .ecp_grid import emit_ecp_grid_cpp
+ from .expr import Graph
+-from .ir import EcpRadialTerm
++from .ir import ECP_MAX_PROJECTOR_ANGULAR, EcpRadialTerm
+ from .scalar_c import ScalarCEmitter
+ 
+ 
+@@ -131,7 +131,7 @@ def _emit_weighted_consumer():
+ 
+ 
+ def emit_ecp_quadrature_cpp():
+-    """Emit the validated s/p/d projector and powers 0..4 domain.
++    """Emit the validated s/p/d/f projector and powers 0..4 domain.
+ 
+     Type parameters expose only scalar term/node/jet records. They do not
+     select a mathematical backend. The same emitted arithmetic is compiled
+@@ -152,10 +152,12 @@ def emit_ecp_quadrature_cpp():
+         .replace("#pragma once\n", "")
+         .replace("__device__ inline", "VIBEQC_ECP_INLINE"),
+         "namespace vibeqc::generated {",
++        f"inline constexpr int ecp_max_projector_angular = {ECP_MAX_PROJECTOR_ANGULAR};",
++        f"inline constexpr int ecp_projector_count = {(ECP_MAX_PROJECTOR_ANGULAR + 1) ** 2};",
+         *emit_ecp_grid_cpp(),
+         *_emit_ao_consumer(),
+         *_emit_weighted_consumer(),
+-        "// Scalar ECP operator contract: local=-1, projectors=0..2, powers=0..4.",
++        "// Scalar ECP operator contract: local=-1, projectors=0..3, powers=0..4.",
+         "VIBEQC_ECP_INLINE double ecp_radial(unsigned power, double r,",
+         "    double alpha, double coefficient, double weight) {",
+         "  double out[1];",
+@@ -215,7 +217,7 @@ def emit_ecp_quadrature_cpp():
+         "    const Radial& radial, const Point* sphere, int nq, int center,",
+         "    const Jet* va, const Jet* vb, const Jet* pa, const Jet* pb,",
+         "    bool derivatives, double (&parts)[2][10]) {",
+-        "  double potential[4] = {};",
++        f"  double potential[{ECP_MAX_PROJECTOR_ANGULAR + 2}] = {{}};",
+         "  for (int part=0; part<2; ++part)",
+         "    for (int d=0; d<10; ++d) parts[part][d]=0;",
+         "  for (int t=0; t<nt; ++t) {",
+@@ -230,7 +232,7 @@ def emit_ecp_quadrature_cpp():
+     ]
+     # Emit the projector multiplicities from the operator channel convention;
+     # each l contains 2*l+1 orthonormal real harmonics, beginning at l*l.
+-    for channel in range(3):
++    for channel in range(ECP_MAX_PROJECTOR_ANGULAR + 1):
+         EcpRadialTerm(channel, 0, 1.0, 1.0)
+         lines += [
+             f"  for (int m={channel**2}; m<{(channel + 1) ** 2}; ++m)",
+diff --git a/python/vibeqc_compiler/integral/ir.py b/python/vibeqc_compiler/integral/ir.py
+index 52ca5d4..04c1d19 100644
+--- a/python/vibeqc_compiler/integral/ir.py
++++ b/python/vibeqc_compiler/integral/ir.py
+@@ -26,6 +26,7 @@ class KernelConsumer(str, Enum):
+ 
+ 
+ ECP_MAX_ORBITAL_ANGULAR = 3
++ECP_MAX_PROJECTOR_ANGULAR = 3
+ 
+ 
+ class OperatorFamily(str, Enum):
+@@ -186,8 +187,11 @@ class EcpRadialTerm:
+     coefficient: float
+ 
+     def __post_init__(self):
+-        if type(self.channel) is not int or not -1 <= self.channel <= 2:
+-            raise ValueError("ECP channel must be local (-1) or s/p/d")
++        if (
++            type(self.channel) is not int
++            or not -1 <= self.channel <= ECP_MAX_PROJECTOR_ANGULAR
++        ):
++            raise ValueError("ECP channel must be local (-1) or s/p/d/f")
+         if type(self.power) is not int or not 0 <= self.power <= 4:
+             raise ValueError("ECP radial power must be 0..4")
+         for name in ("exponent", "coefficient"):
+diff --git a/src/api/c_api_ecp.cpp b/src/api/c_api_ecp.cpp
+index c67072d..ae1db66 100644
+--- a/src/api/c_api_ecp.cpp
++++ b/src/api/c_api_ecp.cpp
+@@ -40,8 +40,9 @@ vibeqc_status vibeqc_system_create_ecp(vibeqc_context* context,
+     for (std::size_t i = 0; i < term_count; ++i) {
+       const auto& t = terms[i];
+       if (t.atom_index >= descriptor->atom_count || core_electrons[t.atom_index] == 0 ||
+-          t.channel < -1 || t.channel > 2 || t.power > 4 || !std::isfinite(t.exponent) ||
+-          t.exponent <= 0 || !std::isfinite(t.coefficient))
++          t.channel < -1 || t.channel > vibeqc::generated::ecp_max_projector_angular ||
++          t.power > 4 || !std::isfinite(t.exponent) || t.exponent <= 0 ||
++          !std::isfinite(t.coefficient))
+         throw std::invalid_argument("unsupported or invalid scalar Gaussian ECP term");
+       local[t.atom_index] = local[t.atom_index] || t.channel == -1;
+       present[t.atom_index] = true;
+diff --git a/src/integrals/ecp.cpp b/src/integrals/ecp.cpp
+index 3a5af14..237f09c 100644
+--- a/src/integrals/ecp.cpp
++++ b/src/integrals/ecp.cpp
+@@ -79,7 +79,7 @@ std::array<double, 4> evaluate(const AO& ao, const core::System& system,
+ }
+ 
+ // Any orthonormal real basis within l gives the same summed projector.
+-std::array<double, 9> harmonics(double x, double y, double z) {
++std::array<double, 16> harmonics(double x, double y, double z) {
+   return {1 / std::sqrt(4 * pi),
+           std::sqrt(3 / (4 * pi)) * x,
+           std::sqrt(3 / (4 * pi)) * y,
+@@ -88,7 +88,14 @@ std::array<double, 9> harmonics(double x, double y, double z) {
+           std::sqrt(15 / (4 * pi)) * y * z,
+           std::sqrt(5 / (16 * pi)) * (3 * z * z - 1),
+           std::sqrt(15 / (4 * pi)) * x * z,
+-          std::sqrt(15 / (16 * pi)) * (x * x - y * y)};
++          std::sqrt(15 / (16 * pi)) * (x * x - y * y),
++          std::sqrt(35 / (32 * pi)) * y * (3 * x * x - y * y),
++          std::sqrt(105 / (4 * pi)) * x * y * z,
++          std::sqrt(21 / (32 * pi)) * y * (5 * z * z - 1),
++          std::sqrt(7 / (16 * pi)) * z * (5 * z * z - 3),
++          std::sqrt(21 / (32 * pi)) * x * (5 * z * z - 1),
++          std::sqrt(105 / (16 * pi)) * z * (x * x - y * y),
++          std::sqrt(35 / (32 * pi)) * x * (x * x - 3 * y * y)};
+ }
+ }  // namespace
+ 
+@@ -123,7 +130,7 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
+   struct Point {
+     std::array<double, 3> xyz;
+     double weight;
+-    std::array<double, 9> y;
++    std::array<double, 16> y;
+   };
+   std::vector<Point> sphere;
+   for (const auto& zw : polar)
+@@ -134,13 +141,13 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
+     }
+   // A radial shell is the lifetime boundary: no full molecular quadrature/AO tensor.
+   std::vector<std::array<double, 4>> values(n * sphere.size());
+-  std::vector<std::array<double, 4>> projections(n * 9);
++  std::vector<std::array<double, 4>> projections(n * 16);
+   for (std::size_t center = 0; center < system.atoms.size(); ++center) {
+     if (system.atoms[center].ecp_core == 0) continue;
+     for (const auto& tw : radial_grid) {
+       const double t = (tw[0] + 1) / 2, r = t / (1 - t);
+       const double rw = tw[1] / (2 * (1 - t) * (1 - t));
+-      std::array<double, 4> potentials{};
++      std::array<double, 5> potentials{};
+       for (const auto& term : system.ecp_terms)
+         if (term.atom_index == center)
+           potentials[term.channel + 1] +=
+@@ -155,9 +162,9 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
+         for (std::size_t a = 0; a < n; ++a) {
+           const auto v = evaluate(aos[a], system, point);
+           values[a * sphere.size() + q] = v;
+-          for (unsigned m = 0; m < 9; ++m)
++          for (unsigned m = 0; m < 16; ++m)
+             for (unsigned d = 0; d < (derivatives ? 4U : 1U); ++d)
+-              projections[a * 9 + m][d] += sphere[q].weight * sphere[q].y[m] * v[d];
++              projections[a * 16 + m][d] += sphere[q].weight * sphere[q].y[m] * v[d];
+         }
+       }
+       for (std::size_t a = 0; a < n; ++a)
+@@ -175,10 +182,10 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
+                 local[d + 4] += w * va[0] * vb[d + 1];
+               }
+           }
+-          for (unsigned l = 0; l <= 2; ++l)
++          for (unsigned l = 0; l <= 3; ++l)
+             for (unsigned m = l * l; m < (l + 1) * (l + 1); ++m) {
+-              const auto& va = projections[a * 9 + m];
+-              const auto& vb = projections[b * 9 + m];
++              const auto& va = projections[a * 16 + m];
++              const auto& vb = projections[b * 16 + m];
+               const double w = potentials[l + 1];
+               nonlocal[0] += w * va[0] * vb[0];
+               if (derivatives)
+diff --git a/src/integrals/ecp.hpp b/src/integrals/ecp.hpp
+index 06af112..0fb8eb7 100644
+--- a/src/integrals/ecp.hpp
++++ b/src/integrals/ecp.hpp
+@@ -15,7 +15,7 @@ struct EcpData {
+ 
+ struct EcpSpherePoint {
+   double x, y, z, weight;
+-  double harmonics[9];
++  double harmonics[16];
+ };
+ struct EcpRadialPoint {
+   double r, weight;
+diff --git a/src/integrals/ecp_cuda.cu b/src/integrals/ecp_cuda.cu
+index 8cd9d3d..aae2b58 100644
+--- a/src/integrals/ecp_cuda.cu
++++ b/src/integrals/ecp_cuda.cu
+@@ -12,6 +12,8 @@
+ 
+ namespace vibeqc::integrals {
+ namespace {
++static_assert(sizeof(EcpSpherePoint::harmonics) / sizeof(double) == generated::ecp_projector_count);
++constexpr int projector_count = generated::ecp_projector_count;
+ struct Primitive {
+   double exponent, coefficient;
+ };
+@@ -40,8 +42,8 @@ __global__ void evaluate_ao(const AO* aos, const Primitive* primitives,
+ __global__ void project(const Four* values, const EcpSpherePoint* sphere, int n, int nq, int nr,
+                         bool derivatives, Four* projections) {
+   const int i = blockIdx.x * blockDim.x + threadIdx.x;
+-  if (i >= nr * n * 9) return;
+-  const int m = i % 9, a = (i / 9) % n, r = i / (9 * n);
++  if (i >= nr * n * projector_count) return;
++  const int m = i % projector_count, a = (i / projector_count) % n, r = i / (projector_count * n);
+   projections[i] = generated::ecp_project(values + (r * n + a) * nq, sphere, nq, m, derivatives);
+ }
+ __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
+@@ -55,8 +57,8 @@ __global__ void contract(const AO* aos, const core::EcpTerm* terms, int nt,
+   const int size = n * n, stride = size * (1 + ncoord);
+   double parts[2][10];
+   generated::ecp_contract(terms, nt, radii[r], sphere, nq, center, values + (r * n + a) * nq,
+-                          values + (r * n + b) * nq, projections + (r * n + a) * 9,
+-                          projections + (r * n + b) * 9, ncoord != 0, parts);
++                          values + (r * n + b) * nq, projections + (r * n + a) * projector_count,
++                          projections + (r * n + b) * projector_count, ncoord != 0, parts);
+   for (int part = 0; part < 2; ++part)
+     for (int transpose = 0; transpose < (a == b ? 1 : 2); ++transpose) {
+       const int item = transpose ? b * n + a : a * n + b;
+@@ -185,7 +187,7 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
+     auto dsphere = grid.allocate(sphere.size(), sphere.data());
+     auto dradii = grid.allocate(radial_grid.size(), radial_grid.data());
+     auto values = grid.allocate<Four>(n * nq);
+-    auto projections = grid.allocate<Four>(n * 9);
++    auto projections = grid.allocate<Four>(n * projector_count);
+     check(cudaMemsetAsync(destination, 0, 2 * stride * sizeof(double), stream));
+     for (unsigned c = 0; c < system.atoms.size(); ++c) {
+       const auto& atom = system.atoms[c];
+@@ -194,8 +196,8 @@ void run(const core::System& system, unsigned radial, unsigned polar, bool deriv
+         evaluate_ao<<<(n * nq + 127) / 128, 128, 0, stream>>>(
+             daos, dprimitives, dsphere, dradii + r, n, nq, 1, atom.position[0], atom.position[1],
+             atom.position[2], derivatives, values);
+-        project<<<(n * 9 + 127) / 128, 128, 0, stream>>>(values, dsphere, n, nq, 1, derivatives,
+-                                                         projections);
++        project<<<(n * projector_count + 127) / 128, 128, 0, stream>>>(values, dsphere, n, nq, 1,
++                                                                       derivatives, projections);
+         contract<<<(size + 127) / 128, 128, 0, stream>>>(daos, dterms, system.ecp_terms.size(),
+                                                          dsphere, dradii + r, values, projections,
+                                                          n, nq, 1, c, ncoord, destination);
+diff --git a/tests/native/test_ecp_capabilities.cpp b/tests/native/test_ecp_capabilities.cpp
+index 233e2ac..f4e88c5 100644
+--- a/tests/native/test_ecp_capabilities.cpp
++++ b/tests/native/test_ecp_capabilities.cpp
+@@ -62,12 +62,21 @@ void check_c_api() {
+                 "native ECP orbital-f/g capability mismatch");
+         require((system != nullptr) == (angular == 3), "failed ECP constructor published output");
+         if (angular == 3) {
+-          const vibeqc_ecp_term unsupported{0, 3, 2, 0.8, -2};
++          const std::array<vibeqc_ecp_term, 2> supported{{term, {0, 3, 2, 0.63, 0.74}}};
++          vibeqc_system* extended{};
++          require(
++              vibeqc_system_create_ecp(context.get(), &descriptor, cores.data(), supported.data(),
++                                       supported.size(), &extended) == VIBEQC_STATUS_SUCCESS &&
++                  extended,
++              "native f projector rejected");
++          vibeqc_system_destroy(extended);
++          const std::array<vibeqc_ecp_term, 2> unsupported{{term, {0, 4, 2, 0.8, -2}}};
+           vibeqc_system* bad{};
+-          require(vibeqc_system_create_ecp(context.get(), &descriptor, cores.data(), &unsupported,
+-                                           1, &bad) == VIBEQC_STATUS_INVALID_ARGUMENT &&
++          require(vibeqc_system_create_ecp(context.get(), &descriptor, cores.data(),
++                                           unsupported.data(), unsupported.size(),
++                                           &bad) == VIBEQC_STATUS_INVALID_ARGUMENT &&
+                       !bad,
+-                  "orbital f support silently enabled projector f");
++                  "projector f support silently enabled projector g");
+         }
+       }
+ }
+diff --git a/tests/native/test_ecp_projector.cpp b/tests/native/test_ecp_projector.cpp
+index a32fa30..d1e6a7d 100644
+--- a/tests/native/test_ecp_projector.cpp
++++ b/tests/native/test_ecp_projector.cpp
+@@ -14,7 +14,7 @@ struct Jet {
+ };
+ struct Point {
+   double x, y, z, weight;
+-  double harmonics[9];
++  double harmonics[16];
+ };
+ struct Radial {
+   double r, weight;
+@@ -52,7 +52,7 @@ void check_grid() {
+     ecp_make_grid(orders[0], orders[1], radii, sphere);
+     if (radii.size() != orders[0] || sphere.size() != 2 * orders[1] * orders[1])
+       throw std::runtime_error("generated grid size mismatch");
+-    long double gram[9][9]{};
++    long double gram[16][16]{};
+     for (const auto& p : sphere) {
+       if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
+           !std::isfinite(p.weight) || std::abs(p.x * p.x + p.y * p.y + p.z * p.z - 1) > 1e-14 ||
+@@ -60,12 +60,12 @@ void check_grid() {
+         throw std::runtime_error("generated sphere is not on unit sphere");
+       for (double harmonic : p.harmonics)
+         if (!std::isfinite(harmonic)) throw std::runtime_error("nonfinite generated harmonic");
+-      for (int a = 0; a < 9; ++a)
+-        for (int b = 0; b < 9; ++b)
++      for (int a = 0; a < 16; ++a)
++        for (int b = 0; b < 16; ++b)
+           gram[a][b] += (long double)p.weight * p.harmonics[a] * p.harmonics[b];
+     }
+-    for (int a = 0; a < 9; ++a)
+-      for (int b = 0; b < 9; ++b)
++    for (int a = 0; a < 16; ++a)
++      for (int b = 0; b < 16; ++b)
+         if (std::abs(gram[a][b] - (a == b ? 1 : 0)) > 2e-13L)
+           throw std::runtime_error("generated harmonic orthonormality failed");
+     // Addition theorem detects incorrect channel membership/relative signs/normalization.
+@@ -74,7 +74,7 @@ void check_grid() {
+       const auto& b = sphere[(q * 7 + 11) % sphere.size()];
+       const long double dot =
+           (long double)a.x * b.x + (long double)a.y * b.y + (long double)a.z * b.z;
+-      for (int l = 0; l < 3; ++l) {
++      for (int l = 0; l < 4; ++l) {
+         long double sum = 0;
+         for (int m = l * l; m < (l + 1) * (l + 1); ++m)
+           sum += (long double)a.harmonics[m] * b.harmonics[m];
+@@ -264,7 +264,7 @@ void check_weighted_consumer() {
+ // nodes using the spherical-harmonic addition theorem and Legendre P_l.
+ double kernel(int l, const Point& a, const Point& b) {
+   const double x = a.x * b.x + a.y * b.y + a.z * b.z;
+-  return (2 * l + 1) / (4 * pi) * (l == 0 ? 1 : l == 1 ? x : (3 * x * x - 1) / 2);
++  return (2 * l + 1) / (4 * pi) * std::legendre(l, x);
+ }
+ 
+ void check() {
+@@ -283,6 +283,7 @@ void check() {
+                   std::sqrt(3 / (4 * pi)) * z, std::sqrt(15 / (4 * pi)) * x * y,
+                   std::sqrt(15 / (4 * pi)) * y * z, std::sqrt(5 / (16 * pi)) * (3 * z * z - 1),
+                   std::sqrt(15 / (4 * pi)) * x * z, std::sqrt(15 / (16 * pi)) * (x * x - y * y)}};
++    vibeqc::generated::ecp_harmonics(x, y, z, sphere[q].harmonics);
+     for (int d = 0; d < 4; ++d) {
+       a[q].v[d] = std::sin(0.7 + 1.3 * q + d * 0.4);
+       b[q].v[d] = std::cos(-0.3 + 0.7 * q - d * 0.9);
+@@ -294,12 +295,12 @@ void check() {
+       for (int q = 0; q < nq; ++q)
+         for (int d = 1; d < 4; ++d)
+           av[q].v[d] = bv[q].v[d] = std::numeric_limits<double>::quiet_NaN();
+-    std::array<Jet, 9> pa{}, pb{};
+-    for (int m = 0; m < 9; ++m) {
++    std::array<Jet, 16> pa{}, pb{};
++    for (int m = 0; m < 16; ++m) {
+       pa[m] = vibeqc::generated::ecp_project(av.data(), sphere.data(), nq, m, derivatives);
+       pb[m] = vibeqc::generated::ecp_project(bv.data(), sphere.data(), nq, m, derivatives);
+     }
+-    for (int channel = -1; channel <= 2; ++channel)
++    for (int channel = -1; channel <= 3; ++channel)
+       for (unsigned power = 0; power <= 4; ++power)
+         for (double r : {0.0, 1e-7, 0.37, 1.9, 12.0}) {
+           const Radial radial{r, 0.73};
+diff --git a/tests/python/test_ecp.py b/tests/python/test_ecp.py
+index d40c00b..72589b3 100644
+--- a/tests/python/test_ecp.py
++++ b/tests/python/test_ecp.py
+@@ -13,7 +13,13 @@ from vibeqc.profiles import canonical_hash
+ 
+ 
+ def fixture(
+-    *, representation="spherical", d_shell=False, f_shell=False, f_on_h=False, spin=0
++    *,
++    representation="spherical",
++    d_shell=False,
++    f_shell=False,
++    f_on_h=False,
++    spin=0,
++    f_projector=False,
+ ):
+     gto = pytest.importorskip("pyscf.gto")
+     # Parameters are read only by this independent test, never by runtime.
+@@ -25,6 +31,9 @@ def fixture(
+     if f_on_h:
+         basis["H"] += [[3, [0.45, 0.9], [1.15, -0.12]]]
+     ecp = {"Na": gto.basis.load_ecp("lanl2dz", "Na")}
++    if f_projector:
++        # Synthetic bounded extension, not a new physical element parameterization.
++        ecp["Na"][1].append([3, [[], [], [[0.63, 0.74], [1.17, -0.21]]]])
+     atoms = [("Na", (0.13, -0.21, 0.17)), ("H", (0.43, 0.19, 3.2))]
+     mol = gto.M(
+         atom=atoms,
+@@ -203,7 +212,9 @@ def test_parameters_invalidate_identity_and_malformed_channels_fail():
+         resolve_ecp(bad, tuple(Atom.from_value(a) for a in atoms))
+ 
+ 
+-def detached_native(xyz, *, device="cpu", power=2, d_projector=False, orbital=0):
++def detached_native(
++    xyz, *, device="cpu", power=2, d_projector=False, orbital=0, f_projector=False
++):
+     """An ECP atom with no Gaussian shell tests its independent center motion."""
+     from vibeqc import _native
+ 
+@@ -243,6 +254,8 @@ def detached_native(xyz, *, device="cpu", power=2, d_projector=False, orbital=0)
+     records = [(-1, 0.8, -2.0), (0, 0.5, 3.0), (1, 0.4, -1.0)]
+     if d_projector:
+         records.append((2, 0.63, 0.74))
++    if f_projector:
++        records.extend(((3, 0.63, 0.74), (3, 1.17, -0.21)))
+     terms = (_native.EcpTermDescriptor * len(records))(
+         *(_native.EcpTermDescriptor(0, l, power, a, c) for l, a, c in records)
+     )
+@@ -279,11 +292,15 @@ def detached_native(xyz, *, device="cpu", power=2, d_projector=False, orbital=0)
+         library.vibeqc_context_destroy(context)
+ 
+ 
+-def detached_reference(xyz, *, power=2, d_projector=False, orbital=0):
++def detached_reference(
++    xyz, *, power=2, d_projector=False, orbital=0, f_projector=False
++):
+     gto = pytest.importorskip("pyscf.gto")
+     records = [(-1, 0.8, -2.0), (0, 0.5, 3.0), (1, 0.4, -1.0)]
+     if d_projector:
+         records.append((2, 0.63, 0.74))
++    if f_projector:
++        records.extend(((3, 0.63, 0.74), (3, 1.17, -0.21)))
+     channels = [
+         [channel, [[] for _ in range(power)] + [[[exponent, coefficient]]]]
+         for channel, exponent, coefficient in records
+@@ -459,7 +476,7 @@ def test_ecp_resource_budget_and_parameter_invalidation(device):
+     "field,value,match",
+     [
+         ("r_exponents", [5], "radial powers"),
+-        ("angular_momentum", [4], "local channel"),
++        ("angular_momentum", [5], "local channel"),
+         ("unknown", True, "unknown ECP"),
+     ],
+ )
+diff --git a/tests/python/test_ecp_f_projector.py b/tests/python/test_ecp_f_projector.py
+new file mode 100644
+index 0000000..c517ab7
+--- /dev/null
++++ b/tests/python/test_ecp_f_projector.py
+@@ -0,0 +1,132 @@
++"""Independent gates for f projectors, distinct from the orbital-f capability."""
++
++import os
++
++import numpy as np
++import pytest
++from test_ecp import detached_native, detached_reference, fixture, reference
++from vibeqc import Calculator, ResourceBudget
++from vibeqc.ecp import ecp_integrals
++
++
++def require_device(device):
++    if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
++        pytest.skip("requires an allocated CUDA device")
++
++
++@pytest.mark.parametrize("device", ["cpu", "cuda"])
++@pytest.mark.parametrize("power", range(5))
++def test_f_projector_detached_all_center_jets_and_weights(device, power):
++    require_device(device)
++    xyz = np.array([[0.13, -0.21, 0.17], [0.43, 0.19, 1.2], [-0.21, 0.11, -0.7]])
++    options = {"power": power, "orbital": 3, "d_projector": True, "f_projector": True}
++    actual = detached_native(xyz, device=device, **options)
++    expected = detached_reference(xyz, **options)
++    np.testing.assert_allclose(actual[:, 0], expected, atol=2e-9, rtol=1e-9)
++    without_f = detached_reference(xyz, **(options | {"f_projector": False}))
++    assert np.max(np.abs(expected[1] - without_f[1])) > 1e-4
++    jets = actual[:, 1:].reshape(2, 3, 3, *actual.shape[-2:])
++    np.testing.assert_allclose(jets.sum(axis=1), 0, atol=3e-12)
++    weights = np.random.default_rng(17143).normal(size=actual.shape[-2:])
++    for step in (2e-4, 7e-5):
++        for atom in range(3):
++            for axis in range(3):
++                delta = np.zeros_like(xyz)
++                delta[atom, axis] = step
++                fd = (
++                    detached_reference(xyz + delta, **options)
++                    - detached_reference(xyz - delta, **options)
++                ) / (2 * step)
++                np.testing.assert_allclose(
++                    jets[:, atom, axis], fd, atol=3e-7, rtol=3e-6
++                )
++                np.testing.assert_allclose(
++                    np.einsum("pij,ij->p", jets[:, atom, axis], weights),
++                    np.einsum("pij,ij->p", fd, weights),
++                    atol=2e-6,
++                    rtol=3e-6,
++                )
++
++
++@pytest.mark.parametrize("device", ["cpu", "cuda"])
++@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
++@pytest.mark.parametrize("spin", [0, 1])
++def test_f_projector_complete_hf(device, representation, spin):
++    require_device(device)
++    scf = pytest.importorskip("pyscf.scf")
++    atoms, basis, mol = fixture(
++        representation=representation, spin=spin, f_shell=True, f_projector=True
++    )
++    raw = ecp_integrals(atoms, basis, device=device)
++    np.testing.assert_allclose(raw.matrix, reference(mol), atol=2e-9, rtol=1e-9)
++    oracle = (scf.UHF(mol) if spin else scf.RHF(mol)).run(conv_tol=1e-12)
++    assert oracle.converged
++    result = Calculator(
++        method="uhf" if spin else "rhf", basis=basis, device=device
++    ).singlepoint(atoms, charge=spin, multiplicity=spin + 1)
++    assert result.converged
++    np.testing.assert_allclose(result.energy, oracle.e_tot, atol=2e-8, rtol=0)
++    np.testing.assert_allclose(
++        result.forces, -oracle.nuc_grad_method().kernel(), atol=2e-6, rtol=0
++    )
++    np.testing.assert_allclose(result.forces.sum(axis=0), 0, atol=2e-7)
++
++
++@pytest.mark.parametrize("device", ["cpu", "cuda"])
++def test_f_projector_budgeted_replay_and_energy_difference(device):
++    require_device(device)
++    atoms, basis, mol = fixture(f_projector=True)
++    calculator = Calculator(basis=basis, device=device)
++    plan = calculator.estimate_resources([atoms]).require_feasible()
++    bounded = Calculator(
++        basis=basis,
++        device=device,
++        resource_budget=ResourceBudget(
++            host_bytes=plan.peak_bytes["host"],
++            device_bytes=plan.peak_bytes.get("device"),
++        ),
++    )
++    direction = np.array([[0.23, -0.31, 0.17], [-0.19, 0.11, 0.29]])
++    with bounded.prepare_batch([atoms]) as batch:
++        initial = batch.execute(strict=True).items[0]
++        assert initial.converged
++        for step in (2e-4, 7e-5):
++            energies = []
++            for sign in (-1, 1):
++                xyz = mol.atom_coords() + sign * step * direction
++                replay = batch.execute(coordinates=[xyz], strict=True).items[0]
++                assert replay.converged
++                energies.append(replay.energy)
++            assert (energies[1] - energies[0]) / (2 * step) == pytest.approx(
++                -np.sum(initial.forces * direction), abs=2e-6
++            )
++        if device == "cuda":
++            ledger = batch.resource_diagnostics["observation"]["device_ledger"]
++            assert ledger["rejected_allocations"] == 0
++            assert 0 < ledger["peak_bytes"] <= ledger["limit_bytes"]
++
++
++@pytest.mark.parametrize("device", ["cpu", "cuda"])
++@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
++def test_f_projector_f_orbital_refinement(device, representation):
++    require_device(device)
++    atoms, basis, mol = fixture(
++        representation=representation, f_shell=True, f_projector=True
++    )
++    raw = ecp_integrals(atoms, basis, device=device)
++    fine = ecp_integrals(
++        atoms, basis, device=device, radial_points=224, polar_points=44
++    )
++    value_only = ecp_integrals(atoms, basis, device=device, derivatives=False)
++    np.testing.assert_allclose(raw.matrix, reference(mol), atol=2e-9, rtol=1e-9)
++    for component in ("local", "nonlocal_"):
++        np.testing.assert_allclose(
++            getattr(raw, component), getattr(fine, component), atol=2e-9, rtol=0
++        )
++        np.testing.assert_allclose(
++            getattr(raw, component), getattr(value_only, component), atol=2e-12, rtol=0
++        )
++    for component in ("local_derivative", "nonlocal_derivative"):
++        np.testing.assert_allclose(
++            getattr(raw, component), getattr(fine, component), atol=2e-8, rtol=0
++        )
+diff --git a/tests/python/test_ecp_ir.py b/tests/python/test_ecp_ir.py
+index 3cf44f9..54818a7 100644
+--- a/tests/python/test_ecp_ir.py
++++ b/tests/python/test_ecp_ir.py
+@@ -63,7 +63,9 @@ def test_generated_harmonic_channel_addition_theorem():
+             for v in (a, b)
+         )
+         dot = a @ b
+-        for l, polynomial in enumerate((1.0, dot, (3 * dot * dot - 1) / 2)):
++        for l, polynomial in enumerate(
++            (1.0, dot, (3 * dot * dot - 1) / 2, (5 * dot**3 - 3 * dot) / 2)
++        ):
+             selected = slice(l * l, (l + 1) ** 2)
+             assert ya[selected] @ yb[selected] == pytest.approx(
+                 (2 * l + 1) / (4 * math.pi) * polynomial, abs=3e-15
+@@ -74,7 +76,7 @@ def test_generated_harmonic_channel_addition_theorem():
+ def test_ecp_center_and_versioned_roundtrip(weighted):
+     ir = build_ecp_ir(
+         (1, 2),
+-        (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(0, 0, 1.5, 2)),
++        (EcpRadialTerm(-1, 2, 0.7, -3), EcpRadialTerm(3, 0, 1.5, 2)),
+         derivatives=True,
+         weighted=weighted,
+     )
+@@ -132,7 +134,7 @@ def test_invalid_ecp_lowerings_fail_closed():
+         build_ecp_ir((0, 0), (term,), weighted=True)
+     for kwargs in (
+         {"power": -1},
+-        {"channel": 3},
++        {"channel": 4},
+         {"exponent": 0},
+         {"coefficient": float("nan")},
+     ):
+diff --git a/tests/python/test_ecp_validation.py b/tests/python/test_ecp_validation.py
+index b410137..673e70e 100644
+--- a/tests/python/test_ecp_validation.py
++++ b/tests/python/test_ecp_validation.py
+@@ -66,10 +66,18 @@ def test_highest_singleton_channel_is_local():
+     assert terms == ((0, -1, 2, 0.8, -2.0), (0, 0, 2, 0.8, -2.0))
+ 
+ 
++def test_g_local_label_enables_f_projector_without_g_orbitals():
++    cores, terms = resolve(
++        element([potential(angular_momentum=[4]), potential(angular_momentum=[3])])
++    )
++    assert cores == (10,)
++    assert terms == ((0, -1, 2, 0.8, -2.0), (0, 3, 2, 0.8, -2.0))
++
++
+ @pytest.mark.parametrize(
+     "changes, message",
+     [
+-        ({"angular_momentum": [4]}, "local channel"),
++        ({"angular_momentum": [5]}, "local channel"),
+         ({"spin_orbit": True}, "unknown ECP parameter fields"),
+     ],
+ )

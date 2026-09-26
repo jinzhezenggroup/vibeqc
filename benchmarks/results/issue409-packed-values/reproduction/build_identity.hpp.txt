@@ -1,0 +1,9 @@
+#ifndef VIBEQC_BUILD_IDENTITY_HPP
+#define VIBEQC_BUILD_IDENTITY_HPP
+
+// The CMake input inventory includes native code and codegen/runtime policy.
+inline constexpr const char* kVibeqcSourceIdentity = "2d59ce1e7d001a6e9d0a28b90f44e6fcbcf8e752a6682b1d80a98738c72b3133";
+#define VIBEQC_CUDA_FAST_COMPILE 0
+#define VIBEQC_TUNING_RELEASE_BUILD 1
+
+#endif

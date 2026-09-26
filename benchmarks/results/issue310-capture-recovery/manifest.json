@@ -1,0 +1,431 @@
+{
+  "schema": "vibeqc.issue310.capture-recovery.v1",
+  "scope": "Capture recovery and retained failed/terminated 96-atom diagnostics. No converged 96-atom endpoint is included in this slice.",
+  "native_qualification": {
+    "job": 9521,
+    "source_commit": "9f2c582ff2799d6c7195996c0beb0b17af2b6701",
+    "source_identity": "84109b021ded4339586f84598d7a2b271b52ef45747be149d3ad4d9111f2a2bd",
+    "library_sha256": "57aae81aea2f7c2c17189f4925bc8e41a614bad6be13691d25446893c5f37123",
+    "gpu_native_tests_passed": 3,
+    "gpu_python_tests_passed": 45,
+    "memcheck_scope": "vibeqc_df_final_snapshot_tests only; zero errors and zero leaked bytes",
+    "analytical_768_ao_probe": "The same XsyevBatched owner succeeds before capture, rejects capture with end/pending 901, then succeeds in two ordinary solves; analytic spectrum error 1.33227e-15. These solver-only times are not molecular endpoint timings."
+  },
+  "attempts": [
+    {
+      "job": 9504,
+      "status": "launch_failed",
+      "reason": "Python environment lacked PySCF; no SCF ran"
+    },
+    {
+      "job": 9508,
+      "status": "failed",
+      "reason": "1 GiB preparation-budget rejection, not exhausted physical GPU VRAM"
+    },
+    {
+      "job": 9511,
+      "status": "failed",
+      "reason": "4 GiB run reached CUDA runtime failure after successful setup eigensolves"
+    },
+    {
+      "job": 9512,
+      "status": "failed_diagnostic",
+      "reason": "memcheck identified capture synchronization error 900 and stale invalidated capture error 901; six API errors and zero leaks, not a passing sanitizer run"
+    },
+    {
+      "job": 9516,
+      "status": "terminated_diagnostic",
+      "reason": "No cold endpoint after about 9 minutes 50 seconds; deliberately interrupted to add a native stack sampler"
+    },
+    {
+      "job": 9517,
+      "status": "timed_out_diagnostic",
+      "reason": "180-second bounded probe; attachment denied, GPU utilization sampling retained"
+    },
+    {
+      "job": 9519,
+      "status": "timed_out_diagnostic",
+      "reason": "100-second bounded probe; process opted in to the launch-shell debugger only. Two native stacks show GPU transformed-tile generation and streamed Coulomb submission, not reference diagonalization."
+    }
+  ],
+  "limitations": [
+    "All larger molecular attempts here failed or were terminated without a completed energy/force endpoint. Original in-progress result.json files are preserved verbatim; this manifest supplies their terminal interpretation.",
+    "Intrusive tracing, GPU sampling and debugger stops are diagnostic only; host compilation overlapped some attempts. No end-to-end speedup or GPU4PySCF parity is claimed.",
+    "The shape-only budget query assumes 16 MiB source reservation and does not replace actual plan diagnostics.",
+    "The ongoing 28-GiB resident endpoint in job 9521 and independent PySCF energy check are excluded. The retained job script documents qualification commands as well as that later, separately reported work."
+  ],
+  "archive": {
+    "path": "evidence.zip",
+    "bytes": 58712,
+    "sha256": "d5b8967afbf3d46f6e91d73952afad9329c5c6676e1fb35b27fc9eadb1f88faf",
+    "members": 73,
+    "restoration": "Every member restored and compared byte-for-byte."
+  },
+  "files": [
+    {
+      "path": "launch/vibeqc-308-96-atoms-4g-device-memory.csv",
+      "bytes": 260,
+      "sha256": "86636541047f89e5ad3ac9f67bd0fd2784df1fe2e67ad426bf32150f0e167567"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-4g-job.log",
+      "bytes": 203,
+      "sha256": "e4cac37f50baf494a2a42ac651fb7ce8552ebefefb4b251179af4f5e2cb9a292"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-4g-memcheck-probe.py",
+      "bytes": 4661,
+      "sha256": "3106f9e17387c4cce330ab735494f2aad10fb5c4b0d3b5a9ef6320bd32849700"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-4g-probe.log",
+      "bytes": 1509,
+      "sha256": "72ded413542855247b77d8c168e98079a6abecd7bb140cbf8a99700696fabfad"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-4g-probe.py",
+      "bytes": 4652,
+      "sha256": "c636b75b11de77a6dc7dcbfb6147bbbd98976a94dd226ba99f3a79cced092ed3"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-4g.sh",
+      "bytes": 875,
+      "sha256": "fead4a119253989ac645cd62406b881039cf604872811d831f24ea764dd9f823"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-budget-shapes.json",
+      "bytes": 2236,
+      "sha256": "be9d1b747b1b37b231c911382c3e490f24df6a7791b2c09afc84f29e978a3c42"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-device-memory.csv",
+      "bytes": 13,
+      "sha256": "569f4d59e6ea7c9382626e62db78a9e2e1ac7daf07d1b4cdddbca518d024b695"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-environment-preflight.json",
+      "bytes": 464,
+      "sha256": "af8b02d26b9fb63fe0a7b952c6d37ad774887d0f7fa7b116d357212bda515efc"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-job.log",
+      "bytes": 295,
+      "sha256": "faf3ae3fdf82f556f1d4746d583a725311dc8341b1b72378585e903ebd4c8153"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-memcheck-job.log",
+      "bytes": 28650,
+      "sha256": "2e88795fb6a52952b765292604d4b597880555cb70a45e0bff1bca5990a2c176"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-memcheck.sh",
+      "bytes": 563,
+      "sha256": "4fda6ffa7a555a512a20c2c4acb36f58ad533808a5b0606e32875ef8079be6fb"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-probe.log",
+      "bytes": 1496,
+      "sha256": "2eb0fa3a43843a39ee5701cf02bb8d2c59264b3dd3d32c53daa72ce537d0cd55"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-probe.py",
+      "bytes": 4602,
+      "sha256": "d8ab3811d3b19671cc138b50ee99c09b2a7b807d0b373376ab6b0e5c894d967d"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-device-memory.csv",
+      "bytes": 38272,
+      "sha256": "f58e4311965fe8a98aa5bee583896b76eaeab7e28f21ceff91401844e2d524e1"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-job.log",
+      "bytes": 314,
+      "sha256": "557cfd112c5689840bc0d58c61f8f82b10011d016160d6bd0010b2ef1452c711"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-probe.log",
+      "bytes": 18,
+      "sha256": "4be490a7ed8b27d2c813c10c3dca15a5af95289b3baf75e6d9bc716b62213bb8"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-probe.py",
+      "bytes": 4673,
+      "sha256": "779ec8895a307ca7bbaa69bae28dc97e0835ef1c639a11e87794b7e1f440e7c5"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-gpu.csv",
+      "bytes": 18975,
+      "sha256": "fa95fd2f82d376196745b797eacb71100ad73e4172a509fe6055c203738a6f05"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-job.log",
+      "bytes": 86,
+      "sha256": "2c54c622c7c90ce26f0e9236b948f4c94242322bbc84455ea27dc6a420459175"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-probe.log",
+      "bytes": 18,
+      "sha256": "4be490a7ed8b27d2c813c10c3dca15a5af95289b3baf75e6d9bc716b62213bb8"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-probe.py",
+      "bytes": 4681,
+      "sha256": "bcdd82691cdfc136daf6f55d5a1f8afc69e1e8189f74995f16d0c94156a193da"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-stack-1.log",
+      "bytes": 261,
+      "sha256": "734ba920970bc38353a56fc79116cc8fd0cc21c5e1334e0d2b71d501ae53bc32"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-stack-2.log",
+      "bytes": 261,
+      "sha256": "734ba920970bc38353a56fc79116cc8fd0cc21c5e1334e0d2b71d501ae53bc32"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2-gpu.csv",
+      "bytes": 10577,
+      "sha256": "4cf4be23a139c038c8a75e679cdbb05b894a99103c0dfdc98b2aa080402a676b"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2-job.log",
+      "bytes": 178,
+      "sha256": "be655e184fd215807b855d54ce3d7958d6a56e2edfd5f5caac592abdda1d131b"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2-probe.log",
+      "bytes": 18,
+      "sha256": "4be490a7ed8b27d2c813c10c3dca15a5af95289b3baf75e6d9bc716b62213bb8"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2-probe.py",
+      "bytes": 4890,
+      "sha256": "14ec4b71cc32229d64f39f9f417de55b198af5f7d17a5b5f8f81b1498758e1d7"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2-stack-1.log",
+      "bytes": 4765,
+      "sha256": "0f166719c3e3947876b6dbabc72f7127b4c2041c0965fafd58726416ee70731d"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2-stack-2.log",
+      "bytes": 4342,
+      "sha256": "6a5ddd11cd392fbc853cb6305b364a16db869150da26860430f2f77f0eac789d"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile-v2.sh",
+      "bytes": 1360,
+      "sha256": "d1a95e6cec09fe0421aa585e5bd0b1f59587b04b5fadc7dc81012744923fb8aa"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-profile.sh",
+      "bytes": 1306,
+      "sha256": "e67dd0d9b92984e80e7f15210174c0e2f878b96c2597bb5422c95231bc9f7a9a"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-stack-v2.log",
+      "bytes": 74,
+      "sha256": "3231db68e28e23caab19389fef74fbe0911d33147d436e440a5e3e255ace6c95"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery-stack.log",
+      "bytes": 138,
+      "sha256": "83bf2364a7918017ee38141aa22988d06d2dc96d459f5cdca255cb81673acf01"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms-recovery.sh",
+      "bytes": 985,
+      "sha256": "05157659a2336d3d607aef938f72748583e5e65446a6e96d4eae3ab18f27ca78"
+    },
+    {
+      "path": "launch/vibeqc-308-96-atoms.sh",
+      "bytes": 866,
+      "sha256": "087458ca1fb282ad3538a226cef26ccd6b105e3f04eacdd887850c248c0e0b83"
+    },
+    {
+      "path": "qualification/vibeqc-308-96-atoms-resident.sh",
+      "bytes": 1594,
+      "sha256": "0cf2c8ad1792b3e9a1a87369a41e13bda00f8d4bcf5d56d345a21222ef5c08d3"
+    },
+    {
+      "path": "qualification/vibeqc-310-large-capture-cuda-build-v2.log",
+      "bytes": 3077,
+      "sha256": "034ed54ac48b164d7b72abcdb0bc68983df9dcfa096c439b61a0067c59faddd6"
+    },
+    {
+      "path": "qualification/vibeqc-310-large-capture-hooks-v2.log",
+      "bytes": 1204,
+      "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+    },
+    {
+      "path": "qualification/vibeqc-310-large-capture-ownership-v2.log",
+      "bytes": 99,
+      "sha256": "f31552d70249eaa50ce81008149595eaad2d9db8e69d7779355a91425366f800"
+    },
+    {
+      "path": "qualification/vibeqc-310-xsyev-recovery-probe.cpp",
+      "bytes": 3333,
+      "sha256": "c62901ae5cdca21c4db2084927de56e88c7f319ed0e8b1460856239d4991609c"
+    },
+    {
+      "path": "qualification/vibeqc-310-xsyev-recovery-probe.log",
+      "bytes": 353,
+      "sha256": "c98627c8ea798e5407e5d49f0819f080f50971202dcc1fbc83ce13b26d7d5b1a"
+    },
+    {
+      "path": "qualification/vibeqc-324-cumetal-patch-check.log",
+      "bytes": 116,
+      "sha256": "195356dcd244f901373e5640661e88f0f1d7607225978d579abefe9d71770f1a"
+    },
+    {
+      "path": "qualification/vibeqc-324-gpu-native.log",
+      "bytes": 497,
+      "sha256": "c15cf6ba244db01f7aa3cab80dcb64c2899d2dd16b8bd75d94d928ee8d0c43ab"
+    },
+    {
+      "path": "qualification/vibeqc-324-gpu-python.log",
+      "bytes": 111,
+      "sha256": "82527ac2149c63e7f8ff703e853caa5041a3e157254d41ba7dc331ef4b90a68d"
+    },
+    {
+      "path": "qualification/vibeqc-324-memcheck.log",
+      "bytes": 118,
+      "sha256": "be43266a7d902f3876c503fc344bb7ca8b0dc750da7ca06ce64389b6b8a019db"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-4g-memcheck/cold-energy.host.jsonl",
+      "bytes": 2462,
+      "sha256": "76dc23494fb7c112600cab5b8d5351f4f3847f6d95b1480a2aa7866c154bf3fe"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-4g-memcheck/geometry.json",
+      "bytes": 10211,
+      "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-4g-memcheck/result.json",
+      "bytes": 1648,
+      "sha256": "be75b2b1fb57fc46169c939a62268aed16fd0bc056993366d3d3a1357d954d0b"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-4g/cold-energy.host.jsonl",
+      "bytes": 2472,
+      "sha256": "199f8a36f602f17601695bfc545d32488eae24dad6ba7e0a3992e66cbdc844fe"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-4g/geometry.json",
+      "bytes": 10211,
+      "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-4g/result.json",
+      "bytes": 1639,
+      "sha256": "6165fd20d0470b7a609f79ecb204edccf21afc77af657ead598dc2d789ca19c5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-launch-9504/vibeqc-308-96-atoms-device-memory.csv",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-launch-9504/vibeqc-308-96-atoms-job.log",
+      "bytes": 295,
+      "sha256": "d5906b8f02519788d2fbf0b660955de1f899561fc2e45caaa38d53ac15fe0c90"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-launch-9504/vibeqc-308-96-atoms-probe.log",
+      "bytes": 1010,
+      "sha256": "c574dd24469b418b2cf0a7706dff7d2cda1ff1915d089baf6a03d7358560969c"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-launch-9504/vibeqc-308-96-atoms-probe.py",
+      "bytes": 4602,
+      "sha256": "d8ab3811d3b19671cc138b50ee99c09b2a7b807d0b373376ab6b0e5c894d967d"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-launch-9504/vibeqc-308-96-atoms.sh",
+      "bytes": 882,
+      "sha256": "2c063310264b252e8aa354f16d72bde772a830d1bc5c21049ad08c0f6e6bc309"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery-profile-v2/geometry.json",
+      "bytes": 10211,
+      "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery-profile-v2/result.json",
+      "bytes": 879,
+      "sha256": "6266f9af4fa91af5aecd832a826bcf9a2016cf23d938da4c142b2cf4155aa128"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery-profile/geometry.json",
+      "bytes": 10211,
+      "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery-profile/result.json",
+      "bytes": 879,
+      "sha256": "cf674548f79047cda31a2817935418331268301760365844de1c118f2c906b83"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery/geometry.json",
+      "bytes": 10211,
+      "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery/interruption.json",
+      "bytes": 337,
+      "sha256": "21e9eeec8a19e8fd6e6decbc772b6c8ddda4126261e0ec1789725490c01ed7be"
+    },
+    {
+      "path": "vibeqc-308-96-atoms-recovery/result.json",
+      "bytes": 879,
+      "sha256": "9a8494baf3dcb20e371396394a34d680abf4838272cc650df0d27ef6640b01f5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/cold-energy.host.jsonl",
+      "bytes": 599,
+      "sha256": "0c7a14c249e43498bb0571e32e14ae34c21f3bb5cd3dadf28888671e76f80c7b"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/geometry.json",
+      "bytes": 10211,
+      "sha256": "23200f7dd9e07a3a4d28528699a62c05d7b079d4913c8df68fff55a056ed52e5"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/launch-9508/vibeqc-308-96-atoms-device-memory.csv",
+      "bytes": 13,
+      "sha256": "569f4d59e6ea7c9382626e62db78a9e2e1ac7daf07d1b4cdddbca518d024b695"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/launch-9508/vibeqc-308-96-atoms-environment-preflight.json",
+      "bytes": 464,
+      "sha256": "af8b02d26b9fb63fe0a7b952c6d37ad774887d0f7fa7b116d357212bda515efc"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/launch-9508/vibeqc-308-96-atoms-job.log",
+      "bytes": 295,
+      "sha256": "faf3ae3fdf82f556f1d4746d583a725311dc8341b1b72378585e903ebd4c8153"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/launch-9508/vibeqc-308-96-atoms-probe.log",
+      "bytes": 1496,
+      "sha256": "2eb0fa3a43843a39ee5701cf02bb8d2c59264b3dd3d32c53daa72ce537d0cd55"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/launch-9508/vibeqc-308-96-atoms-probe.py",
+      "bytes": 4602,
+      "sha256": "d8ab3811d3b19671cc138b50ee99c09b2a7b807d0b373376ab6b0e5c894d967d"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/launch-9508/vibeqc-308-96-atoms.sh",
+      "bytes": 866,
+      "sha256": "087458ca1fb282ad3538a226cef26ccd6b105e3f04eacdd887850c248c0e0b83"
+    },
+    {
+      "path": "vibeqc-308-96-atoms/result.json",
+      "bytes": 1578,
+      "sha256": "057e99e02fb77a6fc3d243390a912bd0f23cca49446159bdd94e9153a287b72c"
+    }
+  ]
+}

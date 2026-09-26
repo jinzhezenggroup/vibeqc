@@ -1,0 +1,77 @@
+{
+  "acceptance": {
+    "host_controlled_gmres_not_resident_krylov": true,
+    "independent_lambda_residual_limit": 1.1e-09,
+    "lambda_cpu_gpu_atol_rtol": 2e-10,
+    "no_cpu_scientific_fallback": true
+  },
+  "case": "h2o",
+  "cpu_backend": "numpy-cpu-interpreter",
+  "device": "RTX 5090",
+  "gpu_backend": "cuda-fp64-ordinary-stream",
+  "independent_lambda_residual_max": 5.193774609609653e-12,
+  "independent_lambda_residual_norm": 9.79843838859687e-12,
+  "iterations": 44,
+  "lambda_residual_norm": 9.798428958429984e-12,
+  "max_abs_lambda1_error": 1.3877787807814457e-17,
+  "max_abs_lambda2_error": 4.163336342344337e-17,
+  "nvcc": "Build cuda_12.9.r12.9/compiler.36037853_0",
+  "operator_actions": 90,
+  "resource_peak_bytes": {
+    "device": 629680896,
+    "device:0": 629680896,
+    "host": 864160,
+    "pageable": 864160,
+    "pinned": 0
+  },
+  "schema": "vibeqc.cc.lambda_cuda_qualification/1",
+  "slurm_job_id": "10309",
+  "solver_backend": "python-response-gmres",
+  "source_commit": "4c581e20fbdb9ff42e750e087c05e945843f65ac",
+  "target": "sm_120",
+  "test": "python -m pytest -q tests/python/test_cc_lambda_cuda.py::test_real_cuda_lambda_water_matches_cpu_and_reports_resources",
+  "transfer_metrics": {
+    "independent_primal": {
+      "calls": 1,
+      "observed_device_to_host_bytes": 888,
+      "observed_host_to_device_bytes": 11040,
+      "peak_tracked_device_bytes": 75635200,
+      "peak_tracked_host_bytes": 81560
+    },
+    "independent_rhs": {
+      "calls": 1,
+      "observed_device_to_host_bytes": 880,
+      "observed_host_to_device_bytes": 968,
+      "peak_tracked_device_bytes": 71311872,
+      "peak_tracked_host_bytes": 71480
+    },
+    "independent_transpose": {
+      "calls": 1,
+      "observed_device_to_host_bytes": 880,
+      "observed_host_to_device_bytes": 11920,
+      "peak_tracked_device_bytes": 71502848,
+      "peak_tracked_host_bytes": 82432
+    },
+    "shared_primal": {
+      "calls": 1,
+      "observed_device_to_host_bytes": 888,
+      "observed_host_to_device_bytes": 11040,
+      "peak_tracked_device_bytes": 71388928,
+      "peak_tracked_host_bytes": 81560
+    },
+    "shared_rhs": {
+      "calls": 1,
+      "observed_device_to_host_bytes": 880,
+      "observed_host_to_device_bytes": 968,
+      "peak_tracked_device_bytes": 71311872,
+      "peak_tracked_host_bytes": 71480
+    },
+    "shared_transpose": {
+      "calls": 90,
+      "observed_device_to_host_bytes": 79200,
+      "observed_host_to_device_bytes": 1072800,
+      "peak_tracked_device_bytes": 71397888,
+      "peak_tracked_host_bytes": 82432
+    }
+  }
+}

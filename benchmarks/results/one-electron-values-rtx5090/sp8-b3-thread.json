@@ -1,0 +1,4436 @@
+{
+  "batch": 3,
+  "binary_hash": "4a191c70605263b044ad097627f484eea17d2454eb6c64015a72dc310c6c92ab",
+  "case": "sp8",
+  "comparison": {
+    "reason": "difference within 2%, measurement noise, or no improvement",
+    "status": "not-run",
+    "workloads": {
+      "changed-geometry": {
+        "baseline": {
+          "maximum_seconds": 0.012821624055504799,
+          "median_seconds": 0.012782589998096228,
+          "minimum_seconds": 0.012751430971547961,
+          "raw_seconds": [
+            0.012821624055504799,
+            0.01277102786116302,
+            0.012751430971547961,
+            0.012795784045010805,
+            0.012782589998096228
+          ],
+          "relative_mad": 0.0010321888534751203,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.012944066897034645,
+          "median_seconds": 0.012925171060487628,
+          "minimum_seconds": 0.012901486130431294,
+          "raw_seconds": [
+            0.012925171060487628,
+            0.012920241104438901,
+            0.012944066897034645,
+            0.012901486130431294,
+            0.012941431952640414
+          ],
+          "relative_mad": 0.0012580794541664489,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -0.011154317115125822,
+        "significant": false
+      },
+      "cold-start": {
+        "baseline": {
+          "maximum_seconds": 0.010139273945242167,
+          "median_seconds": 0.00974761787801981,
+          "minimum_seconds": 0.009725325042381883,
+          "raw_seconds": [
+            0.010139273945242167,
+            0.009830225026234984,
+            0.009725786978378892,
+            0.009725325042381883,
+            0.00974761787801981
+          ],
+          "relative_mad": 0.002287003441958453,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.012119886931031942,
+          "median_seconds": 0.009937570197507739,
+          "minimum_seconds": 0.009878367884084582,
+          "raw_seconds": [
+            0.009937570197507739,
+            0.009880932047963142,
+            0.012119886931031942,
+            0.010080842999741435,
+            0.009878367884084582
+          ],
+          "relative_mad": 0.005957423419057125,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -0.019487050258325977,
+        "significant": false
+      },
+      "unchanged-geometry": {
+        "baseline": {
+          "maximum_seconds": 0.00250850897282362,
+          "median_seconds": 0.0024357091169804335,
+          "minimum_seconds": 0.002396665047854185,
+          "raw_seconds": [
+            0.00250850897282362,
+            0.0024357091169804335,
+            0.0024797229561954737,
+            0.002396665047854185,
+            0.0024280052166432142
+          ],
+          "relative_mad": 0.01602985711801727,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.002498198999091983,
+          "median_seconds": 0.002432894194498658,
+          "minimum_seconds": 0.0023945418652147055,
+          "raw_seconds": [
+            0.002479142975062132,
+            0.002432894194498658,
+            0.002428045030683279,
+            0.0023945418652147055,
+            0.002498198999091983
+          ],
+          "relative_mad": 0.01576407612409791,
+          "samples": 5
+        },
+        "noise_floor": 0.06358786648423037,
+        "relative_improvement": 0.00115568910185182,
+        "significant": false
+      }
+    }
+  },
+  "cuda_visible_devices": "0",
+  "mapping": "thread",
+  "memory": {
+    "baseline": null,
+    "candidate": null
+  },
+  "production_promoted": false,
+  "revision": "d62e03cca9f4378a1acbe5b21357141b7fb7ea5f",
+  "samples": [
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256305613559171e-11,
+          9.310428360814933e-11,
+          9.367222224611415e-11
+        ],
+        "energies": [
+          -0.28970232524805184,
+          -0.2847944060195521,
+          -0.27981828000391495
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          0.0,
+          3.3306690738754696e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186336
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185856
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185856
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 188064
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187712
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186368
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.010139273945242167,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256303730765037e-11,
+          9.310443965554921e-11,
+          9.36722484538655e-11
+        ],
+        "energies": [
+          -0.2897023252480534,
+          -0.2847944060195525,
+          -0.27981828000391473
+        ],
+        "energy_change": [
+          0.0,
+          1.1102230246251565e-16,
+          2.220446049250313e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186848
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186400
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186368
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186784
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187872
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187072
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186848
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186400
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186144
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.009937570197507739,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256303730765037e-11,
+          9.310443965554921e-11,
+          9.36722484538655e-11
+        ],
+        "energies": [
+          -0.2897023252480534,
+          -0.2847944060195525,
+          -0.27981828000391473
+        ],
+        "energy_change": [
+          0.0,
+          1.1102230246251565e-16,
+          2.220446049250313e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186848
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186240
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186336
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186240
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186112
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.009880932047963142,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256305613559171e-11,
+          9.310428360814933e-11,
+          9.367222224611415e-11
+        ],
+        "energies": [
+          -0.28970232524805184,
+          -0.2847944060195521,
+          -0.27981828000391495
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          0.0,
+          3.3306690738754696e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187392
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186528
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.009830225026234984,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256305613559171e-11,
+          9.310428360814933e-11,
+          9.367222224611415e-11
+        ],
+        "energies": [
+          -0.28970232524805184,
+          -0.2847944060195521,
+          -0.27981828000391495
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          0.0,
+          3.3306690738754696e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187424
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187872
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187424
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186496
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186272
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186528
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.009725786978378892,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256303730765037e-11,
+          9.310443965554921e-11,
+          9.36722484538655e-11
+        ],
+        "energies": [
+          -0.2897023252480534,
+          -0.2847944060195525,
+          -0.27981828000391473
+        ],
+        "energy_change": [
+          0.0,
+          1.1102230246251565e-16,
+          2.220446049250313e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186624
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186272
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186336
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186272
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186080
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186176
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186176
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012119886931031942,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256303730765037e-11,
+          9.310443965554921e-11,
+          9.36722484538655e-11
+        ],
+        "energies": [
+          -0.2897023252480534,
+          -0.2847944060195525,
+          -0.27981828000391473
+        ],
+        "energy_change": [
+          0.0,
+          1.1102230246251565e-16,
+          2.220446049250313e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186240
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187392
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186240
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186336
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186240
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186144
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186144
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.010080842999741435,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256305613559171e-11,
+          9.310428360814933e-11,
+          9.367222224611415e-11
+        ],
+        "energies": [
+          -0.28970232524805184,
+          -0.2847944060195521,
+          -0.27981828000391495
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          0.0,
+          3.3306690738754696e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186336
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186848
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185856
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186496
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185984
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.009725325042381883,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256305613559171e-11,
+          9.310428360814933e-11,
+          9.367222224611415e-11
+        ],
+        "energies": [
+          -0.28970232524805184,
+          -0.2847944060195521,
+          -0.27981828000391495
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          0.0,
+          3.3306690738754696e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186944
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186240
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185888
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185920
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187360
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187968
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187296
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186528
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 185952
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.00974761787801981,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          9.256303730765037e-11,
+          9.310443965554921e-11,
+          9.36722484538655e-11
+        ],
+        "energies": [
+          -0.2897023252480534,
+          -0.2847944060195525,
+          -0.27981828000391473
+        ],
+        "energy_change": [
+          0.0,
+          1.1102230246251565e-16,
+          2.220446049250313e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186784
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186432
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 188352
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186816
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186368
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186272
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 8,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 9,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186048
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 10,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186080
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 11,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186144
+          }
+        ],
+        "iterations": [
+          11,
+          11,
+          11
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.009878367884084582,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.0733548326418367e-11,
+          2.0899810771660987e-11,
+          2.1073863034540883e-11
+        ],
+        "energies": [
+          -0.2897023252480523,
+          -0.2847944060195521,
+          -0.27981828000391484
+        ],
+        "energy_change": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 188256
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.00250850897282362,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.0733620237130288e-11,
+          2.0899793313586552e-11,
+          2.1073840256185915e-11
+        ],
+        "energies": [
+          -0.2897023252480536,
+          -0.2847944060195525,
+          -0.2798182800039146
+        ],
+        "energy_change": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187392
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.002479142975062132,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.073352729091645e-11,
+          2.0899756421179648e-11,
+          2.1073840256185915e-11
+        ],
+        "energies": [
+          -0.2897023252480536,
+          -0.2847944060195524,
+          -0.2798182800039146
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187072
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.002432894194498658,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.0733548326418367e-11,
+          2.0899834824155553e-11,
+          2.1073863034540883e-11
+        ],
+        "energies": [
+          -0.2897023252480523,
+          -0.2847944060195522,
+          -0.27981828000391484
+        ],
+        "energy_change": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187424
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.0024357091169804335,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.0733548326418367e-11,
+          2.0899834824155553e-11,
+          2.1073863034540883e-11
+        ],
+        "energies": [
+          -0.2897023252480523,
+          -0.2847944060195522,
+          -0.27981828000391484
+        ],
+        "energy_change": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187456
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.0024797229561954737,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.073352729091645e-11,
+          2.0899756421179648e-11,
+          2.1073840256185915e-11
+        ],
+        "energies": [
+          -0.2897023252480536,
+          -0.2847944060195524,
+          -0.2798182800039146
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187104
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.002428045030683279,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.073352729091645e-11,
+          2.0899756421179648e-11,
+          2.1073840256185915e-11
+        ],
+        "energies": [
+          -0.2897023252480536,
+          -0.2847944060195524,
+          -0.2798182800039146
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186976
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.0023945418652147055,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.0733548326418367e-11,
+          2.0899834824155553e-11,
+          2.1073863034540883e-11
+        ],
+        "energies": [
+          -0.2897023252480523,
+          -0.2847944060195522,
+          -0.27981828000391484
+        ],
+        "energy_change": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187680
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.002396665047854185,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.0733548326418367e-11,
+          2.0899834824155553e-11,
+          2.1073863034540883e-11
+        ],
+        "energies": [
+          -0.2897023252480523,
+          -0.2847944060195522,
+          -0.27981828000391484
+        ],
+        "energy_change": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 187488
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.0024280052166432142,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          2.073352729091645e-11,
+          2.0899756421179648e-11,
+          2.1073840256185915e-11
+        ],
+        "energies": [
+          -0.2897023252480536,
+          -0.2847944060195524,
+          -0.2798182800039146
+        ],
+        "energy_change": [
+          2.220446049250313e-16,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 186976
+          }
+        ],
+        "iterations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.002498198999091983,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          8.025242554562872e-11,
+          8.087924741389552e-11,
+          8.153654766038062e-11
+        ],
+        "energies": [
+          -0.28653499679063943,
+          -0.2815828749078396,
+          -0.2765640878769524
+        ],
+        "energy_change": [
+          1.1102230246251565e-16,
+          7.771561172376096e-16,
+          4.440892098500626e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449664
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449280
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449216
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449568
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 450112
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449824
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449568
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012821624055504799,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          8.025234434024949e-11,
+          8.087912824737452e-11,
+          8.153664789119495e-11
+        ],
+        "energies": [
+          -0.2865349967906399,
+          -0.2815828749078412,
+          -0.2765640878769534
+        ],
+        "energy_change": [
+          3.3306690738754696e-16,
+          6.661338147750939e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449440
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 453120
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449312
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 453216
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 450368
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449760
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 453280
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012925171060487628,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          7.721707582455233e-11,
+          7.783297950541115e-11,
+          7.848028068948193e-11
+        ],
+        "energies": [
+          -0.2928001587694955,
+          -0.2879373110850817,
+          -0.28300467181658884
+        ],
+        "energy_change": [
+          8.881784197001252e-16,
+          3.3306690738754696e-16,
+          5.551115123125783e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 441664
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449248
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449312
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449696
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012920241104438901,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          7.721701949211166e-11,
+          7.783297937854613e-11,
+          7.848021330609406e-11
+        ],
+        "energies": [
+          -0.2928001587694955,
+          -0.28793731108508147,
+          -0.2830046718165885
+        ],
+        "energy_change": [
+          4.440892098500626e-16,
+          0.0,
+          1.1102230246251565e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 441664
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 452800
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449216
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 451008
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 452608
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449632
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.01277102786116302,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          8.025242554562872e-11,
+          8.087924741389552e-11,
+          8.153654766038062e-11
+        ],
+        "energies": [
+          -0.28653499679063943,
+          -0.2815828749078396,
+          -0.2765640878769524
+        ],
+        "energy_change": [
+          1.1102230246251565e-16,
+          7.771561172376096e-16,
+          4.440892098500626e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449664
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449280
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449216
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449568
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 450112
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449664
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449568
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012751430971547961,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          8.025234434024949e-11,
+          8.087912824737452e-11,
+          8.153664789119495e-11
+        ],
+        "energies": [
+          -0.2865349967906399,
+          -0.2815828749078412,
+          -0.2765640878769534
+        ],
+        "energy_change": [
+          3.3306690738754696e-16,
+          6.661338147750939e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449440
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449248
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449312
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 450112
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449696
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012944066897034645,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          7.721707582455233e-11,
+          7.783297950541115e-11,
+          7.848028068948193e-11
+        ],
+        "energies": [
+          -0.2928001587694955,
+          -0.2879373110850817,
+          -0.28300467181658884
+        ],
+        "energy_change": [
+          8.881784197001252e-16,
+          3.3306690738754696e-16,
+          5.551115123125783e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 441696
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449248
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449344
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449728
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012901486130431294,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          7.721701949211166e-11,
+          7.783297937854613e-11,
+          7.848021330609406e-11
+        ],
+        "energies": [
+          -0.2928001587694955,
+          -0.28793731108508147,
+          -0.2830046718165885
+        ],
+        "energy_change": [
+          4.440892098500626e-16,
+          0.0,
+          1.1102230246251565e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 441568
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 453696
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449696
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449440
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449632
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449408
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449664
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012795784045010805,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          8.025242554562872e-11,
+          8.087924741389552e-11,
+          8.153654766038062e-11
+        ],
+        "energies": [
+          -0.28653499679063943,
+          -0.2815828749078396,
+          -0.2765640878769524
+        ],
+        "energy_change": [
+          1.1102230246251565e-16,
+          7.771561172376096e-16,
+          4.440892098500626e-16
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449984
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 452832
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449632
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449568
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 450112
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449664
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449568
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012782589998096228,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda",
+          "cuda",
+          "cuda"
+        ],
+        "density_rms": [
+          8.025234434024949e-11,
+          8.087912824737452e-11,
+          8.153664789119495e-11
+        ],
+        "energies": [
+          -0.2865349967906399,
+          -0.2815828749078412,
+          -0.2765640878769534
+        ],
+        "energy_change": [
+          3.3306690738754696e-16,
+          6.661338147750939e-16,
+          0.0
+        ],
+        "iteration_history": [
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 1,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449376
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 2,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449248
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 3,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449344
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 4,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 450112
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 5,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 449760
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 6,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 454016
+          },
+          {
+            "active_physical_count": 3,
+            "active_solver_count": 3,
+            "bucket_id": 0,
+            "family": "small_native",
+            "inactive_fraction": 0.0,
+            "inactive_info_nonzero_count": 0,
+            "inactive_input_nonfinite_count": 0,
+            "inactive_solver_count": 0,
+            "inactive_submission_nonfinite_count": 0,
+            "inactive_touches": [],
+            "iteration": 7,
+            "physical_system_count": 3,
+            "provider_invoked": false,
+            "solver_batch_count": 3,
+            "solver_elapsed_nanoseconds": 451008
+          }
+        ],
+        "iterations": [
+          7,
+          7,
+          7
+        ]
+      },
+      "inputs_hash": "b211e9030be023cd5c12dca29f8c76d53c3f91b910ae9e486ee2f4b830d5596c",
+      "seconds": 0.012941431952640414,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    }
+  ],
+  "schema": "vibeqc.one_electron_endpoint",
+  "slurm_job_id": "9076",
+  "source_identity": "ec4ea652ee1bcb53e729bb369c4163f70c0dd687fb74ac7b168d84165fc917a8",
+  "timing_scope": "whole HF energy-plus-force endpoint, not integral kernels",
+  "version": 1,
+  "worktree_dirty": true
+}

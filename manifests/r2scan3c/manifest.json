@@ -1,0 +1,60 @@
+{
+  "basis": {
+    "basis_identity": "11c25a32851c1fd54ca318162d46a1c436280c53c75df931e51b2520153a2c2f",
+    "license": "BSD-3-Clause",
+    "license_file": "LICENSES/bse-data-BSD-3-Clause.txt",
+    "name": "def2-mTZVPP",
+    "representation": "spherical",
+    "source_export_sha256": "b769650c71373053790db59191e68f35e20e7cfab85e011776aea1450d1a8d6f",
+    "upstream_commit": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30",
+    "upstream_path": "basis_set_exchange/data/ahlrichs/def2-mtzvpp.1.json",
+    "upstream_repository": "MolSSI-BSE/basis_set_exchange",
+    "version": "1"
+  },
+  "gcp": {
+    "data_sha256": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2",
+    "generated_header_sha256": "c922446ecbdc113d90074af397688dac6ccdac832b5665c8ddaf60795355240c",
+    "implementation_source_sha256": "c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
+    "license": "LGPL-3.0-or-later",
+    "license_files": [
+      "LICENSES/simple-dftd3-COPYING.txt",
+      "LICENSES/simple-dftd3-COPYING.LESSER.txt"
+    ],
+    "parameter_source_sha256": "3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
+    "profile": "r2scan3c",
+    "reference": {
+      "case": "06",
+      "dataset": "MB16-43",
+      "energy_hartree": 0.0113040952,
+      "geometry_license": "Apache-2.0",
+      "geometry_license_file": "LICENSES/mstore-Apache-2.0.txt",
+      "geometry_source": "grimme-lab/mstore@a9070de01ad67e0539edc87c29ab048a60381a74"
+    },
+    "upstream_commit": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+    "upstream_repository": "dftd3/simple-dftd3",
+    "vdw_radii_source_sha256": "3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575"
+  },
+  "method": "r2SCAN-3c",
+  "schema": "vibeqc.r2scan3c-audit-manifest",
+  "schema_version": 1,
+  "supported_atomic_numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}

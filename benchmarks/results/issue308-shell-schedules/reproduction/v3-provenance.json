@@ -1,0 +1,5 @@
+{
+  "source_identity": "fae89ad116237b6c5539cde327731f38c91797250983ac4a3d914f29f9130820",
+  "library_sha256": "2c8f82025c279f1bc99515cdde297c7efb1f4e59ab75619b96c10ccfd7b16e0a",
+  "changes_since_v2": "Native comments and compiler docstring only; no algorithm or test changes."
+}

@@ -1,0 +1,911 @@
+{
+  "all_generated_hashes_match_validated_revision": true,
+  "architecture": "sm_120",
+  "compile_policy": {
+    "fast_compile": false,
+    "jobs": 2,
+    "optimization": "-O3",
+    "timeout_seconds": 900.0
+  },
+  "endpoints": [
+    {
+      "file": "f-water-b1.json",
+      "sha256": "289cb59b6c47c8e817a972952463c868cf2a2b0afa29a9ce4a1c3d17e1e713dd"
+    },
+    {
+      "file": "f-water-b4.json",
+      "sha256": "c46caf8975f5b11fcfcb172697063fb10814671421b372f02de5c8606ec381ef"
+    },
+    {
+      "file": "f-dimer-b1.json",
+      "sha256": "ca4b63c172e5fc35a074ffc9a9cf83df232e90c29d5a0e6e400ef7c11fa17372"
+    },
+    {
+      "file": "f-dimer-b4.json",
+      "sha256": "cfde8105078c091674c66b81c02acc857ca17d6c4ef666d93c19e75763a3fc21"
+    },
+    {
+      "file": "f-tetramer-b1.json",
+      "sha256": "a9ce0fd144f0ec5f4ab66522b1cf359ddd87231ee93f79d0990d78199d38d46c"
+    }
+  ],
+  "generator_abi": 1,
+  "manifest_hash": "9e9052733c9fc47892fb9c275e7c9470dc4faa19cdf3a1c2087698f707f209ac",
+  "policy": {
+    "matrix_note": "all 34 classes validated for the recorded common schedule; production promotion is separate",
+    "new_promotions": [],
+    "retained": [
+      "fpps/force"
+    ],
+    "unsupported_regimes": [
+      "bounded f-containing batches (tetramer batch 2/4)"
+    ]
+  },
+  "rows": [
+    {
+      "file": "fsss.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "60f742e3ce1eefaefd1a3faec49906a53a7aed55d7b7c1aba8f38820eabac0d5",
+      "shell_class": "fsss",
+      "source_hash": "d84f50852dbfba2119262af4323f3087d370b8dc9f347ee02e50659d4cfe6016",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fsps.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "62794db50c55658d6e005638b8b81e831d0bc378429976b99b676fc0269dc37a",
+      "shell_class": "fsps",
+      "source_hash": "0e17e4c57f3465ab27a3ec800a896706e691bd30ec03e7d377a49531c4c69fe3",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fspp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "d8e635ac83b6858037795efdd5d89d88a3515b429f49dab772f3c979137755a7",
+      "shell_class": "fspp",
+      "source_hash": "1233da181db7ed089b9b7e5ab4e5843dd707bb910ef409d43aa20dc956b28372",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fsds.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "235e7383fbe67feeaed9fba4134879571929a217511d8e9316a0c5f9750d354d",
+      "shell_class": "fsds",
+      "source_hash": "8674b4bc9238427ae42c2a39f8d4bf8c948032668e2bff0dd72b71401d7054dc",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fsdp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "e1ed07e5209d9479c4889b045f77d39a156c0a829a83334e6c138a060bd9c206",
+      "shell_class": "fsdp",
+      "source_hash": "0366dbf661287fd8a51b8aa9fe8019db28e91c24229a188a005c9abbdc0e0c9e",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fsdd.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "38e1be0d157ee851ec017437a7758b592195c81ddea1f9cc3da59b5fa80ec0ed",
+      "shell_class": "fsdd",
+      "source_hash": "1837102d97cdb4baa580a4393b9b9cd23d24291abed6e5e1f9ef4636b1f6b540",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fsfs.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "04452ce51fcdb14a159d7b75950a228d58c3b4adcbbfa61d2087791908109eba",
+      "shell_class": "fsfs",
+      "source_hash": "56e7d4d88bb50fc9dfb409a4be02de2fdca86cee5918652fac8d64679781e016",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpss.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "6f455a93d5606ca969ef8e03a2d70289bc6e9ff8bdd75af634b06c579b5c312e",
+      "shell_class": "fpss",
+      "source_hash": "fe839ffa8fb9d04b91b71d3ca85818c2c78fa7830e9eb150ca00614d4dcfdb43",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpps.json",
+      "manifest": {
+        "acceptance": "validated_fixed_topology",
+        "capabilities": [],
+        "fock": false,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "retained force selection; bounded f-containing execution remains unsupported and is separately recorded",
+        "recurrence": "subset_wick",
+        "schedule": "component_lanes",
+        "status": "manifest_selected"
+      },
+      "sha256": "d211c628261ab6564be29ab09344be2892c2801c13a6415537d1e7db1f893ce6",
+      "shell_class": "fpps",
+      "source_hash": "45c63e823250ac4f0916ddf291d4be73c24f4a004c64af0f64d83b0e88fea646",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "pass",
+        "numerical": "pass",
+        "promotion": "pass",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fppp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "970a2fb5aaea5d35f2694027ed4863bddb39df3c0fca7818e6d6b6fa1c856baf",
+      "shell_class": "fppp",
+      "source_hash": "18fe2f5df8f7bd634a8643a053d5df826afe6e195d06efe4af9d684bdec67bbd",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpds.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "4f9516a198dc04f2d9fc2c919757cb7fc2ed191856c270244c3c43157e0e427a",
+      "shell_class": "fpds",
+      "source_hash": "695298746868c3d1e320b00a88b908ab8ad6dae5325d5b9d073985ca6766008a",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpdp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "26ae1d3afa7076fe5cd94727d8f2a41bb2516a648be1b7add2a58025fe4cf479",
+      "shell_class": "fpdp",
+      "source_hash": "4c2c3dc23855b6ae56da1693e99b5b1dd1c9397861b9c80ef39ffed7a8f2eed3",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpdd.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "f8d3bddc143ffae3d3a7ba21efd648dd4f0be02a18a99191c09bbec4f9dec631",
+      "shell_class": "fpdd",
+      "source_hash": "409670aa3e932260ebb1fa6b8dd7c8f53858aafdaa176ce7f25241253f00e9c5",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpfs.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "0b034f25c6eb095669bd129c558693a7038fab5c1476c3422a7212d8b14a251c",
+      "shell_class": "fpfs",
+      "source_hash": "070a0d9bebc88ca68dc42ed065b748f096999b0e1febe91bffc7e918278de9ea",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fpfp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "cd0897a4a58663ac2db2aa7f3dccc1d371e1940afdb44a35a37c18d59cec3abb",
+      "shell_class": "fpfp",
+      "source_hash": "632523971aabc910aac4c20ff88c663226543308174db03bef55607dcb905a99",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdss.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "58fb7142a77fc7b6dbba71007511aef9afc3358745ed41e8e308742d815d9862",
+      "shell_class": "fdss",
+      "source_hash": "8bfb89a777997b5ee42b7d546260d8cc6eda2d7cc60bdba2f4f302b8e60ced7a",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdps.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "1819ba673e829f60eda3cd06982f8c4e12a44d0407da8c9999fdfa2fd5765ac1",
+      "shell_class": "fdps",
+      "source_hash": "eb2ac79494f44426b1b24674cb612533ee46e2fe27ac159f59ad5bb87a173789",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdpp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "460505167a241617841f0105fee8d2c018d8807620cc261291f73f5a786394d4",
+      "shell_class": "fdpp",
+      "source_hash": "66396bfe7cdc50ce66c7bb5431576ec4da45457ec2f2394cf9d1ecc1ddb1deff",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdds.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "1524d4756779ae0f7a32316aaaf3058edc27967bf922ce9d5ecf1134f71a2fc9",
+      "shell_class": "fdds",
+      "source_hash": "a0b456723f7ae12af1e4cda55ab54ca8344296ff53b33894daf1306e1cdb1038",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fddp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "cea7b2bfe7309978f29dbac328cd0de3de7962a37b82f42de1e4a1e062785b06",
+      "shell_class": "fddp",
+      "source_hash": "9f8b413b978248a85747e5195cc0066bd13002c8d7136b044d99a3f01d5efa1f",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fddd.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "152dcdca8b5f4c84951ad19152e4fc44ac68ca4cd02c2f4b3263f49beb61c18b",
+      "shell_class": "fddd",
+      "source_hash": "b5fd1b2c4bad449f4bfe757850500a4a93d2b0f74d58835266730076d053cc53",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdfs.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "1c9510245c57b36f766d17669743c70b8a0e8c2e1748344fbeb7f22988281cfa",
+      "shell_class": "fdfs",
+      "source_hash": "3b5b655e71455cc2724de48ba67433f476ba5a35b788983c050d2799f2f33b83",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdfp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "c5551c49b46a69495866f1b2254e3d62265ec3f2aafecf3ea8488a327e953e08",
+      "shell_class": "fdfp",
+      "source_hash": "296954584b364339a212faba25c2286d29a39532bd055cc2187676008fa7df74",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fdfd.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "686d11cd6f24d6b9f457da58b726f66a0a3175cfad823275efbb1472ca53d7d6",
+      "shell_class": "fdfd",
+      "source_hash": "03fd6be87411313bbe47d9dfb3028afa8eef8145f244ec53e829b9b4b6a11768",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffss.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "5488dd0351d42945c39ba869d56744b6b88c25745f3a93fd859ff44b8fe5224d",
+      "shell_class": "ffss",
+      "source_hash": "0696142aebb224d0e5fd4e5a4eac8b217f351682183e9347b1ac1ffc3ea2ac0b",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffps.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "8f9200913ffd630d2f5e26d2b697e3eb8b2f8c17f56725cf8eb887296f1b9668",
+      "shell_class": "ffps",
+      "source_hash": "2c250e8ea8aeb08cc6183958f54b37a74ce7c5a7888b1876137d1ad19dc16aa9",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffpp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "c1dc2a10e32bd6d31c06d1f7bd05a95b3d7fe065f7e9de062082ca3c5390ccc5",
+      "shell_class": "ffpp",
+      "source_hash": "756d7660a188e9b077a2968b9168844f4fecaac9329787340f5a5f357a8ac55d",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffds.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "471e18d4853e6df7934252dd8d08c0f9be9c1436186406e09a622d30bc55293d",
+      "shell_class": "ffds",
+      "source_hash": "b7e024b08268af1d7e90d09b032b10d37bf6aaefb80f821790fcddac779f150c",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffdp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "02b86550fdc45a30c1562fe9aad11230c887e253c2ebaae72cfe8451075bfa49",
+      "shell_class": "ffdp",
+      "source_hash": "fca0081982e31cf05d8f0f032dca3e7077659a787a017220079709651dc56165",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffdd.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "d4ec04fe9b5095f5e9db84cadc610b16d3fcc02c4d8ae38f51d6089d3da56910",
+      "shell_class": "ffdd",
+      "source_hash": "34ede2d9339f8c29c6899f3820aab53b6ead4c32ec024187aca14960e0b4b462",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fffs.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "3d8c253f7a6b973aaee08ad70e4c33486ebc01924bfe0704b74054b369b49aaa",
+      "shell_class": "fffs",
+      "source_hash": "3de5015fc515bba3f29b917ed25de559257875897925a33c91064a17f01a0d7c",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fffp.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "456fc8ded4dc09eeec790673e57a0093187249c7a11acd134a69c4cf46edc854",
+      "shell_class": "fffp",
+      "source_hash": "bb359b3e990ff408187a660a0bc78c329e73eb2c876f9586be021e0cb0fca48d",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "fffd.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "7d7133bef20ca2d93ab5870fa6f526322b71f0c8eef7bedc38971bdca6505476",
+      "shell_class": "fffd",
+      "source_hash": "116c2968e896e3a704e53ac79b247124a4b7d2bef61e7ed086269597d71535d3",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    },
+    {
+      "file": "ffff.json",
+      "manifest": {
+        "acceptance": "unselected",
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+        "status": "manifest_gap"
+      },
+      "sha256": "d2ca6bdaeca7774c42448af5ce5bc0b044c24768894dac22601cded2971cbdf9",
+      "shell_class": "ffff",
+      "source_hash": "9437ed98d115b6e85d413ca5895845270aeb3ec37261265dd25ae23b3f0dcda1",
+      "stages": {
+        "compilation": "pass",
+        "endpoint": "not-run",
+        "numerical": "pass",
+        "promotion": "not-run",
+        "resources": "pass",
+        "source": "pass"
+      }
+    }
+  ],
+  "schema": "vibeqc.f_shell_validation",
+  "schema_version": 1,
+  "toolchain": {
+    "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+  },
+  "totals": {
+    "classes": 34,
+    "entrypoints_per_fixture": 8,
+    "fixtures": 692
+  },
+  "validated_implementation_revision": "d20ffbeea315d4f32892693cee2b02c1b8284727"
+}

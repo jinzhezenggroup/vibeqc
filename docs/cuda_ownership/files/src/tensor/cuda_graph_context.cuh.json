@@ -1,0 +1,7 @@
+{
+  "path": "src/tensor/cuda_graph_context.cuh",
+  "reason": "Adapter binding the shared graph owner to TensorIR arena, stream and library lifetimes.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

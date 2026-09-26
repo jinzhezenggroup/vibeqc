@@ -1,0 +1,7 @@
+{
+  "path": "src/runtime/cuda_gaussian_products.cuh",
+  "reason": "Rank-generic normalized primitive/AO tensor products, cyclic lane ownership and physical-center projection/scatter; generated policies own all operator formulas.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

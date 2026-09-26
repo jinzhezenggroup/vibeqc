@@ -1,0 +1,650 @@
+{
+  "components": {
+    "component-sdf18-rhf-generated_source-131072.json": {
+      "budget": 131072,
+      "case": "sdf18",
+      "maximum_error": 3.44058115331336e-13,
+      "milliseconds": [
+        30.52732,
+        30.468848,
+        30.48574,
+        30.475772,
+        30.436305
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 730604,
+      "process_peak_host_bytes_including_oracle": 618033152,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 11,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 2592,
+        "derivative_tiles": 3,
+        "device_bytes": 79752,
+        "device_response": true,
+        "device_response_bytes": 49248,
+        "h2d_bytes": 4248,
+        "host_bytes": 2112,
+        "recomputed_value_bytes": 186624,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 18,
+        "value_slices": 72,
+        "weight_tile_elements": 3564
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-generated_source-32768.json": {
+      "budget": 32768,
+      "case": "sdf18",
+      "maximum_error": 3.444466933899548e-13,
+      "milliseconds": [
+        180.433908,
+        173.974554,
+        169.055786,
+        166.370269,
+        166.389727
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 730604,
+      "process_peak_host_bytes_including_oracle": 618037248,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 1,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 2592,
+        "derivative_tiles": 19,
+        "device_bytes": 27912,
+        "device_response": true,
+        "device_response_bytes": 49248,
+        "h2d_bytes": 4248,
+        "host_bytes": 2112,
+        "recomputed_value_bytes": 933120,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 18,
+        "value_slices": 360,
+        "weight_tile_elements": 324
+      },
+      "slurm_job_id": "9255",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-generated_source-65536.json": {
+      "budget": 65536,
+      "case": "sdf18",
+      "maximum_error": 3.4439118223872356e-13,
+      "milliseconds": [
+        49.925633,
+        49.863303,
+        50.128721,
+        50.046013,
+        50.11713
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 730604,
+      "process_peak_host_bytes_including_oracle": 618037248,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 5,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 2592,
+        "derivative_tiles": 5,
+        "device_bytes": 48648,
+        "device_response": true,
+        "device_response_bytes": 49248,
+        "h2d_bytes": 4248,
+        "host_bytes": 2112,
+        "recomputed_value_bytes": 279936,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 18,
+        "value_slices": 108,
+        "weight_tile_elements": 1620
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_resident-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 4.163336342344337e-17,
+      "milliseconds": [
+        1.392664,
+        1.365842,
+        1.347788,
+        1.337188,
+        1.344642
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 508104704,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 0,
+        "derivative_tiles": 4,
+        "device_bytes": 5040,
+        "device_response": false,
+        "device_response_bytes": 0,
+        "h2d_bytes": 5504,
+        "host_bytes": 7568,
+        "recomputed_value_bytes": 0,
+        "response_h2d_bytes": 4608,
+        "synchronizations": 5,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 21,
+        "value_slices": 40,
+        "weight_tile_elements": 512
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_resident-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 4.336808689942018e-17,
+      "milliseconds": [
+        1.060168,
+        1.067842,
+        1.039658,
+        1.031222,
+        1.022105
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 508104704,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 0,
+        "derivative_tiles": 3,
+        "device_bytes": 5040,
+        "device_response": false,
+        "device_response_bytes": 0,
+        "h2d_bytes": 5504,
+        "host_bytes": 11536,
+        "recomputed_value_bytes": 0,
+        "response_h2d_bytes": 4608,
+        "synchronizations": 4,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 20,
+        "value_slices": 32,
+        "weight_tile_elements": 512
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_source-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 6.930220286527344e-16,
+      "milliseconds": [
+        13.57254,
+        13.491916,
+        13.479091,
+        13.466487,
+        13.470706
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 594344,
+      "process_peak_host_bytes_including_oracle": 616607744,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 512,
+        "derivative_tiles": 4,
+        "device_bytes": 8240,
+        "device_response": true,
+        "device_response_bytes": 4608,
+        "h2d_bytes": 1408,
+        "host_bytes": 1168,
+        "recomputed_value_bytes": 20480,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 18,
+        "value_slices": 40,
+        "weight_tile_elements": 192
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_source-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 6.930220286527344e-16,
+      "milliseconds": [
+        10.534109,
+        10.513119,
+        10.496096,
+        10.47746,
+        10.505234
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 594344,
+      "process_peak_host_bytes_including_oracle": 616603648,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 512,
+        "derivative_tiles": 3,
+        "device_bytes": 12336,
+        "device_response": true,
+        "device_response_bytes": 4608,
+        "h2d_bytes": 1408,
+        "host_bytes": 1168,
+        "recomputed_value_bytes": 16384,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 18,
+        "value_slices": 32,
+        "weight_tile_elements": 448
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "rhf"
+    },
+    "component-sp8-uhf-generated_resident-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 2.970713952610282e-17,
+      "milliseconds": [
+        1.415547,
+        1.405027,
+        1.366103,
+        1.356685,
+        1.361604
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 508116992,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 0,
+        "derivative_tiles": 4,
+        "device_bytes": 5040,
+        "device_response": false,
+        "device_response_bytes": 0,
+        "h2d_bytes": 5504,
+        "host_bytes": 7696,
+        "recomputed_value_bytes": 0,
+        "response_h2d_bytes": 4608,
+        "synchronizations": 5,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 21,
+        "value_slices": 40,
+        "weight_tile_elements": 512
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-generated_resident-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 2.7321894746634712e-17,
+      "milliseconds": [
+        1.071259,
+        1.058094,
+        1.05063,
+        1.04533,
+        1.041482
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 508104704,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 0,
+        "derivative_tiles": 3,
+        "device_bytes": 5040,
+        "device_response": false,
+        "device_response_bytes": 0,
+        "h2d_bytes": 5504,
+        "host_bytes": 11792,
+        "recomputed_value_bytes": 0,
+        "response_h2d_bytes": 4608,
+        "synchronizations": 4,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 20,
+        "value_slices": 32,
+        "weight_tile_elements": 512
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-generated_source-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 7.24247051220317e-17,
+      "milliseconds": [
+        15.98249,
+        15.949627,
+        15.914239,
+        15.896655,
+        15.902327
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 594344,
+      "process_peak_host_bytes_including_oracle": 616607744,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 1536,
+        "derivative_tiles": 4,
+        "device_bytes": 9520,
+        "device_response": true,
+        "device_response_bytes": 4608,
+        "h2d_bytes": 2432,
+        "host_bytes": 1168,
+        "recomputed_value_bytes": 20480,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 20,
+        "value_slices": 40,
+        "weight_tile_elements": 192
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-generated_source-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 7.45931094670027e-17,
+      "milliseconds": [
+        12.182612,
+        12.196869,
+        12.163775,
+        12.153045,
+        12.142656
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 594344,
+      "process_peak_host_bytes_including_oracle": 616611840,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 48,
+        "density_h2d_bytes": 1536,
+        "derivative_tiles": 3,
+        "device_bytes": 13616,
+        "device_response": true,
+        "device_response_bytes": 4608,
+        "h2d_bytes": 2432,
+        "host_bytes": 1168,
+        "recomputed_value_bytes": 16384,
+        "response_h2d_bytes": 0,
+        "synchronizations": 1,
+        "tensor_d2h_bytes": 0,
+        "tensor_h2d_bytes": 0,
+        "uploads": 20,
+        "value_slices": 32,
+        "weight_tile_elements": 448
+      },
+      "slurm_job_id": "9253",
+      "source_identity": "025ebec87f557e3d826624a143bc4f9a207e354002cda9b4c763177e733c5994",
+      "spin": "uhf"
+    }
+  },
+  "profiles": [
+    {
+      "file": "profile-complete-hf.sqlite",
+      "scope": "five complete RHF energy-plus-force replays, batch 3",
+      "sha256": "fe2ca0364e6c2e179f6082c0d2542cc94a31eb5146bed15111e1b36d4649874d",
+      "transfers": [
+        {
+          "bytes_per_copy": 3,
+          "copies": 10,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 12,
+          "copies": 20,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 24,
+          "copies": 65,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 48,
+          "copies": 30,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 512,
+          "copies": 60,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 1536,
+          "copies": 15,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 8,
+          "copies": 60,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 12,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 16,
+          "copies": 60,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 24,
+          "copies": 25,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 32,
+          "copies": 140,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 40,
+          "copies": 60,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 48,
+          "copies": 35,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 72,
+          "copies": 50,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 96,
+          "copies": 20,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 104,
+          "copies": 15,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 120,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 144,
+          "copies": 45,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 192,
+          "copies": 50,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 216,
+          "copies": 5,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 512,
+          "copies": 75,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 576,
+          "copies": 5,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 1536,
+          "copies": 15,
+          "direction": "Host-to-Device"
+        }
+      ]
+    },
+    {
+      "file": "profile-force-rhf.sqlite",
+      "scope": "five DF force responses, batch 1; setup outside capture",
+      "sha256": "bed4056a0ed5413e6a9654cbf56a4abf3ba8ff3918c99233cbdd4a3f6189c371",
+      "transfers": [
+        {
+          "bytes_per_copy": 48,
+          "copies": 5,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 8,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 16,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 32,
+          "copies": 30,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 40,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 48,
+          "copies": 5,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 72,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 192,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 512,
+          "copies": 5,
+          "direction": "Host-to-Device"
+        }
+      ]
+    },
+    {
+      "file": "profile-force-uhf.sqlite",
+      "scope": "five DF force responses, batch 1; setup outside capture",
+      "sha256": "6d4f5ba33a887c6ce4bb2e29539f3793674e9909f359fd71b527532478edc6c0",
+      "transfers": [
+        {
+          "bytes_per_copy": 48,
+          "copies": 5,
+          "direction": "Device-to-Host"
+        },
+        {
+          "bytes_per_copy": 8,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 16,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 32,
+          "copies": 30,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 40,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 48,
+          "copies": 5,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 72,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 192,
+          "copies": 10,
+          "direction": "Host-to-Device"
+        },
+        {
+          "bytes_per_copy": 512,
+          "copies": 15,
+          "direction": "Host-to-Device"
+        }
+      ]
+    }
+  ]
+}

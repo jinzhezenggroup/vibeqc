@@ -1,0 +1,292 @@
+{
+  "aos": 384,
+  "grouped": false,
+  "sqlite_sha256": "629f85c07bdc34bba395e4cd1bc68fe4e0313333b0b5cb168b4f0c323587d8e9",
+  "generated_sha256": "ca1e422037afc0e9b4a9bcb05b6d5f2c6b3b739e9707703b5b950b2acb410a69",
+  "gpu_ms": 536.790699,
+  "launches": 144,
+  "tasks": 3631488,
+  "all_launch_grids_verified": true,
+  "signature_totals": [
+    {
+      "angular": [0, 0, 0],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 708736,
+      "gpu_ms": 67.195115,
+      "panel_ns_per_task": [89.2307484940879, 85.41345719703811, 88.98328291493588, 90.88982498419722, 103.11252633796882, 95.61345343447114, 99.67029820777869, 132.67450221238937],
+      "mean_ns_per_task": 94.80979518466678
+    },
+    {
+      "angular": [0, 0, 1],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 423976,
+      "gpu_ms": 39.965892,
+      "panel_ns_per_task": [88.82808329821604, 80.57231352718078, 81.4376843657817, 90.29185761694058, 97.52596923725243, 99.1385728332631, 105.76144823711195, 133.35967130214917],
+      "mean_ns_per_task": 94.26451497254561
+    },
+    {
+      "angular": [0, 0, 2],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 107576,
+      "gpu_ms": 14.780294999999999,
+      "panel_ns_per_task": [136.397597977244, 125.20922882427307, 107.8774757690687, 126.12278761061947, 144.8603824273072, 149.2927465233881, 152.65810682680151, 216.86077749683943],
+      "mean_ns_per_task": 137.3939819290548
+    },
+    {
+      "angular": [1, 0, 0],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 802816,
+      "gpu_ms": 63.659864999999996,
+      "panel_ns_per_task": [78.2868878019958, 77.25803172831633, 78.5858378507653, 73.95070103236607, 79.2474144345238, 81.84920944940477, 77.02979746586135, 114.81529017857143],
+      "mean_ns_per_task": 79.29571034956952
+    },
+    {
+      "angular": [1, 0, 1],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 480256,
+      "gpu_ms": 63.337239,
+      "panel_ns_per_task": [139.0101066468254, 131.3644810267857, 126.08544146825396, 130.62227957589286, 128.49964347718253, 127.15490141369048, 135.43717447916666, 142.95047433035714],
+      "mean_ns_per_task": 131.88224405317163
+    },
+    {
+      "angular": [1, 0, 2],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 121856,
+      "gpu_ms": 28.266441999999998,
+      "panel_ns_per_task": [240.02573939732142, 228.89620535714286, 220.07993861607142, 219.74665178571428, 237.37165178571428, 235.56138392857142, 227.28683035714286, 285.6576450892857],
+      "mean_ns_per_task": 231.9659434086134
+    },
+    {
+      "angular": [1, 1, 0],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 232960,
+      "gpu_ms": 38.486653,
+      "panel_ns_per_task": [158.0994061085973, 159.5843063186813, 163.12386675824175, 161.7555889423077, 173.64907051282051, 159.64080128205129, 166.35285633484162, 220.53954326923076],
+      "mean_ns_per_task": 165.2071299793956
+    },
+    {
+      "angular": [1, 1, 1],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 139360,
+      "gpu_ms": 29.641969,
+      "panel_ns_per_task": [214.88824786324787, 207.8379326923077, 198.42660256410255, 216.07217548076923, 205.16169871794872, 210.46939102564102, 217.27799145299144, 256.9936298076923],
+      "mean_ns_per_task": 212.7006960390356
+    },
+    {
+      "angular": [1, 1, 2],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 35360,
+      "gpu_ms": 19.876609,
+      "panel_ns_per_task": [574.1180288461538, 543.3026442307693, 483.52035256410255, 486.59214743589746, 599.9798076923076, 572.0875, 567.471875, 931.8048076923077],
+      "mean_ns_per_task": 562.1212952488688
+    },
+    {
+      "angular": [2, 0, 0],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 200704,
+      "gpu_ms": 26.413026999999996,
+      "panel_ns_per_task": [131.76536239495798, 127.51849489795919, 133.4190051020408, 121.20595005580357, 137.82451636904761, 135.74590773809524, 128.45548844537817, 154.92034040178572],
+      "mean_ns_per_task": 131.6018963249362
+    },
+    {
+      "angular": [2, 0, 1],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 120064,
+      "gpu_ms": 32.064381,
+      "panel_ns_per_task": [283.9577132936508, 262.494140625, 250.75322420634922, 264.27587890625, 256.8643353174603, 260.0132068452381, 280.42596726190476, 291.4478236607143],
+      "mean_ns_per_task": 267.0607426039445
+    },
+    {
+      "angular": [2, 0, 2],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 30464,
+      "gpu_ms": 11.572761000000002,
+      "panel_ns_per_task": [384.18052455357144, 366.1088169642857, 351.7933407738095, 356.1385788690476, 384.94838169642856, 389.9037388392857, 378.0287388392857, 527.8777901785714],
+      "mean_ns_per_task": 379.88317358193285
+    },
+    {
+      "angular": [2, 1, 0],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 114688,
+      "gpu_ms": 28.213514000000004,
+      "panel_ns_per_task": [245.84311810661765, 236.77350725446428, 244.01688058035714, 244.038330078125, 256.8304036458333, 246.42408854166666, 244.36511948529412, 258.555908203125],
+      "mean_ns_per_task": 246.00231933593753
+    },
+    {
+      "angular": [2, 1, 1],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 68608,
+      "gpu_ms": 35.116813,
+      "panel_ns_per_task": [529.4331597222222, 498.69306640625, 501.56488715277777, 531.3424072265625, 491.41558159722223, 478.2037760416667, 531.5443793402778, 566.6591796875],
+      "mean_ns_per_task": 511.84720440764926
+    },
+    {
+      "angular": [2, 1, 2],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 17408,
+      "gpu_ms": 15.986829,
+      "panel_ns_per_task": [980.7080078125, 947.41064453125, 814.03515625, 802.1393229166666, 1008.31787109375, 938.89501953125, 951.95751953125, 1109.0361328125],
+      "mean_ns_per_task": 918.3610409007352
+    },
+    {
+      "angular": [2, 2, 0],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 15232,
+      "gpu_ms": 7.264836,
+      "panel_ns_per_task": [448.7218858131488, 455.4306722689076, 471.8177521008403, 494.70818014705884, 482.80980392156863, 473.2887254901961, 484.27941176470586, 579.6507352941177],
+      "mean_ns_per_task": 476.9456407563025
+    },
+    {
+      "angular": [2, 2, 1],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 9112,
+      "gpu_ms": 8.939018999999998,
+      "panel_ns_per_task": [951.9779411764706, 825.9808823529412, 946.0694444444445, 1059.1819852941176, 955.5081699346405, 947.2205882352941, 934.2785947712418, 1594.8308823529412],
+      "mean_ns_per_task": 981.0161325724317
+    },
+    {
+      "angular": [2, 2, 2],
+      "nprim": [0, 0, 0],
+      "launches": 8,
+      "tasks": 2312,
+      "gpu_ms": 6.009440000000001,
+      "panel_ns_per_task": [2785.6617647058824, 2688.1323529411766, 1869.9705882352941, 1873.3431372549019, 2791.1911764705883, 2812.25, 2706.6029411764707, 5389.441176470588],
+      "mean_ns_per_task": 2599.23875432526
+    }
+  ],
+  "interpretation": "Actual CUPTI kernel durations and launch resources. Task counts and signatures come from a bounded host reconstruction whose every launch class and grid matches CUPTI. Panel ns/task includes wave/tail and task-content effects; it is not per-task clock sampling or achieved occupancy.",
+  "captured_hardware": [
+    {
+      "name": "NVIDIA GeForce RTX 5090",
+      "computeMajor": 12,
+      "computeMinor": 0,
+      "totalMemory": 33666498560,
+      "smCount": 170,
+      "maxRegistersPerSm": 65536,
+      "maxShmemPerSm": 102400,
+      "maxWarpsPerSm": 48,
+      "maxBlocksPerSm": 24
+    }
+  ],
+  "captured_driver_metadata": [
+    {
+      "name": "NvDriverVersion",
+      "value": "580.95.05"
+    },
+    {
+      "name": "CudaDriverVersion",
+      "value": "13000"
+    },
+    {
+      "name": "OfedDriverVersion",
+      "value": ""
+    }
+  ],
+  "complete_endpoint_memcpy": [
+    {
+      "copy_kind": 1,
+      "calls": 3434,
+      "bytes": 4022650548,
+      "gpu_ms": 159.079412
+    },
+    {
+      "copy_kind": 2,
+      "calls": 27,
+      "bytes": 5902575,
+      "gpu_ms": 0.332768
+    }
+  ],
+  "memcpy_scope": "All memcpy activities within the profiler-captured measured warm energy+force endpoint, including SCF and force stages; excludes prime/cold and the implicit kernel-parameter payload.",
+  "memcpy_kind_enum": [
+    {
+      "id": 0,
+      "label": "Unknown"
+    },
+    {
+      "id": 1,
+      "label": "Host-to-Device"
+    },
+    {
+      "id": 2,
+      "label": "Device-to-Host"
+    },
+    {
+      "id": 3,
+      "label": "Host-to-Array"
+    },
+    {
+      "id": 4,
+      "label": "Array-to-Host"
+    },
+    {
+      "id": 5,
+      "label": "Array-to-Array"
+    },
+    {
+      "id": 6,
+      "label": "Array-to-Device"
+    },
+    {
+      "id": 7,
+      "label": "Device-to-Array"
+    },
+    {
+      "id": 8,
+      "label": "Device-to-Device"
+    },
+    {
+      "id": 9,
+      "label": "Host-to-Host"
+    },
+    {
+      "id": 10,
+      "label": "Peer-to-Peer"
+    },
+    {
+      "id": 11,
+      "label": "Unified Host-to-Device"
+    },
+    {
+      "id": 12,
+      "label": "Unified Device-to-Host"
+    },
+    {
+      "id": 13,
+      "label": "Unified Device-to-Device"
+    }
+  ],
+  "complete_endpoint_kernel_launches": 16297,
+  "explicit_synchronization_api_calls": {
+    "cudaEventSynchronize_v3020": 220,
+    "cudaStreamSynchronize_v3020": 7
+  },
+  "retention": {
+    "source_revision": "e215b30685f8a36ef0cc5772c9166837527f64a2",
+    "source_path": "benchmarks/results/issue385-df-signatures/baseline/384-nsys-summary.json",
+    "source_sha256": "8b2ec344e40e362e9e34693bb4689e670855201f4ce351be5d45aa2ac4306497",
+    "source_bytes": 60263,
+    "manifest": "benchmarks/results/retention-checkout/snapshot.manifest.json",
+    "omitted_fields": [
+      "launch_records"
+    ],
+    "omitted_launch_record_count": 144,
+    "note": "Only per-launch trace rows are omitted from this checkout summary. All original aggregate timings, signature totals, resource summaries, identities and limitations are unchanged. Restore the byte-exact original from existing Git history; this is storage-only, not new scientific qualification."
+  }
+}

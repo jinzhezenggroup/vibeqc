@@ -1,0 +1,7 @@
+{
+  "path": "src/runtime/cuda_ao_pairs.cuh",
+  "reason": "Typed normalized AO/primitive traversal, pair schedules and symmetric channel stores; all operator semantics supplied by generated policy.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

@@ -1,0 +1,26 @@
+{
+  "CUDA_VISIBLE_DEVICES": "0",
+  "binary_sha256": "4a191c70605263b044ad097627f484eea17d2454eb6c64015a72dc310c6c92ab",
+  "checkpoint_tests_passed": 41,
+  "disabled_tier_note": "The first review job omitted the resource enable flag and skipped that tier. The enabled resource tier passed separately in job 9076.",
+  "followup_scope": "native policy identity and consolidation of equivalent reference value kernels; generated arithmetic unchanged",
+  "gpu_tests_skipped": 0,
+  "known_context_limit": "After the full f-containing endpoint matrix, a checkpoint subprocess can encounter GPU out-of-memory while the parent context remains live. Reproduced on the pre-one-electron #204 library; checkpoint/resource suites pass in separate processes.",
+  "native_tests_passed": 13,
+  "one_electron_endpoint_tests_passed": 17,
+  "policy_reuse": "changing either selector invalidates the cached direct plan",
+  "raw_evidence": "raw-summary.json",
+  "resource_and_benchmark_slurm_job_id": "9076",
+  "resource_tests_passed": 14,
+  "runtime_policy": {
+    "candidate": "generated",
+    "default": "reference",
+    "mappings": [
+      "thread",
+      "shell_warp"
+    ]
+  },
+  "slurm_job_id": "9075",
+  "source_identity": "ec4ea652ee1bcb53e729bb369c4163f70c0dd687fb74ac7b168d84165fc917a8",
+  "suite_process_isolation": true
+}

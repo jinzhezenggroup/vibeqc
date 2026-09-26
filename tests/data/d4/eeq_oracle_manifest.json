@@ -1,0 +1,18 @@
+{
+  "binary_sha256": "b8fabf861d020ada45856c8bd70bf2bf4217628f89d54655ba72855737debf83",
+  "cases": [
+    "water_r2scan3c",
+    "asymmetric_pbe",
+    "charged_zinc_ammonia_pbe"
+  ],
+  "fixture_sha256": "13ead934e32ad135d9072511a8e1f9128bca0b5268864274e89e1f0310205548",
+  "generator_sha256": "f25bd6ea96ee46d1c270b32d6949abe18d5b865c14a7a74965ca7e9d52eb57a4",
+  "libraries": {
+    "libdftd4.so": "5eaf8f6a243643fba2a9cb32ab18348ece9c23913a73a6f5cc15d3534f643e5f",
+    "libmctc-lib.so": "114eb96417b0ce0409fe03920c19cecd412dbad8c8bf89c3cf3b686bd0052c38",
+    "libmulticharge.so": "d8db344a0a2fce9595711d35eec40e624bd75ab514c971458e46bf96cd3db407"
+  },
+  "oracle": "independent dftd4 CLI",
+  "oracle_version": "dftd4 version 4.2.0",
+  "scope": "EEQ charges plus complete D4 energy/Cartesian gradient; no VibeQC mathematics"
+}

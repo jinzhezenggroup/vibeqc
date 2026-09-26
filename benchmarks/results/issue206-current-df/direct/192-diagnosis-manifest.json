@@ -1,0 +1,28 @@
+{
+  "scope": "Diagnose the final direct cold failure in separate processes, without timing claims.",
+  "slurm_job_id": "9861",
+  "checks": [
+    {
+      "label": "final",
+      "command": [
+        "/tmp/vibeqc-pr-review-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/diagnose-direct-192.py",
+        "--library",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/build/cuda/libvibeqc.so.0.1.0"
+      ],
+      "exit_code": 0,
+      "library_sha256": "6100ffe6cf4997935ff440b91e622e37dbb8b96207894291d8ff586071320d9d"
+    },
+    {
+      "label": "frozen",
+      "command": [
+        "/tmp/vibeqc-pr-review-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue206/diagnose-direct-192.py",
+        "--library",
+        "/home/jzzeng/codes/vibeqc-issue409-packed/.artifacts/issue409/stage2/frozen/libvibeqc.so"
+      ],
+      "exit_code": 0,
+      "library_sha256": "c1d4c033b73e3b42da58acab0b67c2891f51e3d8d02e7dd72e3165febaf88547"
+    }
+  ]
+}

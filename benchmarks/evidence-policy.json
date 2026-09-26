@@ -1,0 +1,215 @@
+{
+  "benchmark_results_max_bytes": 67108864,
+  "change_review_max_bytes": 2097152,
+  "exceptions": {
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/00-configure.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "2ef62c2b10a75c35bc50addfa0f4bbb7faf8d2ae0f9628e85c5bcdfa419cd6e6"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/01-build.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "99015f86d507ef407b83a86ed30934a6c4624b4b900b3c95715948be480f3fc2"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/02-hooks.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "09bd046b55dda1716fc3603e11957ac44ad5bc1af6b9d7c286dcaa11a69ba8b9"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/03-host.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "b320dddbc8f84a45c6b3781d1eecc3886b30d07f80daf90234b72921bad42dd3"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/04-host.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "9d88f750c6dcb6a8441c663de6eb8cfd5a4e01189949351a32a4477cae984e2d"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/08-validation-job-10215.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "901217c33e21d188155e2af6132313451d81791ad33c9ed1c0c5a4bbada0c336"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/12-native-tests.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "7cd2b96c73fe99f1a00b4051b2f2c99228fec5a233b822bde244260279ff3523"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/13-native-tests.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "3f46a850cbc16cc73e052733a99284656181890d02fa83e52fa3a167a735d995"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/14-host-regressions.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "8dbbcac3892ef03fb4262f01b3ab9922cb48674042d543614c856f308b8886b4"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/15-host-regressions.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "608ef6ec4e1593033f6d5c16bc42b022dd75beb0aa736d8d21761010cf502c30"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/16-public-oh.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "9b6c181a40e014ccd951695e07c6cbb71cd109dffb3b31bd8fef4a089116b8c1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/17-public-oh.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "4123a25d429ba0839e7798db26c7642eef0f7fae3269cc79653d8f6c34205dec"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/18-independent-accuracy.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "a24cfb165cfee70c7d0e12d7cb498ad724c4bd35dbaebba4b681bc69edeae026"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/20-matrix.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "a0d572f1d79cfb5a6e6a6a9ab3169748b1aa1b5c28be8ce74cc9df180de8af40"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/24-baseline-comparison-run.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "21089c34fd6cc37c8b062a671a5c54dd11612a762b45a11bc2044150f46843f9"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/27-native-tests.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "8d38af42c2c8a7f64ae595bb31a41fd19f8b6ecfa5eb7d501f6ab5630a93d8ba"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/28-native-tests.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "cf6528b96384e9a57bd8e49fd8c30d50e6d3a6dae38436f94a7a52a4d6b21da1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/29-public-oh.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "6944971fb4d1a4f827ddff2ba1549ee81e4252b9b560b4b4b7484623cdbaddd5"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/30-public-oh.xml.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Exact per-test scientific qualification receipt for the frozen #427/#456 production integration and its independently rebuilt base. Preserves every named success, failure and skip so matching baseline defects cannot be erased or counted as passing GPU validation; decoded/stored hashes are in the campaign manifest.",
+      "sha256": "98bad39ac37e2a05346cbf89687ac4f2f719d5bc01724387aada835374402fd1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/31-gpu-run.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Small hash-bound qualification receipt for the #427/#456 integration: preserves original test/force observations, failing baseline diagnostics, source-bound pass counts or the original JUnit-path adapter failure. Required to audit the explicit non-regression disposition without relabelling failed runs; complete compact numerical records remain primary.",
+      "sha256": "378bdad1a7e1d1f0f2f20a4eb60de5e6d73f0aa689845bd81fdd16a9f4691b91"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/32-configure.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "4ffc05c6dfd903b22a28857192c64ba6d5f86c19ce69a6f8b7ec0f51ab0d2cf1"
+    },
+    "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/33-build.log.gz": {
+      "owner": "issue206-direct-force-state/integration-e4f2f67",
+      "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
+      "sha256": "56dbda21ad111017313644649fb7574ce2d74a1a8a7851b43e612de6820206be"
+    },
+    "benchmarks/results/issue308-property-budgets/evidence.zip": {
+      "owner": "issue308-property-budgets",
+      "reason": "Bounded native preparation outputs, exact accepted/initial-rejected native source reconstruction, input identity and reproduction commands; excludes binaries, routine logs and full transient matrices. Every member byte-restored.",
+      "sha256": "08880e8b611d21dd4e111152cb084a34819684a6b0c1f93aa0bf809e8e4cbf37"
+    },
+    "benchmarks/results/rccsd-148-a/raw-evidence.zip": {
+      "owner": "rccsd-148-a",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "f4c11760dd15afa092fec00baf577b8b38de646399b4ff1570820d041b1f2311"
+    },
+    "benchmarks/results/rccsd-148-b/raw-evidence.zip": {
+      "owner": "rccsd-148-b",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "c6fd591623424312bb80a880eb3a70c34021b4a6ac38f0451622fa525f5f74b5"
+    },
+    "benchmarks/results/rccsd-148-c/raw-evidence.zip": {
+      "owner": "rccsd-148-c",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "bd6879e101dc3a47e6ec4bd517014859a95f13033d85a4a01447fc91da6007f4"
+    },
+    "benchmarks/results/rccsd-149-a/raw-evidence.zip": {
+      "owner": "rccsd-149-a",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "dee1ead19fb45abeb7f07934c9b642dd9dbd8716a9634469285a2cadd56e0a72"
+    },
+    "benchmarks/results/xc-integration-162/raw-evidence.zip": {
+      "owner": "xc-integration-162",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "d8b21b9660bab21a13a1a9f4014f5468c5aa4811cf632167988c7f08ff8b8a0f"
+    },
+    "benchmarks/results/ecp-consumers-171/raw-evidence.zip": {
+      "owner": "ecp-consumers-171",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/ecp-consumers-171/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "628ddb41f9654f211a527c728ebf5f7f25f883e6ac5ecb5f4345e3909838839c"
+    },
+    "benchmarks/results/ecp-projector-171/review-qualification/raw-evidence.zip": {
+      "owner": "ecp-projector-171",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/ecp-projector-171/review-qualification/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "4e8c5cad08e424fdd1690af316277b5ee833288b7d0b5332629c5422be6c6960"
+    },
+    "benchmarks/results/issue174-slice-e/raw-evidence.zip": {
+      "owner": "issue174-slice-e",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue174-slice-e/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "5965ee285b48bfd618bc94cc0c170d2ce069145b538c5e0d6b7a7a3ee318f5fc"
+    },
+    "benchmarks/results/issue206-df-a/raw-evidence.zip": {
+      "owner": "issue206-df-a",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue206-df-a/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "e4cda40de612613950d441a33a70b4b7f88ddaa0ea88d08ada3356437ba5cc89"
+    },
+    "benchmarks/results/issue282-283-integration/raw-evidence.zip": {
+      "owner": "issue282-283-integration",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue282-283-integration/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "13b7bb6182bf5f74496db58b900ff294d6f5ad15125860fd0779a0914a96efa0"
+    },
+    "benchmarks/results/issue282-energy-only/raw-evidence.zip": {
+      "owner": "issue282-energy-only",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue282-energy-only/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "cb62da8baab48e670c47b740e34dfd7c221fc45c6aa383ff228fac8947680559"
+    },
+    "benchmarks/results/issue283-host-response/raw-evidence.zip": {
+      "owner": "issue283-host-response",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue283-host-response/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "d088e049eb6761a5f92bc441f12533ad6b3cf0d90841f3eda0223c7f41c58ca9"
+    },
+    "benchmarks/results/issue308-host-baseline/raw-evidence.zip": {
+      "owner": "issue308-host-baseline",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue308-host-baseline/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "d0514da2ec67475d3086ae57cf2f49540e80056075d070de8e768339822b7f28"
+    },
+    "benchmarks/results/issue308-large-diagnostics/diagnostics.zip": {
+      "owner": "issue308-large-diagnostics",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue308-large-diagnostics/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "b9e4876e70aa15887ac7281da466798109611e7ef591584c24e46c48f5e621f0"
+    },
+    "benchmarks/results/issue310-capture-recovery/evidence.zip": {
+      "owner": "issue310-capture-recovery",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue310-capture-recovery/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "d5b8967afbf3d46f6e91d73952afad9329c5c6676e1fb35b27fc9eadb1f88faf"
+    },
+    "benchmarks/results/issue311-final-snapshot/qualification.zip": {
+      "owner": "issue311-final-snapshot",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue311-final-snapshot/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "c8fbef356170fded3a48e919612f7bfbb4503de3f833cba314c4ff761e4ac6d8"
+    },
+    "benchmarks/results/ks-final-state-review-162/raw-evidence.zip": {
+      "owner": "ks-final-state-review-162",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/ks-final-state-review-162/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "39fc6ac7a36335f7e488fb51227e88a6b81efe37d4bd56fdcc0a0cf0a0611d6d"
+    },
+    "benchmarks/results/rccsd-149-bc-review/raw-evidence.zip": {
+      "owner": "rccsd-149-bc-review",
+      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/rccsd-149-bc-review/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
+      "sha256": "04a091ebadea2fbc318a6953eb6567c5334a951327e9760124e616497e2ec38e"
+    }
+  },
+  "review_size_bytes": 1048576,
+  "schema": "vibeqc.retention-policy.v1",
+  "legacy_large_review_path": "benchmarks/legacy-evidence-review.json",
+  "legacy_large_review_threshold_bytes": 131072
+}

@@ -1,0 +1,14 @@
+{
+  "current_default": "Generated compiler-owned S/T/V weighted gradient with nucleus-cooperative scheduling; cooperative ownership is projected into the shared compiler schedule/profile contract. Native/reference and legacy tensor controls are explicit diagnostics only.",
+  "evidence": [
+    "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
+    "docs/developer/one_electron_derivatives.md",
+    ".agents/notes/implemented/performance/2026-09-20-generated-nucleus-cooperative-one-electron-default.md",
+    ".agents/notes/implemented/performance/2026-09-22-one-electron-derivative-schedule-contract.md"
+  ],
+  "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights with target-legal nucleus-cooperative scheduling",
+  "missing_capability": "No missing S/T/V first-derivative formula or current production-performance capability. The generated nucleus-cooperative path is the sole CUDA force owner; the former native cooperative force exception and provider selector are retired. Independent validation remains in CPU/libcint/PySCF and explicit raw-derivative oracles.",
+  "owner": "one_electron_derivatives",
+  "retirement_condition": "Completed for S/T/V force execution: generated derivatives own production and diagnostic schedules, while the legacy native force/reference family is removed. Nuclear repulsion remains a separately classified analytic term.",
+  "status": "production"
+}

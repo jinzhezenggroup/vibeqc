@@ -1,0 +1,57 @@
+{
+  "first": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-148-a/build/cc-endpoints-first",
+  "second": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-148-a/tests/reference_data/cc/endpoints",
+  "cases": [
+    {
+      "case": "h2",
+      "arrays_identical": true,
+      "array_count": 10,
+      "energy_error": 0.0,
+      "inputs_hash": "3cce0fa5a70427a92f38066c8d3c65c22046c7578745ef08118bc43525ee6937",
+      "arrays_hash": "1965f85c1e14358b4603e8cabad0a5471722d9bf3122a83ba3b1b496f12d418a",
+      "first_npz_sha256": "a1d40ad2ca7e1b375fc94874bdd4dfa41463d0207da7f76b6541c3d36ad8ea5c",
+      "second_npz_sha256": "a1d40ad2ca7e1b375fc94874bdd4dfa41463d0207da7f76b6541c3d36ad8ea5c"
+    },
+    {
+      "case": "he",
+      "arrays_identical": true,
+      "array_count": 10,
+      "energy_error": 0.0,
+      "inputs_hash": "badcbf5af8aeb48a3cc34fabf1eb6bf10621e77048739eddda5a37230c46d8d0",
+      "arrays_hash": "9de7ef81a3f173179899c98016cea8b2ae2e8ac861b8ee4c556161a422bb8d19",
+      "first_npz_sha256": "eb412f4531b73e53a1b822511108c60952f752fcd6d78e5decf3ff8976b06a5b",
+      "second_npz_sha256": "eb412f4531b73e53a1b822511108c60952f752fcd6d78e5decf3ff8976b06a5b"
+    },
+    {
+      "case": "h2o",
+      "arrays_identical": true,
+      "array_count": 10,
+      "energy_error": 0.0,
+      "inputs_hash": "c8bc49fa7c028e8377fe65bfcd13dd005cf0748a1ed1da239aacb270f85d46dd",
+      "arrays_hash": "204288f846687edbf57099caeffff1a52a27a52f326831961d11ac6a0742182c",
+      "first_npz_sha256": "241122944192fd6916c70e902bee833c67618f94f1ea5177bb19f59081f6af1c",
+      "second_npz_sha256": "241122944192fd6916c70e902bee833c67618f94f1ea5177bb19f59081f6af1c"
+    },
+    {
+      "case": "nh3",
+      "arrays_identical": true,
+      "array_count": 10,
+      "energy_error": 0.0,
+      "inputs_hash": "ef49cf72bea6ec82521a348fc856341ff33d116ec9134701a4d1a7357ddec892",
+      "arrays_hash": "438a99b7d58691ad68245f476c866eb3472ed147342175641da86e792958f679",
+      "first_npz_sha256": "6b4d284a2a07ec44241e7c2806c932a440729219fa674096f639e72147795e8b",
+      "second_npz_sha256": "6b4d284a2a07ec44241e7c2806c932a440729219fa674096f639e72147795e8b"
+    },
+    {
+      "case": "ch4",
+      "arrays_identical": true,
+      "array_count": 10,
+      "energy_error": 0.0,
+      "inputs_hash": "c40c06e95342ae8c2b0344cefc17d02a675b3038a6498f4cc6ae8d58c2dbc7f8",
+      "arrays_hash": "8c4c2443668502bacf446e910e0008acb1a2fc7a8fd05f874810ce4c9cb3c87d",
+      "first_npz_sha256": "2c10e08f7c769088f216da6f1103b7b9c2882ba93e4a804e79a285faaf83e30e",
+      "second_npz_sha256": "2c10e08f7c769088f216da6f1103b7b9c2882ba93e4a804e79a285faaf83e30e"
+    }
+  ],
+  "passed": true
+}

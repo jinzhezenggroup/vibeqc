@@ -1,0 +1,187 @@
+{
+  "block_gate_count": 240,
+  "capacity_bytes": {
+    "device": 0,
+    "host": 28331424
+  },
+  "cases": [
+    {
+      "D_over_C_median_ratio": 1.337734618225865,
+      "case": "water_svp/LDA_XC_PW/cold-core-guess",
+      "density_matrix": {
+        "max_seconds": 0.156512729,
+        "median_seconds": 0.156406646,
+        "min_seconds": 0.156257872,
+        "sample_stdev_seconds": 0.00010097128297788484,
+        "samples": 5
+      },
+      "inputs_hash": "ef8f34e955551bfa63cd97877bcde3eb3cd7ca8a6cac84a4afec9deadb0a80d7",
+      "orbitals": {
+        "max_seconds": 0.116981388,
+        "median_seconds": 0.116919039,
+        "min_seconds": 0.116818156,
+        "sample_stdev_seconds": 7.329956235680972e-05,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.2298310373639503,
+      "case": "water_svp/LDA_XC_PW/common-warm-density",
+      "density_matrix": {
+        "max_seconds": 0.04523486,
+        "median_seconds": 0.045058964,
+        "min_seconds": 0.045038375,
+        "sample_stdev_seconds": 8.079688245037737e-05,
+        "samples": 5
+      },
+      "inputs_hash": "7cc27e36f52030b96888d19b0547211ee850cfadd488d57ecfecaef3d97f588f",
+      "orbitals": {
+        "max_seconds": 0.036702961,
+        "median_seconds": 0.036638337,
+        "min_seconds": 0.03652974,
+        "sample_stdev_seconds": 6.4916001243916e-05,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.1387544576864463,
+      "case": "water_svp/PBE-tail-v2/cold-core-guess",
+      "density_matrix": {
+        "max_seconds": 0.558095852,
+        "median_seconds": 0.557698753,
+        "min_seconds": 0.556900496,
+        "sample_stdev_seconds": 0.000466427311495263,
+        "samples": 5
+      },
+      "inputs_hash": "b36c0ef525553f161187c64468c79ff8fd4fe8e05bbb8a3101707c1ac204a168",
+      "orbitals": {
+        "max_seconds": 0.490568083,
+        "median_seconds": 0.489744518,
+        "min_seconds": 0.489601394,
+        "sample_stdev_seconds": 0.0004435974343847046,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.0986163974328131,
+      "case": "water_svp/PBE-tail-v2/common-warm-density",
+      "density_matrix": {
+        "max_seconds": 0.159953561,
+        "median_seconds": 0.159663937,
+        "min_seconds": 0.159573484,
+        "sample_stdev_seconds": 0.00014988827487932233,
+        "samples": 5
+      },
+      "inputs_hash": "7ef185351d25960da09942a2a312feb61733ef5e906019fcad83d2694eae1fe6",
+      "orbitals": {
+        "max_seconds": 0.14549684,
+        "median_seconds": 0.145331835,
+        "min_seconds": 0.145149786,
+        "sample_stdev_seconds": 0.00012434631216163498,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.4732760804494325,
+      "case": "water_tzvp/LDA_XC_PW/cold-core-guess",
+      "density_matrix": {
+        "max_seconds": 0.425079539,
+        "median_seconds": 0.424480624,
+        "min_seconds": 0.424240554,
+        "sample_stdev_seconds": 0.0003208406134505156,
+        "samples": 5
+      },
+      "inputs_hash": "46bcfea433b807fad6675ec77af3a7efede44a2b32422df56dcff51d9480cb23",
+      "orbitals": {
+        "max_seconds": 0.288594043,
+        "median_seconds": 0.288120217,
+        "min_seconds": 0.287685725,
+        "sample_stdev_seconds": 0.0003783518038219336,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.305841376662776,
+      "case": "water_tzvp/LDA_XC_PW/common-warm-density",
+      "density_matrix": {
+        "max_seconds": 0.1251847,
+        "median_seconds": 0.12493845,
+        "min_seconds": 0.124743918,
+        "sample_stdev_seconds": 0.00019611875699484404,
+        "samples": 5
+      },
+      "inputs_hash": "6df35896a1f3f2e87869dc34c865eae00ee0fb47478b3d9933e198ff285bedb0",
+      "orbitals": {
+        "max_seconds": 0.095884328,
+        "median_seconds": 0.09567659,
+        "min_seconds": 0.095596147,
+        "sample_stdev_seconds": 0.00010778142749704042,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.2286111540277425,
+      "case": "water_tzvp/PBE-tail-v2/cold-core-guess",
+      "density_matrix": {
+        "max_seconds": 1.253652877,
+        "median_seconds": 1.252747042,
+        "min_seconds": 1.252419977,
+        "sample_stdev_seconds": 0.00047157180917044685,
+        "samples": 5
+      },
+      "inputs_hash": "223563c80ac8ee6fb59d144c1d5873626db70be99558781dff37af83e3a176ed",
+      "orbitals": {
+        "max_seconds": 1.020921949,
+        "median_seconds": 1.019644855,
+        "min_seconds": 1.019189969,
+        "sample_stdev_seconds": 0.0007440371853457903,
+        "samples": 5
+      }
+    },
+    {
+      "D_over_C_median_ratio": 1.1613313032824322,
+      "case": "water_tzvp/PBE-tail-v2/common-warm-density",
+      "density_matrix": {
+        "max_seconds": 0.362654351,
+        "median_seconds": 0.361793875,
+        "min_seconds": 0.361463323,
+        "sample_stdev_seconds": 0.0005132072848711284,
+        "samples": 5
+      },
+      "inputs_hash": "6f5621c9fd0f0e99f27dc3655fe9ea58d324ae1f161392b2122d34a50f294a35",
+      "orbitals": {
+        "max_seconds": 0.311797547,
+        "median_seconds": 0.311533732,
+        "min_seconds": 0.311398203,
+        "sample_stdev_seconds": 0.0001562740208201657,
+        "samples": 5
+      }
+    }
+  ],
+  "decision": "numerical acceptance only; no performance promotion",
+  "dirty": false,
+  "errors": {
+    "density_error": {
+      "gates": 80,
+      "max_absolute_error": 3.8934383495004e-09,
+      "max_scaled_error": 0.38934383495004,
+      "passed": true
+    },
+    "energy_error": {
+      "gates": 80,
+      "max_absolute_error": 4.121147867408581e-13,
+      "max_scaled_error": 0.0004121147867408581,
+      "passed": true
+    },
+    "residual": {
+      "gates": 80,
+      "max_absolute_error": 1.1555997930035111e-09,
+      "max_scaled_error": 0.11555997930035111,
+      "passed": true
+    }
+  },
+  "memory_scope": "composed native numeric-capacity observer plus retained baseline density; not allocator/RSS peak",
+  "revision": "55ac2dc01181dfed83ca5aae5516cb50dd20f593",
+  "scope": "complete native energy-only RKS on GridSpec(16,8,16); PBE retains production tail-v2",
+  "timing_count": 80
+}

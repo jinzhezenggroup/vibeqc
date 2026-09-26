@@ -1,0 +1,446 @@
+{
+  "schema": "vibeqc.df-response-attribution.v1",
+  "scope": "384-AO causal attribution only; no production optimization or clean speed claim",
+  "source_revision": "a57656a62f333a0990c963844a69bcef8b7c5b16",
+  "source_identity": "18e05cbb37015ef31a1d8cf5c195c7b3882c3a6d1fd68921adbca115440bf0f3",
+  "library_sha256": "59c54953dcba2ef4d51147fb32d4093919956619a8b432d509cb4996f245de25",
+  "gates": {
+    "energy_absolute_hartree": 1e-09,
+    "force_maximum_absolute_hartree_per_bohr": 1e-08,
+    "identical_native_warm_iterations": true,
+    "complete_weight_counts": true,
+    "identical_raw_bytes": true
+  },
+  "rows": [
+    {
+      "mode": "default",
+      "warm_seconds": 11.460537386825308,
+      "iterations": [
+        3
+      ],
+      "maximum_energy_error_hartree": 1.8189894035458565e-12,
+      "maximum_force_error_hartree_per_bohr": 1.0635859207241971e-10,
+      "executed_work": {
+        "atom_coordinates": 144,
+        "density_upload_bytes": 1179648,
+        "device_to_host_bytes": 1152,
+        "host_to_device_bytes": 4016747664,
+        "metric_derivative_weight_bytes": 1179648,
+        "metric_derivative_weights": 147456,
+        "raw_value_cache_hits": 436,
+        "raw_value_reuse_bytes": 514326528,
+        "raw_value_upload_bytes": 4015521792,
+        "response_ao_matrix_products": 6144,
+        "response_auxiliary_blocks": 8,
+        "response_charge_dot_elements": 56623104,
+        "response_host_to_device_bytes": 0,
+        "response_metric_blas_dots": 147456,
+        "response_probe_total_device_bytes": 132174096,
+        "response_scratch_bytes": 132174096,
+        "stream_synchronizations": 1,
+        "tensor_host_to_device_bytes": 4015521792,
+        "three_center_derivative_weight_bytes": 452984832,
+        "three_center_derivative_weights": 56623104
+      },
+      "device_kernel_ms_by_component": {
+        "three_center_derivative_contraction": 3140.987139,
+        "coulomb_response_charge_dot": 2071.150257,
+        "exchange_response_matrix_products": 500.948651,
+        "outside_named_response": 252.1915209999999,
+        "exchange_response_metric_dot": 154.920805,
+        "exchange_response_weights_and_metric": 118.971848,
+        "ri_k_gemm": 57.285453,
+        "metric_center_derivative_contraction": 4.326868,
+        "ri_k": 1.500968,
+        "metric_frechet_response": 0.530851,
+        "ri_j_gemm": 0.584355,
+        "coulomb_response_weights": 0.226562,
+        "metric_inverse": 0.222433,
+        "coulomb_response": 0.023168
+      },
+      "raw_copies": {
+        "calls": 3404,
+        "bytes": 4015521792,
+        "host_api_ms": 10467.303066,
+        "device_dma_ms": 1507.418306,
+        "host_overlap_same_stream_kernels_ms": 5798.192278,
+        "host_overlap_same_stream_copies_ms": 1270.340106,
+        "host_residual_not_device_activity_ms": 3398.770682,
+        "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration"
+      },
+      "raw_copy_scope": {
+        "host_nvtx_ms": 10488.020762,
+        "host_overlap_same_stream_kernels_ms": 5800.462181,
+        "host_overlap_same_stream_copies_ms": 1288.784947,
+        "host_residual_not_device_activity_ms": 3398.773634,
+        "scope": "includes progress fences when enabled; separate from the copy API interval"
+      },
+      "gather_host": null,
+      "cpu_reference_eigensolves": 0
+    },
+    {
+      "mode": "drain",
+      "warm_seconds": 13.227348980959505,
+      "iterations": [
+        3
+      ],
+      "maximum_energy_error_hartree": 1.8189894035458565e-12,
+      "maximum_force_error_hartree_per_bohr": 1.0637813199765311e-10,
+      "executed_work": {
+        "atom_coordinates": 144,
+        "density_upload_bytes": 1179648,
+        "device_to_host_bytes": 1152,
+        "host_to_device_bytes": 4016747664,
+        "metric_derivative_weight_bytes": 1179648,
+        "metric_derivative_weights": 147456,
+        "raw_probe_prior_stream_drains": 3404,
+        "raw_value_cache_hits": 436,
+        "raw_value_reuse_bytes": 514326528,
+        "raw_value_upload_bytes": 4015521792,
+        "response_ao_matrix_products": 6144,
+        "response_auxiliary_blocks": 8,
+        "response_charge_dot_elements": 56623104,
+        "response_host_to_device_bytes": 0,
+        "response_metric_blas_dots": 147456,
+        "response_probe_total_device_bytes": 132174096,
+        "response_scratch_bytes": 132174096,
+        "stream_synchronizations": 3405,
+        "tensor_host_to_device_bytes": 4015521792,
+        "three_center_derivative_weight_bytes": 452984832,
+        "three_center_derivative_weights": 56623104
+      },
+      "device_kernel_ms_by_component": {
+        "three_center_derivative_contraction": 3141.126559,
+        "coulomb_response_charge_dot": 2238.885884,
+        "exchange_response_matrix_products": 505.738741,
+        "outside_named_response": 252.19884399999998,
+        "exchange_response_metric_dot": 155.022621,
+        "exchange_response_weights_and_metric": 119.131665,
+        "ri_k_gemm": 57.278498,
+        "metric_center_derivative_contraction": 4.235061,
+        "ri_k": 1.499176,
+        "metric_frechet_response": 0.533795,
+        "ri_j_gemm": 0.585443,
+        "coulomb_response_weights": 0.22717,
+        "metric_inverse": 0.222561,
+        "coulomb_response": 0.025921
+      },
+      "raw_copies": {
+        "calls": 3404,
+        "bytes": 4015521792,
+        "host_api_ms": 5619.976511,
+        "device_dma_ms": 1513.067253,
+        "host_overlap_same_stream_kernels_ms": 0.0,
+        "host_overlap_same_stream_copies_ms": 733.075047,
+        "host_residual_not_device_activity_ms": 4886.901464,
+        "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration"
+      },
+      "raw_copy_scope": {
+        "host_nvtx_ms": 5641.168852,
+        "host_overlap_same_stream_kernels_ms": 0.0,
+        "host_overlap_same_stream_copies_ms": 752.415816,
+        "host_residual_not_device_activity_ms": 4888.753036,
+        "scope": "includes progress fences when enabled; separate from the copy API interval"
+      },
+      "gather_host": null,
+      "cpu_reference_eigensolves": 0
+    },
+    {
+      "mode": "packed",
+      "warm_seconds": 9.984830401837826,
+      "iterations": [
+        3
+      ],
+      "maximum_energy_error_hartree": 1.8189894035458565e-12,
+      "maximum_force_error_hartree_per_bohr": 1.0637457928397431e-10,
+      "executed_work": {
+        "atom_coordinates": 144,
+        "density_upload_bytes": 1179648,
+        "device_to_host_bytes": 1152,
+        "host_to_device_bytes": 4016747664,
+        "metric_derivative_weight_bytes": 1179648,
+        "metric_derivative_weights": 147456,
+        "raw_probe_gather_elements": 501940224,
+        "raw_probe_pinned_host_bytes": 1179648,
+        "raw_probe_prior_stream_drains": 3404,
+        "raw_value_cache_hits": 436,
+        "raw_value_reuse_bytes": 514326528,
+        "raw_value_upload_bytes": 4015521792,
+        "response_ao_matrix_products": 6144,
+        "response_auxiliary_blocks": 8,
+        "response_charge_dot_elements": 56623104,
+        "response_host_to_device_bytes": 0,
+        "response_metric_blas_dots": 147456,
+        "response_probe_total_device_bytes": 132174096,
+        "response_scratch_bytes": 132174096,
+        "stream_synchronizations": 3405,
+        "tensor_host_to_device_bytes": 4015521792,
+        "three_center_derivative_weight_bytes": 452984832,
+        "three_center_derivative_weights": 56623104
+      },
+      "device_kernel_ms_by_component": {
+        "three_center_derivative_contraction": 3155.315226,
+        "coulomb_response_charge_dot": 2241.389225,
+        "exchange_response_matrix_products": 514.14022,
+        "outside_named_response": 252.24560300000005,
+        "exchange_response_metric_dot": 154.961621,
+        "exchange_response_weights_and_metric": 119.50057,
+        "ri_k_gemm": 57.278666,
+        "metric_center_derivative_contraction": 4.331863,
+        "ri_k": 1.5016090000000002,
+        "metric_frechet_response": 0.544866,
+        "ri_j_gemm": 0.584867,
+        "metric_inverse": 0.227618,
+        "coulomb_response_weights": 0.227073,
+        "coulomb_response": 0.02576
+      },
+      "raw_copies": {
+        "calls": 3404,
+        "bytes": 4015521792,
+        "host_api_ms": 28.418959,
+        "device_dma_ms": 211.221262,
+        "host_overlap_same_stream_kernels_ms": 0.0,
+        "host_overlap_same_stream_copies_ms": 0.043191,
+        "host_residual_not_device_activity_ms": 28.375768,
+        "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration"
+      },
+      "raw_copy_scope": {
+        "host_nvtx_ms": 41.673564,
+        "host_overlap_same_stream_kernels_ms": 0.0,
+        "host_overlap_same_stream_copies_ms": 5.905881,
+        "host_residual_not_device_activity_ms": 35.767683,
+        "scope": "includes progress fences when enabled; separate from the copy API interval"
+      },
+      "gather_host": {
+        "calls": 3404,
+        "wall_ms": 2820.036782000001,
+        "cpu_ms": 2820.6905630001793
+      },
+      "cpu_reference_eigensolves": 0
+    },
+    {
+      "mode": "sharded",
+      "warm_seconds": 11.916820968035609,
+      "iterations": [
+        3
+      ],
+      "maximum_energy_error_hartree": 1.8189894035458565e-12,
+      "maximum_force_error_hartree_per_bohr": 1.062520106620557e-10,
+      "executed_work": {
+        "atom_coordinates": 144,
+        "density_upload_bytes": 1179648,
+        "derivative_probe_gradient_copies": 128,
+        "derivative_probe_scratch_bytes": 148480,
+        "device_to_host_bytes": 1152,
+        "host_to_device_bytes": 4016748688,
+        "metric_derivative_weight_bytes": 1179648,
+        "metric_derivative_weights": 147456,
+        "raw_value_cache_hits": 436,
+        "raw_value_reuse_bytes": 514326528,
+        "raw_value_upload_bytes": 4015521792,
+        "response_ao_matrix_products": 6144,
+        "response_auxiliary_blocks": 8,
+        "response_charge_dot_elements": 56623104,
+        "response_host_to_device_bytes": 0,
+        "response_metric_blas_dots": 147456,
+        "response_probe_total_device_bytes": 132322576,
+        "response_scratch_bytes": 132174096,
+        "stream_synchronizations": 1,
+        "tensor_host_to_device_bytes": 4015521792,
+        "three_center_derivative_weight_bytes": 452984832,
+        "three_center_derivative_weights": 56623104
+      },
+      "device_kernel_ms_by_component": {
+        "three_center_derivative_contraction": 3138.880946,
+        "coulomb_response_charge_dot": 2073.584935,
+        "exchange_response_matrix_products": 505.168635,
+        "outside_named_response": 250.0457199999999,
+        "exchange_response_metric_dot": 155.133326,
+        "exchange_response_weights_and_metric": 119.084451,
+        "ri_k_gemm": 54.365532,
+        "metric_center_derivative_contraction": 4.336375,
+        "ri_k": 1.499559,
+        "metric_frechet_response": 0.531682,
+        "ri_j_gemm": 0.583587,
+        "coulomb_response_weights": 0.228866,
+        "metric_inverse": 0.224033,
+        "coulomb_response": 0.023200000000000002,
+        "gradient_probe_shard_reduction": 0.002944
+      },
+      "raw_copies": {
+        "calls": 3404,
+        "bytes": 4015521792,
+        "host_api_ms": 10926.897907,
+        "device_dma_ms": 1505.06897,
+        "host_overlap_same_stream_kernels_ms": 5802.944037,
+        "host_overlap_same_stream_copies_ms": 1268.675931,
+        "host_residual_not_device_activity_ms": 3855.277939,
+        "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration"
+      },
+      "raw_copy_scope": {
+        "host_nvtx_ms": 10948.003786,
+        "host_overlap_same_stream_kernels_ms": 5805.227661,
+        "host_overlap_same_stream_copies_ms": 1287.494407,
+        "host_residual_not_device_activity_ms": 3855.281718,
+        "scope": "includes progress fences when enabled; separate from the copy API interval"
+      },
+      "gather_host": null,
+      "cpu_reference_eigensolves": 0
+    }
+  ],
+  "validation": {
+    "cpu_timeline_component_tests": {
+      "passed": 34
+    },
+    "gpu_derivative_response_tests": {
+      "passed": 59,
+      "scope": "58 passing cases in Slurm 9591 plus the corrected 16-MiB neighbor case in Slurm 9592; same frozen library. Budgets 8/16 MiB preserve numerical/reference cases; former 1/4 MiB requests remain explicit OOM checks."
+    },
+    "bounded_property_tests": {
+      "passed": 4,
+      "budgets_mib": [
+        32,
+        64
+      ],
+      "scope": "96-AO full-force parity and retained/regenerated value residency; Slurm 9593"
+    },
+    "memcheck": {
+      "passed_cases": 4,
+      "errors": 0,
+      "scope": "RHF/UHF, Cartesian/spherical, default/drain/packed/sharded/default transitions; Slurm 9592"
+    },
+    "preexisting_failures": {
+      "count": 16,
+      "baseline_source_identity": "cb60b50bac01691a81ac6bd46919c840bdf1f609d5651e637adef31e7f01e9ca",
+      "scope": "All 16 tiny-budget derivative failures reproduced unchanged on master. Current provider workspace floors are now covered by feasible budgets; no energy/force tolerance or mathematical case was removed."
+    },
+    "hardware_counters": {
+      "available": false,
+      "reason": "Nsight Compute ERR_NVGPUCTRPERM; no hardware atomic-counter claim"
+    }
+  },
+  "limitations": [
+    "All endpoint durations here are intrusive profiler runs.",
+    "API, NVTX, CPU and device clocks overlap; intersection does not alone prove exclusive waiting.",
+    "CUDA internal staging/control residual is not claimed to be pure CPU packing; the explicit packed-loop CPU clock measures that ablation.",
+    "Sharded atomic destinations test sink-layout sensitivity; they do not isolate total atomic instruction cost from arithmetic.",
+    "This does not close #308, #206, or the generated shell-block/scheduling work."
+  ],
+  "files": [
+    {
+      "path": "measurements/384-default.json",
+      "role": "samples",
+      "sha256": "d0d2e0b0bb032bf47219f6d8f2d5cc66e14ce045478a55c6b10a938b4cffede9",
+      "bytes": 19681
+    },
+    {
+      "path": "timelines/384-default.json",
+      "role": "evidence",
+      "sha256": "188ddcf478627c05d27a21d0f89fb3a75232da4170ef509918427c69a7ed9b03",
+      "bytes": 31820
+    },
+    {
+      "path": "measurements/384-drain.json",
+      "role": "samples",
+      "sha256": "573457c1e7d83953b2f8b642dce260935d91e51bdd769f64b530feafd648a923",
+      "bytes": 19937
+    },
+    {
+      "path": "timelines/384-drain.json",
+      "role": "evidence",
+      "sha256": "ad5c818e8a5eb57f2647ab8c8c7417affbd4a0eafbc60e3f44870d7e7a937f64",
+      "bytes": 31823
+    },
+    {
+      "path": "measurements/384-packed.json",
+      "role": "samples",
+      "sha256": "433e32a8e840fbaa4a4f2f493a02d5df67df5227c89bed5609fe47daec2afd65",
+      "bytes": 20425
+    },
+    {
+      "path": "timelines/384-packed.json",
+      "role": "evidence",
+      "sha256": "9813ecf9d62dbccc92b1ea49f57c0e0d3acb5bfde10803a8139a89f0bef0a85c",
+      "bytes": 31977
+    },
+    {
+      "path": "measurements/384-sharded.json",
+      "role": "samples",
+      "sha256": "0caef70b2f2efbbdb2afa3e0b3e5f81d9b414f291dfba207422d50101fb6782a",
+      "bytes": 20017
+    },
+    {
+      "path": "timelines/384-sharded.json",
+      "role": "evidence",
+      "sha256": "ff4f5da88badad43052f98e512609e915ab17c47cc7ee36e1fc9331192887cdc",
+      "bytes": 32358
+    },
+    {
+      "path": "measurements/384-original-progress.json",
+      "role": "samples",
+      "sha256": "f2910c765e20f1c60f7401b694ae4638506fe68f7d5401b65a2c6f56ef7df13d",
+      "bytes": 11475
+    },
+    {
+      "path": "timelines/384-original-progress.json",
+      "role": "evidence",
+      "sha256": "d85e4cea8bec1ad20660d6a45d2b0fa029c572855f3704258a67ff7c24e7c4c9",
+      "bytes": 31579
+    },
+    {
+      "path": "reproduction/measured-source.patch",
+      "role": "source-patch",
+      "sha256": "bdad697b2e6b4a6de271fea772690c4cc99d8e8ec5d7289acf257c9e063e6bc4",
+      "bytes": 22937
+    },
+    {
+      "path": "reproduction/original-progress.py",
+      "role": "reproduction",
+      "sha256": "040505876dce4f936e5fc820b766c951bbfbac36b1ae6bde9427e4dcee2d0ca2",
+      "bytes": 4060
+    },
+    {
+      "path": "ownership-delta.json",
+      "role": "summary",
+      "sha256": "bca5286d35318ec73c43963be4b0f4f8df50786ae52f6684624cd001eed54364",
+      "bytes": 449
+    }
+  ],
+  "debug_artifacts": [
+    {
+      "path": ".artifacts/issue308-response-timeline/original-progress-nsys.nsys-rep",
+      "sha256": "39a4e66fb60e77dcfbb8e80ab7779926b88d4f996dd88edafe5fac1f269dfc56",
+      "bytes": 3633607,
+      "required_for_reproduction": false,
+      "storage": "ignored local debugging artifact"
+    },
+    {
+      "path": ".artifacts/issue308-response-timeline/qualified-v3/nsys-384-default.nsys-rep",
+      "sha256": "d24c0fe027d2112d79b0e88fadb74dd257068121fd5e89796e14018cfd4e4a24",
+      "bytes": 3056319,
+      "required_for_reproduction": false,
+      "storage": "ignored local debugging artifact"
+    },
+    {
+      "path": ".artifacts/issue308-response-timeline/qualified-v3/nsys-384-packed.nsys-rep",
+      "sha256": "a48107520c3fadc7d1ac52108af5fce614c2a91c324ba63202783ac93223a31d",
+      "bytes": 4106859,
+      "required_for_reproduction": false,
+      "storage": "ignored local debugging artifact"
+    },
+    {
+      "path": ".artifacts/issue308-response-timeline/qualified-v3/nsys-384-drain.nsys-rep",
+      "sha256": "6999455ede0c271a14c320c526008f051de71b3e0aacb1ad00fa062cffea23d8",
+      "bytes": 3639050,
+      "required_for_reproduction": false,
+      "storage": "ignored local debugging artifact"
+    },
+    {
+      "path": ".artifacts/issue308-response-timeline/qualified-v3/nsys-384-sharded.nsys-rep",
+      "sha256": "dca8b975f2a1ca049c700b26737ac09a055a46d2692d9d874f2c3326ef345328",
+      "bytes": 3060272,
+      "required_for_reproduction": false,
+      "storage": "ignored local debugging artifact"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "base_revision": "5e299dd30db76986ac1cc016056f9689586c0976",
+  "binary_sha256": "0612146abf06d58806dba8c245f30f73c2446a214650fc0ac6bcd9b34b73708d",
+  "build": "Release; CUDA architecture 120; CUDA fast compile OFF; AOT shells OFF",
+  "cpu_binary_sha256": "83c4a822d9cf6c9cf37e0d6671a21e33eb94f96528b2c838631a9e05fb0d63dd",
+  "cpu_native_tests": 13,
+  "cpu_symbolic_emitted_tests": 56,
+  "disposition": "Accurate opt-in candidate. No consistent complete-endpoint gain; unchanged DF replay regresses.",
+  "enabled_gpu_skips": 0,
+  "failed_attempt": {
+    "job": 9083,
+    "reason": "Benchmark requested optional iteration profiling with resource plans; runner now disables optional profiling for resource-budgeted measurements."
+  },
+  "gpu_checkpoint_tests": 41,
+  "gpu_derivative_tests": 25,
+  "gpu_native_tests": 13,
+  "gpu_resource_tests": 14,
+  "gpu_screening_tests": 4,
+  "hardware": "NVIDIA GeForce RTX 5090 (sm_120)",
+  "jobs": {
+    "contract_and_df_profiles": 9086,
+    "endpoints": 9084,
+    "native_and_tests": 9082,
+    "raw": [
+      9080,
+      9081
+    ],
+    "screening_and_direct_profiles": 9085
+  },
+  "known_context_limit": "Keep large f-shell endpoints and checkpoint subprocesses in separate processes; previously reproduced context-memory limitation predates this implementation.",
+  "memory_scope": "Owned numeric bridge staging and HF device ledgers, excluding caller data, opaque library/driver storage and complete process host high-water. Full DF S/H derivative array savings are logical tensor bytes.",
+  "production_promoted": false,
+  "runtime_policy": {
+    "candidate": "generated",
+    "default": "reference",
+    "mappings": [
+      "thread",
+      "shell_warp",
+      "serial"
+    ]
+  },
+  "schema": "vibeqc.one_electron_derivative_acceptance",
+  "source_identity": "88f81d35d2769bd8cb211bb7dfbdf4e379e413d928c2a8561933ffb0955badb7",
+  "toolchain": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+  "unchanged_value_header_sha256": "8bf6520e91fe350a18728609a2235b4569284fb75d5491ff505a865c6752f84d",
+  "version": 1,
+  "worktree_dirty": true
+}

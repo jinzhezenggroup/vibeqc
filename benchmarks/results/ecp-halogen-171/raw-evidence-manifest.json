@@ -1,0 +1,140 @@
+{
+  "files": [
+    {
+      "path": "ISSUE-171-halogen-collect.py",
+      "bytes": 4050,
+      "sha256": "fe98553efb1e695c161da98a119985c32c5f8df5f508f271530ae3080544b6b9"
+    },
+    {
+      "path": "ISSUE-171-halogen-prepare.py",
+      "bytes": 1644,
+      "sha256": "de7e6e7e47c31c6f61320200d41691bea179ada26e13159a7fb4dd43d9af49d2"
+    },
+    {
+      "path": "ISSUE-171-halogen-run.sh",
+      "bytes": 1559,
+      "sha256": "bfe7f117758311c035023195095af2c29cb0181d3517ff5ff8f2c7e60ec51731"
+    },
+    {
+      "path": "cpu-build.log",
+      "bytes": 26396,
+      "sha256": "4e5d6f8b1dd5c016f400e4882afdb58311e715d24733875bd29d16a840b81738"
+    },
+    {
+      "path": "cpu-configure.log",
+      "bytes": 459,
+      "sha256": "3b34bc5e07d2a2fbf28595421ae5304763b71551524146d628100047ee37d5e0"
+    },
+    {
+      "path": "cpu-ctest.log",
+      "bytes": 573,
+      "sha256": "594cef70de83ac87add723ed1f84c637421bdfa7cbc5503a9c0fc914826c6800"
+    },
+    {
+      "path": "cpu-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-endpoints.json",
+      "bytes": 12059,
+      "sha256": "2c8a72961307a83d17ffda027049aff2625e47746811991c5759b76a3c9095b0"
+    },
+    {
+      "path": "cpu-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpu-tests.log",
+      "bytes": 1313,
+      "sha256": "d2f6ce7d8010b71720c714f8adf8183001c14b485e1d6d2cc0c2f9f3777690e9"
+    },
+    {
+      "path": "cpu.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cuda-build.log",
+      "bytes": 43987,
+      "sha256": "ee61bb78fcd2b17fad945ee394dd04154fd8cd4e8c4db5ecb4a195cd25c1e47c"
+    },
+    {
+      "path": "cuda-configure.log",
+      "bytes": 1124,
+      "sha256": "f0b78848595f2a5106dbeb05747be73d1416a755e6a899c990ee9e95ad53750f"
+    },
+    {
+      "path": "cuda-ctest.log",
+      "bytes": 691,
+      "sha256": "805d1740c919ee9b30ea427563844f14ec09afdc44953b22d2aeead0736462a0"
+    },
+    {
+      "path": "cuda-driver.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-endpoints.json",
+      "bytes": 14403,
+      "sha256": "8860c2bb30d9328ce09062d9ee41ab484b85f0a8d4053f7487b4ee658e85e57d"
+    },
+    {
+      "path": "cuda-endpoints.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cuda-memcheck.log",
+      "bytes": 187,
+      "sha256": "8204e345112446ba5af8ca53c2619880e88999ff491f4496ca358b4704ec5041"
+    },
+    {
+      "path": "cuda-tests.log",
+      "bytes": 1322,
+      "sha256": "e2a5fe117b20a110d3f98873a4285ddfb5ca11136a7fb5b9a5aa2802c391f81d"
+    },
+    {
+      "path": "cuda.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "final-source-identity.json",
+      "bytes": 69495,
+      "sha256": "9b303d58dc79e090465d17555b7f22d045ed36856c0d6c1540ca60fb947d2462"
+    },
+    {
+      "path": "measured-source/tests/python/test_ecp_heavy.py",
+      "bytes": 10187,
+      "sha256": "aa7f83d631574d2b5a54cd69e9c832e6af8f543546b3cba85f489b64cdd099d9"
+    },
+    {
+      "path": "measured-source/tools/qualify_ecp_heavy.py",
+      "bytes": 6668,
+      "sha256": "4e8ea8533436a0c136ae71f707fe0846ddec8d6f5696dd676c35da9656489b05"
+    },
+    {
+      "path": "source-identity.json",
+      "bytes": 69084,
+      "sha256": "ebf8017dc2821cee7248bed4646b8e6c04b7ebcc465c42fae0b3189d782e9f07"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 899,
+      "sha256": "2b86d22ce4e02f251675c0f8a652b3eeecb3b0ab3f16e46af887bcd99a528d81"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 445,
+      "sha256": "05c51e21a410a63e42f072634ae5c1c00765a2f9b12511fd80b7759b4f0bbf17"
+    }
+  ],
+  "archive": {
+    "name": "ISSUE-171-halogen-results.tar.gz",
+    "bytes": 86557,
+    "sha256": "d41d254ee72fdf3ff1580048d331f7e9aadf31e085d6b43cb00b6debfe66efdc",
+    "location": "evidence-171/ISSUE-171-halogen-results.tar.gz"
+  }
+}

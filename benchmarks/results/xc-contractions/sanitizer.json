@@ -1,0 +1,314 @@
+{
+  "schema": "vibeqc.xc-native-sanitizer.v1",
+  "compiler": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "cases": [
+    {
+      "case": "LDA_XC_PW-polarized-energy",
+      "point_source_sha256": "0264a1f688326d72db4c47867a1ae58750e032104b49064a2a568198dd749c6e",
+      "harness_sha256": "f7191582ae4ec09eeccb32a817025c9d74f4e5397cb04126a7ec015e3cd9c10a",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-energy.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-energy"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-polarized-potential",
+      "point_source_sha256": "dc712a25e9395f3fcf4ae407df57d440836f19ea2ecf2825dbc9cd0cf996ae29",
+      "harness_sha256": "3ad2c9000a9e4591160950dd6bc3b4af6ee834624304b15bf99076b4555fb7e3",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-potential.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-potential"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-polarized-response",
+      "point_source_sha256": "3746386fa8ca47b159ff9fefcf73a862c0f30a73014b00366d67135b111f282e",
+      "harness_sha256": "17fb9ef6578bb7459778241cfa0b86977b679abc6af322a0e888c8655511a89b",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-response.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-response"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-polarized-geometry",
+      "point_source_sha256": "627857e86f0d3a618e6898caa60438e76dc0f6fecd30ecd5dd3a29c2292ef31b",
+      "harness_sha256": "ff64f9789ebdcdf1cc7e353dcc73e30e1170b6da68db175bcf0bf0612f96f9b6",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-geometry.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-polarized-geometry"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-unpolarized-energy",
+      "point_source_sha256": "b949120b92ca41a03d0f910390d24fdc05a3c1b22f085e5a9e79482240104f18",
+      "harness_sha256": "ad91a6a72b66e3b3da7c8533c4da819905feda0c17d88ff520b7e2c01386639c",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-energy.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-energy"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-unpolarized-potential",
+      "point_source_sha256": "34df826c65f6edde6017e4768f0dd650e20d6622aaacd3de5768ecc76798514f",
+      "harness_sha256": "440a3704de339d49cb96c04531c6cb29c5470486afbb0b24e2d727ccf40af7d3",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-potential.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-potential"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-unpolarized-response",
+      "point_source_sha256": "be69ba598d833192bfd85955ebdb32e6bccd376b1277ad795e87d3419312497a",
+      "harness_sha256": "15b5cbb372f111451aa505c85546bfeefdec9c3f02d8b73964ddd6a7c71c50f1",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-response.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-response"
+      ],
+      "passed": true
+    },
+    {
+      "case": "LDA_XC_PW-unpolarized-geometry",
+      "point_source_sha256": "add2de0bfac30d8065c0393f5d8977e3c6fb8fd8957e16008cc3964a47a62633",
+      "harness_sha256": "cddb6d1f0f8582499055a3309e69eed4661e6fa86cb42dc0fba82f7e7b5e5b43",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-geometry.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/LDA_XC_PW-unpolarized-geometry"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-polarized-energy",
+      "point_source_sha256": "db31361cea6ca08b768e1318c21fdf8f4ca44dc150da686ef400d8dbe6b6bacc",
+      "harness_sha256": "12cb6a7ef5b4a89166152145f7dc5ce16b73bd38a120b4a3af698db24bdb8442",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-energy.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-energy"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-polarized-potential",
+      "point_source_sha256": "bfb70b332d0ac383b97a813997d37c88c96a106e7f31d8d845281a32bddd26f1",
+      "harness_sha256": "8ab922e7cc090eba2d61dedc2c2c23d801c593333b085a2c1d0f80825f3d8176",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-potential.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-potential"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-polarized-response",
+      "point_source_sha256": "e10ceb78215ca114ad61d49faa66d36bca47f746e02e4228824522d7fa259145",
+      "harness_sha256": "24a1bc4670c3b951bf7e1dfca1eda474364cda28089e958b9756dbd4b319745b",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-response.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-response"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-polarized-geometry",
+      "point_source_sha256": "6497b8a842bd92aa3ed73f3100c61e13ba186b50c2c8bd3c83bb7c09c47930a3",
+      "harness_sha256": "1060f436cb24218636b2147a09a6304d99fb075a40d5e9aeeaa951d3ace91601",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-geometry.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-polarized-geometry"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-unpolarized-energy",
+      "point_source_sha256": "334ae23e47471ec80e1b590b3c50a5034c076916e3101423d018fb6a06f4ea4e",
+      "harness_sha256": "4651240361ea20edace0e8e02f3c9785b34476251def223ac2395b9e7a8f6b27",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-energy.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-energy"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-unpolarized-potential",
+      "point_source_sha256": "d52a2079d0fbb9e18e784b5d4fcb45f29c3187fdb240eb5b40b367fabc60824c",
+      "harness_sha256": "439c8e54a4c829beaedee0ce2f5c09fc4c3b9181a229d6ba05753d523dbc5339",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-potential.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-potential"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-unpolarized-response",
+      "point_source_sha256": "92a760b0335a40021a36748a71dd4c3177ddfe7a5bd946a53fc50b2149b74a2d",
+      "harness_sha256": "5c1b185d7e5686824a248f1080760ad007b9c42f85ac7f6d0b1273362386a22e",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-response.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-response"
+      ],
+      "passed": true
+    },
+    {
+      "case": "PBE-unpolarized-geometry",
+      "point_source_sha256": "3ebbb6007e25f12340a31bbb2a3d9d3f7bb8ca7a7ef36b011baa9953e788bbb4",
+      "harness_sha256": "addf3a5dbaf0c99847e19cf635d32cb0be90ae05543f347e49f3a6d3f278224e",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-no-pie",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-geometry.cpp",
+        "-o",
+        ".artifacts/xc-sanitizer-first/PBE-unpolarized-geometry"
+      ],
+      "passed": true
+    }
+  ],
+  "verification": {
+    "point_sources_match_revision": "60dceca7561e6bd04d61d1bbb5ee092044733275",
+    "method": "Byte-identical SHA256 checks for all 16 emitted point sources; host guards and orchestration are covered by the Python suites."
+  }
+}

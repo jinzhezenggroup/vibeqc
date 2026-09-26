@@ -1,0 +1,638 @@
+diff --git a/python/vibeqc_compiler/integral/df_shell_derivatives.py b/python/vibeqc_compiler/integral/df_shell_derivatives.py
+index 9474a26..36a1c84 100644
+--- a/python/vibeqc_compiler/integral/df_shell_derivatives.py
++++ b/python/vibeqc_compiler/integral/df_shell_derivatives.py
+@@ -22,8 +22,9 @@ class ShellSchedule:
+     """One bounded ownership variant; the scientific cache is unchanged."""
+ 
+     component_lanes: int
+-    triples_per_block: int
++    owner_groups_per_block: int
+     shared_bytes: int
++    auxiliary_shells_per_owner: int
+ 
+ 
+ def shell_schedule(angular, variant):
+@@ -43,7 +44,10 @@ def shell_schedule(angular, variant):
+     lanes = 32 if variant != 2 else min(32, max(4, 1 << (components - 1).bit_length()))
+     limit = 1 if variant == 0 else min(128 // lanes, (48 * 1024 - 1024) // group_bytes)
+     groups = 1 << (limit.bit_length() - 1)
+-    return ShellSchedule(lanes, groups, groups * group_bytes + 1024)
++    # Bound extra live A/B partials to low-angular classes. Runtime grouping is
++    # valid only within one primitive signature and one supplied response panel.
++    auxiliary_group = 4 if max(angular) <= 1 else 1
++    return ShellSchedule(lanes, groups, groups * group_bytes + 1024, auxiliary_group)
+ 
+ 
+ def axis_cache_layout(angular):
+@@ -134,6 +138,10 @@ template<unsigned A,unsigned B,unsigned C>
+ struct Moments {
+   static constexpr unsigned na=(A+1)*(A+2)/2,nb=(B+1)*(B+2)/2,nc=(C+1)*(C+2)/2;
+   static constexpr unsigned components=na*nb*nc;
++  // Both supported public representations use CCA identity expansions for s/p.
++  // Higher Cartesian classes are injective too, but retain the general path
++  // until independently qualified alongside spherical d/f fallback semantics.
++  static constexpr bool public_weight_identity=A<2 && B<2 && C<2;
+   static constexpr unsigned rows=B+1,columns=C+1;
+   static constexpr unsigned axis_size=(A+2)*rows*columns*(A+B+C+3)/2;
+   static constexpr unsigned polynomial_calls=(A<2 && B<2 && C<2)?0:3*(A+2)*rows*columns;
+@@ -256,8 +264,9 @@ struct Moments {
+             lines += [
+                 f"template<> struct Schedule<{parameters}> {{",
+                 f"  static constexpr unsigned lanes={schedule.component_lanes};",
+-                f"  static constexpr unsigned groups={schedule.triples_per_block};",
++                f"  static constexpr unsigned groups={schedule.owner_groups_per_block};",
+                 f"  static constexpr unsigned shared_bytes={schedule.shared_bytes};",
++                f"  static constexpr unsigned auxiliary_group={schedule.auxiliary_shells_per_owner};",
+                 "};",
+             ]
+     lines += ["template<class Function> void for_each_class(Function function) {"]
+diff --git a/src/scf/cuda/df_shell_derivatives.cu b/src/scf/cuda/df_shell_derivatives.cu
+index b6b2a7e..47ae59e 100644
+--- a/src/scf/cuda/df_shell_derivatives.cu
++++ b/src/scf/cuda/df_shell_derivatives.cu
+@@ -61,11 +61,41 @@ void report_work(DfShellDiagnostics* diagnostics, unsigned row, std::size_t pa,
+                   df_shell_work_names[metric]);
+     runtime::cuda_trace::trace_counter(name, totals[metric]);
+   }
++  // Every expansion product is consumed by a shared atomic, a direct store,
++  // or its lane's retained register. Derive the last count from the existing
++  // device totals instead of adding another diagnostic atomic and buffer row.
++  const auto register_values = totals[static_cast<unsigned>(DfShellWork::expansion_term_products)] -
++                               totals[static_cast<unsigned>(DfShellWork::folding_shared_atomics)] -
++                               totals[static_cast<unsigned>(DfShellWork::folding_direct_stores)];
++  char register_name[160];
++  std::snprintf(register_name, sizeof(register_name), "shell_%u%u%u_work_folding_register_values",
++                A, B, C);
++  runtime::cuda_trace::trace_counter(register_name, register_values);
++  std::snprintf(register_name, sizeof(register_name),
++                "shell_%u%u%u_p%zu_%zu_%zu_work_folding_register_values", A, B, C, pa, pb, pc);
++  runtime::cuda_trace::trace_counter(register_name, register_values);
+   if (diagnostics->observer)
+     diagnostics->observer(A, B, C, pa, pb, pc, totals, diagnostics->observer_context);
+ }
+ 
+-/** One generated subgroup owns a shell triple and contracts its public weights.
++/** Homogeneous signatures may group C shells; legacy mixed views stay scalar.
++ * Host launch sizing and device indexing share this integer-only ownership map.
++ * Scientific task counts retain individual shell triples, including sparse ones.
++ */
++template <class Schedule>
++__host__ __device__ std::size_t auxiliary_group(DfShellBasisView first, DfShellBasisView second,
++                                                DfShellBasisView third) {
++  return first.primitives && second.primitives && third.primitives ? Schedule::auxiliary_group : 1;
++}
++
++template <class Schedule>
++__host__ __device__ std::size_t owner_count(std::size_t tasks, std::size_t c_count,
++                                            std::size_t group) {
++  if constexpr (Schedule::auxiliary_group == 1) return tasks;
++  return (tasks / c_count) * ((c_count + group - 1) / group);
++}
++
++/** One subgroup contracts a bounded homogeneous C slice for one orbital pair.
+  * Sparse normalized AO expansions are applied to weights once, before any
+  * primitive work. Partial auxiliary shells contribute only in-panel weights.
+  * Every subgroup lane rendezvous uses its original mask, including lanes with
+@@ -82,7 +112,11 @@ __device__ __forceinline__ void contract_shell_task(
+   using Math = generated::Shell<A, B, C>;
+   using Schedule = generated::Schedule<A, B, C, Variant>;
+   constexpr auto lanes = Schedule::lanes, groups = Schedule::groups;
+-  __shared__ double all_weights[groups][Math::components], all_cache[groups][3 * Math::axis_size];
++  constexpr bool register_weights = Math::public_weight_identity;
++  static_assert(!register_weights || Math::components <= lanes);
++  // The register specialization has no compiled reference to shared weights.
++  __shared__ double all_weights[groups][register_weights ? 1 : Math::components];
++  __shared__ double all_cache[groups][3 * Math::axis_size];
+   __shared__ scalar::Geometry all_geometry[groups];
+   const unsigned lane = threadIdx.x % lanes, group = threadIdx.x / lanes;
+   const unsigned mask = (0xffffffffU >> (32 - lanes)) << ((threadIdx.x % 32) / lanes * lanes);
+@@ -90,9 +124,13 @@ __device__ __forceinline__ void contract_shell_task(
+   auto* cart_weights = all_weights[group];
+   auto* cache = all_cache[group];
+   auto& geometry = all_geometry[group];
+-  if (task >= tasks) return;
+-  const auto sc = auxiliary.shell_ids[auxiliary.begin[C] + task % auxiliary.count[C]];
+-  const auto pair = task / auxiliary.count[C];
++  const auto c_group = auxiliary_group<Schedule>(first, second, auxiliary);
++  const auto c_chunks = (auxiliary.count[C] + c_group - 1) / c_group;
++  if (task >= owner_count<Schedule>(tasks, auxiliary.count[C], c_group)) return;
++  const auto pair = task / c_chunks;
++  const auto c_first = (task % c_chunks) * c_group;
++  const auto c_end =
++      Schedule::auxiliary_group == 1 ? c_first + 1 : min(c_first + c_group, auxiliary.count[C]);
+   auto ia_shell = pair / second.count[B], ib_shell = pair % second.count[B];
+   if (triangle) {
+     // Invert the compact triangular index, correcting roundoff at boundaries.
+@@ -103,175 +141,238 @@ __device__ __forceinline__ void contract_shell_task(
+   }
+   const auto sb = second.shell_ids[second.begin[B] + ib_shell];
+   const auto sa = first.shell_ids[first.begin[A] + ia_shell];
+-  if (lane == 0 && counters) atomicAdd(counters, 1ULL);
+-  if (lane == 0) record_work(work, DfShellWork::shell_tasks, 1);
+   const auto& o = first.basis;
+   const auto& x = auxiliary.basis;
+   const auto oa = first.ao_offsets[sa], ob = second.ao_offsets[sb];
+-  const auto oc = auxiliary.ao_offsets[sc];
+-  const auto na = first.ao_offsets[sa + 1] - oa;
+-  const auto nb = second.ao_offsets[sb + 1] - ob;
+-  const auto nc = auxiliary.ao_offsets[sc + 1] - oc;
+-  if (oc >= panel_begin + panel_count || oc + nc <= panel_begin) return;
+-  for (unsigned i = lane; i < Math::components; i += lanes) cart_weights[i] = 0;
+-  __syncwarp(mask);
+-  unsigned public_work = 0, public_loads = 0;
+-  unsigned long long expansion_work = 0, convolution_work = 0;
+-  for (auto i = std::int64_t{lane}; i < na * nb * nc; i += lanes) {
+-    const auto ai = oa + i / nb / nc, bi = ob + i / nc % nb, ci = oc + i % nc;
+-    if (ci < panel_begin || ci - panel_begin >= panel_count) continue;
+-    double weight;
+-    if (pairs == DfDerivativePairs::packed) {
+-      // A diagonal shell shares one physical center; its lower AO triangle
+-      // carries the complete folded response, including spherical expansions.
+-      if (sa == sb && ai < bi) continue;
+-      const auto hi = ai > bi ? ai : bi, lo = ai > bi ? bi : ai;
+-      weight = weights[(ci - panel_begin) * o.nbf * (o.nbf + 1) / 2 + hi * (hi + 1) / 2 + lo];
+-      ++public_loads;
+-    } else {
+-      const auto offset = (ci - panel_begin) * o.nbf * o.nbf;
+-      weight = weights[offset + ai * o.nbf + bi];
+-      ++public_loads;
+-      if (pairs == DfDerivativePairs::symmetric && sa != sb) {
+-        // Read both adjoints: exact also for nonsymmetric diagnostic weights.
+-        // Swapping orbital centers leaves the physical atomic derivative equal.
+-        weight += weights[offset + bi * o.nbf + ai];
++  // Public s/p extents are compile-time CCA extents in either representation.
++  const auto na = register_weights ? std::int64_t{Math::na} : first.ao_offsets[sa + 1] - oa;
++  const auto nb = register_weights ? std::int64_t{Math::nb} : second.ao_offsets[sb + 1] - ob;
++  const auto atom_a = o.shell_atoms[sa], atom_b = o.shell_atoms[sb];
++  // Only low-l homogeneous owners retain these six coordinates. if constexpr
++  // removes their state from the register-heavy d/f fallback completely.
++  double orbital_sum[6]{};
++  bool owner_active = false, shared_a = atom_a == atom_b, shared_b = shared_a;
++  for (auto c_index = c_first; c_index < c_end; ++c_index) {
++    const auto sc = auxiliary.shell_ids[auxiliary.begin[C] + c_index];
++    if (lane == 0 && counters) atomicAdd(counters, 1ULL);
++    if (lane == 0) record_work(work, DfShellWork::shell_tasks, 1);
++    const auto oc = auxiliary.ao_offsets[sc];
++    const auto nc = register_weights ? std::int64_t{Math::nc} : auxiliary.ao_offsets[sc + 1] - oc;
++    if (oc >= panel_begin + panel_count || oc + nc <= panel_begin) continue;
++    // Reset for every C shell: a sparse or clipped tuple must never retain
++    // the preceding shell's register weight in this bounded owner.
++    double owned_weight = 0;
++    if constexpr (!register_weights) {
++      for (unsigned i = lane; i < Math::components; i += lanes) cart_weights[i] = 0;
++      __syncwarp(mask);
++    }
++    unsigned public_work = 0, public_loads = 0;
++    unsigned long long expansion_work = 0, convolution_work = 0;
++    for (auto i = std::int64_t{lane}; i < na * nb * nc; i += lanes) {
++      const auto ai = oa + i / nb / nc, bi = ob + i / nc % nb, ci = oc + i % nc;
++      if (ci < panel_begin || ci - panel_begin >= panel_count) continue;
++      double weight;
++      if (pairs == DfDerivativePairs::packed) {
++        // A diagonal shell shares one physical center; its lower AO triangle
++        // carries the complete folded response, including spherical expansions.
++        if (sa == sb && ai < bi) continue;
++        const auto hi = ai > bi ? ai : bi, lo = ai > bi ? bi : ai;
++        weight = weights[(ci - panel_begin) * o.nbf * (o.nbf + 1) / 2 + hi * (hi + 1) / 2 + lo];
++        ++public_loads;
++      } else {
++        const auto offset = (ci - panel_begin) * o.nbf * o.nbf;
++        weight = weights[offset + ai * o.nbf + bi];
+         ++public_loads;
++        if (pairs == DfDerivativePairs::symmetric && sa != sb) {
++          // Read both adjoints: exact also for nonsymmetric diagnostic weights.
++          // Swapping orbital centers leaves the physical atomic derivative equal.
++          weight += weights[offset + bi * o.nbf + ai];
++          ++public_loads;
++        }
++      }
++      if (weight == 0) continue;
++      ++public_work;
++      if constexpr (register_weights) {
++        // ao_expansions() maps each public s/p AO to the same CCA component in
++        // both representations. Its product index is this lane's component;
++        // packed triangles and partial panels only remove owners, leaving zero.
++        // Both the expansion coefficient and Cartesian component normalization
++        // are exactly one for every supported s/p AO. Primitive normalization
++        // remains in the shell coefficients applied during contraction.
++        owned_weight = weight;
++        if (work) ++expansion_work;
++      } else {
++        if (work)
++          expansion_work += static_cast<unsigned long long>(o.term_counts[ai]) * o.term_counts[bi] *
++                            x.term_counts[ci];
++        for (unsigned at = 0; at < o.term_counts[ai]; ++at)
++          for (unsigned bt = 0; bt < o.term_counts[bi]; ++bt)
++            for (unsigned ct = 0; ct < x.term_counts[ci]; ++ct) {
++              const auto ia = ai * term_capacity + at, ib = bi * term_capacity + bt;
++              const auto ic = ci * term_capacity + ct;
++              const auto ac = generated::cartesian_index(A, o.term_angular + 3 * ia);
++              const auto bc = generated::cartesian_index(B, o.term_angular + 3 * ib);
++              const auto cc = generated::cartesian_index(C, x.term_angular + 3 * ic);
++              atomicAdd(cart_weights + (ac * Math::nb + bc) * Math::nc + cc,
++                        weight * o.term_coefficients[ia] * o.term_coefficients[ib] *
++                            x.term_coefficients[ic]);
++            }
+       }
+     }
+-    if (weight == 0) continue;
+-    ++public_work;
+-    if (work)
+-      expansion_work += static_cast<unsigned long long>(o.term_counts[ai]) * o.term_counts[bi] *
+-                        x.term_counts[ci];
+-    for (unsigned at = 0; at < o.term_counts[ai]; ++at)
+-      for (unsigned bt = 0; bt < o.term_counts[bi]; ++bt)
+-        for (unsigned ct = 0; ct < x.term_counts[ci]; ++ct) {
+-          const auto ia = ai * term_capacity + at, ib = bi * term_capacity + bt;
+-          const auto ic = ci * term_capacity + ct;
+-          const auto ac = generated::cartesian_index(A, o.term_angular + 3 * ia);
+-          const auto bc = generated::cartesian_index(B, o.term_angular + 3 * ib);
+-          const auto cc = generated::cartesian_index(C, x.term_angular + 3 * ic);
+-          atomicAdd(
+-              cart_weights + (ac * Math::nb + bc) * Math::nc + cc,
+-              weight * o.term_coefficients[ia] * o.term_coefficients[ib] * x.term_coefficients[ic]);
+-        }
+-  }
+-  __syncwarp(mask);
+-  unsigned component_work = 0;
+-  for (unsigned i = lane; i < Math::components; i += lanes)
+-    if (cart_weights[i] != 0) {
+-      ++component_work;
+-      if (work) convolution_work += Math::convolution_work(i);
++    if constexpr (!register_weights) __syncwarp(mask);
++    unsigned component_work = 0;
++    for (unsigned i = lane; i < Math::components; i += lanes)
++      if ((register_weights ? owned_weight : cart_weights[i]) != 0) {
++        ++component_work;
++        if (work) convolution_work += Math::convolution_work(i);
++      }
++    const bool active = __any_sync(mask, component_work != 0);
++    for (unsigned delta = lanes / 2; delta; delta /= 2) {
++      public_work += __shfl_down_sync(mask, public_work, delta, lanes);
++      public_loads += __shfl_down_sync(mask, public_loads, delta, lanes);
++      component_work += __shfl_down_sync(mask, component_work, delta, lanes);
++      if (work) {
++        expansion_work += __shfl_down_sync(mask, expansion_work, delta, lanes);
++        convolution_work += __shfl_down_sync(mask, convolution_work, delta, lanes);
++      }
+     }
+-  const bool active = __any_sync(mask, component_work != 0);
+-  for (unsigned delta = lanes / 2; delta; delta /= 2) {
+-    public_work += __shfl_down_sync(mask, public_work, delta, lanes);
+-    public_loads += __shfl_down_sync(mask, public_loads, delta, lanes);
+-    component_work += __shfl_down_sync(mask, component_work, delta, lanes);
+-    if (work) {
+-      expansion_work += __shfl_down_sync(mask, expansion_work, delta, lanes);
+-      convolution_work += __shfl_down_sync(mask, convolution_work, delta, lanes);
++    if (lane == 0 && counters) {
++      atomicAdd(counters + 2, static_cast<unsigned long long>(public_work));
++      atomicAdd(counters + 5, static_cast<unsigned long long>(public_loads));
+     }
+-  }
+-  if (lane == 0 && counters) {
+-    atomicAdd(counters + 2, static_cast<unsigned long long>(public_work));
+-    atomicAdd(counters + 5, static_cast<unsigned long long>(public_loads));
+-  }
+-  if (lane == 0) {
+-    record_work(work, DfShellWork::public_weight_loads, public_loads);
+-    record_work(work, DfShellWork::public_nonzero_weights, public_work);
+-    record_work(work, DfShellWork::expansion_term_products, expansion_work);
+-    record_work(work, DfShellWork::folding_shared_atomics, expansion_work);
+-    record_work(work, DfShellWork::subgroup_rendezvous, 2);
+-  }
+-  if (!active) return;
+-  const auto atom_a = o.shell_atoms[sa], atom_b = o.shell_atoms[sb], atom_c = x.shell_atoms[sc];
+-  const auto* ra = positions + 3 * atom_a;
+-  const auto* rb = positions + 3 * atom_b;
+-  const auto* rc = positions + 3 * atom_c;
+-  const scalar::Vec3 center_a{ra[0], ra[1], ra[2]}, center_b{rb[0], rb[1], rb[2]},
+-      center_c{rc[0], rc[1], rc[2]};
+-  double output[6]{};
+-  unsigned long long primitive_work = 0;
+-  unsigned long long series_iterations = 0, series = 0, small_argument = 0, large_argument = 0;
+-  // Launch-uniform loop lengths keep compact subgroups on the same primitive
+-  // iteration. Bounds are runtime parameters; the generated math is unchanged.
+-  const auto pa0 = o.primitive_offsets[sa], pb0 = o.primitive_offsets[sb];
+-  const auto pc0 = x.primitive_offsets[sc];
+-  const auto na_prim = first.primitives ? first.primitives : o.primitive_offsets[sa + 1] - pa0;
+-  const auto nb_prim = second.primitives ? second.primitives : o.primitive_offsets[sb + 1] - pb0;
+-  const auto nc_prim =
+-      auxiliary.primitives ? auxiliary.primitives : x.primitive_offsets[sc + 1] - pc0;
+-  for (std::size_t ia = 0; ia < na_prim; ++ia)
+-    for (std::size_t ib = 0; ib < nb_prim; ++ib)
+-      for (std::size_t ic = 0; ic < nc_prim; ++ic) {
+-        const auto pa = pa0 + ia, pb = pb0 + ib, pc = pc0 + ic;
+-        const double alpha = o.exponents[pa], beta = o.exponents[pb], gamma = x.exponents[pc];
+-        if (lane == 0) {
+-          if (work) {
+-            scalar::BoysWork observed;
+-            scalar::prepare_geometry(alpha, center_a, beta, center_b, gamma, center_c, A + B + C,
+-                                     geometry, &observed);
+-            series_iterations += observed.series_iterations;
+-            series += observed.series;
+-            small_argument += observed.small_argument;
+-            large_argument += observed.large_argument;
+-          } else
+-            scalar::prepare_geometry(alpha, center_a, beta, center_b, gamma, center_c, A + B + C,
+-                                     geometry);
+-          ++primitive_work;
++    if (lane == 0) {
++      record_work(work, DfShellWork::public_weight_loads, public_loads);
++      record_work(work, DfShellWork::public_nonzero_weights, public_work);
++      record_work(work, DfShellWork::expansion_term_products, expansion_work);
++      if constexpr (!register_weights)
++        record_work(work, DfShellWork::folding_shared_atomics, expansion_work);
++      record_work(work, DfShellWork::subgroup_rendezvous, register_weights ? 0 : 2);
++    }
++    if (!active) continue;
++    const auto atom_c = x.shell_atoms[sc];
++    const auto* ra = positions + 3 * atom_a;
++    const auto* rb = positions + 3 * atom_b;
++    const auto* rc = positions + 3 * atom_c;
++    const scalar::Vec3 center_a{ra[0], ra[1], ra[2]}, center_b{rb[0], rb[1], rb[2]},
++        center_c{rc[0], rc[1], rc[2]};
++    double output[6]{};
++    unsigned long long primitive_work = 0;
++    unsigned long long series_iterations = 0, series = 0, small_argument = 0, large_argument = 0;
++    // Launch-uniform loop lengths keep compact subgroups on the same primitive
++    // iteration. Bounds are runtime parameters; the generated math is unchanged.
++    const auto pa0 = o.primitive_offsets[sa], pb0 = o.primitive_offsets[sb];
++    const auto pc0 = x.primitive_offsets[sc];
++    const auto na_prim = first.primitives ? first.primitives : o.primitive_offsets[sa + 1] - pa0;
++    const auto nb_prim = second.primitives ? second.primitives : o.primitive_offsets[sb + 1] - pb0;
++    const auto nc_prim =
++        auxiliary.primitives ? auxiliary.primitives : x.primitive_offsets[sc + 1] - pc0;
++    for (std::size_t ia = 0; ia < na_prim; ++ia)
++      for (std::size_t ib = 0; ib < nb_prim; ++ib)
++        for (std::size_t ic = 0; ic < nc_prim; ++ic) {
++          const auto pa = pa0 + ia, pb = pb0 + ib, pc = pc0 + ic;
++          const double alpha = o.exponents[pa], beta = o.exponents[pb], gamma = x.exponents[pc];
++          if (lane == 0) {
++            if (work) {
++              scalar::BoysWork observed;
++              scalar::prepare_geometry(alpha, center_a, beta, center_b, gamma, center_c, A + B + C,
++                                       geometry, &observed);
++              series_iterations += observed.series_iterations;
++              series += observed.series;
++              small_argument += observed.small_argument;
++              large_argument += observed.large_argument;
++            } else
++              scalar::prepare_geometry(alpha, center_a, beta, center_b, gamma, center_c, A + B + C,
++                                       geometry);
++            ++primitive_work;
++          }
++          __syncwarp(mask);
++          Math::prepare(geometry, cache, lane, lanes);
++          __syncwarp(mask);
++          for (unsigned i = lane; i < Math::components; i += lanes) {
++            const double weight = register_weights ? owned_weight : cart_weights[i];
++            if (weight != 0)
++              Math::accumulate(
++                  i, alpha, beta, geometry, cache,
++                  weight * o.coefficients[pa] * o.coefficients[pb] * x.coefficients[pc], output);
++          }
++          // The next primitive must not overwrite moments still being consumed.
++          __syncwarp(mask);
++        }
++    for (unsigned i = 0; i < 6; ++i)
++      for (unsigned delta = lanes / 2; delta; delta /= 2)
++        output[i] += __shfl_down_sync(mask, output[i], delta, lanes);
++    if (lane == 0) {
++      const auto response = Math::finish(output);
++      if constexpr (Schedule::auxiliary_group > 1) {
++        // C still scatters per active shell. Its translation identity remains
++        // compiler-owned; only the ownership of A/B sums changes here.
++        for (unsigned axis = 0; axis < 3; ++axis) {
++          orbital_sum[axis] += response.gradient[0][axis];
++          orbital_sum[3 + axis] += response.gradient[1][axis];
++          atomicAdd(gradient + 3 * atom_c + axis, response.gradient[2][axis]);
++        }
++        owner_active = true;
++        shared_a = shared_a || atom_a == atom_c;
++        shared_b = shared_b || atom_b == atom_c;
++        record_work(work, DfShellWork::orbital_local_accumulations, 6);
++      } else {
++        const runtime::cuda_gaussian_products::Factor factors[3]{{o, oa}, {o, ob}, {x, oc}};
++        runtime::cuda_gaussian_products::scatter(factors, response, 1.0, gradient);
++      }
++      if (work) {
++        record_work(work, DfShellWork::active_shell_tasks, 1);
++        record_work(work, DfShellWork::primitive_products, primitive_work);
++        record_work(work, DfShellWork::geometry_preparations, primitive_work);
++        record_work(work, DfShellWork::boys_evaluations, primitive_work);
++        record_work(work, DfShellWork::boys_order_sum, primitive_work * (A + B + C + 1));
++        record_work(work, DfShellWork::boys_series_iterations, series_iterations);
++        record_work(work, DfShellWork::boys_series, series);
++        record_work(work, DfShellWork::boys_small_argument, small_argument);
++        record_work(work, DfShellWork::boys_large_argument, large_argument);
++        record_work(work, DfShellWork::axis_polynomial_calls,
++                    primitive_work * Math::polynomial_calls);
++        record_work(work, DfShellWork::specialized_prepare_axis_calls,
++                    primitive_work * Math::specialized_axis_calls);
++        record_work(work, DfShellWork::cache_coefficient_values,
++                    primitive_work * 3 * Math::axis_size);
++        record_work(work, DfShellWork::convolution_iterations, primitive_work * convolution_work);
++        record_work(work, DfShellWork::active_component_products, primitive_work * component_work);
++        record_work(work, DfShellWork::gradient_atomics_c, 3);
++        unsigned shared = 3 * unsigned(atom_c == atom_a || atom_c == atom_b);
++        unsigned updates = 3;
++        if constexpr (Schedule::auxiliary_group == 1) {
++          record_work(work, DfShellWork::gradient_atomics_a, 3);
++          record_work(work, DfShellWork::gradient_atomics_b, 3);
++          shared += 3 * (unsigned(atom_a == atom_b || atom_a == atom_c) +
++                         unsigned(atom_b == atom_a || atom_b == atom_c));
++          updates += 6;
+         }
+-        __syncwarp(mask);
+-        Math::prepare(geometry, cache, lane, lanes);
+-        __syncwarp(mask);
+-        for (unsigned i = lane; i < Math::components; i += lanes)
+-          if (cart_weights[i] != 0)
+-            Math::accumulate(
+-                i, alpha, beta, geometry, cache,
+-                cart_weights[i] * o.coefficients[pa] * o.coefficients[pb] * x.coefficients[pc],
+-                output);
+-        // The next primitive must not overwrite moments still being consumed.
+-        __syncwarp(mask);
++        record_work(work, DfShellWork::gradient_atomics_shared_atom, shared);
++        record_work(work, DfShellWork::gradient_atomics_distinct_atom, updates - shared);
++        record_work(work, DfShellWork::subgroup_rendezvous, 3 * primitive_work);
++      }
++      if (counters) {
++        atomicAdd(counters + 1, 1ULL);
++        atomicAdd(counters + 3, primitive_work);
++        atomicAdd(counters + 4, primitive_work * component_work);
++      }
++    }
++    // A following C shell may reuse this group's shared weights and moments.
++    // The primitive rendezvous above already protects its cache consumers.
++  }
++  if constexpr (Schedule::auxiliary_group > 1) {
++    if (lane == 0 && owner_active) {
++      for (unsigned axis = 0; axis < 3; ++axis) {
++        atomicAdd(gradient + 3 * atom_a + axis, orbital_sum[axis]);
++        atomicAdd(gradient + 3 * atom_b + axis, orbital_sum[3 + axis]);
+       }
+-  for (unsigned i = 0; i < 6; ++i)
+-    for (unsigned delta = lanes / 2; delta; delta /= 2)
+-      output[i] += __shfl_down_sync(mask, output[i], delta, lanes);
+-  if (lane == 0) {
+-    const runtime::cuda_gaussian_products::Factor factors[3]{{o, oa}, {o, ob}, {x, oc}};
+-    runtime::cuda_gaussian_products::scatter(factors, Math::finish(output), 1.0, gradient);
+-    if (work) {
+-      record_work(work, DfShellWork::active_shell_tasks, 1);
+-      record_work(work, DfShellWork::primitive_products, primitive_work);
+-      record_work(work, DfShellWork::geometry_preparations, primitive_work);
+-      record_work(work, DfShellWork::boys_evaluations, primitive_work);
+-      record_work(work, DfShellWork::boys_order_sum, primitive_work * (A + B + C + 1));
+-      record_work(work, DfShellWork::boys_series_iterations, series_iterations);
+-      record_work(work, DfShellWork::boys_series, series);
+-      record_work(work, DfShellWork::boys_small_argument, small_argument);
+-      record_work(work, DfShellWork::boys_large_argument, large_argument);
+-      record_work(work, DfShellWork::axis_polynomial_calls,
+-                  primitive_work * Math::polynomial_calls);
+-      record_work(work, DfShellWork::specialized_prepare_axis_calls,
+-                  primitive_work * Math::specialized_axis_calls);
+-      record_work(work, DfShellWork::cache_coefficient_values,
+-                  primitive_work * 3 * Math::axis_size);
+-      record_work(work, DfShellWork::convolution_iterations, primitive_work * convolution_work);
+-      record_work(work, DfShellWork::active_component_products, primitive_work * component_work);
+       record_work(work, DfShellWork::gradient_atomics_a, 3);
+       record_work(work, DfShellWork::gradient_atomics_b, 3);
+-      record_work(work, DfShellWork::gradient_atomics_c, 3);
+-      const unsigned shared = 3 * (unsigned(atom_a == atom_b || atom_a == atom_c) +
+-                                   unsigned(atom_b == atom_a || atom_b == atom_c) +
+-                                   unsigned(atom_c == atom_a || atom_c == atom_b));
++      // For an aggregated A/B channel, shared means overlap with its other
++      // orbital center or any *active* C center in this bounded owner.
++      const unsigned shared = 3 * (unsigned(shared_a) + unsigned(shared_b));
+       record_work(work, DfShellWork::gradient_atomics_shared_atom, shared);
+-      record_work(work, DfShellWork::gradient_atomics_distinct_atom, 9 - shared);
+-      record_work(work, DfShellWork::subgroup_rendezvous, 3 * primitive_work);
+-    }
+-    if (counters) {
+-      atomicAdd(counters + 1, 1ULL);
+-      atomicAdd(counters + 3, primitive_work);
+-      atomicAdd(counters + 4, primitive_work * component_work);
++      record_work(work, DfShellWork::gradient_atomics_distinct_atom, 6 - shared);
+     }
+   }
+ }
+@@ -349,7 +450,7 @@ __global__ void shell_packet(DfShellBasisView orbital, DfShellBasisView auxiliar
+ 
+ /** Resource values are maxima within an operation, not sums over its launches. */
+ template <unsigned A, unsigned B, unsigned C, unsigned Variant, class Kernel>
+-cudaError_t profile_resources(Kernel kernel) {
++cudaError_t profile_resources(Kernel kernel, std::size_t c_group) {
+   using Schedule = generated::Schedule<A, B, C, Variant>;
+   cudaFuncAttributes attributes{};
+   int blocks = 0, device = 0, maximum_threads = 0;
+@@ -368,6 +469,7 @@ cudaError_t profile_resources(Kernel kernel) {
+     runtime::cuda_trace::trace_maximum(name, value);
+   };
+   runtime::cuda_trace::trace_maximum("shell_resource_values_are_maxima", 1);
++  resource("auxiliary_group_limit", c_group);
+   resource("registers", attributes.numRegs);
+   resource("static_shared_bytes", attributes.sharedSizeBytes);
+   resource("dynamic_shared_bytes", 0);
+@@ -404,17 +506,24 @@ cudaError_t launch_packets(std::span<const DfShellBasisView> orbital,
+                 return wa != wb ? wa > wb : a.first_block < b.first_block;
+               });
+     packet.blocks = 0;
++    std::size_t maximum_c_group = 1;
+     for (unsigned i = 0; i < packet.count; ++i) {
+       packet.slices[i].first_block = packet.blocks;
+-      packet.blocks +=
+-          static_cast<unsigned>((packet.slices[i].tasks + Schedule::groups - 1) / Schedule::groups);
++      const auto& slice = packet.slices[i];
++      const auto c_group = slice.a_primitives && slice.b_primitives && slice.c_primitives
++                               ? Schedule::auxiliary_group
++                               : 1;
++      maximum_c_group = std::max(maximum_c_group, std::size_t{c_group});
++      const auto owners = owner_count<Schedule>(slice.tasks, slice.c_count, c_group);
++      packet.blocks += static_cast<unsigned>((owners + Schedule::groups - 1) / Schedule::groups);
+     }
+     if (profiling) {
+       // Stop the preparation clock before driver submission/backpressure.
+       runtime::cuda_trace::trace_counter(
+           "signature_packet_preparation_ns",
+           std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - preparation).count());
+-      const auto error = profile_resources<A, B, C, Variant>(shell_packet<A, B, C, Variant>);
++      const auto error =
++          profile_resources<A, B, C, Variant>(shell_packet<A, B, C, Variant>, maximum_c_group);
+       if (error != cudaSuccess) return error;
+     }
+     char name[64]{};
+@@ -459,7 +568,9 @@ cudaError_t launch_packets(std::span<const DfShellBasisView> orbital,
+         const auto pair_count =
+             triangle ? first.count[A] * (first.count[A] + 1) / 2 : first.count[A] * second.count[B];
+         const auto tasks = pair_count * third.count[C];
+-        const auto blocks = (tasks + Schedule::groups - 1) / Schedule::groups;
++        const auto owners = owner_count<Schedule>(tasks, third.count[C],
++                                                  auxiliary_group<Schedule>(first, second, third));
++        const auto blocks = (owners + Schedule::groups - 1) / Schedule::groups;
+         if (packet.count == SignaturePacket::capacity || blocks > maximum - packet.blocks) {
+           const auto error = flush();
+           if (error != cudaSuccess) return error;
+@@ -505,6 +616,8 @@ cudaError_t launch_group(DfShellBasisView first, DfShellBasisView second, DfShel
+   const auto shell_pairs =
+       triangle ? first.count[A] * (first.count[A] + 1) / 2 : first.count[A] * second.count[B];
+   const auto tasks = shell_pairs * x.count[C];
++  const auto owners =
++      owner_count<Schedule>(tasks, x.count[C], auxiliary_group<Schedule>(first, second, x));
+   // Class/signature timings and resources are diagnostic only. CUDA event
+   // intervals may include stream idle time; use Nsight for GPU activity and
+   // a separate uninstrumented endpoint for promotion.
+@@ -514,7 +627,8 @@ cudaError_t launch_group(DfShellBasisView first, DfShellBasisView second, DfShel
+     std::snprintf(profile_name, sizeof(profile_name), "shell_%u%u%u_p%zu_%zu_%zu", A, B, C,
+                   first.primitives, second.primitives, x.primitives);
+     runtime::cuda_trace::trace_counter(profile_name, tasks);
+-    const auto error = profile_resources<A, B, C, Variant>(shell_panel<A, B, C, Variant>);
++    const auto error = profile_resources<A, B, C, Variant>(
++        shell_panel<A, B, C, Variant>, auxiliary_group<Schedule>(first, second, x));
+     if (error != cudaSuccess) return error;
+   }
+   auto error = clear_work(diagnostics, 1, stream);
+@@ -522,7 +636,7 @@ cudaError_t launch_group(DfShellBasisView first, DfShellBasisView second, DfShel
+   runtime::cuda_trace::TraceRegion profile(profile_name, stream);
+   if (tasks)
+     shell_panel<A, B, C, Variant>
+-        <<<static_cast<unsigned>((tasks + Schedule::groups - 1) / Schedule::groups),
++        <<<static_cast<unsigned>((owners + Schedule::groups - 1) / Schedule::groups),
+            Schedule::lanes * Schedule::groups, 0, stream>>>(
+             first, second, x, positions, begin, count, weights, gradient, counters, pairs, triangle,
+             tasks, diagnostics ? diagnostics->device : nullptr);
+diff --git a/src/scf/cuda/df_shell_derivatives.cuh b/src/scf/cuda/df_shell_derivatives.cuh
+index c0560ec..580083a 100644
+--- a/src/scf/cuda/df_shell_derivatives.cuh
++++ b/src/scf/cuda/df_shell_derivatives.cuh
+@@ -62,6 +62,10 @@ cudaError_t launch_df_shell_derivative_group(
+  * offsets. Each block belongs to one signature; full/symmetric/packed coverage
+  * matches the individual-group launcher. No per-triple task list or additional
+  * device allocation is created. Larger signature domains flush bounded packets.
++ * Low-angular owners accumulate A/B coordinates over up to four C shells of
++ * one signature inside the supplied panel; C coordinates scatter per active
++ * shell. Scientific counters still count individual shell triples. Mixed views
++ * without positive primitive counts retain one shell per owner.
+  */
+ cudaError_t launch_df_shell_derivative_packets(std::span<const DfShellBasisView> orbital_groups,
+                                                std::span<const DfShellBasisView> auxiliary_groups,
+diff --git a/src/scf/cuda/df_shell_diagnostics.cuh b/src/scf/cuda/df_shell_diagnostics.cuh
+index b598ae5..06d714d 100644
+--- a/src/scf/cuda/df_shell_diagnostics.cuh
++++ b/src/scf/cuda/df_shell_diagnostics.cuh
+@@ -33,10 +33,12 @@ enum class DfShellWork : unsigned {
+   gradient_atomics_a,
+   gradient_atomics_b,
+   gradient_atomics_c,
++  // C sharing is per active shell. An aggregated A/B channel shares when its
++  // atom equals the other orbital atom or any active C atom within its owner.
+   gradient_atomics_shared_atom,
+   gradient_atomics_distinct_atom,
+   subgroup_rendezvous,
+-  orbital_local_accumulations,
++  orbital_local_accumulations,  // Six FP64 A/B additions per grouped active shell.
+   count
+ };
+ inline constexpr std::array<const char*, static_cast<unsigned>(DfShellWork::count)>

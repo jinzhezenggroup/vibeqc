@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+test -n "${SLURM_JOB_ID:-}"
+export PYTHONPATH=python:.
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export VIBEQC_LIBRARY="$PWD/.artifacts/issue409/stage2/frozen/libvibeqc.so"
+export VIBEQC_RESOURCE_CUDA_TEST=1 VIBEQC_DF_VALUE_STORAGE=packed
+export LD_LIBRARY_PATH="/group/software/cuda-12.9.1/lib64:${LD_LIBRARY_PATH:-}"
+printf 'slurm_job_id=%s cuda_visible_devices=%s\n' "$SLURM_JOB_ID" "${CUDA_VISIBLE_DEVICES:-}"
+/group/software/cuda-12.9.1/bin/compute-sanitizer --tool memcheck --leak-check full --error-exitcode 1 \
+ /tmp/vibeqc-pr-review-env/bin/python -m pytest -q tests/python/test_df_packed_values_cuda.py \
+ tests/python/test_df_derivatives_cuda.py::test_df_generated_failed_item_preserves_successful_neighbor

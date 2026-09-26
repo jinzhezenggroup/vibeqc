@@ -1,0 +1,123 @@
+{
+  "source": {
+    "revision": "b7dcace8263b5a12b5aa9639c47679317fb71cae",
+    "dirty": false
+  },
+  "target": "sm_120",
+  "device": {
+    "architecture": "sm_120",
+    "cublas": "12.4.2",
+    "driver": 13000,
+    "runtime": 12090,
+    "sm_count": 170,
+    "uuid": "8e9c9e1ae183258c0b3a03a5ddebb2f8"
+  },
+  "passed": true,
+  "pytest": {
+    "passed": 201,
+    "skipped": 8
+  },
+  "cases": [
+    {
+      "name": "h2",
+      "iterations": 9,
+      "energy_error": 1.8096635301390052e-13,
+      "final_independent_r1_max": 1.0362656113841896e-20,
+      "final_independent_r2_max": 2.7755575615628914e-17,
+      "replay_matches": true
+    },
+    {
+      "name": "he",
+      "iterations": 9,
+      "energy_error": 2.469136006766348e-13,
+      "final_independent_r1_max": 2.1497100631273104e-18,
+      "final_independent_r2_max": 1.3877787807814457e-17,
+      "replay_matches": true
+    },
+    {
+      "name": "h2o",
+      "iterations": 15,
+      "energy_error": 2.8421709430404007e-13,
+      "final_independent_r1_max": 4.368851439290649e-12,
+      "final_independent_r2_max": 1.111221878402624e-11,
+      "replay_matches": true
+    },
+    {
+      "name": "nh3",
+      "iterations": 17,
+      "energy_error": 5.755396159656812e-13,
+      "final_independent_r1_max": 1.1175090504814062e-12,
+      "final_independent_r2_max": 1.7907225181856834e-12,
+      "replay_matches": true
+    },
+    {
+      "name": "ch4",
+      "iterations": 16,
+      "energy_error": 3.694822225952521e-13,
+      "final_independent_r1_max": 1.3672740131779896e-13,
+      "final_independent_r2_max": 6.055017598427526e-13,
+      "replay_matches": true
+    }
+  ],
+  "native_hf_endpoints": {
+    "source": {
+      "revision": "b7dcace8263b5a12b5aa9639c47679317fb71cae",
+      "dirty": false
+    },
+    "slurm_job_id": "9623",
+    "native_library_sha256": "3514bd1fe9f64ff1e1f294bf0cf324798d4368bd32ab54d9faece33d4005c993",
+    "cases": [
+      {
+        "name": "h2",
+        "energy_error": 2.0272672429655358e-13,
+        "iterations": 8,
+        "r1": 2.6822105085007795e-20,
+        "r2": 5.551115123125783e-17,
+        "passed": true
+      },
+      {
+        "name": "he",
+        "energy_error": 2.460254222569347e-13,
+        "iterations": 9,
+        "r1": 2.9528097936876944e-18,
+        "r2": 1.3877787807814457e-17,
+        "passed": true
+      },
+      {
+        "name": "h2o",
+        "energy_error": 1.2789769243681803e-13,
+        "iterations": 15,
+        "r1": 4.368849918519093e-12,
+        "r2": 1.111221878402624e-11,
+        "passed": true
+      },
+      {
+        "name": "nh3",
+        "energy_error": 6.465938895416912e-13,
+        "iterations": 17,
+        "r1": 1.117525318467151e-12,
+        "r2": 1.7907331433669738e-12,
+        "passed": true
+      },
+      {
+        "name": "ch4",
+        "energy_error": 3.907985046680551e-13,
+        "iterations": 16,
+        "r1": 1.3672708772777385e-13,
+        "r2": 6.054531875854252e-13,
+        "passed": true
+      }
+    ],
+    "batch_statuses": [
+      "converged",
+      "error",
+      "converged"
+    ],
+    "passed": true
+  },
+  "limitations": [
+    "Host-controlled ordinary-stream solver; full amplitude/residual and integral staging each evaluator call.",
+    "Pinned molecular correctness and replay evidence; no performance policy or speedup claim.",
+    "No public native RCCSD ABI, forces or resident ragged fleet."
+  ]
+}

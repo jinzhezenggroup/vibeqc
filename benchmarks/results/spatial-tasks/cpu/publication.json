@@ -1,0 +1,54 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All identical-mask arithmetic gates and resource checks passed; approximation differences and complete timing remain explicit. No local production promotion.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 235106,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "48b3a4b60f2d764394dbefaf66f72e7264432b0ea322de10b8512d63ccb328ff"
+    },
+    {
+      "bytes": 222075,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "09eb03e46d8de4be8f06abdbab51bcf54ed2a006f31c42e6a541e0c4a694e9f1"
+    },
+    {
+      "bytes": 15740,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "db99b3078bc6b0ab2c3b04b3a0a0ab93069ae70790c3c74fcde6316dcc627d3a"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "tools/benchmark_spatial_tasks.py",
+      "--root",
+      "<measured-checkout>",
+      "--library",
+      "<matching-cpu-library>",
+      "--cache",
+      ".artifacts/spatial-cuda-cache",
+      "--backend",
+      "cpu",
+      "--samples",
+      "5",
+      "--output",
+      ".artifacts/234-cpu-final.json"
+    ],
+    "note": "Fetch the durable measured-source branch and exact recorded revision; use OMP_NUM_THREADS=1 and OPENBLAS_NUM_THREADS=1. Match the recorded native build identity. See README for historical dense sweep and its separate source ref.",
+    "source_ref": "refs/heads/evidence/issue-234-measured",
+    "source_repository": "https://github.com/njzjz-bot/vibeqc"
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "93ac3fadbfdddd5cac70dfb3581d52630018aa44"
+  }
+}

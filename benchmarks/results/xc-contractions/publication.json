@@ -1,0 +1,74 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "Independent E/V and derivative projections, native identical-mask arithmetic and shared resource checks pass; performance remains experimental.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 888930,
+      "path": "evidence.json",
+      "reason": "Complete quantitative per-case gates and five raw timing samples retain independent numerical evidence.",
+      "role": "evidence",
+      "sha256": "135f97ee7f879449980d1aa42354805087be727796c32ce4f90f6c697636f068"
+    },
+    {
+      "bytes": 183204,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "fcbd00dbd2680e566d4f7c7cbbe7c6c89b140712afeb3b3237d864d8e77c5b93"
+    },
+    {
+      "bytes": 40900,
+      "path": "summary.json",
+      "reason": "Complete quantitative per-case gates and five raw timing samples retain independent numerical evidence.",
+      "role": "summary",
+      "sha256": "d4c4791e52cabd72e78485faf5629c2d64c0f0abbcba2b752a9e1a74be0f1c1f"
+    },
+    {
+      "path": "samples-cases/h2.json",
+      "bytes": 495628,
+      "sha256": "469b9d50a932107811bee78bb6c7a97695fff0eac63e1a6c4fcdb388e95d6378",
+      "role": "samples"
+    },
+    {
+      "path": "samples-cases/f_cartesian.json",
+      "bytes": 496810,
+      "sha256": "e492b31d7580fc4f991d817164c4c3bac9561c3c0796dcc4dce986eec1bfafb4",
+      "role": "samples"
+    },
+    {
+      "path": "samples-cases/f_spherical.json",
+      "bytes": 496794,
+      "sha256": "a8868daded9482c4ad312dcd651cb109766f4ed298be27218a4203b2216f2a07",
+      "role": "samples"
+    },
+    {
+      "path": "samples-cases/separated_f.json",
+      "bytes": 508607,
+      "sha256": "b8dc889d4bdf179c85f543160993c662776a29aa9e62f83ab0eef5c9b424610e",
+      "role": "samples"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "tools/benchmark_xc_contractions.py",
+      "--library",
+      "<matching-cpu-library>",
+      "--cache",
+      ".artifacts/xc-measured-cache",
+      "--output",
+      ".artifacts/xc-measured.json"
+    ],
+    "note": "Fetch exact measured revision; fresh cache; OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1; PySCF 2.14.0/Libxc 7.0.0.",
+    "source_ref": "refs/heads/evidence/issue-236-measured",
+    "source_repository": "https://github.com/njzjz-bot/vibeqc"
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "60dceca7561e6bd04d61d1bbb5ee092044733275"
+  }
+}

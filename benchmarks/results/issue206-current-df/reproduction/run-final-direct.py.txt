@@ -1,0 +1,126 @@
+"""Rerun the unchanged direct gates using the finally qualified native library.
+
+The original fixture tolerances, reference convergence settings and performance
+requirements remain authoritative. In addition, every one of the seven paired
+repeats must satisfy the numerical gates; a passing last sample cannot hide an
+earlier failure. This clean timing job must not overlap builds or profiling.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+from pathlib import Path
+
+
+def main():
+    assert os.environ.get("SLURM_JOB_ID")
+    root = Path.cwd()
+    qualification = root / ".artifacts/issue409/final-qualified/manifest.json"
+    final = json.loads(qualification.read_text())
+    assert final["status"] == "passed"
+    library = root / "build/cuda/libvibeqc.so"
+    library_sha256 = hashlib.sha256(library.read_bytes()).hexdigest()
+    assert library_sha256 == final["sha256"]["build/cuda/libvibeqc.so"]
+    out = root / ".artifacts/issue206/final-direct"
+    out.mkdir(exist_ok=False)
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith("VIBEQC_") and k != "CONTRACT_ENGINE"
+    }
+    env.update(
+        PYTHONPATH="python:.",
+        OMP_NUM_THREADS="1",
+        OPENBLAS_NUM_THREADS="1",
+        VIBEQC_LIBRARY=str(library),
+        LD_LIBRARY_PATH="/tmp/vibeqc-308-gpu4pyscf-env/lib/python3.13/site-packages/cutensor/lib:"
+        "/group/software/cuda-12.9.1/lib64:" + env.get("LD_LIBRARY_PATH", ""),
+    )
+    command = [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/real_molecule_gate.py",
+        "--density-fitting",
+        "none",
+        "--repeats",
+        "7",
+        "--output-directory",
+        str(out / "matrix"),
+    ]
+    payload = {
+        "scope": __doc__,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "qualification_sha256": hashlib.sha256(qualification.read_bytes()).hexdigest(),
+        "library_sha256": library_sha256,
+        "native_identity": final["native_identity"],
+        "qualified_revision": final["revision"],
+        "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "comparator_sha256": hashlib.sha256(
+            (root / "benchmarks/compare_gpu4pyscf_batch.py").read_bytes()
+        ).hexdigest(),
+        "fixture_sha256": hashlib.sha256(
+            (root / "benchmarks/_cases.py").read_bytes()
+        ).hexdigest(),
+        "command": command,
+        "status": "running",
+        "points": [],
+    }
+    manifest = out / "manifest.json"
+
+    def save():
+        manifest.write_text(json.dumps(payload, indent=2) + "\n")
+
+    save()
+    try:
+        with (out / "matrix.log").open("x") as log:
+            result = subprocess.run(
+                command, env=env, stdout=log, stderr=subprocess.STDOUT, check=False
+            )
+        payload["matrix_exit_code"] = result.returncode
+        summary_path = out / "matrix/summary.json"
+        summary = json.loads(summary_path.read_text())
+        payload["original_summary_sha256"] = hashlib.sha256(
+            summary_path.read_bytes()
+        ).hexdigest()
+        assert summary["density_fitting"] == "none" and summary["repeats"] == 7
+        assert len(summary["points"]) == 4
+        for point in summary["points"]:
+            artifact = Path(point["artifact"])
+            row = {"original_point": point, "all_repeat_numerical_gates_passed": False}
+            if artifact.exists():
+                data = json.loads(artifact.read_text())
+                pairs = data["accuracy"]["paired_warm_repeats"]
+                row["artifact_sha256"] = hashlib.sha256(
+                    artifact.read_bytes()
+                ).hexdigest()
+                row["paired_accuracy"] = pairs
+                row["all_repeat_numerical_gates_passed"] = len(pairs) == 7 and all(
+                    p["maximum_energy_error_hartree"]
+                    <= point["maximum_energy_error_hartree"]
+                    and p["maximum_force_error_hartree_per_bohr"]
+                    <= point["maximum_force_error_hartree_per_bohr"]
+                    for p in pairs
+                )
+                row["timing_summary"] = data["timing_summary"]
+            row["passed"] = point["passed"] and row["all_repeat_numerical_gates_passed"]
+            payload["points"].append(row)
+            save()
+        passed = result.returncode == 0 and all(p["passed"] for p in payload["points"])
+        assert hashlib.sha256(library.read_bytes()).hexdigest() == library_sha256, (
+            "native library changed during the direct campaign"
+        )
+        payload["status"] = "passed" if passed else "failed"
+        save()
+        if not passed:
+            raise SystemExit(2)
+    except Exception as error:
+        payload.update(status="failed", failure=repr(error))
+        save()
+        raise
+
+
+if __name__ == "__main__":
+    main()

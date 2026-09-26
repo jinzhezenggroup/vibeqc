@@ -1,0 +1,45 @@
+{
+  "issue": 409,
+  "stage": "fixed-factor projection dataflow; no endpoint or promotion claim",
+  "baseline_source": "25e8efebb069e6067ba3649f220c37e844ecc8f6",
+  "baseline_native_identity": "d747b6d8a857889ca8afef1b7d734b0c0adecf5681824a16496bab0785d862e9",
+  "representation": "FP64 lower AO triangle, pair=mu*(mu+1)/2+nu for nu<=mu; Q contiguous; unit value weight",
+  "control": "full resident B, existing strided-batched cuBLAS occupied projection, existing single SYRK",
+  "candidates": [
+    "unpack32",
+    "unpack128",
+    "unpack256",
+    "direct32x16",
+    "direct64x16"
+  ],
+  "candidate_boundary": "K projection only; all retain U[mu,i,Q] with full leading dimension Naux; no split Gram",
+  "repeats": 7,
+  "order": "rotate all six candidates by repeat index; one untimed complete projection before each timed sample",
+  "numerical_gates": {
+    "B_symmetry_max_abs": 1e-12,
+    "U_max_abs": 1e-10,
+    "U_rms": 1e-11,
+    "K_max_abs": 1e-10,
+    "K_rms": 1e-11,
+    "independent_projection_sample_max_abs": 1e-10
+  },
+  "inputs": "four eager molecular occupied builds at 384/768 plus 192 prefix, odd unequal 97/193/rank37, independent 13/7/rank9 and zero rank; prefixes are synthetic diagnostic subproblems, not molecular endpoints",
+  "comparison": "Report all candidates, component and total timings, projection work, logical element loads, expanded writes/reads, U bytes, peak charged common arena and standalone candidate storage. Logical traffic is not a hardware DRAM counter.",
+  "selection": "Choose the fastest numerically valid bounded projection at 768 for integration; report all smaller/tail regressions. A fixed-input loss cannot alone reject a capacity experiment. No automatic production selection follows this stage.",
+  "cutensor_assessment": "An exact triangular AO map is nonlinear in (mu,nu), so constant-stride tensor descriptors cannot represent it as one dense contraction. Test a shared-memory tiled FP64 contraction with a logical pair iterator; do not claim a cuTENSOR benchmark.",
+  "timing_boundary": "Exclude capture, one-time diagnostic packing, uploads, allocation, validation and file IO. Projection timing includes every required unpack. Report Gram separately and the complete projection+Gram+mirror call independently.",
+  "required_next_stage": "Direct packed generation/whitening, packed J, bounded raw response, owner identity and #203 accounting must precede complete cold/changed/warm and constrained/larger-capacity qualification. Diagnostic full-then-pack is never a promoted producer.",
+  "endpoint_gates_to_freeze_before_measurement": {
+    "repeats": 7,
+    "energy_abs_Eh": 1e-09,
+    "force_max_abs_Eh_per_Bohr": 1e-08,
+    "latency_gain_target": 0.02,
+    "regression_ceiling": 0.03,
+    "capacity_minimum_native_peak_reduction": 0.2,
+    "capacity_requires_actual_residency_or_constrained_endpoint_benefit": true,
+    "work": "identical frozen density and normal convergence; changed SCF work retained separately and never pooled with matched-work samples",
+    "domain": "96/192 regression, 384/768 energy and complete force, cold and changed geometry, unequal auxiliary dimension, constrained and supported larger case"
+  },
+  "coefficient_layout": "column-major (nbf,rank), matching SCF seed/canonical/final calls; row-major capture files are transposed once outside timing",
+  "previous_diagnostic": "trials-v1 retained row-major C and OP_T BLAS; useful compatibility/numerical evidence only, not the production layout selection"
+}

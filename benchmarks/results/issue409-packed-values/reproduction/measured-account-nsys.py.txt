@@ -1,0 +1,231 @@
+"""Retain exact CUPTI transfer bytes and graph-node work from completed profiles.
+
+CUDA copy bytes are transfer activity, not hardware DRAM traffic. Kernel times
+may overlap; their sum is never added to API times or treated as endpoint time.
+Native progress tracing inserts event fences. Those known fences are counted
+separately from observed API calls; the remainder is still an intrusive result,
+not an assertion of clean production synchronization behavior.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import sqlite3
+from pathlib import Path
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def interval_union(intervals):
+    """Count device busy intervals once even if streams overlap."""
+    total, last_end = 0, 0
+    for start, end in sorted((row[0], row[1]) for row in intervals):
+        assert 0 <= start <= end
+        total += max(0, end - max(start, last_end))
+        last_end = max(last_end, end)
+    return total
+
+
+def main():
+    root = Path(".artifacts/issue409")
+    out = root / "dataflow-accounts"
+    out.mkdir(exist_ok=True)
+    summary = {
+        "scope": __doc__,
+        "runner_sha256": sha(Path(__file__)),
+        "profiles": [],
+        "incomplete_campaigns": [],
+    }
+    for campaign in (
+        "dataflow-profiles",
+        "unequal-dataflow-profiles",
+        "cold-dataflow-profiles",
+    ):
+        directory = root / campaign
+        manifest_path = directory / "manifest.json"
+        if not manifest_path.exists():
+            summary["incomplete_campaigns"].append(campaign)
+            continue
+        manifest = json.loads(manifest_path.read_text())
+        if manifest.get("status") != "passed":
+            summary["incomplete_campaigns"].append(campaign)
+        checks = {c["name"]: c for c in manifest["checks"]}
+        for name, check in checks.items():
+            if (
+                name.endswith("-stats")
+                or check.get("status") != "passed"
+                or checks.get(name + "-stats", {}).get("status") != "passed"
+            ):
+                continue
+            assert "--cuda-graph-trace=node" in check["command"]
+            original = directory / f"{name}.json"
+            data = json.loads(original.read_text())
+            assert not data.get("failure")
+            assert data["energy_error"] <= 1e-9 and data["force_error"] <= 1e-8
+            assert data["closed_ledger"]["live_bytes"] == 0
+            sqlite = directory / f"{name}.sqlite"
+            db = sqlite3.connect(f"file:{sqlite}?mode=ro", uri=True)
+            db.row_factory = sqlite3.Row
+            tables = {
+                r[0]
+                for r in db.execute("select name from sqlite_master where type='table'")
+            }
+            assert {
+                "CUPTI_ACTIVITY_KIND_KERNEL",
+                "CUPTI_ACTIVITY_KIND_RUNTIME",
+                "StringIds",
+            } <= tables
+            transfers = []
+            if "CUPTI_ACTIVITY_KIND_MEMCPY" in tables:
+                transfers = [
+                    dict(row)
+                    for row in db.execute(
+                        "select e.label as direction, count(*) as calls, sum(m.bytes) as bytes, "
+                        "sum(m.end-m.start) as summed_activity_ns, "
+                        "sum(case when m.graphNodeId is not null and m.graphNodeId != 0 then 1 else 0 end) as graph_node_calls "
+                        "from CUPTI_ACTIVITY_KIND_MEMCPY m join ENUM_CUDA_MEMCPY_OPER e on e.id=m.copyKind group by m.copyKind"
+                    )
+                ]
+            kernels = [
+                dict(row)
+                for row in db.execute(
+                    "select s.value as name, k.gridX,k.gridY,k.gridZ,k.blockX,k.blockY,k.blockZ, "
+                    "k.registersPerThread,k.staticSharedMemory,k.dynamicSharedMemory,k.localMemoryPerThread, "
+                    "count(*) as launches,sum(k.end-k.start) as summed_activity_ns, "
+                    "sum(case when k.graphNodeId is not null and k.graphNodeId != 0 then 1 else 0 end) as graph_node_launches "
+                    "from CUPTI_ACTIVITY_KIND_KERNEL k join StringIds s on s.id=k.demangledName "
+                    "group by k.demangledName,k.gridX,k.gridY,k.gridZ,k.blockX,k.blockY,k.blockZ, "
+                    "k.registersPerThread,k.staticSharedMemory,k.dynamicSharedMemory,k.localMemoryPerThread"
+                )
+            ]
+            assert kernels
+            apis = {}
+            for kind in ("RUNTIME", "DRIVER"):
+                table = "CUPTI_ACTIVITY_KIND_" + kind
+                if table in tables:
+                    apis[kind.lower()] = [
+                        dict(row)
+                        for row in db.execute(
+                            f"select s.value as name,count(*) as calls,sum(a.end-a.start) as inclusive_ns from {table} a "
+                            "join StringIds s on s.id=a.nameId group by a.nameId"
+                        )
+                    ]
+            intervals = list(
+                db.execute("select start,end from CUPTI_ACTIVITY_KIND_KERNEL")
+            )
+            busy = interval_union(intervals)
+            devices = [
+                row[0]
+                for row in db.execute(
+                    "select distinct deviceId from CUPTI_ACTIVITY_KIND_KERNEL"
+                )
+            ]
+            assert len(devices) == 1
+            db.close()
+            trace = directory / f"{name}.cuda.jsonl"
+            records = [json.loads(line) for line in trace.read_text().splitlines()]
+            assert records and all(
+                r["valid"]
+                and not r["cuda_error"]
+                and not r["dropped_regions"]
+                and not r["dropped_tiles"]
+                for r in records
+            )
+            # Both the progress journal and component trace are enabled by
+            # these probes: each eager region finishes with one event fence,
+            # and each eager operation destructor adds one root fence.
+            assert (directory / f"{name}.journal.jsonl").stat().st_size
+            tracing_fences = sum(
+                len(r["regions"]) + 1 for r in records if r["execution"] == "stream"
+            )
+            observed_fences = sum(
+                r["calls"]
+                for r in apis["runtime"]
+                if r["name"].startswith("cudaEventSynchronize")
+            )
+            assert observed_fences >= tracing_fences
+            counts = {
+                "kernel_launches_including_graph_nodes": sum(
+                    k["launches"] for k in kernels
+                ),
+                "kernel_graph_node_launches": sum(
+                    k["graph_node_launches"] for k in kernels
+                ),
+                "kernel_duration_sum_ns": sum(k["summed_activity_ns"] for k in kernels),
+                "kernel_device_busy_union_ns": busy,
+                "observed_runtime_event_synchronizations": observed_fences,
+                "source_derived_native_tracing_event_fences": tracing_fences,
+                "event_synchronizations_outside_those_native_tracing_fences": observed_fences
+                - tracing_fences,
+                "observed_transfer_bytes_by_direction": {
+                    direction: sum(
+                        r["bytes"] for r in transfers if r["direction"] == direction
+                    )
+                    for direction in (
+                        "Host-to-Device",
+                        "Device-to-Host",
+                        "Device-to-Device",
+                    )
+                },
+            }
+            payload = {
+                "scope": __doc__,
+                "campaign": campaign,
+                "name": name,
+                "slurm_job_id": data["slurm_job_id"],
+                "aos": data["aos"],
+                "observed_auxiliary_dimensions": sorted(
+                    {r["naux"] for r in records if r["naux"]}
+                ),
+                "storage": data["storage"],
+                "native_identity": data["native_identity"],
+                "library_sha256": data["library_sha256"],
+                "runner_sha256": sha(Path(__file__)),
+                "source_record_sha256": sha(original),
+                "sqlite_sha256": sha(sqlite),
+                "native_trace_sha256": sha(trace),
+                "tracing_fence_source": "src/runtime/cuda_component_trace.cpp",
+                "tracing_fence_source_sha256": sha(
+                    Path("src/runtime/cuda_component_trace.cpp")
+                ),
+                "profile_command": check["command"],
+                "counts": counts,
+                "transfer_activity": transfers,
+                "kernel_activity": kernels,
+                "api_activity_by_interface": apis,
+                "api_scope": "Runtime and driver APIs can nest; their counts/times are not added together.",
+                "source_observation_scope": data["scope"],
+                "observed_ledger": data["observed_ledger"],
+                "sampled_process_peaks": {
+                    k: v for k, v in data.items() if k.startswith("sampled_")
+                },
+                "iterations": data["iterations"],
+            }
+            target = out / f"{campaign}-{name}.json"
+            target.write_text(json.dumps(payload, indent=2) + "\n")
+            summary["profiles"].append(
+                {
+                    "path": str(target),
+                    "sha256": sha(target),
+                    "campaign": campaign,
+                    "name": name,
+                    "counts": counts,
+                    "transfers": transfers,
+                    "iterations": data["iterations"],
+                }
+            )
+    (root / "nsys-dataflow-summary.json").write_text(
+        json.dumps(summary, indent=2) + "\n"
+    )
+    print(
+        len(summary["profiles"]),
+        "completed profile accounts; incomplete:",
+        summary["incomplete_campaigns"],
+    )
+
+
+if __name__ == "__main__":
+    main()

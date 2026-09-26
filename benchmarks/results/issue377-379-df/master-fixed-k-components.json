@@ -1,0 +1,95 @@
+{
+  "groups": [
+    {
+      "execution": "stream",
+      "operation": "resident_three_center_materialization",
+      "calls": 1,
+      "host_completion_ms": 103991.628,
+      "final_synchronization_ms": 103991.399,
+      "gpu_inclusive_ms": 103989.75,
+      "host_exclusive_ms": {
+        "resident_three_center_materialization": 0.032300999999999996,
+        "raw_three_center_generation": 0.163003,
+        "resident_metric_transform": 0.034176
+      },
+      "gpu_exclusive_ms": {
+        "resident_three_center_materialization": 0.0018569999956525862,
+        "raw_three_center_generation": 103582.133,
+        "resident_metric_transform": 407.615143
+      },
+      "counter_sums": {
+        "raw_tile_productions": 1,
+        "raw_value_bytes": 3623878656,
+        "resident_transformed_bytes": 3623878656,
+        "transformed_tile_productions": 1,
+        "transformed_value_bytes": 3623878656
+      },
+      "counter_maxima": {
+        "raw_tile_productions": 1,
+        "raw_value_bytes": 3623878656,
+        "resident_transformed_bytes": 3623878656,
+        "transformed_tile_productions": 1,
+        "transformed_value_bytes": 3623878656
+      },
+      "logical_tiles": 2,
+      "repeated_tile_productions": 0
+    },
+    {
+      "execution": "stream",
+      "operation": "ri_k",
+      "calls": 2,
+      "host_completion_ms": 1693.278914,
+      "final_synchronization_ms": 1692.550076,
+      "gpu_inclusive_ms": 1693.1735840000001,
+      "host_exclusive_ms": {
+        "ri_k": 0.53743,
+        "ri_k_gemm": 0.191408
+      },
+      "gpu_exclusive_ms": {
+        "ri_k": 32.14077800000007,
+        "ri_k_gemm": 1661.032806
+      },
+      "counter_sums": {
+
+      },
+      "counter_maxima": {
+
+      },
+      "logical_tiles": 0,
+      "repeated_tile_productions": 0
+    },
+    {
+      "execution": "stream",
+      "operation": "ri_k_occupied",
+      "calls": 2,
+      "host_completion_ms": 415.82806600000004,
+      "final_synchronization_ms": 415.55107399999997,
+      "gpu_inclusive_ms": 415.72326699999996,
+      "host_exclusive_ms": {
+        "ri_k_occupied": 0.12162299999999998,
+        "ri_k_occupied_gemm": 0.155369
+      },
+      "gpu_exclusive_ms": {
+        "ri_k_occupied": 42.40068049999999,
+        "ri_k_occupied_gemm": 373.3225865
+      },
+      "counter_sums": {
+        "occupied_exchange_products": 1536,
+        "occupied_factor_bytes": 1966080,
+        "occupied_panel_cache_hits": 2,
+        "occupied_projection_products": 1536,
+        "occupied_rank": 320
+      },
+      "counter_maxima": {
+        "occupied_exchange_products": 768,
+        "occupied_factor_bytes": 983040,
+        "occupied_panel_cache_hits": 1,
+        "occupied_projection_products": 768,
+        "occupied_rank": 160
+      },
+      "logical_tiles": 0,
+      "repeated_tile_productions": 0
+    }
+  ],
+  "interpretation": "Host and GPU times overlap; do not add them. GPU intervals include stream idle time. Exclusive root residuals are unclassified runtime work. Capture counters describe construction only and exclude graph replay. Counter maxima are per operation, not the complete resource peak. Use unprofiled endpoints for performance claims."
+}

@@ -1,0 +1,269 @@
+{
+  "schema": "vibeqc.ecp-projector-review.v1",
+  "qualification": "accepted numerical migration/regression check; no statistical speedup claim",
+  "source": {
+    "baseline": {
+      "revision": "5129a8db666efcf3dedacc8a24f2dbf205b96bd7",
+      "dirty": false,
+      "status": [],
+      "excluded_build_directory": "build-review/"
+    },
+    "candidate": {
+      "revision": "5d7eb81d86aa9be0a3b6f0b9e1462b645aec1046",
+      "dirty": false,
+      "status": [],
+      "excluded_build_directory": "build-review/"
+    }
+  },
+  "toolchain": {
+    "gpu": "NVIDIA GeForce RTX 5090, 580.95.05",
+    "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+  },
+  "library_sha256": {
+    "baseline": "c21611c26ada085c1fdc040b88fcad426f1afb76b7184ebda86e500c154342af",
+    "candidate": "fc6e816f7288b68becd2a0ebc51fd9bb6ed744043de85380914b7e492fe13cf4"
+  },
+  "checks": [
+    {
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build-review",
+        "--output-on-failure",
+        "-R",
+        "vibeqc_ecp_"
+      ],
+      "log": "native.log",
+      "exit_code": 0,
+      "seconds": 1.2012832472100854
+    },
+    {
+      "command": [
+        "/tmp/vibeqc-open-pr-review-20260915/venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/python/test_ecp.py",
+        "tests/python/test_ecp_ir.py",
+        "tests/python/test_ecp_validation.py",
+        "-q"
+      ],
+      "log": "python.log",
+      "exit_code": 0,
+      "seconds": 26.665422511985525
+    },
+    {
+      "command": [
+        "/group/software/cuda-12.9.1/bin/compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "99",
+        "/tmp/vibeqc-open-pr-review-20260915/371/build-review/vibeqc_ecp_cuda_error_tests"
+      ],
+      "log": "sanitizer.log",
+      "exit_code": 0,
+      "seconds": 38.20300525613129
+    },
+    {
+      "command": [
+        "/tmp/vibeqc-open-pr-review-20260915/venv/bin/python",
+        "tools/benchmark_ecp.py",
+        "--device",
+        "cuda",
+        "--repeats",
+        "3",
+        "--output",
+        "/tmp/vibeqc-open-pr-review-20260915/ecp-validation/benchmark.json"
+      ],
+      "log": "benchmark.log",
+      "exit_code": 0,
+      "seconds": 12.093362586107105
+    }
+  ],
+  "cases": {
+    "baseline": {
+      "libcint_matrix_max_abs": 3.4688467376309262e-12,
+      "quadrature_difference": {
+        "local_matrix_max_abs": 3.4681684607518193e-12,
+        "nonlocal_matrix_max_abs": 8.604228440844963e-16,
+        "local_derivative_max_abs": 2.0259030564240277e-11,
+        "nonlocal_derivative_max_abs": 2.636779683484747e-16
+      },
+      "cpu_gpu_max_abs": {
+        "local": 3.469446951953614e-18,
+        "nonlocal_": 1.3877787807814457e-17,
+        "local_derivative": 3.469446951953614e-18,
+        "nonlocal_derivative": 6.938893903907228e-18
+      },
+      "components": {
+        "local_value": {
+          "median_ms": 107.97870415262878,
+          "samples_ms": [
+            108.3656910341233,
+            107.97870415262878,
+            107.81744704581797
+          ]
+        },
+        "local_gradient": {
+          "median_ms": 183.7637999560684,
+          "samples_ms": [
+            187.91809608228505,
+            183.7637999560684,
+            179.85016200691462
+          ]
+        },
+        "nonlocal_value": {
+          "median_ms": 100.61632608994842,
+          "samples_ms": [
+            100.61632608994842,
+            100.77163111418486,
+            100.15655891038477
+          ]
+        },
+        "nonlocal_gradient": {
+          "median_ms": 173.90049598179758,
+          "samples_ms": [
+            173.661241075024,
+            173.90049598179758,
+            174.59175502881408
+          ]
+        }
+      },
+      "hf": [
+        {
+          "method": "rhf",
+          "timing": {
+            "median_ms": 1020.3130648005754,
+            "samples_ms": [
+              1026.1259889230132,
+              1020.3130648005754,
+              1018.7023701146245
+            ]
+          },
+          "energy_abs_error": 2.4424906541753444e-15,
+          "force_max_abs_error": 6.083189507677389e-13,
+          "resource_peak_bytes": {
+            "host": 2835680,
+            "device": 2343376,
+            "pinned": 0,
+            "pageable": 2835680,
+            "device:0": 2343376
+          }
+        },
+        {
+          "method": "uhf",
+          "timing": {
+            "median_ms": 1017.607708228752,
+            "samples_ms": [
+              1018.6535180546343,
+              1017.607708228752,
+              1016.946362098679
+            ]
+          },
+          "energy_abs_error": 2.220446049250313e-16,
+          "force_max_abs_error": 8.534839501805891e-16,
+          "resource_peak_bytes": {
+            "host": 2877152,
+            "device": 2378528,
+            "pinned": 0,
+            "pageable": 2877152,
+            "device:0": 2378528
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "libcint_matrix_max_abs": 3.468860615418734e-12,
+      "quadrature_difference": {
+        "local_matrix_max_abs": 3.4681684607518193e-12,
+        "nonlocal_matrix_max_abs": 8.604228440844963e-16,
+        "local_derivative_max_abs": 2.025903750313418e-11,
+        "nonlocal_derivative_max_abs": 2.636779683484747e-16
+      },
+      "cpu_gpu_max_abs": {
+        "local": 3.469446951953614e-18,
+        "nonlocal_": 1.3877787807814457e-17,
+        "local_derivative": 3.469446951953614e-18,
+        "nonlocal_derivative": 6.938893903907228e-18
+      },
+      "components": {
+        "local_value": {
+          "median_ms": 103.1750631518662,
+          "samples_ms": [
+            103.38960401713848,
+            103.1750631518662,
+            102.95790689997375
+          ]
+        },
+        "local_gradient": {
+          "median_ms": 169.08024600706995,
+          "samples_ms": [
+            172.74502501823008,
+            169.08024600706995,
+            165.98615981638432
+          ]
+        },
+        "nonlocal_value": {
+          "median_ms": 96.00420016795397,
+          "samples_ms": [
+            96.2706501595676,
+            96.00420016795397,
+            95.98248801194131
+          ]
+        },
+        "nonlocal_gradient": {
+          "median_ms": 160.14701686799526,
+          "samples_ms": [
+            160.80946591682732,
+            160.14701686799526,
+            158.84697693400085
+          ]
+        }
+      },
+      "hf": [
+        {
+          "method": "rhf",
+          "timing": {
+            "median_ms": 949.274332029745,
+            "samples_ms": [
+              954.8480571247637,
+              949.274332029745,
+              947.3145380616188
+            ]
+          },
+          "energy_abs_error": 2.6645352591003757e-15,
+          "force_max_abs_error": 6.084993620092405e-13,
+          "resource_peak_bytes": {
+            "host": 2835680,
+            "device": 2343376,
+            "pinned": 0,
+            "pageable": 2835680,
+            "device:0": 2343376
+          }
+        },
+        {
+          "method": "uhf",
+          "timing": {
+            "median_ms": 943.2160560972989,
+            "samples_ms": [
+              944.0924960654229,
+              942.6545319147408,
+              943.2160560972989
+            ]
+          },
+          "energy_abs_error": 3.3306690738754696e-16,
+          "force_max_abs_error": 8.118505867571457e-16,
+          "resource_peak_bytes": {
+            "host": 2877152,
+            "device": 2378528,
+            "pinned": 0,
+            "pageable": 2877152,
+            "device:0": 2378528
+          }
+        }
+      ]
+    }
+  },
+  "comparison_scope": "Baseline has the legacy ECP projector path and unrelated KS final-state changes; both measurements use conventional HF/ECP, without DFT or density fitting. Exact source manifests are archived.",
+  "historical_record": "Original RTX 4090 candidate revision/dirty state remain unknown and are not inferred."
+}

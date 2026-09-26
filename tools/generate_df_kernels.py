@@ -1,0 +1,131 @@
+"""Generate the shared raw DF CUDA value header and its operator inventory."""
+
+# Source-tree CLI bootstrap; importing the compiler needs no native runtime.
+import sys as _compiler_sys
+from pathlib import Path as _CompilerPath
+
+_compiler_sys.path.insert(
+    0, str(_CompilerPath(__file__).resolve().parents[1] / "python")
+)
+
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from vibeqc_compiler.integral.df_cuda import df_program_inventory, emit_df_values_cuda
+
+
+def write_if_changed(path: Path, text: str) -> None:
+    """Retain object-cache reuse when an unrelated generator file changes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists() or path.read_text() != text:
+        path.write_text(text)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--inventory", type=Path)
+    parser.add_argument("--derivatives", action="store_true")
+    parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--policy-output", type=Path)
+    parser.add_argument("--schedule-output", type=Path)
+    parser.add_argument("--shell-output", type=Path)
+    parser.add_argument("--df-production-manifest", type=Path)
+    parser.add_argument("--shell-units-directory", type=Path)
+    args = parser.parse_args()
+    if (args.schedule_output or args.shell_output) and not args.derivatives:
+        parser.error("--schedule-output/--shell-output require --derivatives")
+    if args.shell_units_directory and not (args.derivatives and args.shell_output):
+        parser.error(
+            "--shell-units-directory requires --derivatives and --shell-output"
+        )
+    if args.derivatives:
+        from vibeqc_compiler.integral.df_derivatives_cuda import (
+            df_derivative_inventory,
+            emit_df_derivatives_cpu,
+            emit_df_derivatives_cuda,
+        )
+
+        emitter = emit_df_derivatives_cpu if args.cpu else emit_df_derivatives_cuda
+        inventory = df_derivative_inventory
+    else:
+        if args.cpu:
+            from vibeqc_compiler.integral.df_cuda import emit_df_values_cpu
+
+            emitter = emit_df_values_cpu
+        else:
+            emitter = emit_df_values_cuda
+        inventory = df_program_inventory
+    if not args.derivatives and not args.cpu:
+        from vibeqc_compiler.integral.df_value_candidates import (
+            emit_df_value_candidates_cuda,
+        )
+
+        write_if_changed(
+            args.output.with_name("generated_df_value_candidates.cuh"),
+            emit_df_value_candidates_cuda(),
+        )
+    source = emitter()
+    write_if_changed(args.output, source)
+    if args.policy_output:
+        from vibeqc_compiler.integral.df_policy import emit_df_policy_cuda
+
+        write_if_changed(
+            args.policy_output, emit_df_policy_cuda(derivatives=args.derivatives)
+        )
+    if args.schedule_output:
+        from vibeqc_compiler.integral.df_policy import emit_df_derivative_schedule_cuda
+
+        write_if_changed(args.schedule_output, emit_df_derivative_schedule_cuda())
+    if args.shell_output:
+        from vibeqc_compiler.integral.df_shell_derivatives import (
+            emit_df_shell_derivatives_cuda,
+        )
+
+        write_if_changed(args.shell_output, emit_df_shell_derivatives_cuda())
+        from vibeqc_compiler.integral.df_rys import emit_df_rys_cuda
+        from vibeqc_compiler.integral.df_rys_shell import (
+            emit_df_rys_policy_cpp,
+            emit_df_rys_shell_cuda,
+        )
+        from vibeqc_compiler.integral.df_screening import emit_sss_force_screening_cuda
+
+        write_if_changed(
+            args.shell_output.with_name("generated_df_screening.cuh"),
+            emit_sss_force_screening_cuda(),
+        )
+        from vibeqc_compiler.integral.df_tuning.manifest import MANIFEST, emit_policy
+
+        write_if_changed(
+            args.shell_output.with_name("generated_df_production.hpp"),
+            emit_policy(args.df_production_manifest or MANIFEST),
+        )
+        for name, emitter in (
+            ("generated_df_rys.cuh", emit_df_rys_cuda),
+            ("generated_df_rys_policy.hpp", emit_df_rys_policy_cpp),
+            ("generated_df_rys_shell.cuh", emit_df_rys_shell_cuda),
+        ):
+            write_if_changed(args.shell_output.with_name(name), emitter())
+    if args.shell_units_directory:
+        from vibeqc_compiler.integral.df_shell_units import emit_df_shell_units
+
+        for name, text in emit_df_shell_units():
+            write_if_changed(args.shell_units_directory / name, text)
+    if args.inventory:
+        payload = {
+            **inventory(),
+            "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
+        }
+        write_if_changed(
+            args.inventory, json.dumps(payload, indent=2, sort_keys=True) + "\n"
+        )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,160 @@
+{
+  "errors": {
+    "j": {
+      "atol": 2e-09,
+      "max_absolute_error": 1.872280108727864e-12,
+      "max_relative_error_nonzero_reference": 6.782206023136126e-10,
+      "max_scaled_error": 0.0006129922964209797,
+      "passed": true,
+      "rms_error": 3.1827824255087506e-13,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "zero_reference_entries": 0
+    },
+    "k": {
+      "atol": 2e-09,
+      "max_absolute_error": 4.191091917959966e-13,
+      "max_relative_error_nonzero_reference": 2.658513326601797e-11,
+      "max_scaled_error": 0.00019466489898944307,
+      "passed": true,
+      "rms_error": 5.820624104197495e-14,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "zero_reference_entries": 0
+    },
+    "ka": {
+      "atol": 2e-09,
+      "max_absolute_error": 2.512989816239042e-13,
+      "max_relative_error_nonzero_reference": 2.658764129745816e-11,
+      "max_scaled_error": 0.00012013604889669395,
+      "passed": true,
+      "rms_error": 3.49251237361925e-14,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "zero_reference_entries": 0
+    },
+    "kb": {
+      "atol": 2e-09,
+      "max_absolute_error": 1.6764367671839864e-13,
+      "max_relative_error_nonzero_reference": 2.658764129745816e-11,
+      "max_scaled_error": 8.133339866423644e-05,
+      "passed": true,
+      "rms_error": 2.3279637754950266e-14,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "zero_reference_entries": 0
+    },
+    "metric": {
+      "atol": 2e-10,
+      "max_absolute_error": 8.331113576787175e-13,
+      "max_relative_error_nonzero_reference": 16.337321640119512,
+      "max_scaled_error": 0.0029638046396207964,
+      "passed": true,
+      "rms_error": 2.1699514223267622e-13,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "zero_reference_entries": 176
+    },
+    "raw": {
+      "atol": 2e-10,
+      "max_absolute_error": 6.998845947236987e-13,
+      "max_relative_error_nonzero_reference": 1.6639598166145656e-09,
+      "max_scaled_error": 0.0019036086920008939,
+      "passed": true,
+      "rms_error": 7.788970026132401e-14,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16,
+        16
+      ],
+      "zero_reference_entries": 1648
+    },
+    "uj": {
+      "atol": 2e-09,
+      "max_absolute_error": 1.872280108727864e-12,
+      "max_relative_error_nonzero_reference": 6.782206023136126e-10,
+      "max_scaled_error": 0.0006129922964209797,
+      "passed": true,
+      "rms_error": 3.1827824255087506e-13,
+      "rtol": 2e-10,
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "zero_reference_entries": 0
+    }
+  },
+  "library_hash": "e5fe30d5be845cefe1703a592cd719ceb7f28efb49f2de92a2955e49ed60e264",
+  "overrides_cleared": [
+    "VIBEQC_DF_VALUES",
+    "VIBEQC_DF_VALUE_MAPPING"
+  ],
+  "passed": true,
+  "runtime": {
+    "auxiliary_tile": 3,
+    "batch": 2,
+    "jk_pair_tile": 144,
+    "jk_setup_ms": 96.220212,
+    "metric_staged_on_host": true,
+    "metrics": [
+      {
+        "auxiliary_tile": 3,
+        "condition_number": 18.1746309666,
+        "device_peak_bytes": 1427752,
+        "host_peak_bytes": 150266,
+        "rank": 16,
+        "threshold": 1.56395602623e-11
+      },
+      {
+        "auxiliary_tile": 3,
+        "condition_number": 17.7051806229,
+        "device_peak_bytes": 1427752,
+        "host_peak_bytes": 150266,
+        "rank": 16,
+        "threshold": 1.50096748532e-11
+      }
+    ],
+    "naux": 16,
+    "nbf": 16,
+    "public_transform_on_device": true,
+    "raw_pair_tile": 7,
+    "raw_reconstruction_ms": 293.007578,
+    "slurm_job_id": "8973",
+    "source_device_bytes": 15828,
+    "source_host_peak_bytes": 59026,
+    "source_setup_ms": 273.960377,
+    "value_backend": "generated_rys",
+    "value_mapping": "primitive",
+    "warm_jk_ms": [
+      1941.720239,
+      1944.881049,
+      1944.910211,
+      1944.894136
+    ]
+  },
+  "schema": "vibeqc.df_automatic_smoke",
+  "version": 1
+}

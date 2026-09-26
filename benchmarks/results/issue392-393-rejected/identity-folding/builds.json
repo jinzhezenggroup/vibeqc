@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "libvibeqc.so": {"bytes": 205297872, "sha256": "518054273aeff308c3981c815da5e8f6d8fbe85f6f5d759200f65e007230e2c2"},
+    "source.patch": {"path": "../../issue395-df-work/reproduction/source.patch", "bytes": 43898, "sha256": "02944c0ec4633b711813caa61f6ac8fe1db2c10b0c43b156b6a6b59c0fd5639e"},
+    "generated_df_shell_derivatives.cuh": {"bytes": 56942, "sha256": "e29856d48b92371c98e70aaf094888442db3f9f911d2dd18c2cd327bdf04df18"},
+    "source_patch_base": "23091a4575c3b2bf9288ae00bb173935a51364c3"
+  },
+  "identity": {
+    "libvibeqc.so": {"bytes": 205045272, "sha256": "7409011a56cafd485f2b16388a25ba7a31bbad4f4be7fd91e467f739996fa450"},
+    "vibeqc_df_shell_pairs_tests": {"bytes": 73760, "sha256": "e9e2cbf7fb50bf6e542399522935297bfa5497fba55bdbaa98798c46ebfa477c"},
+    "generated_df_shell_derivatives.cuh": {"bytes": 57244, "sha256": "afc13118f982c2a9bb275b5fd05fc5c36b9725906e16b4d1dfdb076210b7c0ae"},
+    "source.patch": {"path": "source.patch", "bytes": 9724, "sha256": "50a79952a9eb9e46ed457aaf412e67f1d8256587220baaf686d68154685effa5"},
+    "native-test.patch": {"path": "native-test.patch", "bytes": 4228, "sha256": "4be296eb90d4f73f084625d9728182d276b050407e125a3abb34b0e840e969df"},
+    "source_patch_base": "1c3f2ab8d6df6f06bee526b89a807511ef726301",
+    "compile_preset": "cuda-release-sm120; default Release flags, no split-compile change",
+    "native_source_identity": "e141ce4f505c40210c10dfe8c54acbdcdd40d8c7529c4f840c808e45491ffe59"
+  }
+}

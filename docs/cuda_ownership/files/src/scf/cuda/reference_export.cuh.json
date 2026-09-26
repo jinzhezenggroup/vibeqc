@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/reference_export.cuh",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
+  "regions": []
+}

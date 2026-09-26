@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/cuda_grid.cu",
+  "reason": "Native grid plan/arena, AO maps, density/orbital packing, scatter, stream/launch and ABI ownership. AO/feature traversal and local XC scientific contractions are compiler-emitted by dft/ao_cuda.py.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "ao_grid"
+}

@@ -1,0 +1,16 @@
+include/vibeqc/vibeqc.h
+python/vibeqc/ecp.py
+python/vibeqc/resources_hf.py
+python/vibeqc_compiler/integral/ecp_grid.py
+python/vibeqc_compiler/integral/ecp_projector.py
+python/vibeqc_compiler/integral/ir.py
+src/api/c_api_ecp.cpp
+src/integrals/ecp.cpp
+src/integrals/ecp.hpp
+src/integrals/ecp_cuda.cu
+tests/native/test_ecp_capabilities.cpp
+tests/native/test_ecp_projector.cpp
+tests/python/test_ecp.py
+tests/python/test_ecp_ir.py
+tests/python/test_ecp_validation.py
+tests/python/test_ecp_f_projector.py

@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/nuclear_kernels.cu",
+  "reason": "Separate nuclear-repulsion energy/force term; intentionally retained native scientific arithmetic and not conflated with S/T/V derivative generation.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "one_electron_derivatives"
+}

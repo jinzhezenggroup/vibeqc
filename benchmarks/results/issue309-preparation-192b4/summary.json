@@ -1,0 +1,88 @@
+{
+  "comparisons": [
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.1425426274163648,
+      "baseline_seconds": 0.39618394314311445,
+      "batch": 4,
+      "candidate": "lazy-core",
+      "candidate_seconds": 0.34675637795589864,
+      "endpoint": "energy",
+      "relative_improvement": 0.12475913282876527,
+      "significant": true
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.0055643351164858,
+      "baseline_seconds": 9.72807789198123,
+      "batch": 4,
+      "candidate": "lazy-core",
+      "candidate_seconds": 9.674247138900682,
+      "endpoint": "force",
+      "relative_improvement": 0.005533544619838904,
+      "significant": false
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.1965470725031306,
+      "baseline_seconds": 0.39734130282886326,
+      "batch": 4,
+      "candidate": "overlap-cache",
+      "candidate_seconds": 0.3320732731372118,
+      "endpoint": "energy",
+      "relative_improvement": 0.1642618807231392,
+      "significant": true
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.007586134948092,
+      "baseline_seconds": 9.730552006978542,
+      "batch": 4,
+      "candidate": "overlap-cache",
+      "candidate_seconds": 9.657290498027578,
+      "endpoint": "force",
+      "relative_improvement": 0.007529018795482734,
+      "significant": false
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.4068232390276927,
+      "baseline_seconds": 0.3962513708975166,
+      "batch": 4,
+      "candidate": "combined",
+      "candidate_seconds": 0.2816639360971749,
+      "endpoint": "energy",
+      "relative_improvement": 0.2891786457187494,
+      "significant": true
+    },
+    {
+      "ao": 192,
+      "baseline_over_candidate": 1.012772020671298,
+      "baseline_seconds": 9.725849504116923,
+      "batch": 4,
+      "candidate": "combined",
+      "candidate_seconds": 9.603197270072997,
+      "endpoint": "force",
+      "relative_improvement": 0.012610953314875717,
+      "significant": false
+    }
+  ],
+  "complete_force_gate_hartree_per_bohr": 1e-08,
+  "device": "NVIDIA GeForce RTX 5090",
+  "df_allowance_bytes": 1073741824,
+  "energy_gate_hartree": 1e-09,
+  "iteration_retry_matched": true,
+  "limitations": [
+    "Cold and changed-geometry samples remain in the archive; only clean warm endpoints are summarized here.",
+    "Replay gates use separately prepared same-model endpoints, not an independent external-engine parity claim.",
+    "384 AO batch 1/4, constrained-memory and other spin/representation timing domains remain open.",
+    "Routine final reference eigensolves remain separate #310/#311 concerns."
+  ],
+  "native_library_sha256": "c8286e590d22cb5285b395912f28978522f4308f47285906473391807bc767f9",
+  "native_scientific_source_identity": "ba2472ab2392c6f8046c7dde8ad9eb304b647d22da62472db941a5d551a9e8c1",
+  "pairs_per_workload_selection": 5,
+  "schema": "vibeqc.issue309.preparation-192b4.v1",
+  "scope": "RHF spherical def2-SVP and matching auxiliary basis; 192 AO batch 4; separate clean and profiled invocations",
+  "slurm_job_id": "9600",
+  "source_commit": "b4a18af5922cad2486ce44a7da9abfe33dec16ea"
+}

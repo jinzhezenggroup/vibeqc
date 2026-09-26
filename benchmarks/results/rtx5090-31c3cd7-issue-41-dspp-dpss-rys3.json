@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "benchmark": "issue_41_dspp_dpss_rys3",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "base_commit": "31c3cd7e9264459acc02f7369be7fbe8f2f368d7",
+      "dirty_candidate": true
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": "3.11.14",
+    "timestamp_utc": "2026-08-28T11:52:47.629676+00:00"
+  },
+  "implementation": {
+    "dpss_force": {
+      "block_threads": 32,
+      "minimum_blocks_per_sm": 8,
+      "recurrence": "rys3",
+      "schedule": "scalar_thread_tasks",
+      "tasks_per_block": 32,
+      "tasks_per_warp": 32
+    },
+    "dspp_force": {
+      "block_threads": 256,
+      "component_lanes": 8,
+      "minimum_blocks_per_sm": 1,
+      "recurrence": "rys3",
+      "schedule": "uniform_component_warps",
+      "tasks_per_block": 32,
+      "tasks_per_warp": 4
+    },
+    "dspp_fock": {
+      "block_threads": 64,
+      "reason": "Retain the accepted component-lane value path so the endpoint isolates the force promotion.",
+      "schedule": "component_lanes"
+    },
+    "generator_fix": "Scalar Rys3 root helpers are shell-scoped so PPPS and DPSS can be linked from separate production shards."
+  },
+  "gates": {
+    "maximum_energy_error_hartree": 1e-10,
+    "maximum_force_error_hartree_per_bohr": 1e-07,
+    "maximum_small_system_regression_fraction": 0.02
+  },
+  "results": {
+    "isolated_force": {
+      "dpss": {
+        "component_lane_subset_wick_milliseconds": 22.6993923,
+        "maximum_force_error_hartree_per_bohr": 1.2377654456940945e-11,
+        "passed": true,
+        "scalar_thread_rys3_milliseconds": 6.10369253,
+        "speedup": 3.71896064364828
+      },
+      "dspp": {
+        "component_lane_subset_wick_milliseconds": 47.8471489,
+        "maximum_force_error_hartree_per_bohr": 7.005951374594588e-12,
+        "passed": true,
+        "speedup": 5.948353767790449,
+        "uniform_warp_rys3_milliseconds": 8.04376316
+      }
+    },
+    "production_resources": {
+      "dpss_persistent_force": {
+        "registers_per_thread": 252,
+        "shared_bytes": 6224,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      "dspp_ordinary_force": {
+        "registers_per_thread": 214,
+        "shared_bytes": 36360,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 56
+      },
+      "dspp_persistent_force": {
+        "registers_per_thread": 216,
+        "shared_bytes": 36360,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 56
+      }
+    },
+    "production_profile": {
+      "combined_saving_milliseconds_per_replay": 66.71819933333331,
+      "dpss": {
+        "candidate_milliseconds_per_replay": 29.450901666666667,
+        "parent_milliseconds_per_replay": 71.55399233333333,
+        "saving_milliseconds_per_replay": 42.10309066666666,
+        "speedup": 2.429602772207144
+      },
+      "dspp": {
+        "candidate_milliseconds_per_replay": 55.288353666666666,
+        "parent_milliseconds_per_replay": 79.90346233333332,
+        "saving_milliseconds_per_replay": 24.615108666666657,
+        "speedup": 1.4452132688752333
+      },
+      "profiled_replays": 3,
+      "two_electron_force_milliseconds_per_replay": 1256.506351
+    },
+    "endpoint": {
+      "candidate_vibeqc_median_seconds": 2.684644647000823,
+      "energy_error_hartree": 1.546140993013978e-11,
+      "force_error_hartree_per_bohr": 3.153674059744316e-08,
+      "gpu4pyscf_median_seconds": 2.1364667630405165,
+      "iteration_branch": [
+        1
+      ],
+      "parent_vibeqc_median_seconds": 2.7512205759994686,
+      "repeats_per_engine": 5,
+      "saving_seconds": 0.0665759289986454,
+      "vibeqc_over_gpu4pyscf": 1.2565815174115633
+    },
+    "small_system_checks": {
+      "96_ao": {
+        "change_from_parent_fraction": -0.016097422398109625,
+        "energy_error_hartree": 1.7621459846850485e-12,
+        "force_error_hartree_per_bohr": 9.26259018964315e-09,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.1962890680297278
+      },
+      "192_ao": {
+        "change_from_parent_fraction": -0.016245276604978636,
+        "energy_error_hartree": 9.094947017729282e-12,
+        "force_error_hartree_per_bohr": 1.088218535075236e-08,
+        "iteration_branch": [
+          1
+        ],
+        "repeats": 3,
+        "vibeqc_median_seconds": 0.7469354399945587
+      }
+    }
+  },
+  "current_gap": {
+    "gap_reduction_from_issue_baseline_fraction": 0.47204795874035055,
+    "gpu4pyscf_seconds": 2.1364667630405165,
+    "remaining_seconds": 0.5481778839603066,
+    "required_vibeqc_reduction_fraction": 0.20419010932143622,
+    "two_electron_force_device_milliseconds": 1256.506351,
+    "vibeqc_seconds": 2.684644647000823
+  }
+}

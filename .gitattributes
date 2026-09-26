@@ -1,0 +1,47 @@
+# Keep reproducible data available while making implementation diffs reviewable.
+# Keep this near-limit CUDA translation unit within the existing 1 MiB file
+# gate on Windows as well as Linux; new reference helpers live separately.
+src/scf/cuda_rhf.cu text eol=lf
+tests/reference_data/validation/*.json linguist-generated=true
+benchmarks/results/cg01/*.json linguist-generated=true
+benchmarks/results/f-shell-135/*.json linguist-generated=true
+benchmarks/results/tensor-cuda-146/*.json linguist-generated=true
+benchmarks/results/posthf-147/*.json linguist-generated=true
+tests/reference_data/grid/*.json linguist-generated=true
+benchmarks/results/dft-grid-160/*.json linguist-generated=true
+# Keep the 768-AO numerical samples available beside the readable fix summary.
+benchmarks/results/issue308-768ao-response/*-768ao.json linguist-generated=true text eol=lf
+# Preserve every #399 sample/counter while keeping the implementation review visible.
+benchmarks/results/issue399-density-seed/measurements/*.json linguist-generated=true
+benchmarks/results/issue399-density-seed/components/*.json linguist-generated=true
+benchmarks/results/issue399-density-seed/profiles/*.json linguist-generated=true
+benchmarks/results/issue399-density-seed/journals.json linguist-generated=true
+benchmarks/results/issue399-density-seed/ownership.json linguist-generated=true
+
+# These files are hashed byte-for-byte as third-party/reference provenance.
+upstream/** text eol=lf
+manifests/libxc/7.0.0/* text eol=lf
+tools/generate_xc_references.py text eol=lf
+tools/generate_xc_integration_references.py text eol=lf
+tools/generate_validation_references.py text eol=lf
+
+# Generated per-file hashes; review the migration summary and restoration code.
+benchmarks/results/retention-checkout/snapshot.manifest.json linguist-generated=true
+
+# Scientific source-of-truth lives in upstream/manifest.json; these are derived
+# compatibility views or deterministic numerical products.
+manifests/libxc/7.0.0/manifest.json linguist-generated=true
+manifests/libxc/7.0.0/*-manifest.json linguist-generated=true
+tools/parameters/dispersion_parameter_sources.json linguist-generated=true
+src/dft/dispersion/*_data.hpp linguist-generated=true
+python/vibeqc_compiler/integral/rys*_data.py linguist-generated=true
+src/dft/dispersion/d4_eeq_r2scan3c_c6.hpp linguist-generated=true
+python/vibeqc_compiler/method/_generated_parameters.py linguist-generated=true
+python/vibeqc_compiler/method/_generated_libxc_methods.py linguist-generated=true
+src/xtb/native/data/parameters/gfn1.hpp linguist-generated=true
+python/vibeqc_compiler/geometry/_gfn1_data.py text eol=lf linguist-generated=true
+
+# Full-tree Libxc mathematical inputs; preserve upstream bytes, not runtime code.
+upstream/libxc-fulltree/7.0.0/** text eol=lf -whitespace linguist-vendored=true
+python/vibeqc_compiler/xc/libxc_bulk_catalog.json linguist-generated=true
+tests/data/xc/libxc-bulk/*.json linguist-generated=true

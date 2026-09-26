@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/final_validation_kernels.hpp",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "Fixed-size device reduction payloads and launch declarations.",
+  "regions": []
+}

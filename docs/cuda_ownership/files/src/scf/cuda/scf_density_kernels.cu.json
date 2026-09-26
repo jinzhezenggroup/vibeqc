@@ -1,0 +1,14 @@
+{
+  "path": "src/scf/cuda/scf_density_kernels.cu",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "Native CUDA launch/runtime owner. Plain and energy-weighted RHF/UHF density contractions are compiler-generated; warm-start repair remains native.",
+  "regions": [
+    {
+      "start": "__global__ void mix_open_shell_guess_kernel",
+      "stop": "__device__ double warm_density_block_sum",
+      "role": "scientific",
+      "reason": "Existing open-shell symmetry-breaking frontier guess equation."
+    }
+  ]
+}

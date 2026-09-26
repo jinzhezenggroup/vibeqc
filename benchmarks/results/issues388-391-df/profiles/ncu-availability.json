@@ -1,0 +1,9 @@
+{
+  "status": 1,
+  "error": "ERR_NVGPUCTRPERM",
+  "log_sha256": "e45b1b3fc3733fc5e5ca17133493e768b71d3bdb94572c760aef2534c3e8acdd",
+  "achieved_occupancy": null,
+  "stall_reasons": null,
+  "branch_efficiency": null,
+  "dram_transactions": null
+}

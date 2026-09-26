@@ -1,0 +1,202 @@
+{
+  "v1-384-final-energy": {
+    "dense": {
+      "seconds": [0.3495028098113835, 0.34929336002096534, 0.3492447880562395, 0.34924002015031874, 0.34928989480249584],
+      "median_seconds": 0.34928989480249584,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    },
+    "occupied": {
+      "seconds": [0.3126939879730344, 0.3119478919543326, 0.31171341612935066, 0.31175279105082154, 0.3116507069207728],
+      "median_seconds": 0.31175279105082154,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 6.821210263296962e-13,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-384-final": {
+    "dense": {
+      "seconds": [0.8076829109340906, 0.8153079820331186, 0.807045882800594, 0.8237955328077078, 0.8073175689205527],
+      "median_seconds": 0.8076829109340906,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": 8.189558926841034e-11,
+      "scope": "clean endpoint"
+    },
+    "occupied": {
+      "seconds": [0.7757461790461093, 0.7898394609801471, 0.7774502830579877, 0.7886981391347945, 0.7755523540545255],
+      "median_seconds": 0.7774502830579877,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 6.821210263296962e-13,
+      "maximum_force_error": 8.189470108999064e-11,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-384-seed-energy": {
+    "dense": {
+      "seconds": [0.3795493401121348, 0.37976896204054356, 0.3798231449909508, 0.37982552987523377, 0.379733795998618],
+      "median_seconds": 0.37976896204054356,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    },
+    "factor": {
+      "seconds": [0.34934479696676135, 0.3492282151710242, 0.3496858801227063, 0.3492086490150541, 0.349296998931095],
+      "median_seconds": 0.349296998931095,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-384-seed": {
+    "dense": {
+      "seconds": [0.8565044070128351, 0.8539385839831084, 0.8500748958904296, 0.8517999579198658, 0.8536288340110332],
+      "median_seconds": 0.8536288340110332,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 1.8189894035458565e-12,
+      "maximum_force_error": 9.447444389298898e-11,
+      "scope": "clean endpoint"
+    },
+    "factor": {
+      "seconds": [0.8148005651310086, 0.8077612109482288, 0.8206458881031722, 0.8248673640191555, 0.8246863659005612],
+      "median_seconds": 0.8206458881031722,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": 8.189470108999064e-11,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-384-verification": {
+    "factor": {
+      "seconds": [0.9058069291058928],
+      "median_seconds": 0.9058069291058928,
+      "iterations": [[3]],
+      "maximum_energy_error": 2.0463630789890885e-12,
+      "maximum_force_error": 8.189292473315124e-11,
+      "scope": "intrusive diagnostic"
+    }
+  },
+  "v1-768-final-energy": {
+    "dense": {
+      "seconds": [2.8181573369074613, 2.822242403170094, 2.8206752280239016, 2.823998544830829, 2.818841754924506],
+      "median_seconds": 2.8206752280239016,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    },
+    "occupied": {
+      "seconds": [2.1768565638922155, 2.180810835910961, 2.177101257024333, 2.183797735022381, 2.17596040898934],
+      "median_seconds": 2.177101257024333,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-768-final": {
+    "dense": {
+      "seconds": [4.68027786584571, 4.685338771902025, 4.690771328983828, 4.684911718126386, 4.689881530823186],
+      "median_seconds": 4.685338771902025,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 1.5922695106862506e-10,
+      "scope": "clean endpoint"
+    },
+    "occupied": {
+      "seconds": [4.05470641492866, 4.038014908088371, 4.031922054942697, 4.052543434081599, 4.0455915578641],
+      "median_seconds": 4.0455915578641,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 1.5922251017652655e-10,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-768-seed-energy": {
+    "dense": {
+      "seconds": [3.443176507949829, 3.4438365451060236, 3.4572656019590795, 3.4594243050087243, 3.445535599021241],
+      "median_seconds": 3.445535599021241,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    },
+    "factor": {
+      "seconds": [2.8282610999885947, 2.8216875998768955, 2.8187685168813914, 2.8145535320509225, 2.811883076094091],
+      "median_seconds": 2.8187685168813914,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-768-seed": {
+    "dense": {
+      "seconds": [5.322413254994899, 5.317089326214045, 5.31132765696384, 5.30953594786115, 5.316987985977903],
+      "median_seconds": 5.316987985977903,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 1.2777160839777535e-10,
+      "scope": "clean endpoint"
+    },
+    "factor": {
+      "seconds": [4.692944479174912, 4.690617023035884, 4.684276099083945, 4.689939302857965, 4.682918079197407],
+      "median_seconds": 4.689939302857965,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 1.5922251017652655e-10,
+      "scope": "clean endpoint"
+    }
+  },
+  "v1-768-verification": {
+    "factor": {
+      "seconds": [5.5766564989462495],
+      "median_seconds": 5.5766564989462495,
+      "iterations": [[3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 1.5922162199810685e-10,
+      "scope": "intrusive diagnostic"
+    }
+  },
+  "v2-768-default-energy": {
+    "dense": {
+      "seconds": [3.470718024065718, 3.4579899890813977, 3.4641257419716567, 3.453215434914455, 3.461291810963303],
+      "median_seconds": 3.461291810963303,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    },
+    "auto": {
+      "seconds": [2.1946660310495645, 2.1957923909649253, 2.19218947715126, 2.192250616149977, 2.191286305198446],
+      "median_seconds": 2.192250616149977,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 0,
+      "scope": "clean endpoint"
+    }
+  },
+  "v2-768-default": {
+    "dense": {
+      "seconds": [5.330264719901606, 5.325005651917309, 5.330059812869877, 5.326410533860326, 5.3301755310967565],
+      "median_seconds": 5.330059812869877,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 3.865352482534945e-11,
+      "maximum_force_error": 1.2775739754306015e-10,
+      "scope": "clean endpoint"
+    },
+    "auto": {
+      "seconds": [4.066674231085926, 4.064421886112541, 4.06871959217824, 4.067910382058471, 4.067886576987803],
+      "median_seconds": 4.067886576987803,
+      "iterations": [[3], [3], [3], [3], [3]],
+      "maximum_energy_error": 8.640199666842818e-12,
+      "maximum_force_error": 1.5922339835494626e-10,
+      "scope": "clean endpoint"
+    }
+  }
+}

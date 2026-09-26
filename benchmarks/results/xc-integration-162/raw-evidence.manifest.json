@@ -1,0 +1,57 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "83dc2effec30e051afd8063bb405155b4e877d2b",
+  "archive_sha256": "d8b21b9660bab21a13a1a9f4014f5468c5aa4811cf632167988c7f08ff8b8a0f",
+  "files": [
+    {
+      "path": "build.log",
+      "bytes": 702,
+      "sha256": "08d8a71160b7772387cd05ed0def40774fe60a5064d3e322c66f08ca6615e335"
+    },
+    {
+      "path": "ctest.log",
+      "bytes": 1500,
+      "sha256": "0363f5f3cd1ee24643597373d410b7f5699bf34dde8cc6ac3205b97096e7c587"
+    },
+    {
+      "path": "focused-tests.log",
+      "bytes": 181,
+      "sha256": "1521d59e7d78fafa19648c365b0b1939016ad5413dbf339cd48513c4f68489e5"
+    },
+    {
+      "path": "format.log",
+      "bytes": 45,
+      "sha256": "0be7adce665690956090205e08186f7efd9939d7fe606e4a0d117c570ab71599"
+    },
+    {
+      "path": "numerical.json",
+      "bytes": 40940,
+      "sha256": "ccfcaefaaf5655fc44dcf5a4b10ca23c230c462d7787cc6f47738dfd52f5599c"
+    },
+    {
+      "path": "numerical.log",
+      "bytes": 101,
+      "sha256": "0442d1161e9cd2bf3ae07d1609fc17ce411f1c8b6908d31f6212efb960bb984b"
+    },
+    {
+      "path": "python-tests.log",
+      "bytes": 1245,
+      "sha256": "ea8dd7b522f6f117eecfc5244a1c48b80143eee5d591a497581f56b2d42e0bba"
+    },
+    {
+      "path": "reference-generation.log",
+      "bytes": 635,
+      "sha256": "acb425dc39edda6d38b80c84c8550d34f59004ae72f44fa1cea46938b086fbba"
+    },
+    {
+      "path": "verification.sh",
+      "bytes": 2502,
+      "sha256": "833aad81bcb1be45f985deab9e2f74e50ca6e5ea72980e6ca8126a21abfb29f4"
+    },
+    {
+      "path": "versions.log",
+      "bytes": 1392,
+      "sha256": "2ab02ac69cbaaafa3171a32cb4bf1a61891f6ff8ce2b06fef311c3a133776789"
+    }
+  ]
+}

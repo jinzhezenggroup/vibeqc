@@ -1,0 +1,577 @@
+{
+  "conventions": {
+    "aliasing": "immutable SSA; no in-place writes",
+    "coefficient": "reduced rational numerator/positive denominator",
+    "indexing": "zero-based; half-open ranges; ordered gather coordinates",
+    "inner_product": "real Euclidean dense; packed coordinates carry orbit weights",
+    "reshape": "logical C order; physical copies/views are executor decisions"
+  },
+  "logical_hash": "6fb55acd06c80edaa7ddab219b8e337a36301bc17aa1b519fe328633c73ee5e0",
+  "nodes": [
+    {
+      "attributes": {
+        "name": "g"
+      },
+      "id": "n_63aaa85c63fe8da08b71088ef2fae755dc4bc9f431df7d5ac112140dd45f5273_0",
+      "inputs": [],
+      "op": "input",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "parameter",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "name": "ev"
+      },
+      "id": "n_82bd79391c3f9cbdbde2d5ca5e4e18abd4367112955522578775047f85c91ebf_0",
+      "inputs": [],
+      "op": "input",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "parameter",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "name": "eo"
+      },
+      "id": "n_9b335cb45f68357486619d42fa3f9a9d8142eb1ac1d2b0ddb1bdeab1ae451178_0",
+      "inputs": [],
+      "op": "input",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "parameter",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "axes": [
+          3
+        ]
+      },
+      "id": "n_9aa45b40a26d26a47493430f1f197af4e60c9cd791588d4f0a42ea1440657f94_0",
+      "inputs": [
+        "n_82bd79391c3f9cbdbde2d5ca5e4e18abd4367112955522578775047f85c91ebf_0"
+      ],
+      "op": "broadcast",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "intermediate",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "axes": [
+          1
+        ]
+      },
+      "id": "n_a927d8a5a383fb2366b931889770a2aef20071692d7db3c51376507d7dfaa203_0",
+      "inputs": [
+        "n_9b335cb45f68357486619d42fa3f9a9d8142eb1ac1d2b0ddb1bdeab1ae451178_0"
+      ],
+      "op": "broadcast",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "intermediate",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "axes": [
+          0
+        ]
+      },
+      "id": "n_b01342bf6322b4a554c9c9b05b5b5581185422693ced519f8520487b763fb643_0",
+      "inputs": [
+        "n_9b335cb45f68357486619d42fa3f9a9d8142eb1ac1d2b0ddb1bdeab1ae451178_0"
+      ],
+      "op": "broadcast",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "intermediate",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "axes": [
+          2
+        ]
+      },
+      "id": "n_ce2b4c80e1239bb1a1e7e5529b9bf9f82997778f20c0fc849cbfe078b6bebf17_0",
+      "inputs": [
+        "n_82bd79391c3f9cbdbde2d5ca5e4e18abd4367112955522578775047f85c91ebf_0"
+      ],
+      "op": "broadcast",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "intermediate",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {
+        "coefficients": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            -1,
+            1
+          ],
+          [
+            -1,
+            1
+          ]
+        ]
+      },
+      "id": "n_44d6c15ed8e11615611b915cec0cb918e3d92b665ba7dbbda1054b739c0b4594_0",
+      "inputs": [
+        "n_b01342bf6322b4a554c9c9b05b5b5581185422693ced519f8520487b763fb643_0",
+        "n_a927d8a5a383fb2366b931889770a2aef20071692d7db3c51376507d7dfaa203_0",
+        "n_ce2b4c80e1239bb1a1e7e5529b9bf9f82997778f20c0fc849cbfe078b6bebf17_0",
+        "n_9aa45b40a26d26a47493430f1f197af4e60c9cd791588d4f0a42ea1440657f94_0"
+      ],
+      "op": "add",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "intermediate",
+        "symmetries": []
+      }
+    },
+    {
+      "attributes": {},
+      "id": "n_3f5f12f065e90e68b5afb8d6174873e839d7da1b660da1251294d3430ffa5bb8_0",
+      "inputs": [
+        "n_63aaa85c63fe8da08b71088ef2fae755dc4bc9f431df7d5ac112140dd45f5273_0",
+        "n_44d6c15ed8e11615611b915cec0cb918e3d92b665ba7dbbda1054b739c0b4594_0"
+      ],
+      "op": "divide",
+      "spec": {
+        "differentiable": false,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 8,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 8
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 31,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 31
+          }
+        ],
+        "representation": "spin_orbital",
+        "role": "intermediate",
+        "symmetries": []
+      }
+    }
+  ],
+  "outputs": {
+    "amplitudes": "n_3f5f12f065e90e68b5afb8d6174873e839d7da1b660da1251294d3430ffa5bb8_0"
+  },
+  "primitive_version": 1,
+  "provenance": {
+    "fixture_version": 1,
+    "nocc": 8,
+    "nvir": 31,
+    "scope": "fixed supplied tensors; no CC iterations, Hamiltonian or molecular calculation",
+    "seed": 146
+  },
+  "schema": "vibeqc.tensor",
+  "schema_version": 1
+}

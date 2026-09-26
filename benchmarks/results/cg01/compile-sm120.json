@@ -1,0 +1,263 @@
+{
+  "attachments": [],
+  "backend_selected": null,
+  "block_errors": {},
+  "build": null,
+  "command_result": {
+    "returncode": 0,
+    "seconds": 2.7008715430274606,
+    "stderr": "/tmp/vibeqc-138-ssss.cu(236): warning #186-D: pointless comparison of unsigned integer with zero\n    for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {\n                                       ^\n          detected during:\n            instantiation of \"GeneratedSsssPairTerm generated_ssss_pair_term<PairOrder>(const unsigned int *, const double *, const double *, double, unsigned int) [with PairOrder=0U]\" at line 293\n            instantiation of \"void generated_ssss_component_gradient<SharedCoulomb>(unsigned int, const GeneratedSsssPrimitiveGeometry &, const double *, double (&)[4][3]) [with SharedCoulomb=true]\" at line 627\n            instantiation of \"void generated_ssss_shell_class_force_task<Unrestricted>(const GeneratedSsssShellTask *, const GeneratedSsssPrimitivePairData *, const int64_t *, const double *, const GeneratedSsssVec3 *, double, const double *, const double *, double *, std::size_t) [with Unrestricted=false]\" at line 699\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/tmp/vibeqc-138-ssss.cu(207): warning #186-D: pointless comparison of unsigned integer with zero\n    for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {\n                                       ^\n          detected during:\n            instantiation of \"void generated_ssss_add_pair_matching<PairOrder>(GeneratedSsssPairTerm &, const unsigned int *, const double *, const double *, double, unsigned int, unsigned int, unsigned int) [with PairOrder=0U]\" at line 244\n            instantiation of \"GeneratedSsssPairTerm generated_ssss_pair_term<PairOrder>(const unsigned int *, const double *, const double *, double, unsigned int) [with PairOrder=0U]\" at line 293\n            instantiation of \"void generated_ssss_component_gradient<SharedCoulomb>(unsigned int, const GeneratedSsssPrimitiveGeometry &, const double *, double (&)[4][3]) [with SharedCoulomb=true]\" at line 627\n            instantiation of \"void generated_ssss_shell_class_force_task<Unrestricted>(const GeneratedSsssShellTask *, const GeneratedSsssPrimitivePairData *, const int64_t *, const double *, const GeneratedSsssVec3 *, double, const double *, const double *, double *, std::size_t) [with Unrestricted=false]\" at line 699\n\n/tmp/vibeqc-138-ssss.cu(213): warning #186-D: pointless comparison of unsigned integer with zero\n    for (unsigned differentiated = 0; differentiated < PairOrder;\n                                                     ^\n          detected during:\n            instantiation of \"void generated_ssss_add_pair_matching<PairOrder>(GeneratedSsssPairTerm &, const unsigned int *, const double *, const double *, double, unsigned int, unsigned int, unsigned int) [with PairOrder=0U]\" at line 244\n            instantiation of \"GeneratedSsssPairTerm generated_ssss_pair_term<PairOrder>(const unsigned int *, const double *, const double *, double, unsigned int) [with PairOrder=0U]\" at line 293\n            instantiation of \"void generated_ssss_component_gradient<SharedCoulomb>(unsigned int, const GeneratedSsssPrimitiveGeometry &, const double *, double (&)[4][3]) [with SharedCoulomb=true]\" at line 627\n            instantiation of \"void generated_ssss_shell_class_force_task<Unrestricted>(const GeneratedSsssShellTask *, const GeneratedSsssPrimitivePairData *, const int64_t *, const double *, const GeneratedSsssVec3 *, double, const double *, const double *, double *, std::size_t) [with Unrestricted=false]\" at line 699\n\n/tmp/vibeqc-138-ssss.cu(217): warning #186-D: pointless comparison of unsigned integer with zero\n      for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {\n                                         ^\n          detected during:\n            instantiation of \"void generated_ssss_add_pair_matching<PairOrder>(GeneratedSsssPairTerm &, const unsigned int *, const double *, const double *, double, unsigned int, unsigned int, unsigned int) [with PairOrder=0U]\" at line 244\n            instantiation of \"GeneratedSsssPairTerm generated_ssss_pair_term<PairOrder>(const unsigned int *, const double *, const double *, double, unsigned int) [with PairOrder=0U]\" at line 293\n            instantiation of \"void generated_ssss_component_gradient<SharedCoulomb>(unsigned int, const GeneratedSsssPrimitiveGeometry &, const double *, double (&)[4][3]) [with SharedCoulomb=true]\" at line 627\n            instantiation of \"void generated_ssss_shell_class_force_task<Unrestricted>(const GeneratedSsssShellTask *, const GeneratedSsssPrimitivePairData *, const int64_t *, const double *, const GeneratedSsssVec3 *, double, const double *, const double *, double *, std::size_t) [with Unrestricted=false]\" at line 699\n\n/tmp/vibeqc-138-ssss.cu(245): warning #186-D: pointless comparison of unsigned integer with zero\n    for (unsigned first = 0; first < PairOrder; ++first) {\n                                   ^\n          detected during:\n            instantiation of \"GeneratedSsssPairTerm generated_ssss_pair_term<PairOrder>(const unsigned int *, const double *, const double *, double, unsigned int) [with PairOrder=0U]\" at line 293\n            instantiation of \"void generated_ssss_component_gradient<SharedCoulomb>(unsigned int, const GeneratedSsssPrimitiveGeometry &, const double *, double (&)[4][3]) [with SharedCoulomb=true]\" at line 627\n            instantiation of \"void generated_ssss_shell_class_force_task<Unrestricted>(const GeneratedSsssShellTask *, const GeneratedSsssPrimitivePairData *, const int64_t *, const double *, const GeneratedSsssVec3 *, double, const double *, const double *, double *, std::size_t) [with Unrestricted=false]\" at line 699\n\n/tmp/vibeqc-138-ssss.cu(246): warning #186-D: pointless comparison of unsigned integer with zero\n      for (unsigned second = first + 1U; second < PairOrder; ++second) {\n                                                ^\n          detected during:\n            instantiation of \"GeneratedSsssPairTerm generated_ssss_pair_term<PairOrder>(const unsigned int *, const double *, const double *, double, unsigned int) [with PairOrder=0U]\" at line 293\n            instantiation of \"void generated_ssss_component_gradient<SharedCoulomb>(unsigned int, const GeneratedSsssPrimitiveGeometry &, const double *, double (&)[4][3]) [with SharedCoulomb=true]\" at line 627\n            instantiation of \"void generated_ssss_shell_class_force_task<Unrestricted>(const GeneratedSsssShellTask *, const GeneratedSsssPrimitivePairData *, const int64_t *, const double *, const GeneratedSsssVec3 *, double, const double *, const double *, double *, std::size_t) [with Unrestricted=false]\" at line 699\n\nptxas info    : 0 bytes gmem\nptxas info    : Compiling entry function 'generated_ssss_shell_class_force_uhf_persistent_kernel' for 'sm_120'\nptxas info    : Function properties for generated_ssss_shell_class_force_uhf_persistent_kernel\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 122 registers, used 1 barriers, 736 bytes smem\nptxas info    : Compile time = 141.655 ms\nptxas info    : Compiling entry function 'generated_ssss_shell_class_force_rhf_persistent_kernel' for 'sm_120'\nptxas info    : Function properties for generated_ssss_shell_class_force_rhf_persistent_kernel\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 122 registers, used 1 barriers, 736 bytes smem\nptxas info    : Compile time = 138.662 ms\nptxas info    : Compiling entry function 'generated_ssss_shell_class_force_uhf_kernel' for 'sm_120'\nptxas info    : Function properties for generated_ssss_shell_class_force_uhf_kernel\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 126 registers, used 1 barriers, 728 bytes smem\nptxas info    : Compile time = 122.870 ms\nptxas info    : Compiling entry function 'generated_ssss_shell_class_force_rhf_kernel' for 'sm_120'\nptxas info    : Function properties for generated_ssss_shell_class_force_rhf_kernel\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 126 registers, used 1 barriers, 728 bytes smem\nptxas info    : Compile time = 120.647 ms\n",
+    "stdout": ""
+  },
+  "command_status": {
+    "reason": null,
+    "status": "pass"
+  },
+  "compilation": {
+    "reason": null,
+    "seconds": 2.7008715430274606
+  },
+  "compile_resources": [
+    {
+      "function": "generated_ssss_shell_class_force_uhf_persistent_kernel",
+      "registers": 122,
+      "shared_bytes": 736,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "generated_ssss_shell_class_force_rhf_persistent_kernel",
+      "registers": 122,
+      "shared_bytes": 736,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "generated_ssss_shell_class_force_uhf_kernel",
+      "registers": 126,
+      "shared_bytes": 728,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "generated_ssss_shell_class_force_rhf_kernel",
+      "registers": 126,
+      "shared_bytes": 728,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    }
+  ],
+  "device": null,
+  "environment": {
+    "accelerator": null,
+    "git": {
+      "commit": "54b7a892357ff9a23d94c877e2c6a07094c217e7",
+      "dirty": true,
+      "pending_generated_benchmark_artifacts": 1
+    },
+    "host": {
+      "machine": "x86_64",
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "processor": "x86_64"
+    },
+    "packages": {
+      "numpy": "2.5.1"
+    },
+    "python": {
+      "executable": "/home/jzzeng/miniconda3/bin/python",
+      "version": "3.13.9"
+    },
+    "runtime": {
+      "cuda_visible_devices": "",
+      "vibeqc_library": null
+    },
+    "timestamp_utc": "2026-09-07T18:03:20.488576+00:00",
+    "toolchain": {
+      "cuobjdump": {
+        "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+        "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      },
+      "nvcc": {
+        "path": "/group/software/cuda-12.9.1/bin/nvcc",
+        "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "ptxas": {
+        "path": "/group/software/cuda-12.9.1/bin/ptxas",
+        "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      }
+    }
+  },
+  "hardware": {
+    "reason": "compilation requires no GPU",
+    "status": "not-run"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "1d83e84e436e8b18bd9ad54134ddb4850180cc775232a6b1c6dec4045843e4e4",
+    "ir": "4571e1e85f9daae2722f664d3f9151f1cc906ec237dd46880367200b4d195b9b",
+    "schedule": "147e9a19852482043770552fb63b2e80b59e90dfc395754ba799aca64806f07f",
+    "source": "df15de4c69900b570baf31c32af61e8ea0015ad49e4e1f4c399552041665ce1b"
+  },
+  "inputs_hash": "4571e1e85f9daae2722f664d3f9151f1cc906ec237dd46880367200b4d195b9b",
+  "library_sha256": null,
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "not measured"
+  },
+  "object_bytes": 416672,
+  "object_sha256": "848b9f8e059597606822198f6d627ff1b251e453ffbf140a0ed643e6887b76d6",
+  "performance": {
+    "reason": "no comparison registered",
+    "status": "not-run"
+  },
+  "repository_source_hash": "c922da549e1a1329c3d55dbd28ae677758bcc68fe05901d2c042855290914b09",
+  "residuals": {},
+  "revision": "54b7a892357ff9a23d94c877e2c6a07094c217e7",
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "architecture": "sm_120",
+    "command": [
+      "/group/software/cuda-12.9.1/bin/nvcc",
+      "-std=c++17",
+      "-arch=sm_120",
+      "-O3",
+      "-Xptxas=-v",
+      "-c",
+      "/tmp/vibeqc-138-ssss.cu",
+      "-o",
+      "/tmp/vibeqc-138-ssss.o"
+    ],
+    "device": "cpu",
+    "fast_compile": false,
+    "integral_ir": {
+      "contractions": [
+        {
+          "consumer": "direct_force",
+          "density": [
+            "rhf",
+            "uhf"
+          ],
+          "output": "atomic_force"
+        }
+      ],
+      "derivative": {
+        "centers": "all",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "order": 1
+      },
+      "operator": {
+        "centers": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "external_centers": [],
+        "family": "four_center_eri",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "permutations": []
+      },
+      "recurrence": "subset_wick",
+      "schema": "vibeqc.integral_ir",
+      "schema_version": 1,
+      "spec": {
+        "angular": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "kind": "shell_class",
+        "name": "ssss"
+      }
+    },
+    "schedule": {
+      "algebra_form": "binary",
+      "algebra_fusion": "separate",
+      "algebra_ordering": "topological",
+      "algebra_placement": "materialized_cse",
+      "block_threads": 32,
+      "component_tile": 1,
+      "kind": "component_lanes",
+      "maximum_registers": 0,
+      "minimum_blocks_per_sm": 0,
+      "pair_orientation": "canonical",
+      "pair_storage": "materialized",
+      "shared_coulomb": true,
+      "tasks_per_warp": 1,
+      "unroll_pair_terms": true
+    },
+    "timeout_seconds": 600
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "numerical": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "production": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "deterministic_generations": 2,
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "ssss-sm120-resource-smoke",
+  "tier": "cuda-compile",
+  "timings": [],
+  "toolchain": {
+    "cuobjdump": {
+      "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+      "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+    },
+    "host_cxx": {
+      "path": "/usr/bin/c++",
+      "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+    },
+    "nvcc": {
+      "path": "/group/software/cuda-12.9.1/bin/nvcc",
+      "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+    },
+    "ptxas": {
+      "path": "/group/software/cuda-12.9.1/bin/ptxas",
+      "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "source_identity": "7616b7256832df1cbb6f1a8baa0ba2e20f9d708e56cbfd297f46dbb05ea8cfe3",
+  "library_sha256": "96e5fb31ba68bb9fba79d6b83cf5fc958d954ed236f8a7359aacb89f65b39107",
+  "git_head": "92140cbe5e471d1fa3b906be848c5f5a122909b9",
+  "source_patch_sha256": "7f83b3dc0623345fcdc7c83774a0bac45696108d749fbe720a1aea99ea0be18e",
+  "runner_sha256": "1db61fcd3052d0282549911ad91c6fd1721886f616fe10fd5851a0be64642c10",
+  "changes_since_v4": [
+    "Default compact/shell/BLAS/pinned within resident 192--384-AO sm_120 device-metric schedule zero; other regimes and explicit diagnostic controls preserve former defaults."
+  ],
+  "files": {
+    "qualify-defaults.py": "549e0cf3a054fee79b1000ec471f22898f91ce35025f756fdabcf4b966416da7",
+    "qualify-inputs.py": "5efdfbcdac6d36c74786f1752b543f5951186021cccde98919404f15e208d6c2",
+    "run-matrix.py": "8f83ed8f2141102ec220dcafdf66198bd6999308222abcdd3897ff39cb2ed752"
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "expression_hash": "1ec32414e17e51ebccc8d66e49122328031c7f88ecc5d08f111f663114e73f6e",
+  "features": [
+    "rho",
+    "sigma",
+    "tau"
+  ],
+  "fp64": "--fmad=false; no fast math",
+  "functional": {
+    "components": [
+      [
+        "LDA_C_PW_MOD",
+        "1"
+      ]
+    ],
+    "derivative_orders": [
+      0,
+      1,
+      2
+    ],
+    "domain": "interior-v1: no clipping; see docs/xc_expressions.md",
+    "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
+    "exact_exchange": "0",
+    "expression_source_sha256": "38b1cb754d18059f418a5564957e97c6ab05228d189a2b7ca99d572658a882b8",
+    "features": [
+      "rho",
+      "sigma",
+      "tau"
+    ],
+    "identifier": "LDA_C_PW_MOD",
+    "ingredients": [
+      "rho"
+    ],
+    "license": "MPL-2.0",
+    "long_range_exchange": "0",
+    "range_omega": "0",
+    "source_manifest_sha256": "230cd37e89428f0d5df736f875608819ffdff526912dfaa58fcb7f80d163804c",
+    "spin": "unpolarized",
+    "version": "libxc-7.0.0/interior-v1"
+  },
+  "generator_sources": {
+    "src/dft/xc_runtime.cuh": "2df50a599bd0cdc33ae2aca48d29b06364283253f55d5d8fc338d3e5c04bcd55",
+    "src/tensor/cuda_runtime.cuh": "363ea27949c7af9a817b9592c802d4b181914df4cff8139e477d082810beb220",
+    "tools/vibeqc_codegen/cuda.py": "bda10be331c5fb77af6205623e42d0ef2175ed17e78717373351615eaf94957c",
+    "tools/vibeqc_codegen/expr.py": "16bdd5312fd1746eb8f2eb55aa94c11729c37db9dfb2f67ca71d9bc3595efd90",
+    "tools/vibeqc_xc/cuda_emit.py": "b6dc6ed4748e4e4bb3499b04201ee69281c9d04798b1c1e1051d929273350168"
+  },
+  "groups": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ]
+  ],
+  "identity": "456b4084cb637323281f5567a951670a2afd7dcb1dd6bb6de5271a712d6f7ad0",
+  "layout": "FP64 feature/output-major, contiguous point lanes",
+  "outputs": [
+    [],
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      2,
+      2
+    ]
+  ],
+  "placement": "inline_single_use",
+  "schema": 1,
+  "static_models": [
+    {
+      "fma_operation_count": 0,
+      "fusion": "separate",
+      "inlined_value_count": 101,
+      "ordering": "topological",
+      "policy": "inline_single_use",
+      "post_optimization": {
+        "arithmetic_operation_count": 229,
+        "estimated_peak_live_values": 33,
+        "materialized_value_count": 40,
+        "operation_counts": {
+          "add": 50,
+          "log1p": 2,
+          "multiply": 154,
+          "power": 10,
+          "reciprocal": 13
+        }
+      },
+      "pre_optimization": {
+        "arithmetic_operation_count": 229,
+        "estimated_peak_live_values": 36,
+        "materialized_value_count": 141
+      },
+      "rematerialized_value_count": 0,
+      "reordered_value_count": 0
+    }
+  ],
+  "threads": 128,
+  "variant": "fused"
+}

@@ -1,0 +1,781 @@
+{
+  "scope": "actual Nsight device activity; host/device columns overlap and must not be added",
+  "database_sha256": "eabac84167d569eb481c41aec25d8b02a140b895478233ca8eb5a86df37dbd46",
+  "raw_copies": {
+    "calls": 3404,
+    "bytes": 4015521792,
+    "host_api_ms": 5987.061122,
+    "device_dma_ms": 1525.695504,
+    "host_overlap_same_stream_kernels_ms": 666.168089,
+    "host_overlap_same_stream_copies_ms": 654.224614,
+    "host_residual_not_device_activity_ms": 4666.668419,
+    "residual_meaning": "runtime staging/control/descheduling; not a measured CPU packing duration"
+  },
+  "raw_copy_scope": {
+    "host_nvtx_ms": 8303.225393,
+    "host_overlap_same_stream_kernels_ms": 2053.732471,
+    "host_overlap_same_stream_copies_ms": 1525.695504,
+    "host_residual_not_device_activity_ms": 4723.797418,
+    "scope": "includes progress fences when enabled; separate from the copy API interval"
+  },
+  "kernels": [
+    {
+      "component": "three_center_derivative_contraction",
+      "kernel": "vibeqc::scf::<unnamed>::derivative_tile(vibeqc::runtime::cuda_gaussian_products::BasisView, vibeqc::runtime::cuda_gaussian_products::BasisView, const double *, unsigned int, vibeqc::runtime::StridedRange, unsigned long, const double *, unsigned int, double *, unsigned long)",
+      "calls": 8,
+      "device_ms": 3152.523601,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "coulomb_response",
+      "kernel": "vibeqc::scf::<unnamed>::charge_kernel(unsigned long, unsigned long, unsigned long, unsigned long, const double *, const double *, double *)",
+      "calls": 384,
+      "device_ms": 2064.344615,
+      "overlap_raw_copy_host_ms": 666.168089
+    },
+    {
+      "component": "exchange_response_matrix_products",
+      "kernel": "vibeqc::scf::<unnamed>::right_density_kernel(unsigned long, const double *, const double *, double *)",
+      "calls": 3072,
+      "device_ms": 255.578489,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "exchange_response_matrix_products",
+      "kernel": "vibeqc::scf::<unnamed>::left_density_kernel(unsigned long, const double *, const double *, double *)",
+      "calls": 3072,
+      "device_ms": 249.685365,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_tn_align1>(T1::Params)",
+      "calls": 9,
+      "device_ms": 172.398133,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "exchange_response_metric_dot",
+      "kernel": "void gemv2T_kernel_val<int, int, double, double, double, double, (int)128, (int)16, (int)4, (int)4, (bool)0, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13, T6, T6)",
+      "calls": 3072,
+      "device_ms": 123.848388,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "exchange_response_weights_and_metric",
+      "kernel": "vibeqc::scf::<unnamed>::exchange_weights_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, double, const double *, const double *, double *)",
+      "calls": 3072,
+      "device_ms": 122.04699,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_k_gemm",
+      "kernel": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_tn_align1>(T1::Params)",
+      "calls": 2,
+      "device_ms": 56.719592,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_execution::update_diis_kernel(int, int, int, unsigned int, const double *, const double *, const unsigned char *, double *, double *, double *, double *, unsigned int *, unsigned int *, double *, bool)",
+      "calls": 3,
+      "device_ms": 33.673534,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "exchange_response_metric_dot",
+      "kernel": "void cublasLt::splitKreduce_kernel<(int)32, (int)16, int, double, double, double, double, (bool)0, double, double, double, (bool)1, (bool)0, (bool)0, (bool)0>(cublasLt::cublasSplitKParams<T6>, const T4 *, const T10 *, T9 *, T5 *, const T6 *, const T6 *, const T11 *, const T4 *, T11 *, void *, long, T6 *, int *, T6 *, T6 *, const T6 *, const T6 *, const T6 *, const T6 *, const T6 *)",
+      "calls": 3072,
+      "device_ms": 30.718455,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void sytrd4_gpu<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)1, (int)1, (int)2>>(int, T1::data_type *, int, int, T1::pod_type *, T1::data_type *, int, int, int, int, T1::data_type *, unsigned int *, T1::data_type *, T1::data_type *, int, int, int)",
+      "calls": 24,
+      "device_ms": 8.443095,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void sytrd4_cta<sytrd_params<double, (int)16, (int)32, (int)128, (int)32, (int)0, (int)1, (int)2>, (int)1>(int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 6.863185,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::compute_device_energy_kernel(unsigned long, unsigned long, const double *, const double *, const double *, const double *, double *)",
+      "calls": 3,
+      "device_ms": 5.590437,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::update_device_convergence_kernel(unsigned long, unsigned long, double, double, const double *, double *, const double *, double *, unsigned char *, unsigned char *, unsigned int *, double *, double *)",
+      "calls": 3,
+      "device_ms": 4.712979,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "metric_center_derivative_contraction",
+      "kernel": "vibeqc::scf::<unnamed>::derivative_tile(vibeqc::runtime::cuda_gaussian_products::BasisView, vibeqc::runtime::cuda_gaussian_products::BasisView, const double *, unsigned int, vibeqc::runtime::StridedRange, unsigned long, const double *, unsigned int, double *, unsigned long)",
+      "calls": 1,
+      "device_ms": 4.289052,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::gather_auxiliary_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)",
+      "calls": 3,
+      "device_ms": 3.678116,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(T1::Params)",
+      "calls": 21,
+      "device_ms": 3.575686,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_par<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 1.969951,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_par<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 1.442473,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_k",
+      "kernel": "vibeqc::scf::cuda_df::gather_auxiliary_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)",
+      "calls": 1,
+      "device_ms": 1.226124,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed4_par<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.888018,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nn_align1>(T1::Params)",
+      "calls": 33,
+      "device_ms": 0.850641,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void gemv2N_kernel<int, int, double, double, double, double, (int)128, (int)8, (int)4, (int)4, (int)1, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "calls": 3,
+      "device_ms": 0.84981,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void gemv2T_kernel_val<int, int, double, double, double, double, (int)128, (int)16, (int)2, (int)2, (bool)0, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13, T6, T6)",
+      "calls": 3,
+      "device_ms": 0.836818,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::reduce_exchange_tile_kernel(unsigned long, unsigned long, unsigned long, const double *, double *)",
+      "calls": 3,
+      "device_ms": 0.809459,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_tn_align1>(T1::Params)",
+      "calls": 12,
+      "device_ms": 0.72786,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed4_par<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.641717,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "metric_frechet_response",
+      "kernel": "vibeqc::scf::<unnamed>::metric_response_kernel(unsigned long, unsigned int, vibeqc::scf::CudaDfMetricView, const double *, double *)",
+      "calls": 4,
+      "device_ms": 0.529975,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.448952,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void steqr_ker<stedc_params_<double2, double, (int)8, (int)16, (int)128>, double, (int)0>(long, T1::data_type *, T1::data_type *, T2 *, long, int *, int *, long, long, T1::data_type, T1::data_type, int *, int)",
+      "calls": 3,
+      "device_ms": 0.395962,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed4_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.377306,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void syherk_kernel_ldgsts<int, double, (int)32, (int)16, (int)3, (int)32, (int)8, (int)32, (int)8, (int)2, (int)4, (bool)1, (bool)1, (bool)0, (bool)0>(cublasSyherkParams<T2>)",
+      "calls": 18,
+      "device_ms": 0.334877,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed4_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.301468,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_j_gemm",
+      "kernel": "void gemv2N_kernel<int, int, double, double, double, double, (int)128, (int)8, (int)4, (int)4, (int)1, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "calls": 1,
+      "device_ms": 0.283195,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::store_device_final_frame_kernel(unsigned long, const double *, const double *, const int *, const unsigned char *, const unsigned int *, double *, double *, unsigned long *, int *)",
+      "calls": 3,
+      "device_ms": 0.280476,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_j_gemm",
+      "kernel": "void gemv2T_kernel_val<int, int, double, double, double, double, (int)128, (int)16, (int)2, (int)2, (bool)0, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13, T6, T6)",
+      "calls": 1,
+      "device_ms": 0.279356,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_k",
+      "kernel": "vibeqc::scf::cuda_df::reduce_exchange_tile_kernel(unsigned long, unsigned long, unsigned long, const double *, double *)",
+      "calls": 1,
+      "device_ms": 0.269723,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed4_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.26182,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void larft_T_64_batch<double>(int, T1 *, int, long, const T1 *, long)",
+      "calls": 9,
+      "device_ms": 0.261149,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "coulomb_response_weights",
+      "kernel": "vibeqc::scf::<unnamed>::coulomb_weights_kernel(unsigned long, unsigned long, unsigned long, unsigned long, double, const double *, const double *, double *)",
+      "calls": 8,
+      "device_ms": 0.226973,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed4_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.219228,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.210076,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "metric_inverse",
+      "kernel": "vibeqc::scf::<unnamed>::inverse_kernel(unsigned long, const double *, double *)",
+      "calls": 1,
+      "device_ms": 0.209852,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.167998,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::build_device_density_kernel(unsigned long, unsigned long, const int *, const double *, double, double *)",
+      "calls": 3,
+      "device_ms": 0.125438,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "calls": 3,
+      "device_ms": 0.12019,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void syherk_kernel_ldgsts<int, double, (int)32, (int)32, (int)3, (int)8, (int)32, (int)8, (int)32, (int)4, (int)2, (bool)1, (bool)1, (bool)0, (bool)0>(cublasSyherkParams<T2>)",
+      "calls": 6,
+      "device_ms": 0.113278,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.105246,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void cublasLt::splitKreduce_kernel<(int)32, (int)16, int, double, double, double, double, (bool)0, double, double, double, (bool)1, (bool)0, (bool)0, (bool)0>(cublasLt::cublasSplitKParams<T6>, const T4 *, const T10 *, T9 *, T5 *, const T6 *, const T6 *, const T11 *, const T4 *, T11 *, void *, long, T6 *, int *, T6 *, T6 *, const T6 *, const T6 *, const T6 *, const T6 *, const T6 *)",
+      "calls": 3,
+      "device_ms": 0.066335,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.060896,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.055104,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "calls": 3,
+      "device_ms": 0.040927,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void transpose<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)1, (int)1>(int, int, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 21,
+      "device_ms": 0.035872,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.031872,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void scale_max<double, (int)32, (int)32, (int)1>(long, long, T1 *, T1 *, T1 *, int *)",
+      "calls": 3,
+      "device_ms": 0.028063,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed2_copy<double2, double, (int)128>(int, int, T2 *, int, int *, int *, T2 *, int, int)",
+      "calls": 18,
+      "device_ms": 0.023007,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_j_gemm",
+      "kernel": "void cublasLt::splitKreduce_kernel<(int)32, (int)16, int, double, double, double, double, (bool)0, double, double, double, (bool)1, (bool)0, (bool)0, (bool)0>(cublasLt::cublasSplitKParams<T6>, const T4 *, const T10 *, T9 *, T5 *, const T6 *, const T6 *, const T11 *, const T4 *, T11 *, void *, long, T6 *, int *, T6 *, T6 *, const T6 *, const T6 *, const T6 *, const T6 *, const T6 *)",
+      "calls": 1,
+      "device_ms": 0.022144,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "coulomb_response",
+      "kernel": "vibeqc::scf::<unnamed>::potential_kernel(unsigned long, unsigned long, const double *, const double *, double *)",
+      "calls": 1,
+      "device_ms": 0.021376,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.01616,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "calls": 3,
+      "device_ms": 0.015616,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void setup_vhat_l_kernel<double, (int)16>(long, long, const T1 *, long, long, T1 *, long, long)",
+      "calls": 12,
+      "device_ms": 0.01168,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void epilogue<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)0, (int)1>(int, int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.010623,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.009824,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void transpose<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)0, (int)1>(int, int, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.009216,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void lansy_M_stage1<double, double, (int)8>(long, const T1 *, long, long, T2 *, long, int)",
+      "calls": 3,
+      "device_ms": 0.009184,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::assemble_rhf_fock_kernel(unsigned long, const double *, const double *, const double *, double *)",
+      "calls": 3,
+      "device_ms": 0.008736,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "calls": 3,
+      "device_ms": 0.008352,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void lansy_M_stage2<double, (int)8>(T1, T1, long, T1 *, long, T1 *, T1 *)",
+      "calls": 3,
+      "device_ms": 0.007967,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "calls": 3,
+      "device_ms": 0.00752,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "calls": 3,
+      "device_ms": 0.006592,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "calls": 3,
+      "device_ms": 0.006335,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "copy_info_kernel(int, int *)",
+      "calls": 9,
+      "device_ms": 0.006048,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void merge_ker<double, double, (int)128, (int)0, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)",
+      "calls": 3,
+      "device_ms": 0.004543,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void lascl_kernel<double, double, (int)8>(long, long, T1 *, long, long, T2 *, int, int)",
+      "calls": 3,
+      "device_ms": 0.004096,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void lacpy_kernel<double, double, (int)5, (int)3>(long, long, const T1 *, long, long, T2 *, long, long, int, int, long)",
+      "calls": 3,
+      "device_ms": 0.003712,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void merge_ker<double, double, (int)128, (int)1, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)",
+      "calls": 3,
+      "device_ms": 0.003424,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void scale_max<double, (int)32, (int)128, (int)0>(long, long, T1 *, T1 *, T1 *, int *)",
+      "calls": 3,
+      "device_ms": 0.003328,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "vibeqc::scf::cuda_df::tail_cuda_density_fitting_scf_graph_kernel(int, unsigned int, const unsigned char *, const unsigned int *)",
+      "calls": 3,
+      "device_ms": 0.002848,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "ri_k",
+      "kernel": "vibeqc::scf::cuda_df::transpose_density_kernel(unsigned long, const double *, double *)",
+      "calls": 1,
+      "device_ms": 0.002784,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void cuds_scal_batch_kernel<double, (int)256>(int, const T1 *, T1 *, long long, int)",
+      "calls": 3,
+      "device_ms": 0.002592,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "metric_frechet_response",
+      "kernel": "vibeqc::scf::<unnamed>::symmetrize_kernel(unsigned long, double *)",
+      "calls": 1,
+      "device_ms": 0.00256,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "xx_set_info_ker(int, int *, int)",
+      "calls": 3,
+      "device_ms": 0.002208,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": null,
+      "kernel": "void zero_lower_kernel<double, (int)5, (int)3>(int, int, T1 *, long, long)",
+      "calls": 3,
+      "device_ms": 0.002048,
+      "overlap_raw_copy_host_ms": 0.0
+    },
+    {
+      "component": "coulomb_response",
+      "kernel": "vibeqc::scf::<unnamed>::coulomb_metric_kernel(unsigned long, double, const double *, double *)",
+      "calls": 1,
+      "device_ms": 0.001728,
+      "overlap_raw_copy_host_ms": 0.0
+    }
+  ],
+  "api": [
+    {
+      "name": "cudaEventSynchronize_v3020",
+      "calls": 12655,
+      "host_ms": 6056.788722
+    },
+    {
+      "name": "cudaMemcpy2DAsync_v3020",
+      "calls": 3404,
+      "host_ms": 5987.061122
+    },
+    {
+      "name": "cudaMemcpyAsync_v3020",
+      "calls": 36,
+      "host_ms": 253.287292
+    },
+    {
+      "name": "cudaLaunchKernel_v7000",
+      "calls": 15775,
+      "host_ms": 104.757108
+    },
+    {
+      "name": "cudaEventRecord_v3020",
+      "calls": 28375,
+      "host_ms": 72.726287
+    },
+    {
+      "name": "cudaEventCreate_v3020",
+      "calls": 25302,
+      "host_ms": 25.653484
+    },
+    {
+      "name": "cudaEventDestroy_v3020",
+      "calls": 25302,
+      "host_ms": 14.921756
+    },
+    {
+      "name": "cuStreamGetCaptureInfo_v2",
+      "calls": 18438,
+      "host_ms": 2.711123
+    },
+    {
+      "name": "cudaGraphLaunch_v10000",
+      "calls": 3,
+      "host_ms": 0.656642
+    },
+    {
+      "name": "cudaMalloc_v3020",
+      "calls": 20,
+      "host_ms": 0.378955
+    },
+    {
+      "name": "cudaFree_v3020",
+      "calls": 20,
+      "host_ms": 0.352419
+    },
+    {
+      "name": "cudaMemsetAsync_v3020",
+      "calls": 17,
+      "host_ms": 0.207453
+    },
+    {
+      "name": "cudaMemcpy_v3020",
+      "calls": 17,
+      "host_ms": 0.089136
+    },
+    {
+      "name": "cudaStreamSynchronize_v3020",
+      "calls": 7,
+      "host_ms": 0.019055
+    },
+    {
+      "name": "cuLaunchKernel",
+      "calls": 2,
+      "host_ms": 0.014157
+    },
+    {
+      "name": "cudaStreamIsCapturing_v10000",
+      "calls": 5,
+      "host_ms": 0.00526
+    },
+    {
+      "name": "cuProfilerStart",
+      "calls": 1,
+      "host_ms": 0.003286
+    },
+    {
+      "name": "cuKernelGetFunction",
+      "calls": 2,
+      "host_ms": 0.002996
+    }
+  ],
+  "nvtx_host_inclusive": {
+    "final_state_download": {
+      "calls": 1,
+      "host_ms": 0.675568
+    },
+    "ri_j": {
+      "calls": 1,
+      "host_ms": 0.785656
+    },
+    "ri_j_gemm": {
+      "calls": 2,
+      "host_ms": 0.713228
+    },
+    "ri_k": {
+      "calls": 1,
+      "host_ms": 58.421146
+    },
+    "ri_k_gemm": {
+      "calls": 2,
+      "host_ms": 58.004097
+    },
+    "force_response": {
+      "calls": 1,
+      "host_ms": 12654.065196
+    },
+    "response_allocation_and_uploads": {
+      "calls": 1,
+      "host_ms": 0.616767
+    },
+    "response_weights": {
+      "calls": 1,
+      "host_ms": 12652.902718
+    },
+    "metric_inverse": {
+      "calls": 1,
+      "host_ms": 0.251265
+    },
+    "coulomb_response": {
+      "calls": 1,
+      "host_ms": 2261.885383
+    },
+    "raw_value_slice_upload": {
+      "calls": 3404,
+      "host_ms": 8303.225393
+    },
+    "coulomb_response_weights": {
+      "calls": 8,
+      "host_ms": 0.565549
+    },
+    "exchange_response_matrix_products": {
+      "calls": 3072,
+      "host_ms": 625.582699
+    },
+    "exchange_response_weights_and_metric": {
+      "calls": 3072,
+      "host_ms": 425.549879
+    },
+    "exchange_response_metric_dot": {
+      "calls": 3072,
+      "host_ms": 308.824465
+    },
+    "three_center_derivative_contraction": {
+      "calls": 8,
+      "host_ms": 3152.935144
+    },
+    "metric_frechet_response": {
+      "calls": 1,
+      "host_ms": 0.570058
+    },
+    "metric_center_derivative_contraction": {
+      "calls": 1,
+      "host_ms": 4.33588
+    },
+    "response_output_and_synchronization": {
+      "calls": 1,
+      "host_ms": 0.080001
+    }
+  }
+}

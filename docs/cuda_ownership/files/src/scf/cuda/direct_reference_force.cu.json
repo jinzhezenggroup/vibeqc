@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_reference_force.cu",
+  "role": "scientific",
+  "subsystem": "direct_integrals",
+  "reason": "Matrix-direct RHF/UHF force fallback retained only for unsupported non-quartet shell domains. Small-HF persistent-ERI force consumers were retired in favor of compiler-owned generated quartet derivatives.",
+  "regions": []
+}

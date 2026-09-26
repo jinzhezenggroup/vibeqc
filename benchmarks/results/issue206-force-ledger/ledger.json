@@ -1,0 +1,71 @@
+{
+  "execution": {
+    "cuda_visible_devices": "0",
+    "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "python": "/tmp/vibeqc-review-266-275-env/bin/python",
+    "repeats": 1,
+    "slurm_job_id": "9310",
+    "warning": "fresh single-system calculations; the difference diagnoses force cost and is not a warm-solve speed claim"
+  },
+  "records": [
+    {
+      "case": "water-tetramer-def2-svp-spherical",
+      "energy_only": {
+        "converged": true,
+        "energy_hartree": -304.77295498589933,
+        "has_forces": false,
+        "iterations": 34,
+        "seconds": 0.6176846479065716
+      },
+      "energy_plus_force": {
+        "converged": true,
+        "energy_hartree": -304.77295498589933,
+        "has_forces": true,
+        "iterations": 34,
+        "seconds": 1.0661216580774635
+      },
+      "force_increment_seconds": 0.4484370101708919,
+      "repeat": 0,
+      "validation": {
+        "energy_difference_hartree": 0.0,
+        "energy_tolerance_hartree": 1e-10,
+        "valid": true
+      }
+    },
+    {
+      "case": "water-octamer-s4-def2-svp-spherical",
+      "energy_only": {
+        "converged": true,
+        "energy_hartree": -609.5876620703832,
+        "has_forces": false,
+        "iterations": 39,
+        "seconds": 5.524446367053315
+      },
+      "energy_plus_force": {
+        "converged": true,
+        "energy_hartree": -609.5876620703832,
+        "has_forces": true,
+        "iterations": 39,
+        "seconds": 12.443636987125501
+      },
+      "force_increment_seconds": 6.919190620072186,
+      "repeat": 0,
+      "validation": {
+        "energy_difference_hartree": 0.0,
+        "energy_tolerance_hartree": 1e-10,
+        "valid": true
+      }
+    }
+  ],
+  "schema": "vibeqc.issue206.df_force_ledger",
+  "source": {
+    "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git_dirty": false,
+    "git_head": "f441d65bea2a5b0c4b066a0196e743e5d8c4012b",
+    "git_status": [],
+    "native_library": "/tmp/vibeqc-review-280/build-review-cuda/libvibeqc.so.0.1.0",
+    "native_library_sha256": "748ce6f580e424dfac67aa5ef0be6e94e901d4da8ac8cf2dfcd222847300dde5",
+    "repository": "/tmp/vibeqc-review-281"
+  },
+  "version": 2
+}

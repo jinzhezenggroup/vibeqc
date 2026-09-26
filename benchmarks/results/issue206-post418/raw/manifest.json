@@ -1,0 +1,1425 @@
+{
+  "scope": "Fresh stock comparison for the final qualified #418 scientific source.\n\nSeven interleaved pairs at all mandatory small points and large energy/force\npoints retain the original controls and fixture-specific gates. This is one\npredeclared campaign after a changed large-case implementation, not a retry of\nearlier failed samples. Prior #206 failures remain retained and unresolved.\nCold/changed geometry, unequal auxiliaries, direct gates and full resource\naccounting remain separate requirements; this driver cannot close #206 alone.\n",
+  "created_at_utc": "2026-09-17T06:24:59.533740+00:00",
+  "slurm_job_id": "9902",
+  "cuda_visible_devices": "0",
+  "git_head": "42060ca0dddb29c1c3b2f03fc1ee933d0e4945f2",
+  "build": {
+    "base_commit": "f5eb8dfb696ce4304c5151670c55fec78fdddb7d",
+    "head_before_final_evidence_commit": "47912854e34fab76953810c0d07ff2fa9ba823d4",
+    "native_source_identity": "06fa1f9d7108f86edfaa4ba9285df58c20a1d191b3c20785a2500cad1798730d",
+    "library_sha256": "ea39fae62486240a98021726d970ec80c965e8f4a687056e59636a7179faf5be",
+    "library_bytes": 209740176,
+    "source_patch_sha256": "6d3bcbc8d8bf985619f986f876194d9637a48684fc21ead3b6e85e24693fd5da",
+    "production_manifest_sha256": "f057bacb15a052868297d5fddf90c1b9f619a8ceb9bb63caf955ace2488a3b56",
+    "campaign_library_sha256": "deefe6b2b95919628387a37c796fbb48a8b6c9609418cab946744e3c89d43d3f",
+    "generated_hashes": {
+      "build_identity.hpp": "2ed7cf46cd9685f3719455a2eb8db25bfbbae96b6c3e0deeb85a525bddb09442",
+      "df_values.cuh": "c2026fce24ca75ea8973306fc6121e9f4db3aa54a2b62aa1520cede7c71d8bbd",
+      "generated_df_derivative_policy.cuh": "beb7ee985095e7ace0d466be897e4dadbbd5adcbe80fbacca55e2d64dcbbd30b",
+      "generated_df_derivative_schedule.cuh": "5caba2a73da662358777f7640b91d5f77710b22f4ac38a8c401225f6472e89af",
+      "generated_df_derivatives.cuh": "77ca66e9fcef8892fa706e2cd7a1f07708906bf2ac8d5dbde3597a2dee9bb1dd",
+      "generated_df_policy.cuh": "3213fbe8225e8c3bf653ff2cdfd8da97b011ef6c598ad7d184c1f1e051ceca32",
+      "generated_df_production.hpp": "61e2f925637ae73ed8873a638000e9be73c5fd7899cddaba21296e06d107fbe7",
+      "generated_df_rys.cuh": "05bfaf6f770bb2db08c467d710c600d8db3d26b66aef8da9a1b85726cb448aa6",
+      "generated_df_rys_policy.hpp": "b3bc4c3b2608e2387e1db31c54b7d70f517bdba8f702efb55c7d13e48fbc4890",
+      "generated_df_rys_shell.cuh": "0916a69446038662dea2acf9006699e048425afe44cdecae6cfd3763a61e83b8",
+      "generated_df_screening.cuh": "1dca9586bb2d53479e2ba171fa3478b8239e8aab4402028419c4b692f56a5aab",
+      "generated_df_shell_derivatives.cuh": "0213de12f5b21e0c0ba40bd3edb1cf03fc7b029e42d9c51c8d1cebbf03020a3b",
+      "generated_df_value_candidates.cuh": "0fd28623ed04ddc356bef47316351ef3dbe619562b4c4da7915224713dbc4c46",
+      "generated_ecp_ao.cuh": "3c80c44c94642f4bd99c1f6c5013c9ee11a34c8cff07dec86b363a20ccc815a6",
+      "generated_grid_policy.cu": "952d12fd6dd58e7b7121b1193aeae39e5157686bea7a3e68c12cf7c5e87d252c",
+      "generated_one_electron_derivatives.cuh": "00d051c57ae32536ef14171fdbd09d03f504d516db36bd29e8d01d0191593b73",
+      "generated_one_electron_policy.cuh": "1b14c7b270eb4f910954877ce8e5e1a8edac24d45fef6e5ab9d94b0b6c8486f5",
+      "generated_one_electron_values.cuh": "e169833c9d9313edaf1978d25dadea2234e45eb5541f5c573263316f4e43728f",
+      "mp2/mp2_cuda_table.cu": "3821b8a5ff46846f886b3ec65ded64736f38937a8856835fb19661ee60234e58",
+      "mp2/mp2_sm120_t1_runtime.cu": "c52a004a8af7c81a4573b14caa75710b031f960422a3d9019a494bb47fcaf6ca",
+      "mp2/mp2_sm120_t2_runtime.cu": "07fdc5514e1f1b5243685cc9190037e4b93a84d9c5bcc78fb295b2e31bf0282f",
+      "mp2/mp2_sm120_t4_runtime.cu": "4037e8b678791c775caca77010c093ff6a4c28a2335233bbc5810f4687ce274c",
+      "mp2/mp2_sm120_t8_runtime.cu": "2b87c1d194c2666e662127700e00b89dbcbfa21dab222a24a3b4c54d138f6a92",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "a5c16bb800d7932cdac9172f47e0fa5b6d5db4923dfa7aa048e7d1a7cf0636bf",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "cbe442cd1a68e9424f7008850e0056bcda3f61a78fc01e5a6381070594acd1fc",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "c6db029c35f589fd6f8c7376d047dadf1a969223f41f01b62d53ed1c7994f26a",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "f7f0fcf2c61bea04438c45de57c105c21ca9bb54680a8d1861fca3dbe04d6c46",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu": "c514b912fae0fab0b7c5c8c1dc5acc8dfb37a89e65e912fc1b445cd066927748",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu": "7be5c404b378a366e90a2a5fb9da3d557b4d61198bcd5ebc005b9b4159386fbf",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu": "6fe5a223f9b7e2d5f27768ec5d661e93ca5b4b8bacf1f1a61955ab72689deae2",
+      "production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu": "69883972e00d71fc9c9590aace3cdb4ba00654943f90cdd4d23c04c2f561ede9",
+      "production_shell_kernels/vibeqc_generated_shell_registry.cu": "9d8ba1e55539f177f318569a513aad001b4bfe53be59cf1f6a5c943287581955",
+      "production_shell_kernels/vibeqc_generated_shell_registry.hpp": "c92c38b48c8d4368f98620f1455c44427a340b834c3d7315fb0f628ecc2a33a9",
+      "weighted_eri.cuh": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c",
+      "xc_cpu_generated.hpp": "9c22c4136b236ee19152b820b24efd727b088be70789aca2cdd794bac3fd739d"
+    },
+    "changed_generated_files": [
+      "build_identity.hpp",
+      "generated_df_production.hpp"
+    ],
+    "generated_mathematics_byte_identical_to_campaign": true,
+    "selection": "auto now selects the independently qualified candidate; embedded baseline removed",
+    "build_log_sha256": "157be53229083c763254529ea63acb0fe1cc443741e0251f88544b283837e689",
+    "automatic_admission_scope": "sm_120 with 384/768 orbital AOs and equal auxiliary count; unchanged from the prior production gate"
+  },
+  "repeats_per_engine": 7,
+  "runner_sha256": "9f06ef77f480eca11f76efbaad39d88179beea07a41762060d5f70ec88a2c0e0",
+  "comparator_sha256": "483183ccef575c01d5cb9974aaa1011e8897502e6a943620b35a581b13dffd1d",
+  "qualifier_sha256": "8f29865f81629a61caba6c9c801b6bfb9e4f206c21a457d75484b0c738e98ee4",
+  "controls": {
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/frozen/libvibeqc.so",
+    "VIBEQC_DF_VALUE_STORAGE": "dense",
+    "VIBEQC_DF_REFERENCE_FINAL_VALIDATION": "0",
+    "VIBEQC_DF_FINAL_PROJECTION": "auto",
+    "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    "VIBEQC_DF_EXCHANGE": "auto",
+    "VIBEQC_DF_SEED_EXCHANGE": "auto",
+    "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+    "VIBEQC_DF_RESIDENT_EXCHANGE": "auto",
+    "VIBEQC_DF_SHELL_POLICY": "auto"
+  },
+  "points": [
+    [
+      "water-tetramer-def2-svp-spherical",
+      1,
+      3e-11,
+      3e-11,
+      1e-09,
+      true
+    ],
+    [
+      "water-tetramer-def2-svp-spherical",
+      4,
+      3e-11,
+      3e-11,
+      1e-09,
+      true
+    ],
+    [
+      "water-octamer-s4-def2-svp-spherical",
+      1,
+      1e-10,
+      5e-10,
+      1e-08,
+      true
+    ],
+    [
+      "water-octamer-s4-def2-svp-spherical",
+      4,
+      1e-10,
+      5e-10,
+      1e-08,
+      true
+    ],
+    [
+      "water-hexadecamer-2s4-def2-svp-spherical",
+      1,
+      1e-09,
+      1e-08,
+      1e-10,
+      false
+    ],
+    [
+      "water-hexadecamer-2s4-def2-svp-spherical",
+      1,
+      1e-09,
+      1e-08,
+      1e-10,
+      true
+    ],
+    [
+      "water-32mer-4s4-def2-svp-spherical",
+      1,
+      1e-09,
+      1e-08,
+      1e-10,
+      false
+    ],
+    [
+      "water-32mer-4s4-def2-svp-spherical",
+      1,
+      1e-09,
+      1e-08,
+      1e-10,
+      true
+    ],
+    [
+      "oh-def2-svp-spherical-uhf",
+      1,
+      1e-09,
+      1e-08,
+      1e-10,
+      true
+    ],
+    [
+      "ammonia-def2-svp-spherical",
+      1,
+      1e-09,
+      1e-08,
+      1e-10,
+      true
+    ]
+  ],
+  "checks": [
+    {
+      "name": "water-tetramer-def2-svp-spherical-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-tetramer-def2-svp-spherical-b1-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-tetramer-def2-svp-spherical-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-09",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "3e-11",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-tetramer-def2-svp-spherical-b1-forces.progress.jsonl",
+        "--maximum-force-error",
+        "3e-11"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 0.6617337800562382,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.12077955598942935,
+          "warm_endpoint_seconds": 0.12077955598942935
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.2655923420097679,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 2.19898425552262,
+          "vibeqc_median_seconds": 0.12077955598942935
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 2.4442670110147446e-12,
+          "maximum_force_error_hartree_per_bohr": 2.971758776559863e-11,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 2.4442670110147446e-12,
+        "maximum_force_error_hartree_per_bohr": 2.971758776559863e-11,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.2168933355715126e-12,
+            "maximum_force_error_hartree_per_bohr": 2.9678507915131824e-11,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.4442670110147446e-12,
+            "maximum_force_error_hartree_per_bohr": 2.971758776559863e-11,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.4442670110147446e-12,
+            "maximum_force_error_hartree_per_bohr": 2.963054628046802e-11,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.4442670110147446e-12,
+            "maximum_force_error_hartree_per_bohr": 2.963809579703547e-11,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.3305801732931286e-12,
+            "maximum_force_error_hartree_per_bohr": 2.971359096270998e-11,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.3305801732931286e-12,
+            "maximum_force_error_hartree_per_bohr": 2.966607341725602e-11,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.4442670110147446e-12,
+            "maximum_force_error_hartree_per_bohr": 2.967095839856437e-11,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "5d94e98ffb0309234516f5e07b9b8f05808fb159b5bdb2cd59b2d029c6f2ff71",
+      "numerically_qualified": true
+    },
+    {
+      "name": "water-tetramer-def2-svp-spherical-b4-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--batch",
+        "4",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-tetramer-def2-svp-spherical-b4-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-tetramer-def2-svp-spherical-b4-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-tetramer-def2-svp-spherical",
+        "--batch",
+        "4",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-09",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "3e-11",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-tetramer-def2-svp-spherical-b4-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-tetramer-def2-svp-spherical-b4-forces.progress.jsonl",
+        "--maximum-force-error",
+        "3e-11"
+      ],
+      "status": "failed",
+      "exit_code": 2,
+      "all_repeat_accuracy_passed": false,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 1.2406886611133814,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.4663406468462199,
+          "warm_endpoint_seconds": 0.4663406468462199
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 1.0538253879640251,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 2.259775970829182,
+          "vibeqc_median_seconds": 0.4663406468462199
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 5.4569682106375694e-12,
+          "maximum_force_error_hartree_per_bohr": 3.128523134998673e-11,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 5.4569682106375694e-12,
+        "maximum_force_error_hartree_per_bohr": 3.128523134998673e-11,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4001247917767614e-12,
+            "maximum_force_error_hartree_per_bohr": 3.128079045788823e-11,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4001247917767614e-12,
+            "maximum_force_error_hartree_per_bohr": 3.125769781897603e-11,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4001247917767614e-12,
+            "maximum_force_error_hartree_per_bohr": 3.1247927856359325e-11,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4569682106375694e-12,
+            "maximum_force_error_hartree_per_bohr": 3.1254145105297226e-11,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4001247917767614e-12,
+            "maximum_force_error_hartree_per_bohr": 3.128434317156703e-11,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4001247917767614e-12,
+            "maximum_force_error_hartree_per_bohr": 3.1242598785841125e-11,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.4001247917767614e-12,
+            "maximum_force_error_hartree_per_bohr": 3.128523134998673e-11,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "36e67c9a2bd93aca872c2b8fe62b8154dc58d0ad059d284ea792c65eb99a64a6",
+      "numerically_qualified": false
+    },
+    {
+      "name": "water-octamer-s4-def2-svp-spherical-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "water-octamer-s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-octamer-s4-def2-svp-spherical-b1-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-octamer-s4-def2-svp-spherical-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-octamer-s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-08",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-10",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-octamer-s4-def2-svp-spherical-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-octamer-s4-def2-svp-spherical-b1-forces.progress.jsonl",
+        "--maximum-force-error",
+        "5e-10"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 2.1036258589010686,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.1658487638924271,
+          "warm_endpoint_seconds": 0.1658487638924271
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.35092555498704314,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 2.1159371149408184,
+          "vibeqc_median_seconds": 0.1658487638924271
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 1.5234036254696548e-11,
+          "maximum_force_error_hartree_per_bohr": 2.070516258445565e-10,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 1.5234036254696548e-11,
+        "maximum_force_error_hartree_per_bohr": 2.070516258445565e-10,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.5234036254696548e-11,
+            "maximum_force_error_hartree_per_bohr": 2.070160987077685e-10,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.5006662579253316e-11,
+            "maximum_force_error_hartree_per_bohr": 2.0696191982416678e-10,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.4779288903810084e-11,
+            "maximum_force_error_hartree_per_bohr": 2.070409677035201e-10,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.5006662579253316e-11,
+            "maximum_force_error_hartree_per_bohr": 2.0696991342994409e-10,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.5006662579253316e-11,
+            "maximum_force_error_hartree_per_bohr": 2.0693083357947728e-10,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.4779288903810084e-11,
+            "maximum_force_error_hartree_per_bohr": 2.070169868861882e-10,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.4779288903810084e-11,
+            "maximum_force_error_hartree_per_bohr": 2.070516258445565e-10,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "e18eb92c24d130d5f70276099c8d6f5916471d632f5db00f823ec1e8d936e8aa",
+      "numerically_qualified": true
+    },
+    {
+      "name": "water-octamer-s4-def2-svp-spherical-b4-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "water-octamer-s4-def2-svp-spherical",
+        "--batch",
+        "4",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-octamer-s4-def2-svp-spherical-b4-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-octamer-s4-def2-svp-spherical-b4-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-octamer-s4-def2-svp-spherical",
+        "--batch",
+        "4",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-08",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-10",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-octamer-s4-def2-svp-spherical-b4-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-octamer-s4-def2-svp-spherical-b4-forces.progress.jsonl",
+        "--maximum-force-error",
+        "5e-10"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 5.943658013129607,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.654051894089207,
+          "warm_endpoint_seconds": 0.654051894089207
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 1.396227577002719,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 2.1347351634032354,
+          "vibeqc_median_seconds": 0.654051894089207
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 7.503331289626658e-12,
+          "maximum_force_error_hartree_per_bohr": 2.1216178900523852e-10,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 7.503331289626658e-12,
+        "maximum_force_error_hartree_per_bohr": 2.1216178900523852e-10,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.389644451905042e-12,
+            "maximum_force_error_hartree_per_bohr": 2.1211649190583381e-10,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.048583938740194e-12,
+            "maximum_force_error_hartree_per_bohr": 2.120880701964034e-10,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.503331289626658e-12,
+            "maximum_force_error_hartree_per_bohr": 2.1214402543684452e-10,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.275957614183426e-12,
+            "maximum_force_error_hartree_per_bohr": 2.1216178900523852e-10,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.275957614183426e-12,
+            "maximum_force_error_hartree_per_bohr": 2.120880701964034e-10,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 6.821210263296962e-12,
+            "maximum_force_error_hartree_per_bohr": 2.120703066280094e-10,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.275957614183426e-12,
+            "maximum_force_error_hartree_per_bohr": 2.120498785243563e-10,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "049c7e623ab79f4bbdae7b2b3a5a055f469f0148d68f676faea13d6804433bee",
+      "numerically_qualified": true
+    },
+    {
+      "name": "water-hexadecamer-2s4-def2-svp-spherical-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "water-hexadecamer-2s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-hexadecamer-2s4-def2-svp-spherical-b1-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-hexadecamer-2s4-def2-svp-spherical-b1-energy",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-hexadecamer-2s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-09",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-hexadecamer-2s4-def2-svp-spherical-b1-energy.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-hexadecamer-2s4-def2-svp-spherical-b1-energy.progress.jsonl",
+        "--energy-only"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 3.346932167187333,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": null,
+          "warm_endpoint_seconds": 0.29665793292224407
+        },
+        "iteration_matched": {
+          "gpu4pyscf_median_seconds": 0.1955681061372161,
+          "gpu4pyscf_sample_count": 1,
+          "iteration_branch": [
+            3
+          ],
+          "speedup": 0.6592377429814956,
+          "vibeqc_median_seconds": 0.29665793292224407,
+          "vibeqc_sample_count": 7
+        },
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.13730293093249202,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.4628324939096774,
+          "vibeqc_median_seconds": 0.29665793292224407
+        },
+        "speed_claim_uses": "iteration_matched"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 2.2737367544323206e-12,
+          "maximum_force_error_hartree_per_bohr": null,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 2.2737367544323206e-12,
+        "maximum_force_error_hartree_per_bohr": null,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.8189894035458565e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.8189894035458565e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": true,
+            "maximum_energy_error_hartree": 2.2737367544323206e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.2737367544323206e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.2737367544323206e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.2737367544323206e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.8189894035458565e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "4c8fbfb85fe4184c87d6f94ce56a10b1efbe354906dca01ea10c44a1c8c93210",
+      "numerically_qualified": true
+    },
+    {
+      "name": "water-hexadecamer-2s4-def2-svp-spherical-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-hexadecamer-2s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-09",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-hexadecamer-2s4-def2-svp-spherical-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-hexadecamer-2s4-def2-svp-spherical-b1-forces.progress.jsonl",
+        "--maximum-force-error",
+        "1e-08"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 10.392079003853723,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.6341433529742062,
+          "warm_endpoint_seconds": 0.6341433529742062
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.6148952071089298,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.9696470115550365,
+          "vibeqc_median_seconds": 0.6341433529742062
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 2.2737367544323206e-12,
+          "maximum_force_error_hartree_per_bohr": 7.299130353952132e-11,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 2.2737367544323206e-12,
+        "maximum_force_error_hartree_per_bohr": 7.299130353952132e-11,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.3642420526593924e-12,
+            "maximum_force_error_hartree_per_bohr": 7.296021729483182e-11,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 9.094947017729282e-13,
+            "maximum_force_error_hartree_per_bohr": 7.298242175532432e-11,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.8189894035458565e-12,
+            "maximum_force_error_hartree_per_bohr": 7.299130353952132e-11,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 9.094947017729282e-13,
+            "maximum_force_error_hartree_per_bohr": 7.295488822431362e-11,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.2737367544323206e-12,
+            "maximum_force_error_hartree_per_bohr": 7.296643454376972e-11,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.3642420526593924e-12,
+            "maximum_force_error_hartree_per_bohr": 7.294867097537572e-11,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 2.2737367544323206e-12,
+            "maximum_force_error_hartree_per_bohr": 7.297087543586822e-11,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "cfd16be4cc8a76bc53f8613277363e48c40365fbac136217a45bb50334ad8b68",
+      "numerically_qualified": true
+    },
+    {
+      "name": "water-32mer-4s4-def2-svp-spherical-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "water-32mer-4s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-32mer-4s4-def2-svp-spherical-b1-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "water-32mer-4s4-def2-svp-spherical-b1-energy",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-32mer-4s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-09",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-32mer-4s4-def2-svp-spherical-b1-energy.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-32mer-4s4-def2-svp-spherical-b1-energy.progress.jsonl",
+        "--energy-only"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 21.066612491151318,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": null,
+          "warm_endpoint_seconds": 1.015666316030547
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.6158754390198737,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.606375764657485,
+          "vibeqc_median_seconds": 1.015666316030547
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 9.549694368615746e-12,
+          "maximum_force_error_hartree_per_bohr": null,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 9.549694368615746e-12,
+        "maximum_force_error_hartree_per_bohr": null,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 9.549694368615746e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.640199666842818e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 9.549694368615746e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.640199666842818e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.640199666842818e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.73070496506989e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 7.73070496506989e-12,
+            "maximum_force_error_hartree_per_bohr": null,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "fb115a0f556974d9d2009c9de120dd117ca3adbced0260626354fd3dfc7f1973",
+      "numerically_qualified": true
+    },
+    {
+      "name": "water-32mer-4s4-def2-svp-spherical-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "water-32mer-4s4-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-09",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-32mer-4s4-def2-svp-spherical-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/water-32mer-4s4-def2-svp-spherical-b1-forces.progress.jsonl",
+        "--maximum-force-error",
+        "1e-08"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 85.13714051316492,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 2.005771260941401,
+          "warm_endpoint_seconds": 2.005771260941401
+        },
+        "iteration_matched": {
+          "gpu4pyscf_median_seconds": 2.55587582080625,
+          "gpu4pyscf_sample_count": 1,
+          "iteration_branch": [
+            3
+          ],
+          "speedup": 1.2742608644251185,
+          "vibeqc_median_seconds": 2.005771260941401,
+          "vibeqc_sample_count": 7
+        },
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 2.14027516101487,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 1.067058444146986,
+          "vibeqc_median_seconds": 2.005771260941401
+        },
+        "speed_claim_uses": "iteration_matched"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 1.0459189070388675e-11,
+          "maximum_force_error_hartree_per_bohr": 1.358082032248964e-10,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 1.0459189070388675e-11,
+        "maximum_force_error_hartree_per_bohr": 1.358082032248964e-10,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.640199666842818e-12,
+            "maximum_force_error_hartree_per_bohr": 1.3544849096491784e-10,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.640199666842818e-12,
+            "maximum_force_error_hartree_per_bohr": 1.3546181364121335e-10,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 9.549694368615746e-12,
+            "maximum_force_error_hartree_per_bohr": 1.3552665066585146e-10,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": true,
+            "maximum_energy_error_hartree": 8.640199666842818e-12,
+            "maximum_force_error_hartree_per_bohr": 1.358082032248964e-10,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.0459189070388675e-11,
+            "maximum_force_error_hartree_per_bohr": 1.3558171772787286e-10,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 6.821210263296962e-12,
+            "maximum_force_error_hartree_per_bohr": 1.3573626077290069e-10,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 1.0459189070388675e-11,
+            "maximum_force_error_hartree_per_bohr": 1.3550000531326045e-10,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "48447c864c488e085a1a8456d8e1276d82cd0e34a85170049fb99b5bc338aa3a",
+      "numerically_qualified": true
+    },
+    {
+      "name": "oh-def2-svp-spherical-uhf-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "oh-def2-svp-spherical-uhf",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/oh-def2-svp-spherical-uhf-b1-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "oh-def2-svp-spherical-uhf-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "oh-def2-svp-spherical-uhf",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-09",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/oh-def2-svp-spherical-uhf-b1-forces.progress.jsonl",
+        "--maximum-force-error",
+        "1e-08"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 0.24860218400135636,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.007740820059552789,
+          "warm_endpoint_seconds": 0.007740820059552789
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.24216582998633385,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 31.28426033976619,
+          "vibeqc_median_seconds": 0.007740820059552789
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 8.100187187665142e-13,
+          "maximum_force_error_hartree_per_bohr": 3.878352592452191e-12,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 8.100187187665142e-13,
+        "maximum_force_error_hartree_per_bohr": 3.878352592452191e-12,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452191e-12,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452185e-12,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452185e-12,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452191e-12,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452185e-12,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452191e-12,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 8.100187187665142e-13,
+            "maximum_force_error_hartree_per_bohr": 3.878352592452191e-12,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "aba298c128934c7fc7f4a2cd81a8f0c4018bb76224bb92d84baefc8c02dba078",
+      "numerically_qualified": true
+    },
+    {
+      "name": "ammonia-def2-svp-spherical-b1-qualification",
+      "scope": "separate stock provider/rank audit",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/qualify-stock.py",
+        "--case",
+        "ammonia-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/ammonia-def2-svp-spherical-b1-qualification.json"
+      ],
+      "status": "passed",
+      "exit_code": 0
+    },
+    {
+      "name": "ammonia-def2-svp-spherical-b1-forces",
+      "scope": "clean external endpoint",
+      "command": [
+        "/tmp/vibeqc-308-gpu4pyscf-env/bin/python",
+        "benchmarks/compare_gpu4pyscf_batch.py",
+        "--case",
+        "ammonia-def2-svp-spherical",
+        "--batch",
+        "1",
+        "--repeats",
+        "7",
+        "--density-fitting",
+        "cuda",
+        "--max-iterations",
+        "100",
+        "--energy-tolerance",
+        "1e-12",
+        "--density-tolerance",
+        "1e-10",
+        "--reference-gradient-tolerance",
+        "1e-10",
+        "--screening-tolerance",
+        "1e-14",
+        "--maximum-energy-error",
+        "1e-09",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/ammonia-def2-svp-spherical-b1-forces.json",
+        "--progress-output",
+        "/home/jzzeng/codes/vibeqc-issue206-post418/.artifacts/issue206-post418/fresh-warm-v1/ammonia-def2-svp-spherical-b1-forces.progress.jsonl",
+        "--maximum-force-error",
+        "1e-08"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "all_repeat_accuracy_passed": true,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 0.2685718620195985,
+          "component_split_measured": false,
+          "note": "Legacy field names contain complete endpoint times: cold includes preparation, SCF and requested properties; warm includes the full resident-plan solve. No integral/contraction component split is measured.",
+          "warm_contraction_and_force_seconds": 0.008844631956890225,
+          "warm_endpoint_seconds": 0.008844631956890225
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.2360339779406786,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 26.686693023648232,
+          "vibeqc_median_seconds": 0.008844631956890225
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "accuracy": {
+        "gate_selection": {
+          "maximum_energy_error_hartree": 5.542233338928781e-13,
+          "maximum_force_error_hartree_per_bohr": 1.2716975042459389e-11,
+          "pair_count": 7,
+          "selection": "all_measured_pairs"
+        },
+        "maximum_energy_error_hartree": 5.542233338928781e-13,
+        "maximum_force_error_hartree_per_bohr": 1.2716975042459389e-11,
+        "paired_warm_repeats": [
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2716975042459389e-11,
+            "repeat": 0
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2712534150360888e-11,
+            "repeat": 1
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2705872812213137e-11,
+            "repeat": 2
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2703652366163887e-11,
+            "repeat": 3
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2703652366163887e-11,
+            "repeat": 4
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2703652366163887e-11,
+            "repeat": 5
+          },
+          {
+            "iteration_branches_match": false,
+            "maximum_energy_error_hartree": 5.542233338928781e-13,
+            "maximum_force_error_hartree_per_bohr": 1.2715642774829838e-11,
+            "repeat": 6
+          }
+        ]
+      },
+      "result_sha256": "2f2e3a9e522803a85a3ea64f466e6a7973470dbdc5708d1c2956166fe338224a",
+      "numerically_qualified": true
+    }
+  ],
+  "prior_failures": "Retained #421 DF96-b4/changed192 failures and #427 final direct9890 failures are not waived or overwritten by this new campaign.",
+  "preflight_processes": [
+    {
+      "pid": 2656799,
+      "parent": 1,
+      "age_seconds": 1641103,
+      "name": "nsys",
+      "arguments": "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/target-linux-x64/nsys --start-agent --session-name profile-2656785 --shm-name NSys-create-agent-ae30fbe8-adf5-4141-b301-e20cac05d0ef-4026531836-2025.1.3",
+      "orphan_control_agent": true
+    },
+    {
+      "pid": 2665798,
+      "parent": 1,
+      "age_seconds": 1640462,
+      "name": "nsys",
+      "arguments": "/group/software/cuda-12.9.1/nsight-systems-2025.1.3/target-linux-x64/nsys --start-agent --session-name profile-2665784 --shm-name NSys-create-agent-7f226d0c-272f-470e-b0d0-a52bb1d1a50b-4026531836-2025.1.3",
+      "orphan_control_agent": true
+    }
+  ]
+}

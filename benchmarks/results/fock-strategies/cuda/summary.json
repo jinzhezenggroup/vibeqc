@@ -1,0 +1,602 @@
+{
+  "accuracy_passed": true,
+  "baseline": "3da58410bb02a903ea6341a7caac0afc9314355b",
+  "candidate": "913fb20a25aab87363b19e9d788580230493b688",
+  "complete_endpoint_count": 40,
+  "complete_endpoint_median_ratio": 1.0027772056563466,
+  "complete_endpoint_ratio_range": [
+    0.9773851094002625,
+    1.0218532159483649
+  ],
+  "endpoints": [
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0061648979721722,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9953180886973604,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.002295984291633,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 1.0099047707546744,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 1.004381828324661,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0022665640852833,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0169294006486553,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0031452416386841,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0061803343483353,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0095896222155105,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0044908927760952,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0026310175261064,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.001624242442456,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 0.9877929063210575,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.551115123125783e-17
+      },
+      "median_ratio": 1.0057272286037857,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0050246798701845,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.013050505817118,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0050175106928436,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0116153752380128,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "h2",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0116118362125368,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.1649348980190553e-15
+      },
+      "median_ratio": 1.0021268519673938,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.4702462297909733e-15
+      },
+      "median_ratio": 0.9979933077603081,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 3.524958103184872e-15
+      },
+      "median_ratio": 0.9994134294094026,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 5.502542865798432e-15
+      },
+      "median_ratio": 1.0029233937865871,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 7.979727989493313e-15
+      },
+      "median_ratio": 1.0007704702017695,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0187858211393679,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0218532159483649,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0067162192767711,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0035935067758657,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.001436357751054,
+      "spin": "rhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 3.2335245592207684e-15
+      },
+      "median_ratio": 0.9984923599047674,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 1.6930901125533637e-15
+      },
+      "median_ratio": 0.9996620496937653,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 2.733924198139448e-15
+      },
+      "median_ratio": 1.0007455831537875,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 6.800116025829084e-15
+      },
+      "median_ratio": 0.9994144560977829,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "exact",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 9.034439862887211e-15
+      },
+      "median_ratio": 1.000165434319777,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "singlepoint",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9773851094002625,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "warm_replay",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.0033969851116806,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "changed_geometry",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 1.000837621523503,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_cold",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9975618478888902,
+      "spin": "uhf"
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "case": "water",
+      "device": "cuda",
+      "endpoint": "batch_four_warm",
+      "maximum_absolute_error": {
+        "energy": 0.0,
+        "forces": 0.0
+      },
+      "median_ratio": 0.9991021860441368,
+      "spin": "uhf"
+    }
+  ],
+  "fixed_density": [
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "baseline_seconds": [
+        5.3749690000000004e-05,
+        5.3031119999999996e-05,
+        5.3408029999999996e-05,
+        5.30236e-05,
+        5.3034720000000004e-05,
+        5.289986e-05,
+        5.27066e-05,
+        5.277523e-05,
+        5.2792960000000005e-05
+      ],
+      "head_seconds": [
+        5.5088059999999996e-05,
+        5.417382e-05,
+        5.424585e-05,
+        5.4104879999999996e-05,
+        5.377656e-05,
+        5.376694e-05,
+        5.375863e-05,
+        5.366123e-05,
+        5.3767140000000005e-05
+      ],
+      "maximum_absolute_error": 0.0,
+      "median_ratio": 1.0142004692250244,
+      "nbf": 2
+    },
+    {
+      "accuracy_passed": true,
+      "approximation": "density_fitted",
+      "baseline_seconds": [
+        6.59769e-05,
+        6.562383e-05,
+        6.546292e-05,
+        6.591057e-05,
+        6.588372e-05,
+        6.531824e-05,
+        6.552734000000001e-05,
+        6.543377000000001e-05,
+        6.526764e-05
+      ],
+      "head_seconds": [
+        6.794077e-05,
+        6.745763999999999e-05,
+        6.743980999999999e-05,
+        6.782665e-05,
+        6.791182e-05,
+        6.742779e-05,
+        6.717461e-05,
+        6.73287e-05,
+        6.695900000000001e-05
+      ],
+      "maximum_absolute_error": 0.0,
+      "median_ratio": 1.0291858329668193,
+      "nbf": 16
+    }
+  ],
+  "maximum_energy_error": 0.0,
+  "maximum_force_error": 9.034439862887211e-15,
+  "study": "Same-path architecture overhead, without speedup promotion",
+  "timing_limitations": [
+    "Full endpoint workers ran sequentially per revision; they are a non-regression study, not a statistically promoted speedup.",
+    "The raw two-AO CPU dispatch takes fractions of a microsecond; assess its absolute increment alongside the complete endpoints.",
+    "No independent direct CUDA raw service exists at the baseline; standard exact CUDA HF is compared through complete fused endpoints.",
+    "Full endpoint peak-memory and compilation-cost budgets were not measured. Existing allocation and schedule diagnostics are retained in provenance.json."
+  ]
+}

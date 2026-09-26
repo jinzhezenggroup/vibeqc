@@ -1,0 +1,22 @@
+{
+  "CUDA_VISIBLE_DEVICES": "0",
+  "binary_sha256": "84a033d52b63f66dfb5dfa51fe4e879fe2f8f1e95df3300be9870aa52b826287",
+  "checkpoint_tests_passed": 41,
+  "gpu_tests_skipped": 0,
+  "known_context_limit": "After the full f-containing endpoint matrix, a checkpoint subprocess can encounter GPU out-of-memory while the parent context remains live. Reproduced on the pre-one-electron #204 library; checkpoint/resource suites pass in separate processes.",
+  "native_tests_passed": 13,
+  "one_electron_endpoint_tests_passed": 16,
+  "raw_evidence": "raw-summary.json",
+  "resource_tests_passed": 14,
+  "runtime_policy": {
+    "candidate": "generated",
+    "default": "reference",
+    "mappings": [
+      "thread",
+      "shell_warp"
+    ]
+  },
+  "slurm_job_id": "9068",
+  "source_identity": "32c312c4d6e7e3dba4b69e67dd5040d264cbd257307ea0436bb7ec574ce2fc1f",
+  "suite_process_isolation": true
+}

@@ -1,0 +1,107 @@
+{
+  "schema": "vibeqc.issue435.validation.v1",
+  "source_commit": "8853004023e0af3b74d23f3bb92a84efbe83d2a5",
+  "patch_sha256": "dec1ba5af2743a4534b0ca06c82f8151c2fcf7281ead5589fca46fd1d3807775",
+  "library_sha256": "3f9e2027dff3505a48228b246d88cdb3d9a91c1d239ee4ddeaad180faacab6ca",
+  "build": {
+    "type": "Release",
+    "toolchain": "nvcc 12.9.86 / CUDA 12.9.1 / GNU C++ 11.4",
+    "architecture": "sm_120",
+    "fast_compile": false,
+    "direct_four_center_aot": false,
+    "generated_df": true,
+    "passed": true
+  },
+  "host_suites": [
+    {
+      "command": "pytest tests/python/test_df_rys_shell.py -q",
+      "passed": 231,
+      "skipped": 0,
+      "seconds": 112.43,
+      "scope": "independent libcint contracted Cartesian/spherical, coincident/asymmetric, exponent and argument extremes, high-precision center differentiation; all 23 classes"
+    },
+    {
+      "command": "pytest tests/python/test_df_codegen.py tests/python/test_df_shell_derivatives.py tests/python/test_df_policy.py tests/python/test_df_policy_endpoint.py tests/python/test_cuda_ownership.py -q",
+      "passed": 258,
+      "seconds": 20.38
+    },
+    {
+      "command": "pytest tests/python/test_df_shell_work_ledger.py -q",
+      "passed": 26,
+      "seconds": 0.25
+    }
+  ],
+  "overlap_warning": "Host suite counts overlap other exploratory invocations; they are not summed as unique tests. Sanitizer runs repeat one GPU test.",
+  "gpu_suite": {
+    "command": "pytest tests/python/test_df_practical_response_cuda.py -q",
+    "passed": 32,
+    "skipped": 0,
+    "seconds": 117.82,
+    "slurm_job_id": "10014",
+    "scope": "RHF/UHF, cold/warm/moved geometry, original density tolerance, packed/dense and bounded budgets; actual auxiliary-f selection in panel and packet consumers"
+  },
+  "sanitizers": [
+    {
+      "tool": "memcheck",
+      "command": "compute-sanitizer --tool memcheck --error-exitcode 99 python -m pytest tests/python/test_df_practical_response_cuda.py -k 'auxiliary_f_rys_is_executed and oh and packet' -q",
+      "passed": 1,
+      "errors": 0,
+      "receipt_sha256": "0855a898f4f48adec4cf8882eda21a383638cfb489aace5d22b2b9cf21152a93"
+    },
+    {
+      "tool": "racecheck",
+      "command": "compute-sanitizer --tool racecheck --error-exitcode 99 python -m pytest tests/python/test_df_practical_response_cuda.py -k 'auxiliary_f_rys_is_executed and oh and packet' -q",
+      "passed": 1,
+      "errors": 0,
+      "receipt_sha256": "73233c3abbecbb13e9b8d993bb8f835ae002c2c1aa8cb0438a744861973eadd0"
+    },
+    {
+      "tool": "synccheck",
+      "command": "compute-sanitizer --tool synccheck --error-exitcode 99 python -m pytest tests/python/test_df_practical_response_cuda.py -k 'auxiliary_f_rys_is_executed and oh and packet' -q",
+      "passed": 1,
+      "errors": 0,
+      "receipt_sha256": "e460e0ec9e5236a478a2c435acddd10147d9d35eb6867f4b337a4002b650b1e5"
+    }
+  ],
+  "qualification_slurm_job_id": "10018",
+  "compiler_structure": {
+    "modules": 179,
+    "errors": 0
+  },
+  "integration_host_suite": {
+    "source_base": "169547c4aa32e60aedf1018e37a9d80d195924b8",
+    "command": "pytest tests/python/test_df_derivative_policy.py tests/python/test_df_policy_endpoint.py tests/python/test_df_shell_work_ledger.py tests/python/test_df_tuning.py tests/python/test_df_policy.py tests/python/test_cuda_ownership.py -q",
+    "passed": 97,
+    "skipped": 0,
+    "seconds": 8.27,
+    "compiler_structure_modules": 181,
+    "compiler_dependency_errors": 0
+  },
+  "final_integration_gpu_suite": {
+    "source_base": "4168e93978d3df5f686bda6ac67e6e3a229f3fa8",
+    "source_patch": "final.patch",
+    "library_sha256": "05ba2fd4c7e5996dc2405928a3c3b939d85e0594644c14a70e71bca823e639e5",
+    "native_source_identity": "b028248591d664fd4aff1751b90c951e03f89bf1fb3da90b5bfcdd44327e3a23",
+    "command": "pytest tests/python/test_df_derivative_auto_cuda.py tests/python/test_df_practical_response_cuda.py -q",
+    "passed": 40,
+    "skipped": 0,
+    "seconds": 167.23,
+    "slurm_job_id": "10023",
+    "log_sha256": "c025bd7fb4085a46fbfd1a89229595fe45f933fee20346d66e4147f1d2e0c7ea"
+  },
+  "final_ledger_tests": {
+    "command": "pytest tests/python/test_df_shell_work_ledger.py -q",
+    "passed": 32,
+    "skipped": 0,
+    "seconds": 0.28,
+    "scope": "Includes six new angular-only sentinel and sparse mixed-primitive bounds controls; final default traces both reduce successfully.",
+    "reporting_fix_history": "Initial final-96 reduction rejected the angular-only p0_0_0 sentinel; the reducer now reconstructs that documented grouping rather than treating zero sentinels as primitive lengths. No compiled math or measured timing was changed."
+  },
+  "final_host_suite": {
+    "command": "pytest tests/python/test_df_derivative_policy.py tests/python/test_df_policy_endpoint.py tests/python/test_df_shell_work_ledger.py tests/python/test_df_tuning.py tests/python/test_df_policy.py tests/python/test_cuda_ownership.py -q",
+    "passed": 103,
+    "skipped": 0,
+    "seconds": 8.18,
+    "log_sha256": "f9f5e04231368ec784076c77b9173fc1b2a724a978734e2e91827e64b2ce2720"
+  }
+}

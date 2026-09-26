@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_force_low_order.cuh",
+  "role": "scientific",
+  "subsystem": "direct_integrals",
+  "reason": "SSSS/PSSS force adapters consume generated Weighted IntegralIR roots but retain handwritten Gaussian prefactors, Boys arguments, decay derivatives, normalization and center recovery. Operator-specific geometry/contraction remains scientific until its generated replacement is qualified.",
+  "regions": []
+}

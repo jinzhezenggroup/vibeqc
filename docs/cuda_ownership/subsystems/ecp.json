@@ -1,0 +1,22 @@
+{
+  "owner": "python/vibeqc_compiler/integral/ecp.py, ecp_projector.py, ecp_grid.py, ecp_policy.py and ecp_schedule.py; src/integrals/ecp_cuda.cu is the native execution adapter",
+  "current_default": "Scalar Gaussian residual ECP, local plus s/p/d/f projectors, s/p/d/f Cartesian and real-spherical orbital basis; two-grid convergence-gated native HF.",
+  "generated_capability": "Gaussian s/p/d/f AO and center-derivative DAGs, ECP node displacement and normalized primitive/component accumulation; radial integrand powers 0..4 including volume measure; bounded s/p/d/f harmonic projections and local/nonlocal bilinear jet reductions; ECP-center translation recovery; hcore addition and full AO fixed-weight energy-derivative-to-force consumption. One C++ header supplies host tests and production CUDA. Host Gauss-Legendre recurrence/weights, radial map/Jacobian, sphere coordinates/weights, real s/p/d/f harmonics and Cartesian component coefficient normalization through f are compiler-owned. The emitted orbital bound defines native ECP validation; component bounds are checked before dispatch-key encoding. The emitted projector bound/count covers 16 harmonic slots and native validation. Fixed coarse/refined grid orders and finite absolute-error admission for values/derivatives are compiler-owned; the HF resource inventory consumes the same refined-grid dimensions.",
+  "missing_capability": "Complete DFT/ECP forces await the #163 gradient consumer; bounded LDA/PBE RKS/UKS CPU/CUDA energies are supported. Spin-orbit and orbital/projector g remain unavailable; physical parameter qualification is bounded to documented fixtures.",
+  "retirement_condition": "The native CUDA adapter retains only indexing, symmetry/physical-atom scatter, borrowed-stream launch, allocation/failure handling and shared basis expansion metadata. Scientific quadrature/projector, AO/weight, normalization and convergence admission are generated. Keep independent ecp.cpp CPU oracle/fallback arithmetic and its separately specified convergence checks; do not delete it or route it through the generated production formulas. Any new native scientific arithmetic requires reclassification and independent qualification.",
+  "evidence": [
+    "tests/python/test_ecp.py",
+    "tests/python/test_ecp_ir.py",
+    "tests/native/test_ecp_projector.cpp",
+    "tests/python/test_ecp_f.py",
+    "tests/python/test_ecp_validation.py",
+    "tests/native/test_ecp_capabilities.cpp",
+    "benchmarks/results/ecp-f-171/README.md",
+    "tests/python/test_ecp_f_projector.py",
+    "benchmarks/results/ecp-f-projector-171/README.md",
+    "python/vibeqc_compiler/integral/ecp_policy.py",
+    "tests/native/ecp_policy_cases.hpp",
+    "tests/native/test_ecp_policy_cuda.cu"
+  ],
+  "status": "Generated scalar ECP mathematics and fixed convergence policy with a native CUDA runtime adapter; independent CPU oracle/fallback retained. DFT/ECP forces remain separately gated."
+}

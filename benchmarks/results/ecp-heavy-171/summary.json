@@ -1,0 +1,53 @@
+{
+  "scope": "LANL2DZ Rb/Cs + STO-3G H; neutral RHF and singly charged doublet UHF; 13 AOs; CPU/CUDA",
+  "base_commit": "e16f526c162512432657f5a320588716f269bbda",
+  "source_qualification_files": {
+    "tests/python/test_ecp_heavy.py": {
+      "bytes": 9852,
+      "sha256": "ee561d2d4f692f3cda20cdcd6243abc818da40113036f4764c466b3322b81e84"
+    },
+    "tools/qualify_ecp_heavy.py": {
+      "bytes": 6383,
+      "sha256": "30b9244bfae3318eccb62ed7998a0ce2d18440ca54ebb982a7882f28ff0998a5"
+    }
+  },
+  "native_or_compiler_source_changes": [],
+  "checks": {
+    "cpu_ctest": "31/31",
+    "cuda_ecp_ctest": "3/3",
+    "cpu_heavy": "10 passed, 10 expected GPU skips",
+    "cuda_heavy": "10 passed, 10 deselected",
+    "cpu_ecp_regression": "53 passed, 10 expected GPU skips",
+    "cuda_memcheck": "2 passed, 18 deselected; 0 errors",
+    "local_ecp_ir_input": "30 passed",
+    "compiler_structure": "178 modules, 0 errors",
+    "scf_structure": "217 modules, 0 errors",
+    "cuda_ownership": "183 files, unchanged"
+  },
+  "maximum_endpoint_errors": {
+    "local_matrix": 2.6117996654306808e-14,
+    "nonlocal_matrix": 9.450691097756536e-13,
+    "energy": 3.446132268436486e-13,
+    "force": 2.3194648285373987e-10,
+    "net_force": 3.66720542821497e-15
+  },
+  "ownership_delta": {
+    "handwritten_scientific_cuda": [
+      0,
+      0
+    ],
+    "runtime_cuda": [
+      0,
+      0
+    ],
+    "generated_capability": "unchanged",
+    "legacy_production_removed": false,
+    "retained_duplicate_reason": [
+      "oracle",
+      "fallback"
+    ]
+  },
+  "raw_archive_sha256": "8e9594c6f0ece51c39a4cd9f96ffeaeb941bade8646f78dd8b0b1ed0fe935d4a",
+  "raw_manifest_files": 35,
+  "timing_claim": "none; isolated single-call timing records are reproduction context only"
+}

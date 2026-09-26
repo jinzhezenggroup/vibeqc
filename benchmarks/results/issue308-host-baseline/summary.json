@@ -1,0 +1,154 @@
+{
+  "energy-clean": {
+    "changed-geometry": {
+      "median_seconds": 0.4085149965249002,
+      "samples": 10
+    },
+    "cold-start": {
+      "median_seconds": 0.4431432548444718,
+      "samples": 10
+    },
+    "energy-only": {
+      "median_seconds": 0.2326351780211553,
+      "samples": 10
+    },
+    "unchanged-geometry": {
+      "median_seconds": 0.23265974957030267,
+      "samples": 10
+    }
+  },
+  "energy-profiled": {
+    "changed-geometry": {
+      "eigensolves_by_reason": {
+        "core_guess": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 75.19835549999954
+        },
+        "final_fock": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 73.98045649999929
+        },
+        "overlap": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 78.07141350000002
+        }
+      },
+      "median_seconds": 0.4090203115483746,
+      "samples": 10
+    },
+    "cold-start": {
+      "eigensolves_by_reason": {
+        "core_guess": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 72.26457900000017
+        },
+        "final_fock": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 69.61437399999991
+        },
+        "overlap": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 73.50048650000018
+        }
+      },
+      "median_seconds": 0.4437195579521358,
+      "samples": 10
+    },
+    "energy-only": {
+      "eigensolves_by_reason": {
+        "core_guess": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 72.20762199999965
+        },
+        "final_fock": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 69.89197949999948
+        },
+        "overlap": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 73.49621349999947
+        }
+      },
+      "median_seconds": 0.2330037640640512,
+      "samples": 10
+    },
+    "unchanged-geometry": {
+      "eigensolves_by_reason": {
+        "core_guess": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 72.18619700000016
+        },
+        "final_fock": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 69.8840289999998
+        },
+        "overlap": {
+          "calls_each": [
+            1
+          ],
+          "median_thread_cpu_ms": 73.50439949999999
+        }
+      },
+      "median_seconds": 0.2330033954931423,
+      "samples": 10
+    }
+  },
+  "force-clean": {
+    "changed-geometry": {
+      "median_seconds": 0.9634077975060791,
+      "samples": 10
+    },
+    "cold-start": {
+      "median_seconds": 1.004378834972158,
+      "samples": 10
+    },
+    "energy-plus-force": {
+      "median_seconds": 0.7913559410953894,
+      "samples": 10
+    },
+    "unchanged-geometry": {
+      "median_seconds": 0.7860245534684509,
+      "samples": 10
+    }
+  },
+  "limitations": [
+    "P0 baseline only; no solve removed or speedup measured.",
+    "96 AO / batch 1 / RHF spherical / 1 GiB DF allowance only; the 192/384 and batch-4 matrix, constrained modes and independent scientific comparisons remain required.",
+    "Same-model separately prepared cold references check changed-geometry cache integrity and forces; they are not an independent scientific oracle.",
+    "CUDA event graph-capture regions describe construction only; executed graph-node work is in CUPTI summary."
+  ],
+  "native_source_identity": "6faf4373afeee3a5218ca08d97ff625fa480aaffc944208449973f3e49e1c491",
+  "validation": {
+    "cpu_native_passed": 24,
+    "cpu_trace_cuda_skipped": 2,
+    "cpu_trace_passed": 9,
+    "gpu_native_hf_passed": 1,
+    "gpu_python_passed": 24,
+    "memcheck_errors": 0,
+    "memcheck_leaked_bytes": 0,
+    "memcheck_python_passed": 2,
+    "python_protocol_passed": 68
+  }
+}

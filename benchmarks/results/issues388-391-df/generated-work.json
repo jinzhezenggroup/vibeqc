@@ -1,0 +1,207 @@
+{
+  "scope": "Exact generated loop-body counts before optimizer; not measured FLOPs or global transactions. Geometry/Boys preparation remains once per primitive product.",
+  "counter_trace_sha256": "5fdb8ccaa53f9d1452dae70d2c9b69013f517f6cc699c8a44e22bcca018d784a",
+  "classes": [
+    {
+      "angular": [0, 0, 0],
+      "primitive_products": 55656960,
+      "cartesian_components": 1,
+      "other_axis_product_evaluations_per_primitive_before": 12,
+      "other_axis_product_evaluations_per_primitive_after": 6,
+      "axis_cache_doubles_before": 8,
+      "axis_cache_doubles_after": 3,
+      "moment_polynomials_per_primitive_before": 9,
+      "moment_polynomials_per_primitive_after": 6
+    },
+    {
+      "angular": [0, 0, 1],
+      "primitive_products": 22262784,
+      "cartesian_components": 3,
+      "other_axis_product_evaluations_per_primitive_before": 66,
+      "other_axis_product_evaluations_per_primitive_after": 33,
+      "axis_cache_doubles_before": 20,
+      "axis_cache_doubles_after": 8,
+      "moment_polynomials_per_primitive_before": 18,
+      "moment_polynomials_per_primitive_after": 12
+    },
+    {
+      "angular": [0, 0, 2],
+      "primitive_products": 3710464,
+      "cartesian_components": 6,
+      "other_axis_product_evaluations_per_primitive_before": 216,
+      "other_axis_product_evaluations_per_primitive_after": 108,
+      "axis_cache_doubles_before": 36,
+      "axis_cache_doubles_after": 15,
+      "moment_polynomials_per_primitive_before": 27,
+      "moment_polynomials_per_primitive_after": 18
+    },
+    {
+      "angular": [1, 0, 0],
+      "primitive_products": 44236800,
+      "cartesian_components": 3,
+      "other_axis_product_evaluations_per_primitive_before": 66,
+      "other_axis_product_evaluations_per_primitive_after": 33,
+      "axis_cache_doubles_before": 15,
+      "axis_cache_doubles_after": 6,
+      "moment_polynomials_per_primitive_before": 15,
+      "moment_polynomials_per_primitive_after": 9
+    },
+    {
+      "angular": [1, 0, 1],
+      "primitive_products": 17694720,
+      "cartesian_components": 9,
+      "other_axis_product_evaluations_per_primitive_before": 336,
+      "other_axis_product_evaluations_per_primitive_after": 168,
+      "axis_cache_doubles_before": 36,
+      "axis_cache_doubles_after": 15,
+      "moment_polynomials_per_primitive_before": 30,
+      "moment_polynomials_per_primitive_after": 18
+    },
+    {
+      "angular": [1, 0, 2],
+      "primitive_products": 2949120,
+      "cartesian_components": 18,
+      "other_axis_product_evaluations_per_primitive_before": 1038,
+      "other_axis_product_evaluations_per_primitive_after": 519,
+      "axis_cache_doubles_before": 63,
+      "axis_cache_doubles_after": 27,
+      "moment_polynomials_per_primitive_before": 45,
+      "moment_polynomials_per_primitive_after": 27
+    },
+    {
+      "angular": [1, 1, 0],
+      "primitive_products": 8939520,
+      "cartesian_components": 9,
+      "other_axis_product_evaluations_per_primitive_before": 336,
+      "other_axis_product_evaluations_per_primitive_after": 168,
+      "axis_cache_doubles_before": 27,
+      "axis_cache_doubles_after": 15,
+      "moment_polynomials_per_primitive_before": 24,
+      "moment_polynomials_per_primitive_after": 18
+    },
+    {
+      "angular": [1, 1, 1],
+      "primitive_products": 3575808,
+      "cartesian_components": 27,
+      "other_axis_product_evaluations_per_primitive_before": 1602,
+      "other_axis_product_evaluations_per_primitive_after": 801,
+      "axis_cache_doubles_before": 63,
+      "axis_cache_doubles_after": 36,
+      "moment_polynomials_per_primitive_before": 48,
+      "moment_polynomials_per_primitive_after": 36
+    },
+    {
+      "angular": [1, 1, 2],
+      "primitive_products": 595968,
+      "cartesian_components": 54,
+      "other_axis_product_evaluations_per_primitive_before": 4716,
+      "other_axis_product_evaluations_per_primitive_after": 2358,
+      "axis_cache_doubles_before": 108,
+      "axis_cache_doubles_after": 63,
+      "moment_polynomials_per_primitive_before": 72,
+      "moment_polynomials_per_primitive_after": 54
+    },
+    {
+      "angular": [2, 0, 0],
+      "primitive_products": 7372800,
+      "cartesian_components": 6,
+      "other_axis_product_evaluations_per_primitive_before": 216,
+      "other_axis_product_evaluations_per_primitive_after": 108,
+      "axis_cache_doubles_before": 24,
+      "axis_cache_doubles_after": 10,
+      "moment_polynomials_per_primitive_before": 21,
+      "moment_polynomials_per_primitive_after": 12
+    },
+    {
+      "angular": [2, 0, 1],
+      "primitive_products": 2949120,
+      "cartesian_components": 18,
+      "other_axis_product_evaluations_per_primitive_before": 1038,
+      "other_axis_product_evaluations_per_primitive_after": 519,
+      "axis_cache_doubles_before": 56,
+      "axis_cache_doubles_after": 24,
+      "moment_polynomials_per_primitive_before": 42,
+      "moment_polynomials_per_primitive_after": 24
+    },
+    {
+      "angular": [2, 0, 2],
+      "primitive_products": 491520,
+      "cartesian_components": 36,
+      "other_axis_product_evaluations_per_primitive_before": 3072,
+      "other_axis_product_evaluations_per_primitive_after": 1536,
+      "axis_cache_doubles_before": 96,
+      "axis_cache_doubles_after": 42,
+      "moment_polynomials_per_primitive_before": 63,
+      "moment_polynomials_per_primitive_after": 36
+    },
+    {
+      "angular": [2, 1, 0],
+      "primitive_products": 2949120,
+      "cartesian_components": 18,
+      "other_axis_product_evaluations_per_primitive_before": 1038,
+      "other_axis_product_evaluations_per_primitive_after": 519,
+      "axis_cache_doubles_before": 42,
+      "axis_cache_doubles_after": 24,
+      "moment_polynomials_per_primitive_before": 33,
+      "moment_polynomials_per_primitive_after": 24
+    },
+    {
+      "angular": [2, 1, 1],
+      "primitive_products": 1179648,
+      "cartesian_components": 54,
+      "other_axis_product_evaluations_per_primitive_before": 4716,
+      "other_axis_product_evaluations_per_primitive_after": 2358,
+      "axis_cache_doubles_before": 96,
+      "axis_cache_doubles_after": 56,
+      "moment_polynomials_per_primitive_before": 66,
+      "moment_polynomials_per_primitive_after": 48
+    },
+    {
+      "angular": [2, 1, 2],
+      "primitive_products": 196608,
+      "cartesian_components": 108,
+      "other_axis_product_evaluations_per_primitive_before": 13392,
+      "other_axis_product_evaluations_per_primitive_after": 6696,
+      "axis_cache_doubles_before": 162,
+      "axis_cache_doubles_after": 96,
+      "moment_polynomials_per_primitive_before": 99,
+      "moment_polynomials_per_primitive_after": 72
+    },
+    {
+      "angular": [2, 2, 0],
+      "primitive_products": 253440,
+      "cartesian_components": 36,
+      "other_axis_product_evaluations_per_primitive_before": 3072,
+      "other_axis_product_evaluations_per_primitive_after": 1536,
+      "axis_cache_doubles_before": 64,
+      "axis_cache_doubles_after": 42,
+      "moment_polynomials_per_primitive_before": 45,
+      "moment_polynomials_per_primitive_after": 36
+    },
+    {
+      "angular": [2, 2, 1],
+      "primitive_products": 101376,
+      "cartesian_components": 108,
+      "other_axis_product_evaluations_per_primitive_before": 13392,
+      "other_axis_product_evaluations_per_primitive_after": 6696,
+      "axis_cache_doubles_before": 144,
+      "axis_cache_doubles_after": 96,
+      "moment_polynomials_per_primitive_before": 90,
+      "moment_polynomials_per_primitive_after": 72
+    },
+    {
+      "angular": [2, 2, 2],
+      "primitive_products": 16896,
+      "cartesian_components": 216,
+      "other_axis_product_evaluations_per_primitive_before": 36864,
+      "other_axis_product_evaluations_per_primitive_after": 18432,
+      "axis_cache_doubles_before": 240,
+      "axis_cache_doubles_after": 162,
+      "moment_polynomials_per_primitive_before": 135,
+      "moment_polynomials_per_primitive_after": 108
+    }
+  ],
+  "primitive_products": 175132672,
+  "weighted_other_axis_products_before": 46587727872,
+  "weighted_other_axis_products_after": 23293863936
+}

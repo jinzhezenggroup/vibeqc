@@ -1,0 +1,3 @@
+{
+  "output": "Traceback (most recent call last):\n  File \"/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/diagnose-stock-changed-v2.py\", line 103, in <module>\n    main()\n    ~~~~^^\n  File \"/home/jzzeng/codes/vibeqc-issue206-direct-fix/.artifacts/issue206/diagnose-stock-changed-v2.py\", line 91, in main\n    residual = float(cp.linalg.norm(engine.get_grad(engine.mo_coeff, engine.mo_occ)))\n                                    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: get_grad() missing 1 required positional argument: 'fock_ao'\nsrun: error: node3: task 0: Exited with exit code 1\n"
+}

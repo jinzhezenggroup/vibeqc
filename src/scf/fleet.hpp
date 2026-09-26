@@ -1,0 +1,155 @@
+#ifndef VIBEQC_SCF_FLEET_HPP
+#define VIBEQC_SCF_FLEET_HPP
+
+#include <cstddef>
+#include <memory>
+#include <optional>
+#include <vector>
+
+#include "core/types.hpp"
+#include "scf/cuda_batch.hpp"
+#include "scf/cuda_density_fitting.hpp"
+#include "scf/density_fitting.hpp"
+#include "scf/initial_guess/overlap.hpp"
+#include "scf/types.hpp"
+#include "scf/warm_state.hpp"
+
+namespace vibeqc::scf {
+
+struct CudaRhfBucketPlan;
+class PreparedFockPlan;
+
+struct FleetItemResult {
+  vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
+  ScfResult scf;
+  std::size_t bucket_id{};
+  bool warm_start_used{};
+  bool warm_start_fallback{};
+  vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
+};
+
+/**
+ * Persistent ragged-system execution plan.
+ *
+ * Systems retain independent dimensions and SCF state. The execution order is
+ * bucketed by compatible workload, while result indexing always matches the
+ * caller's original system order. A plan is intentionally not concurrently
+ * re-entrant because warm-start state is mutable.
+ */
+class FleetPlan {
+ public:
+  FleetPlan(std::vector<core::System> systems, vibeqc_method method, ScfOptions options,
+            bool warm_starts_enabled, bool cuda_fock_enabled, bool shell_class_profiling_enabled,
+            bool inactive_eigensolver_profiling_enabled, int device_id,
+            std::optional<core::System> auxiliary_template = std::nullopt,
+            bool cuda_density_fitting_enabled = false);
+  ~FleetPlan();
+
+  [[nodiscard]] std::size_t size() const noexcept { return systems_.size(); }
+
+  std::vector<FleetItemResult> execute(
+      const std::vector<std::optional<std::vector<double>>>& coordinates,
+      bool compute_forces = true);
+
+  void clear_warm_starts();
+
+  [[nodiscard]] std::size_t warm_density_size(std::size_t index) const;
+  [[nodiscard]] const std::optional<HfWarmState>& warm_state(std::size_t index) const;
+  /** Validate every supplied seed before changing any retained state. Missing
+   * entries preserve neighbors. Imported densities always re-enter target SCF. */
+  void restore_warm_states(std::vector<std::optional<HfWarmState>> states);
+
+  /**
+   * Control whether successful executions replace the retained warm guesses.
+   *
+   * Disabling updates freezes the current per-system density snapshots. This
+   * is useful for reproducible A/B measurements where every replay must start
+   * from the same dm0; it does not enable warm starts or manufacture missing
+   * snapshots.
+   */
+  void set_warm_start_updates(bool enabled) noexcept;
+
+  /** Return the final-density profile from the most recent CUDA execution. */
+  [[nodiscard]] const std::optional<CudaRhfShellClassProfile>& last_shell_class_profile()
+      const noexcept {
+    return last_shell_class_profile_;
+  }
+
+  /** Return PPPS queue statistics from the most recent profiled execution. */
+  [[nodiscard]] const std::optional<CudaPppsQueueProfile>& last_ppps_queue_profile()
+      const noexcept {
+    return last_ppps_queue_profile_;
+  }
+
+  /** Return one setup-time eigensolver decision for every executed bucket. */
+  [[nodiscard]] const std::vector<CudaEigensolverDiagnostic>& last_eigensolver_diagnostics()
+      const noexcept {
+    return last_eigensolver_diagnostics_;
+  }
+
+  /** Return CUDA DF metric conditioning/allocation records from the last run. */
+  [[nodiscard]] const std::vector<CudaDensityFittingMetricDiagnostic>&
+  last_density_fitting_metric_diagnostics() const noexcept {
+    return last_density_fitting_metric_diagnostics_;
+  }
+
+  /** Return device-timed iteration records from the most recent execution. */
+  [[nodiscard]] const CudaInactiveEigensolverProfile& last_inactive_eigensolver_profile()
+      const noexcept {
+    return last_inactive_eigensolver_profile_;
+  }
+
+ private:
+  std::vector<core::System> systems_;
+  vibeqc_method method_{VIBEQC_METHOD_RHF};
+  ScfOptions options_;
+  bool warm_starts_enabled_{};
+  bool warm_start_updates_enabled_{true};
+  bool cuda_fock_enabled_{};
+  bool cuda_density_fitting_enabled_{};
+  bool shell_class_profiling_enabled_{};
+  bool inactive_eigensolver_profiling_enabled_{};
+  int device_id_{};
+  std::optional<core::System> auxiliary_template_;
+  std::vector<std::size_t> execution_order_;
+  std::vector<std::size_t> bucket_ids_;
+  std::vector<std::optional<HfWarmState>> warm_densities_;
+  // Compact per-source overlap state survives a neighboring item's failure
+  // or a value/force provider replan. This owner fixes basis and device;
+  // each cache independently checks the actual geometry and overlap values.
+  std::vector<initial_guess::OverlapOrthogonalizer> cuda_df_orthogonalizers_;
+  // Independent CUDA sources are item-owned: a bad neighbor or a changed
+  // ragged bucket population cannot reinterpret another item's source slot.
+  std::vector<std::unique_ptr<PreparedFockPlan>> independent_fock_plans_;
+  void retain_warm_state(std::size_t index, const core::System& system, const ScfResult& result);
+  std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
+  std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
+  std::vector<CudaEigensolverDiagnostic> last_eigensolver_diagnostics_;
+  std::vector<CudaDensityFittingMetricDiagnostic> last_density_fitting_metric_diagnostics_;
+  CudaInactiveEigensolverProfile last_inactive_eigensolver_profile_;
+  // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
+  // CUDA headers out of this public C++ translation unit; the destructor owns
+  // them through the backend-specific destroy function.
+  std::vector<CudaRhfBucketPlan*> cuda_bucket_plans_;
+  // DF plans retain their CUDA stream, cuBLAS/cuSOLVER handles, and tiled
+  // contraction workspaces across same-coordinate replays. Geometry changes
+  // invalidate only the affected bucket cache; the next execution rebuilds
+  // its geometry-derived tensors into a fresh plan.
+  std::vector<CudaDensityFittingJkPlan*> cuda_density_fitting_plans_;
+  std::vector<std::vector<double>> cuda_density_fitting_positions_;
+  // Number of successfully prepared systems represented by each cached plan.
+  // This guards against reusing a full-bucket plan after item-level preparation
+  // failure temporarily shrinks the runnable subset.
+  std::vector<std::size_t> cuda_density_fitting_batch_sizes_;
+  // Prepared host-side DF tensors are retained with the geometry snapshot so
+  // warm replays can skip integral/derivative regeneration. The bucket runner
+  // temporarily moves these records out while executing and restores them on
+  // every return path, avoiding an additional full copy.
+  std::vector<std::vector<std::optional<DensityFittingScfData>>> cuda_density_fitting_data_;
+  // Re-publish setup diagnostics on warm calls without rebuilding the plan.
+  std::vector<std::vector<CudaDensityFittingMetricDiagnostic>> cuda_density_fitting_diagnostics_;
+};
+
+}  // namespace vibeqc::scf
+
+#endif

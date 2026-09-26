@@ -1,0 +1,14 @@
+{
+  "path": "src/scf/cuda/df_jk_kernels.cu",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+  "regions": [
+    {
+      "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
+      "stop": "void launch_sum_spin_density_kernel",
+      "role": "scientific",
+      "reason": "Existing streamed RI J/K equations and reductions, preserved in their dedicated owner."
+    }
+  ]
+}

@@ -1,0 +1,2677 @@
+{
+  "baseline_revision": "3da58410bb02a903ea6341a7caac0afc9314355b",
+  "pre_fix_candidate_revision": "6fc010e2adbb2d132b45c869eaf2355d284faf4b",
+  "hardware": "AMD EPYC 7K62 (Zen 2), GCC 11.4.0",
+  "assembly": {
+    "baseline_function_address": "0xab3c0",
+    "pre_fix_function_address": "0xb3d30",
+    "function_bytes": 696,
+    "observation": "build_exchange has identical instructions except relocated external targets/constants; function alignment differs by 16 bytes modulo 32."
+  },
+  "experiments": [
+    {
+      "name": "dispatch-diagnosis.json",
+      "slurm_job_id": "9133",
+      "records": [
+        {
+          "cycle": 0,
+          "name": "baseline-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.0816799999999999e-07,
+                1.08208e-07,
+                1.08148e-07,
+                1.08128e-07,
+                1.0806600000000001e-07,
+                1.07928e-07,
+                1.08128e-07,
+                1.07926e-07,
+                1.07908e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.9182800000000002e-07,
+                1.92168e-07,
+                1.9212799999999999e-07,
+                1.9864e-07,
+                1.91808e-07,
+                1.91446e-07,
+                1.91446e-07,
+                1.9144799999999998e-07,
+                1.91446e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0025278e-05,
+                6.0018908000000004e-05,
+                6.000532e-05,
+                6.0038824e-05,
+                6.0019228e-05,
+                6.0094571999999996e-05,
+                5.9990832e-05,
+                6.0023096e-05,
+                5.9970754e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.1981766e-05,
+                8.200436799999999e-05,
+                8.19893e-05,
+                8.203102e-05,
+                8.2201808e-05,
+                8.214916599999999e-05,
+                8.2764446e-05,
+                8.227107999999999e-05,
+                8.254959400000001e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 0,
+          "name": "head-raw",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.60308e-07,
+                1.59526e-07,
+                1.60128e-07,
+                1.59586e-07,
+                1.6706e-07,
+                1.5715999999999999e-07,
+                1.57122e-07,
+                1.5714000000000002e-07,
+                1.5714000000000002e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.9750000000000001e-07,
+                1.99924e-07,
+                1.99902e-07,
+                1.99924e-07,
+                1.99884e-07,
+                2.10544e-07,
+                2.0379e-07,
+                1.9986400000000002e-07,
+                1.99902e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0185346e-05,
+                6.0577758e-05,
+                6.015671e-05,
+                6.0169294e-05,
+                6.0172339999999996e-05,
+                6.0169955999999994e-05,
+                6.030724e-05,
+                6.0183962e-05,
+                6.0347758000000004e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107174736,
+                0.000107428924,
+                0.00010749186400000001,
+                0.000107326508,
+                0.000107175578,
+                0.00010687915,
+                0.000106815268,
+                0.000106941108,
+                0.00010694956399999999
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 0,
+          "name": "head-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.4498999999999997e-07,
+                2.43888e-07,
+                2.43748e-07,
+                2.44028e-07,
+                2.43746e-07,
+                2.50238e-07,
+                2.43766e-07,
+                2.4372799999999997e-07,
+                2.4372799999999997e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.37216e-07,
+                2.36312e-07,
+                2.36292e-07,
+                2.35512e-07,
+                2.3474999999999998e-07,
+                2.39278e-07,
+                2.35052e-07,
+                2.3503e-07,
+                2.3505e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0530805999999996e-05,
+                6.0613586e-05,
+                6.0517561999999994e-05,
+                6.057417e-05,
+                6.0586394000000003e-05,
+                6.0562709999999996e-05,
+                6.0537258e-05,
+                6.0566274000000005e-05,
+                6.0549484e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107806748,
+                0.00010735267800000001,
+                0.000107270558,
+                0.000107345944,
+                0.000107254988,
+                0.00010722727599999999,
+                0.000107105322,
+                0.00010713969,
+                0.000107153856
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "name": "head-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.40862e-07,
+                2.42264e-07,
+                2.42684e-07,
+                2.51784e-07,
+                2.4054e-07,
+                2.4056e-07,
+                2.40522e-07,
+                2.4054e-07,
+                2.40542e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.30642e-07,
+                2.3038e-07,
+                2.39398e-07,
+                2.3451e-07,
+                2.33988e-07,
+                2.3416999999999999e-07,
+                2.3412800000000002e-07,
+                2.3415e-07,
+                2.34148e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.072484e-05,
+                6.0672418e-05,
+                6.0733757999999996e-05,
+                6.0776096000000005e-05,
+                6.070951e-05,
+                6.0674604e-05,
+                6.0672058e-05,
+                6.0685242e-05,
+                6.0678732e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107181928,
+                0.000107466354,
+                0.0001073651,
+                0.000107261702,
+                0.000107273726,
+                0.00010715513799999999,
+                0.00010720312999999999,
+                0.000107148744,
+                0.000107155778
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "name": "head-raw",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.57682e-07,
+                1.58684e-07,
+                1.5860399999999998e-07,
+                1.58744e-07,
+                1.57402e-07,
+                1.5814400000000002e-07,
+                1.5882400000000002e-07,
+                1.58124e-07,
+                1.59726e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.18058e-07,
+                2.12328e-07,
+                2.09962e-07,
+                2.10384e-07,
+                2.12006e-07,
+                2.11586e-07,
+                2.12186e-07,
+                2.12146e-07,
+                2.1064400000000002e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0425846e-05,
+                6.064154e-05,
+                6.0400558e-05,
+                6.0369378e-05,
+                6.0329581999999997e-05,
+                6.0332646e-05,
+                6.0392724e-05,
+                6.0317638e-05,
+                6.0324752000000004e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000106904298,
+                0.000106991062,
+                0.00010696313000000001,
+                0.00010694084600000001,
+                0.00010696317,
+                0.000106941548,
+                0.000106912092,
+                0.000106892894,
+                0.00010690942600000001
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "name": "baseline-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.08488e-07,
+                1.08188e-07,
+                1.08148e-07,
+                1.08206e-07,
+                1.08148e-07,
+                1.08148e-07,
+                1.08148e-07,
+                1.0814600000000001e-07,
+                1.08148e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.8848199999999998e-07,
+                1.88262e-07,
+                1.94752e-07,
+                1.8822e-07,
+                1.8822e-07,
+                1.8822e-07,
+                1.8886200000000001e-07,
+                1.8822199999999998e-07,
+                1.8822e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0683058e-05,
+                6.0461014e-05,
+                6.0414484e-05,
+                6.0381542000000006e-05,
+                6.039142e-05,
+                6.0435784e-05,
+                6.0395548e-05,
+                6.0481492e-05,
+                6.0465642e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.1981884e-05,
+                8.1904678e-05,
+                8.157859000000001e-05,
+                8.184917e-05,
+                8.159664599999999e-05,
+                8.1568872e-05,
+                8.168872200000001e-05,
+                8.1586326e-05,
+                8.174995999999999e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "name": "baseline-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.1121399999999999e-07,
+                1.10914e-07,
+                1.10872e-07,
+                1.1095399999999999e-07,
+                1.10852e-07,
+                1.10872e-07,
+                1.10872e-07,
+                1.10892e-07,
+                1.10894e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.8956400000000002e-07,
+                1.9835999999999998e-07,
+                1.92168e-07,
+                1.90304e-07,
+                1.90326e-07,
+                1.90464e-07,
+                1.90524e-07,
+                1.90626e-07,
+                1.90506e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                5.9966946e-05,
+                6.0138074e-05,
+                6.152819799999999e-05,
+                6.2419888e-05,
+                5.994849e-05,
+                5.9875471999999996e-05,
+                5.995905e-05,
+                5.992188e-05,
+                5.9903383999999996e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.191131e-05,
+                8.2087666e-05,
+                8.2238256e-05,
+                8.2348526e-05,
+                8.2040598e-05,
+                8.2066406e-05,
+                8.2415496e-05,
+                8.2344338e-05,
+                8.277192e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "name": "head-raw",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.57702e-07,
+                1.57682e-07,
+                1.5694e-07,
+                1.5774199999999998e-07,
+                1.57462e-07,
+                1.57002e-07,
+                1.57422e-07,
+                1.5694e-07,
+                1.57442e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.0625600000000002e-07,
+                2.09862e-07,
+                2.06636e-07,
+                2.06656e-07,
+                2.07178e-07,
+                2.0719600000000002e-07,
+                2.0792e-07,
+                2.07938e-07,
+                2.07898e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0422438e-05,
+                6.047608e-05,
+                6.0420774e-05,
+                6.0416968e-05,
+                6.0519804e-05,
+                6.0453236e-05,
+                6.0458688e-05,
+                6.0472012e-05,
+                6.041246e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.00010713447800000001,
+                0.000107279834,
+                0.000107040976,
+                0.000106928022,
+                0.00010689672,
+                0.000107018254,
+                0.000106903734,
+                0.000106920928,
+                0.000107018774
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "name": "head-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.41704e-07,
+                2.41364e-07,
+                2.41764e-07,
+                2.48656e-07,
+                2.40402e-07,
+                2.404e-07,
+                2.40402e-07,
+                2.4036e-07,
+                2.40382e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.25652e-07,
+                2.25414e-07,
+                2.2958e-07,
+                2.25472e-07,
+                2.2535200000000002e-07,
+                2.2597399999999998e-07,
+                2.2535200000000002e-07,
+                2.25332e-07,
+                2.25332e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0467906e-05,
+                6.0397470000000004e-05,
+                6.0404746e-05,
+                6.0437688000000006e-05,
+                6.0372142e-05,
+                6.0411938e-05,
+                6.0356232000000004e-05,
+                6.0379616e-05,
+                6.0363164e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107250278,
+                0.000107326504,
+                0.000107134958,
+                0.000107165976,
+                0.000107229538,
+                0.000107253924,
+                0.00010737361600000001,
+                0.00010709013,
+                0.0001070837
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "name": "head-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.40862e-07,
+                2.41544e-07,
+                2.41002e-07,
+                2.3585199999999999e-07,
+                2.4649200000000003e-07,
+                2.4054e-07,
+                2.40542e-07,
+                2.5056e-07,
+                2.40522e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.61822e-07,
+                2.61802e-07,
+                2.61802e-07,
+                2.6396600000000005e-07,
+                2.5903599999999996e-07,
+                2.59038e-07,
+                2.5903599999999996e-07,
+                2.5903599999999996e-07,
+                2.59038e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0439632e-05,
+                6.0350479999999996e-05,
+                6.0461892e-05,
+                6.0366992e-05,
+                6.0409132e-05,
+                6.0414102e-05,
+                6.0377130000000004e-05,
+                6.0353688000000005e-05,
+                6.039208e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107309572,
+                0.00010722292399999999,
+                0.000107333256,
+                0.00010713764200000001,
+                0.000107290394,
+                0.000107160006,
+                0.000107122552,
+                0.000107193128,
+                0.00010715936399999999
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "name": "head-raw",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.55558e-07,
+                1.55318e-07,
+                1.5527800000000002e-07,
+                1.558e-07,
+                1.55198e-07,
+                1.56842e-07,
+                1.572e-07,
+                1.57122e-07,
+                1.57202e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.1347e-07,
+                2.20162e-07,
+                2.1487200000000002e-07,
+                2.1296999999999998e-07,
+                2.13248e-07,
+                2.1278799999999999e-07,
+                2.14892e-07,
+                2.14892e-07,
+                2.14852e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0201916e-05,
+                6.0044133999999996e-05,
+                6.0076756e-05,
+                6.0075212e-05,
+                6.0046075999999995e-05,
+                6.0058340000000003e-05,
+                6.0036517999999996e-05,
+                6.0045616000000004e-05,
+                6.0072466e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107088528,
+                0.000106831556,
+                0.000107047628,
+                0.000106967958,
+                0.000106871992,
+                0.000106903292,
+                0.00010677174000000001,
+                0.000106809112,
+                0.000106851092
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "name": "baseline-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.06966e-07,
+                1.0668399999999999e-07,
+                1.06626e-07,
+                1.0668399999999999e-07,
+                1.06624e-07,
+                1.06624e-07,
+                1.06624e-07,
+                1.16444e-07,
+                1.06644e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.93792e-07,
+                1.9397199999999998e-07,
+                1.9186799999999998e-07,
+                1.9226799999999998e-07,
+                1.9227000000000001e-07,
+                1.91968e-07,
+                1.91948e-07,
+                1.91948e-07,
+                1.91968e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                5.9981272000000005e-05,
+                6.0070543999999994e-05,
+                5.9952256000000005e-05,
+                5.9935224e-05,
+                6.000644e-05,
+                5.9981212e-05,
+                6.0050024e-05,
+                6.0005278e-05,
+                6.0311384e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.206363799999999e-05,
+                8.2542738e-05,
+                8.2584998e-05,
+                8.2635736e-05,
+                8.2513102e-05,
+                8.2511918e-05,
+                8.2459196e-05,
+                8.238838199999999e-05,
+                8.2396238e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 4,
+          "name": "baseline-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.2013e-07,
+                1.07886e-07,
+                1.07866e-07,
+                1.0774799999999999e-07,
+                1.07686e-07,
+                1.07706e-07,
+                1.07688e-07,
+                1.07686e-07,
+                1.07686e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.90044e-07,
+                1.89884e-07,
+                1.89884e-07,
+                1.89844e-07,
+                1.89844e-07,
+                1.95294e-07,
+                1.89824e-07,
+                1.89844e-07,
+                1.89824e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0060724000000005e-05,
+                6.0004738e-05,
+                6.008513e-05,
+                6.0014234e-05,
+                6.0006240000000004e-05,
+                5.9990048e-05,
+                6.000129e-05,
+                6.0015256e-05,
+                6.0033192e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.202388200000001e-05,
+                8.2282658e-05,
+                8.2209118e-05,
+                8.2351832e-05,
+                8.2431806e-05,
+                8.260173e-05,
+                8.3051552e-05,
+                8.258608e-05,
+                8.256554e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 4,
+          "name": "head-raw",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.5902599999999998e-07,
+                1.58224e-07,
+                1.58204e-07,
+                1.5908400000000002e-07,
+                1.58384e-07,
+                1.58504e-07,
+                1.58204e-07,
+                1.5840400000000002e-07,
+                1.5818399999999998e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.1555200000000002e-07,
+                2.1403000000000002e-07,
+                2.1373e-07,
+                2.1385e-07,
+                2.1371e-07,
+                2.1385e-07,
+                2.1565399999999998e-07,
+                2.15052e-07,
+                2.15774e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0241732e-05,
+                6.0219348e-05,
+                6.0255698e-05,
+                6.0196384e-05,
+                6.0211072e-05,
+                6.0150716e-05,
+                6.017328e-05,
+                6.0222694e-05,
+                6.0200572e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107044902,
+                0.000107064,
+                0.000106985248,
+                0.000106846022,
+                0.00010693777799999999,
+                0.000106805524,
+                0.00010699124,
+                0.000106951282,
+                0.000106981322
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 4,
+          "name": "head-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.4242400000000003e-07,
+                2.5130200000000004e-07,
+                2.42224e-07,
+                2.4252400000000003e-07,
+                2.42204e-07,
+                2.42224e-07,
+                2.42224e-07,
+                2.42204e-07,
+                2.42204e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.32966e-07,
+                2.24772e-07,
+                2.2493200000000002e-07,
+                2.2491000000000002e-07,
+                2.2426999999999998e-07,
+                2.2429e-07,
+                2.24732e-07,
+                2.2426999999999998e-07,
+                2.2473e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0629534e-05,
+                6.0542227999999994e-05,
+                6.0472572000000004e-05,
+                6.0535012e-05,
+                6.0526436e-05,
+                6.0511346000000004e-05,
+                6.051247e-05,
+                6.0499946e-05,
+                6.0509044e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107277368,
+                0.000107097764,
+                0.000107074918,
+                0.000107066944,
+                0.000107027248,
+                0.000107201322,
+                0.000107091852,
+                0.000107055342,
+                0.00010706510199999999
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 5,
+          "name": "head-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.51002e-07,
+                2.41424e-07,
+                2.41462e-07,
+                2.41522e-07,
+                2.41444e-07,
+                2.4737400000000003e-07,
+                2.46172e-07,
+                2.4144199999999997e-07,
+                2.4428999999999997e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.32606e-07,
+                2.32666e-07,
+                2.32646e-07,
+                2.3613400000000002e-07,
+                2.35952e-07,
+                2.3597200000000002e-07,
+                2.35952e-07,
+                2.397e-07,
+                2.35952e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0887287999999996e-05,
+                6.0892558e-05,
+                6.0923678e-05,
+                6.0921132e-05,
+                6.0894379999999996e-05,
+                6.0953934e-05,
+                6.0936282e-05,
+                6.0941974e-05,
+                6.0890554e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107314338,
+                0.000107338144,
+                0.000107260414,
+                0.000107422466,
+                0.000107309428,
+                0.000107338564,
+                0.000107227512,
+                0.00010731840600000001,
+                0.000107189278
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 5,
+          "name": "head-raw",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.64876e-07,
+                1.64596e-07,
+                1.71628e-07,
+                1.75718e-07,
+                1.63132e-07,
+                1.6325199999999999e-07,
+                1.6321400000000002e-07,
+                1.63192e-07,
+                1.63234e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.04772e-07,
+                2.04612e-07,
+                2.0461399999999998e-07,
+                2.0445199999999998e-07,
+                2.0990200000000002e-07,
+                2.06536e-07,
+                2.0641600000000001e-07,
+                2.06396e-07,
+                2.06376e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.124246800000001e-05,
+                6.138973200000001e-05,
+                6.109618800000001e-05,
+                6.0753432e-05,
+                6.0463956e-05,
+                6.0450892e-05,
+                6.0456962000000003e-05,
+                6.0505035999999996e-05,
+                6.0486178000000004e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000107235868,
+                0.00010702772800000001,
+                0.00010687758199999999,
+                0.00010687747999999999,
+                0.000106754906,
+                0.000106863114,
+                0.00010683149200000001,
+                0.000106860828,
+                0.000106838806
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 5,
+          "name": "baseline-cpu",
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.11152e-07,
+                1.10912e-07,
+                1.11474e-07,
+                1.2007e-07,
+                1.12396e-07,
+                1.12396e-07,
+                1.11494e-07,
+                1.12376e-07,
+                1.12394e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.9277000000000002e-07,
+                1.9170799999999999e-07,
+                1.9182800000000002e-07,
+                1.92108e-07,
+                1.92108e-07,
+                1.9211e-07,
+                1.95754e-07,
+                1.91348e-07,
+                1.91066e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0387288e-05,
+                6.0360216e-05,
+                6.035583e-05,
+                6.0381658e-05,
+                6.0388972e-05,
+                6.0322082e-05,
+                6.0336392000000005e-05,
+                6.0334628e-05,
+                6.0413018e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.204191600000001e-05,
+                8.2043178e-05,
+                8.2220398e-05,
+                8.2590408e-05,
+                8.2338744e-05,
+                8.2475126e-05,
+                8.250885e-05,
+                8.2705788e-05,
+                8.2588162e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dispatch-alignment-diagnosis.json",
+      "slurm_job_id": "9135",
+      "records": [
+        {
+          "cycle": 0,
+          "alignment": 0,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.58844e-07,
+                1.5924600000000002e-07,
+                1.5860399999999998e-07,
+                1.58684e-07,
+                1.5860399999999998e-07,
+                1.58666e-07,
+                1.5858399999999999e-07,
+                1.5860399999999998e-07,
+                1.5860399999999998e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.34048e-07,
+                2.4068e-07,
+                2.3387000000000002e-07,
+                2.33606e-07,
+                2.33446e-07,
+                2.33908e-07,
+                2.3386800000000001e-07,
+                2.34148e-07,
+                2.3386800000000001e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0521212e-05,
+                6.0431180000000004e-05,
+                6.039477e-05,
+                6.0403466000000006e-05,
+                6.0402806e-05,
+                6.0410640000000003e-05,
+                6.0407234e-05,
+                6.0480776e-05,
+                6.0411542e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.00010724444399999999,
+                0.00010734654000000001,
+                0.00010720076200000001,
+                0.00010714040399999999,
+                0.00010710047000000001,
+                0.000107041376,
+                0.000107038148,
+                0.00010702127799999999,
+                0.000107157838
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 0,
+          "alignment": 16,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.5621999999999998e-07,
+                1.55998e-07,
+                1.55978e-07,
+                1.5605999999999998e-07,
+                1.55978e-07,
+                1.56038e-07,
+                1.5598e-07,
+                1.5595800000000003e-07,
+                1.5598e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.2280600000000002e-07,
+                2.27878e-07,
+                2.22766e-07,
+                2.22788e-07,
+                2.22786e-07,
+                2.22786e-07,
+                2.22788e-07,
+                2.22766e-07,
+                2.22788e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0130644e-05,
+                6.0140201999999996e-05,
+                6.0178096e-05,
+                6.0145332e-05,
+                6.0364392000000006e-05,
+                6.0505442e-05,
+                6.0518166e-05,
+                6.0510231999999996e-05,
+                6.0195388000000004e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000109924118,
+                0.00010993991,
+                0.000108229632,
+                0.00010791156200000001,
+                0.00010740402999999999,
+                0.000107438596,
+                0.00010754033,
+                0.00010751788800000001,
+                0.00010751862800000001
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 0,
+          "alignment": 32,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.58724e-07,
+                1.58324e-07,
+                1.5814200000000001e-07,
+                1.58362e-07,
+                1.58304e-07,
+                1.66298e-07,
+                1.58464e-07,
+                1.5844399999999999e-07,
+                1.5844399999999999e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.96616e-07,
+                1.96878e-07,
+                1.96576e-07,
+                1.96336e-07,
+                1.96296e-07,
+                1.9647600000000002e-07,
+                2.0281e-07,
+                1.9689600000000002e-07,
+                1.9689800000000002e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.064096e-05,
+                6.0569704e-05,
+                6.0562312e-05,
+                6.0542914000000004e-05,
+                6.0586176e-05,
+                6.0557122e-05,
+                6.0549746e-05,
+                6.0552112e-05,
+                6.0576518e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.2054614e-05,
+                8.2116354e-05,
+                8.202621999999999e-05,
+                8.1990412e-05,
+                8.197939e-05,
+                8.1980914e-05,
+                8.207270999999999e-05,
+                8.1967968e-05,
+                8.1959874e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 0,
+          "alignment": 64,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.58282e-07,
+                1.58462e-07,
+                1.57702e-07,
+                1.58082e-07,
+                1.5840400000000002e-07,
+                1.58484e-07,
+                1.574e-07,
+                1.57704e-07,
+                1.57682e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.10984e-07,
+                2.1916e-07,
+                2.14792e-07,
+                2.1477e-07,
+                2.1026199999999998e-07,
+                2.14992e-07,
+                2.14952e-07,
+                2.0984199999999998e-07,
+                2.0880000000000002e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0401524e-05,
+                6.0414365999999996e-05,
+                6.0375232e-05,
+                6.057237e-05,
+                6.0372728e-05,
+                6.0314696e-05,
+                6.0345094e-05,
+                6.039441e-05,
+                6.0362086000000004e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.1403848e-05,
+                8.140443e-05,
+                8.1517084e-05,
+                8.1705406e-05,
+                8.1805698e-05,
+                8.1726244e-05,
+                8.1740252e-05,
+                8.172568400000001e-05,
+                8.176333600000001e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "alignment": 64,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.58084e-07,
+                1.565e-07,
+                1.5604e-07,
+                1.5630000000000002e-07,
+                1.55878e-07,
+                1.5624e-07,
+                1.56078e-07,
+                1.5608e-07,
+                1.56078e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.2172399999999998e-07,
+                2.12726e-07,
+                2.13008e-07,
+                2.1375e-07,
+                2.1344800000000002e-07,
+                2.1329000000000003e-07,
+                2.1389e-07,
+                2.13228e-07,
+                2.1354999999999998e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0173466e-05,
+                6.014447e-05,
+                6.0094634e-05,
+                6.0062131999999996e-05,
+                6.010762e-05,
+                6.0088042e-05,
+                6.0086498e-05,
+                6.0096577999999996e-05,
+                6.0086319999999996e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.14208e-05,
+                8.132722e-05,
+                8.1284298e-05,
+                8.1265522e-05,
+                8.1266544e-05,
+                8.1299488e-05,
+                8.207495400000001e-05,
+                8.195949199999999e-05,
+                8.1821086e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "alignment": 32,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.59486e-07,
+                1.5900399999999999e-07,
+                1.58904e-07,
+                1.59286e-07,
+                1.58904e-07,
+                1.58946e-07,
+                1.58904e-07,
+                1.58904e-07,
+                1.58906e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.9773800000000002e-07,
+                1.9808e-07,
+                1.99262e-07,
+                1.99262e-07,
+                1.99302e-07,
+                1.99262e-07,
+                1.99262e-07,
+                1.9986400000000002e-07,
+                1.99242e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0204726e-05,
+                6.023849e-05,
+                6.023891e-05,
+                6.0224022000000005e-05,
+                6.022312e-05,
+                6.0189715999999994e-05,
+                6.0223562e-05,
+                6.0260832e-05,
+                6.025971e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.1814836e-05,
+                8.1899736e-05,
+                8.1861884e-05,
+                8.1870822e-05,
+                8.1855292e-05,
+                8.184319e-05,
+                8.1900178e-05,
+                8.186791599999999e-05,
+                8.1839522e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "alignment": 16,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.58104e-07,
+                1.58464e-07,
+                1.6712e-07,
+                1.5898600000000002e-07,
+                1.58904e-07,
+                1.59846e-07,
+                1.5886399999999999e-07,
+                1.58906e-07,
+                1.58844e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.17798e-07,
+                2.1773800000000001e-07,
+                2.17636e-07,
+                2.21744e-07,
+                2.17496e-07,
+                2.17476e-07,
+                2.17476e-07,
+                2.17498e-07,
+                2.17476e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0153706e-05,
+                6.0183324e-05,
+                6.020236e-05,
+                6.0141204e-05,
+                6.0132226e-05,
+                6.0133088e-05,
+                6.0070607999999996e-05,
+                6.0161042e-05,
+                6.024967e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.00010986238,
+                0.00011064924600000001,
+                0.000111485388,
+                0.000111700382,
+                0.000111810692,
+                0.000111878282,
+                0.000111250478,
+                0.000112060852,
+                0.00011190541399999999
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 1,
+          "alignment": 0,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.5722e-07,
+                1.57e-07,
+                1.55878e-07,
+                1.57082e-07,
+                1.5698e-07,
+                1.5654e-07,
+                1.5647999999999998e-07,
+                1.5628e-07,
+                1.5628e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.04934e-07,
+                2.43226e-07,
+                2.0293e-07,
+                2.02948e-07,
+                2.0290999999999998e-07,
+                2.02928e-07,
+                2.0290999999999998e-07,
+                2.02888e-07,
+                2.0289e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0265962e-05,
+                6.0183464e-05,
+                6.0167492e-05,
+                6.012359e-05,
+                6.0109744e-05,
+                6.0088262e-05,
+                6.0122707999999995e-05,
+                6.0131464e-05,
+                6.0161682e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.00010699835,
+                0.000107144272,
+                0.000107120966,
+                0.00010689767799999999,
+                0.000106922846,
+                0.000107057404,
+                0.00010702925000000001,
+                0.000107183746,
+                0.000107067624
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "alignment": 0,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.5856400000000002e-07,
+                1.58364e-07,
+                1.58304e-07,
+                1.6672e-07,
+                1.58284e-07,
+                1.57462e-07,
+                1.5718199999999998e-07,
+                1.5718e-07,
+                1.5718199999999998e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.05354e-07,
+                2.0503399999999998e-07,
+                2.05092e-07,
+                2.05074e-07,
+                2.05052e-07,
+                2.0896e-07,
+                2.0501199999999998e-07,
+                2.05054e-07,
+                2.0613399999999998e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.04631e-05,
+                6.0474944e-05,
+                6.0450014000000004e-05,
+                6.05259e-05,
+                6.044857e-05,
+                6.0399216e-05,
+                6.0514278e-05,
+                6.0460716e-05,
+                6.0422742e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.00010694112,
+                0.000106912746,
+                0.00010698183999999999,
+                0.00010691936000000001,
+                0.000106811852,
+                0.000106997948,
+                0.000106823296,
+                0.000106855276,
+                0.000106908438
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "alignment": 16,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.59626e-07,
+                1.5934599999999998e-07,
+                1.60728e-07,
+                1.59386e-07,
+                1.59306e-07,
+                1.6609799999999998e-07,
+                1.58904e-07,
+                1.59206e-07,
+                1.59204e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.2364800000000002e-07,
+                2.23508e-07,
+                2.2367000000000002e-07,
+                2.23628e-07,
+                2.2364800000000002e-07,
+                2.2400799999999998e-07,
+                2.27796e-07,
+                2.2400799999999998e-07,
+                2.2400999999999998e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0172462e-05,
+                6.0121705999999994e-05,
+                6.0145672e-05,
+                6.008319e-05,
+                6.0126894e-05,
+                6.014583e-05,
+                6.0073274e-05,
+                6.0102728e-05,
+                6.0167294000000006e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000109697844,
+                0.000109239424,
+                0.000111323018,
+                0.00011038041199999999,
+                0.000109952752,
+                0.000109817894,
+                0.00010935127799999999,
+                0.000109003412,
+                0.00010850441600000001
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "alignment": 32,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.60928e-07,
+                1.68342e-07,
+                1.58122e-07,
+                1.5818399999999998e-07,
+                1.58084e-07,
+                1.5774199999999998e-07,
+                1.5840400000000002e-07,
+                1.5840400000000002e-07,
+                1.58384e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.988e-07,
+                1.96878e-07,
+                1.9683799999999998e-07,
+                1.96836e-07,
+                1.9231e-07,
+                1.8561599999999999e-07,
+                1.84432e-07,
+                1.86038e-07,
+                1.8603599999999999e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0078462e-05,
+                6.0048144e-05,
+                6.0014539999999995e-05,
+                6.0025742e-05,
+                6.0024178e-05,
+                6.0034058e-05,
+                6.0031934e-05,
+                6.0006843999999996e-05,
+                6.005606e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.1709672e-05,
+                8.180247e-05,
+                8.1810726e-05,
+                8.1778164e-05,
+                8.180277e-05,
+                8.178020799999999e-05,
+                8.1653022e-05,
+                8.190176e-05,
+                8.191747e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "alignment": 64,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.60046e-07,
+                1.59364e-07,
+                1.59364e-07,
+                1.5940600000000002e-07,
+                1.59586e-07,
+                1.59264e-07,
+                1.66158e-07,
+                1.59044e-07,
+                1.59066e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.0745599999999998e-07,
+                2.0866e-07,
+                2.08218e-07,
+                2.07698e-07,
+                2.0767800000000002e-07,
+                2.0890200000000003e-07,
+                2.0795800000000001e-07,
+                2.11124e-07,
+                2.07018e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0711936e-05,
+                6.0579622e-05,
+                6.0501092e-05,
+                6.0528424e-05,
+                6.0534576e-05,
+                6.0520390000000003e-05,
+                6.0532772e-05,
+                6.0502976e-05,
+                6.0512554e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.1129258e-05,
+                8.179792e-05,
+                8.1931176e-05,
+                8.1590966e-05,
+                8.151267399999999e-05,
+                8.1571086e-05,
+                8.164046e-05,
+                8.146231600000001e-05,
+                8.1694702e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "alignment": 64,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.5574e-07,
+                1.69684e-07,
+                1.5543800000000002e-07,
+                1.55878e-07,
+                1.55778e-07,
+                1.5547799999999998e-07,
+                1.55618e-07,
+                1.55418e-07,
+                1.55418e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.297e-07,
+                2.1391e-07,
+                2.1435e-07,
+                2.11486e-07,
+                2.11464e-07,
+                2.1210599999999998e-07,
+                2.1206600000000001e-07,
+                2.12186e-07,
+                2.12046e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.014485e-05,
+                6.0128478e-05,
+                6.0165870000000004e-05,
+                6.0176029999999997e-05,
+                6.0118458e-05,
+                6.0092748e-05,
+                6.0112008e-05,
+                6.007824e-05,
+                6.0061707999999996e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.131369200000001e-05,
+                8.1450736e-05,
+                8.1748688e-05,
+                8.1691956e-05,
+                8.1729048e-05,
+                8.191185800000001e-05,
+                8.2169714e-05,
+                8.2192336e-05,
+                8.2015938e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "alignment": 32,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.57762e-07,
+                1.5718199999999998e-07,
+                1.57382e-07,
+                1.57202e-07,
+                1.5638e-07,
+                1.5728000000000002e-07,
+                1.5718e-07,
+                1.63254e-07,
+                1.5718e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.9964399999999998e-07,
+                2.00644e-07,
+                1.99924e-07,
+                1.99722e-07,
+                1.99422e-07,
+                1.99922e-07,
+                1.9806000000000001e-07,
+                2.09862e-07,
+                2.00504e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0694804e-05,
+                6.0570744e-05,
+                6.0455044e-05,
+                6.0480772e-05,
+                6.0498548e-05,
+                6.0449634000000004e-05,
+                6.0544294e-05,
+                6.0508126e-05,
+                6.0514515999999995e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                8.2201474e-05,
+                8.2161176e-05,
+                8.2211812e-05,
+                8.2152278e-05,
+                8.214739e-05,
+                8.2079118e-05,
+                8.213162e-05,
+                8.201880200000001e-05,
+                8.205242799999999e-05
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "alignment": 16,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.5814200000000001e-07,
+                1.5856400000000002e-07,
+                1.59044e-07,
+                1.58022e-07,
+                1.57862e-07,
+                1.59086e-07,
+                1.58202e-07,
+                1.5818399999999998e-07,
+                1.58202e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.25634e-07,
+                2.20062e-07,
+                2.2004199999999998e-07,
+                2.20022e-07,
+                2.1952000000000002e-07,
+                2.20082e-07,
+                2.187e-07,
+                2.18718e-07,
+                2.1872e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0363608e-05,
+                6.0396230000000005e-05,
+                6.0527904e-05,
+                6.061535e-05,
+                6.0442058e-05,
+                6.0412401999999997e-05,
+                6.0365611999999996e-05,
+                6.0629978e-05,
+                6.0355112e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.00010935083600000001,
+                0.00010939907,
+                0.00010913979199999999,
+                0.000109254972,
+                0.000109194778,
+                0.000109302264,
+                0.000109287016,
+                0.000110143274,
+                0.000109235216
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "alignment": 0,
+          "rows": [
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                1.60628e-07,
+                1.6044799999999998e-07,
+                1.60428e-07,
+                1.68002e-07,
+                1.57382e-07,
+                1.55198e-07,
+                1.5688200000000001e-07,
+                1.5688e-07,
+                1.5686000000000002e-07
+              ],
+              "matrix_hash": "0a746df45b8c204c999c34b3678ff7a37e7c9092541b332273b20890975a25c6"
+            },
+            {
+              "nbf": 2,
+              "naux": 4,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                2.3701399999999998e-07,
+                2.3685399999999998e-07,
+                2.36192e-07,
+                2.36152e-07,
+                2.32646e-07,
+                2.0667600000000002e-07,
+                2.07016e-07,
+                2.0667600000000002e-07,
+                2.0697599999999999e-07
+              ],
+              "matrix_hash": "a10a8321b5e5c174f7aaba42a1aac6315a4ed7bf3c94f67c917e4ce8ce4c0e63"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "exact",
+              "repeats_per_sample": 500,
+              "seconds": [
+                6.0767099999999996e-05,
+                6.0653064e-05,
+                6.0667872e-05,
+                6.0670236e-05,
+                6.0629695999999996e-05,
+                6.064154e-05,
+                6.0647412e-05,
+                6.0640778e-05,
+                6.0696564e-05
+              ],
+              "matrix_hash": "977f45eb85cf998786d8a519ebe3e5c3531945a2a702bf3cf9b9ce39cf4c390c"
+            },
+            {
+              "nbf": 16,
+              "naux": 18,
+              "approximation": "density_fitted",
+              "repeats_per_sample": 500,
+              "seconds": [
+                0.000106944146,
+                0.000107184846,
+                0.00010711878,
+                0.000106986206,
+                0.00010713004,
+                0.00010688839799999999,
+                0.00010676051400000001,
+                0.00010694923400000001,
+                0.00010685832000000001
+              ],
+              "matrix_hash": "b0e4aaf4a748bcf8c896cd42578492c074ac01f2d862fa899c51190d4b5f0650"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+set pagination off
+set confirm off
+set breakpoint pending on
+python
+import gdb
+class ErrorMap(gdb.Breakpoint):
+    def __init__(self, label, address):
+        self.label=label
+        super().__init__("*%#x" % address, internal=False)
+    def stop(self):
+        code=int(gdb.parse_and_eval("$edi"))
+        if code:
+            gdb.write("VIBEQC %s error %d\n" % (self.label,code))
+            gdb.execute("bt 12")
+        return False
+class Entry(gdb.Breakpoint):
+    def stop(self):
+        base=int(gdb.parse_and_eval("(void*)&vibeqc_batch_execute"))-658448
+        for label,offset in {'cuda': 5777952, 'solver': 5777984, 'blas': 5778016}.items():
+            ErrorMap(label,base+offset)
+        self.enabled=False
+        return False
+Entry("vibeqc_batch_execute")
+end
+run

@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/grid_task_view.cuh",
+  "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "ao_grid"
+}

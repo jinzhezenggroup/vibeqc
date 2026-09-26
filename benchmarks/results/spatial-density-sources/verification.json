@@ -1,0 +1,632 @@
+{
+  "measured_revision": "4d23418a8af4d8363c41b10b300ecfc4208919e8",
+  "cpu": {
+    "passed": 108,
+    "seconds": 10.14,
+    "log": {
+      "transient_path": ".artifacts/cpu-tests.log",
+      "sha256": "168b99291307119aebd80b47f642874c84b3f57c3d8ead823b2a22ad763525ef",
+      "bytes": 181
+    }
+  },
+  "gpu": {
+    "passed": 152,
+    "seconds": 8.65,
+    "log": {
+      "transient_path": ".artifacts/gpu-final.log",
+      "sha256": "ea177807566ad62f8de9418281cc89676abf70c7b277e921af052a85cea1ebc0",
+      "bytes": 260
+    }
+  },
+  "memcheck": {
+    "passed": 40,
+    "seconds": 11.36,
+    "log": {
+      "transient_path": ".artifacts/memcheck.log",
+      "sha256": "58143e14db35d9589d71670a832d17aac8804d70474907087f650bc17e0c9530",
+      "bytes": 162
+    },
+    "reported_errors": 0
+  },
+  "sanitizer_version": "NVIDIA (R) Compute Sanitizer\nCopyright (c) 2020-2025 NVIDIA Corporation\nVersion 2025.2.1.0 (build 35969825) (public-release)",
+  "initcheck": {
+    "scope": "all 40 new nodes, each in its own process within one finite Slurm job",
+    "reason": "Retains the process-isolated validation approach from #297, whose long-lived instrumented cuBLAS owner sequence exceeded the unchanged provider allowance. That historical limit is not claimed to be fixed here.",
+    "nodes": [
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[cartesian-False-off]",
+        "passed": 1,
+        "seconds": 0.92,
+        "log": {
+          "transient_path": ".artifacts/initcheck-00.log",
+          "sha256": "591caeb6ca6c45a6503630323e2754a8a41329dac98f9d76a74e4b940097e36e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[cartesian-False-absolute_ao_jet]",
+        "passed": 1,
+        "seconds": 0.92,
+        "log": {
+          "transient_path": ".artifacts/initcheck-01.log",
+          "sha256": "591caeb6ca6c45a6503630323e2754a8a41329dac98f9d76a74e4b940097e36e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[cartesian-True-off]",
+        "passed": 1,
+        "seconds": 0.92,
+        "log": {
+          "transient_path": ".artifacts/initcheck-02.log",
+          "sha256": "591caeb6ca6c45a6503630323e2754a8a41329dac98f9d76a74e4b940097e36e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[cartesian-True-absolute_ao_jet]",
+        "passed": 1,
+        "seconds": 0.92,
+        "log": {
+          "transient_path": ".artifacts/initcheck-03.log",
+          "sha256": "591caeb6ca6c45a6503630323e2754a8a41329dac98f9d76a74e4b940097e36e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[spherical-False-off]",
+        "passed": 1,
+        "seconds": 0.91,
+        "log": {
+          "transient_path": ".artifacts/initcheck-04.log",
+          "sha256": "26d3c3e9d91c044c4af3f019054e6e06a1b6bce496587163e5d87a8ec403244a",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[spherical-False-absolute_ao_jet]",
+        "passed": 1,
+        "seconds": 0.91,
+        "log": {
+          "transient_path": ".artifacts/initcheck-05.log",
+          "sha256": "26d3c3e9d91c044c4af3f019054e6e06a1b6bce496587163e5d87a8ec403244a",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[spherical-True-off]",
+        "passed": 1,
+        "seconds": 0.9,
+        "log": {
+          "transient_path": ".artifacts/initcheck-06.log",
+          "sha256": "08c7df6d2733d5f454a8f72c58c3f6b6657d756bde3c506b083c67d0541eb33e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_current_features_match_masked_global_d[spherical-True-absolute_ao_jet]",
+        "passed": 1,
+        "seconds": 0.9,
+        "log": {
+          "transient_path": ".artifacts/initcheck-07.log",
+          "sha256": "08c7df6d2733d5f454a8f72c58c3f6b6657d756bde3c506b083c67d0541eb33e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-134217728-polarized-spin-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.11,
+        "log": {
+          "transient_path": ".artifacts/initcheck-08.log",
+          "sha256": "10a7bf08a581948ad318ddede8b4290d528365aa5898618fc46befe7e60dca16",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-134217728-polarized-spin-PBE]",
+        "passed": 1,
+        "seconds": 1.14,
+        "log": {
+          "transient_path": ".artifacts/initcheck-09.log",
+          "sha256": "e285320d5fad73cf2f715c51813d7f7db6c081ba3516a2498980db99b4f9522c",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-134217728-polarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.16,
+        "log": {
+          "transient_path": ".artifacts/initcheck-10.log",
+          "sha256": "a749eaba4cc68522540160b9fdbde2824c7dbb17ef47a3010860769926b1b5ee",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-134217728-polarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.2,
+        "log": {
+          "transient_path": ".artifacts/initcheck-11.log",
+          "sha256": "74d4242c2c1f01293e635d24bfb3777215478439ffdac6c301ad5c331205cae5",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-134217728-unpolarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.14,
+        "log": {
+          "transient_path": ".artifacts/initcheck-12.log",
+          "sha256": "e285320d5fad73cf2f715c51813d7f7db6c081ba3516a2498980db99b4f9522c",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-134217728-unpolarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.17,
+        "log": {
+          "transient_path": ".artifacts/initcheck-13.log",
+          "sha256": "a90e03a52c50962c6dd68a7c2fa2514f5da97c1fe5121490e44878c497169d75",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-268435456-polarized-spin-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.11,
+        "log": {
+          "transient_path": ".artifacts/initcheck-14.log",
+          "sha256": "10a7bf08a581948ad318ddede8b4290d528365aa5898618fc46befe7e60dca16",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-268435456-polarized-spin-PBE]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-15.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-268435456-polarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.16,
+        "log": {
+          "transient_path": ".artifacts/initcheck-16.log",
+          "sha256": "a749eaba4cc68522540160b9fdbde2824c7dbb17ef47a3010860769926b1b5ee",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-268435456-polarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.2,
+        "log": {
+          "transient_path": ".artifacts/initcheck-17.log",
+          "sha256": "74d4242c2c1f01293e635d24bfb3777215478439ffdac6c301ad5c331205cae5",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-268435456-unpolarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.14,
+        "log": {
+          "transient_path": ".artifacts/initcheck-18.log",
+          "sha256": "e285320d5fad73cf2f715c51813d7f7db6c081ba3516a2498980db99b4f9522c",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[cartesian-268435456-unpolarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.17,
+        "log": {
+          "transient_path": ".artifacts/initcheck-19.log",
+          "sha256": "a90e03a52c50962c6dd68a7c2fa2514f5da97c1fe5121490e44878c497169d75",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-134217728-polarized-spin-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.11,
+        "log": {
+          "transient_path": ".artifacts/initcheck-20.log",
+          "sha256": "10a7bf08a581948ad318ddede8b4290d528365aa5898618fc46befe7e60dca16",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-134217728-polarized-spin-PBE]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-21.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-134217728-polarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-22.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-134217728-polarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.18,
+        "log": {
+          "transient_path": ".artifacts/initcheck-23.log",
+          "sha256": "1b8e568fcc7bd9833714dbf74741b9cca8e2d5f241cdda312f5f20a65fa6d3d4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-134217728-unpolarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.13,
+        "log": {
+          "transient_path": ".artifacts/initcheck-24.log",
+          "sha256": "16ebe7fdb80a533cd9bf8c027c0648f6f1d4bf4a5ee717c0477505d380b3fd52",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-134217728-unpolarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-25.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-268435456-polarized-spin-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.1,
+        "log": {
+          "transient_path": ".artifacts/initcheck-26.log",
+          "sha256": "c7e7760eb192def2a7b428ecb80c7702439d7b8f597bac590bd15a95ba696e9d",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-268435456-polarized-spin-PBE]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-27.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-268435456-polarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-28.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-268435456-polarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.19,
+        "log": {
+          "transient_path": ".artifacts/initcheck-29.log",
+          "sha256": "66bfcebe4bd8d927b625b36a85afeb95a2c4abdd00bfacfef8c942702fb12195",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-268435456-unpolarized-total-LDA_XC_PW]",
+        "passed": 1,
+        "seconds": 1.12,
+        "log": {
+          "transient_path": ".artifacts/initcheck-30.log",
+          "sha256": "4013eb82a1536f45e6b181a91f6ebd77ba805365fed0c521becc6b7d8a9d1b50",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_xc_current_routes_and_two_budgets[spherical-268435456-unpolarized-total-PBE]",
+        "passed": 1,
+        "seconds": 1.15,
+        "log": {
+          "transient_path": ".artifacts/initcheck-31.log",
+          "sha256": "ceee6fc2d50ebb9d2107cafff5418d9a132c92561126d1ab42a18e9ee83bc8a4",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_source_lifetime_fallback_and_device_leases[cartesian]",
+        "passed": 1,
+        "seconds": 1.08,
+        "log": {
+          "transient_path": ".artifacts/initcheck-32.log",
+          "sha256": "5cb3bcccd72244bff2ee6c417da29dd2539e381f162e5f06e567adfd801d427a",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_source_lifetime_fallback_and_device_leases[spherical]",
+        "passed": 1,
+        "seconds": 1.07,
+        "log": {
+          "transient_path": ".artifacts/initcheck-33.log",
+          "sha256": "180f90b8ea8b0020bb356bee091d6ae60212a829e501c1130f70b1b1e3da7991",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_empty_masks_and_pruned_abi[cartesian]",
+        "passed": 1,
+        "seconds": 0.9,
+        "log": {
+          "transient_path": ".artifacts/initcheck-34.log",
+          "sha256": "08c7df6d2733d5f454a8f72c58c3f6b6657d756bde3c506b083c67d0541eb33e",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_empty_masks_and_pruned_abi[spherical]",
+        "passed": 1,
+        "seconds": 0.91,
+        "log": {
+          "transient_path": ".artifacts/initcheck-35.log",
+          "sha256": "26d3c3e9d91c044c4af3f019054e6e06a1b6bce496587163e5d87a8ec403244a",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_density_direction_tracks_current_factors[cartesian]",
+        "passed": 1,
+        "seconds": 1.3,
+        "log": {
+          "transient_path": ".artifacts/initcheck-36.log",
+          "sha256": "1d7cbe843b4df2636f597ef1beacfe4d99ad6199eac90875bf98e10ee34ffd15",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_density_direction_tracks_current_factors[spherical]",
+        "passed": 1,
+        "seconds": 1.27,
+        "log": {
+          "transient_path": ".artifacts/initcheck-37.log",
+          "sha256": "fd43762d08513e04a6f4a799e68e8181decad338e8ea20122d619770d61d60cb",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_capacity_fallback_and_failed_upload_expire_old_execution[cartesian]",
+        "passed": 1,
+        "seconds": 0.87,
+        "log": {
+          "transient_path": ".artifacts/initcheck-38.log",
+          "sha256": "52150be66d46f1faf3b9a26e4f980dc0a83a2bc4db2f6d5fe28ed86bc7380106",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      },
+      {
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_spatial_capacity_fallback_and_failed_upload_expire_old_execution[spherical]",
+        "passed": 1,
+        "seconds": 0.87,
+        "log": {
+          "transient_path": ".artifacts/initcheck-39.log",
+          "sha256": "52150be66d46f1faf3b9a26e4f980dc0a83a2bc4db2f6d5fe28ed86bc7380106",
+          "bytes": 160
+        },
+        "reported_errors": 0
+      }
+    ]
+  },
+  "reproduction": {
+    "scheduler": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:10:00"
+    ],
+    "environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VIBEQC_LIBRARY": "build/cpu/libvibeqc.so",
+      "VIBEQC_GRID_CUDA_TEST": "1",
+      "VIBEQC_NVCC": "/group/software/cuda-12.9.1/bin/nvcc"
+    },
+    "gpu_tests": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/python/test_spatial_density_cuda.py",
+      "tests/python/test_spatial_cuda.py",
+      "tests/python/test_density_cuda.py",
+      "-q"
+    ],
+    "cpu_tests": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/python/test_spatial_density_plan.py",
+      "tests/python/test_density_benchmark.py",
+      "tests/python/test_spatial_publication.py",
+      "tests/python/test_spatial_execution.py",
+      "tests/python/test_xc_contractions_native.py",
+      "tests/python/test_density_cuda_plan.py",
+      "tests/python/test_cuda_ownership.py",
+      "-q"
+    ],
+    "memcheck": [
+      "compute-sanitizer",
+      "--tool",
+      "memcheck",
+      "--error-exitcode",
+      "99",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/python/test_spatial_density_cuda.py",
+      "-q"
+    ],
+    "initcheck_template": [
+      "compute-sanitizer",
+      "--tool",
+      "initcheck",
+      "--error-exitcode",
+      "99",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "<each recorded nodeid in its own process>",
+      "-q"
+    ],
+    "device_visibility": "Preserve CUDA_VISIBLE_DEVICES assigned by Slurm."
+  },
+  "cuda_ownership": {
+    "generated_capability": "existing generated AO/D/C policies consumed by current-source spatial tasks and fixed-mask prepared E/V",
+    "handwritten_scientific_cuda_loc": {
+      "added": 0,
+      "removed": 0
+    },
+    "runtime_cuda_loc": {
+      "added": 0,
+      "removed": 0
+    },
+    "legacy_production_path_removed": false,
+    "retained_duplicate_reason": "none"
+  },
+  "lease_order_followup": {
+    "scope": "Reject an active spatial device-task lease before waiting for its CUDA lock; no numerical kernel or contraction changes.",
+    "source_files": {
+      "python/vibeqc_compiler/xc/prepared.py": "3da93e8b8fbc8575858223e01a12123733aa7dcb749949812271386047cb826c",
+      "tests/python/test_spatial_density_cuda.py": "097ca1b26d2e06d6cf01c3b6af9537d8daf9b96a02f0f82816f206a980ec7107"
+    },
+    "gpu": {
+      "passed": 154,
+      "seconds": 8.77,
+      "log_sha256": "409e87066453e517732159f985e2828eaf7b47788b872278c42fe51b321b4c72",
+      "transient_path": ".artifacts/gpu-lock-fix.log"
+    },
+    "cpu": {
+      "passed": 61,
+      "seconds": 9.31,
+      "log_sha256": "6ba58c2cb5a88fec54b1a6c06a2440425c326502767a221b080411a7a4588775",
+      "transient_path": ".artifacts/cpu-lock-fix.log"
+    },
+    "sanitizers": [
+      {
+        "tool": "memcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[cartesian]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.96,
+        "log_sha256": "2cb21d4ceb101925e1ac6ab5544af515722459e4fa34460fab231ab37587cf62",
+        "transient_path": ".artifacts/memcheck-lock-cartesian.log"
+      },
+      {
+        "tool": "memcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[spherical]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.95,
+        "log_sha256": "ca28f0605d63fd40215206659f833f7b7d505c028a77033161766ebefc2ea2b8",
+        "transient_path": ".artifacts/memcheck-lock-spherical.log"
+      },
+      {
+        "tool": "initcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[cartesian]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.95,
+        "log_sha256": "ca28f0605d63fd40215206659f833f7b7d505c028a77033161766ebefc2ea2b8",
+        "transient_path": ".artifacts/initcheck-lock-cartesian.log"
+      },
+      {
+        "tool": "initcheck",
+        "nodeid": "tests/python/test_spatial_density_cuda.py::test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock[spherical]",
+        "reported_errors": 0,
+        "passed": 1,
+        "seconds": 0.95,
+        "log_sha256": "ca28f0605d63fd40215206659f833f7b7d505c028a77033161766ebefc2ea2b8",
+        "transient_path": ".artifacts/initcheck-lock-spherical.log"
+      }
+    ]
+  },
+  "spatial_snapshot_followup": {
+    "scope": "Construct XC under the borrowed spatial lock; bind the captured resource-plan identity so same-mask capacity changes invalidate old consumers. No CUDA/math changes.",
+    "source_files": {
+      "python/vibeqc_compiler/xc/prepared.py": "5b0822069baeef0720b55d9e29d09e62664d973a04e1c017943304274a290849",
+      "tests/python/test_spatial_density_plan.py": "0287c0c464605e3a744d8bd45f10a33162f89847f4faf7baf1eb94de07be04d7",
+      "tests/python/test_spatial_density_cuda.py": "65ced27aff0bd62e5ceb18588f717e2d8c438a32d07ad390e218621cbc82a070"
+    },
+    "cpu": {
+      "passed": 65,
+      "seconds": 9.66,
+      "transient_path": ".artifacts/cpu-snapshot-fix.log",
+      "log_sha256": "fa68a9e1064d9a1b3c92e751632d3cecaddb6196a9e38a5b2787017db6ea26c7"
+    },
+    "gpu": {
+      "passed": 154,
+      "seconds": 8.98,
+      "transient_path": ".artifacts/gpu-snapshot-fix.log",
+      "log_sha256": "22dbc060f741171ca07a736baff98421218304a1656635d2d64ad2c6a568bd24"
+    }
+  }
+}

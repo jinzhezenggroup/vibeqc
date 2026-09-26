@@ -1,0 +1,206 @@
+{
+  "archive_sha256": "3bd9b6b21a03ba846c87fa9c947815abbcf01265539b7367a5c2b7a382dd7055",
+  "files": [
+    {
+      "bytes": 2864,
+      "path": "df-fixed-panel-probe.py",
+      "sha256": "d7f9bfad8c6bb9d81712f0ff4fab3f1d5ec11e605e8738ea607c1152bc3910cb"
+    },
+    {
+      "bytes": 207332,
+      "path": "df-fixed-panel-v3-134217728.jsonl",
+      "sha256": "b4d3e8986f46f8bd9f7bfbd7dba0e8b70dfb959a58b99dcde5db1c2f6533f785"
+    },
+    {
+      "bytes": 658251,
+      "path": "df-fixed-panel-v3-33554432.jsonl",
+      "sha256": "f5ecc224f5309f1eb9f39c1cf00c79d826faf1e304ba58b5428f5381885f905f"
+    },
+    {
+      "bytes": 138162,
+      "path": "df-fixed-panel-v3-536870912.jsonl",
+      "sha256": "bbbdb9373f6ca680518054f1b216c4a03d8939940833e48a6b01f8fb85f826b5"
+    },
+    {
+      "bytes": 8614324,
+      "path": "df-fixed-panel-v3.json",
+      "sha256": "b8b0335362fbb1923da657ea80397563ebe17903c51a2614e1c5cb93961e3db2"
+    },
+    {
+      "bytes": 233,
+      "path": "df-fixed-panel-v3.log",
+      "sha256": "b9961d0849a79277e24cf09e18e9bf4456180f47321ff6fe7c47cc169e2fa32c"
+    },
+    {
+      "bytes": 10770609,
+      "path": "df-streamed-panel-192-low-components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "63f1f864f3f8ef8ca149ccfc9a204cc58c7115ed80ea8420c1dc80b9be8892ef"
+    },
+    {
+      "bytes": 323,
+      "path": "df-streamed-panel-192-low-components.log",
+      "sha256": "b20054750249afbb77e536e3df5ffd09e219241f7a574a5d9b8b26de8cb10d6b"
+    },
+    {
+      "bytes": 134099,
+      "path": "df-streamed-panel-192-low-v3-components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "5ac986373863587164970a4d303bc57d5891dd2820706697d716b0654381b0c8"
+    },
+    {
+      "bytes": 249,
+      "path": "df-streamed-panel-192-low-v3-components.log",
+      "sha256": "6be82e145bb23970427b905db21f46afd44875511296dcd68932af01433bf965"
+    },
+    {
+      "bytes": 212,
+      "path": "df-streamed-panel-memcheck.log",
+      "sha256": "92928d3cfd3e9d1cc95f0e2c9d02b6c538b6de89ceffc54c715c8fba8b93ab13"
+    },
+    {
+      "bytes": 706,
+      "path": "df-streamed-panel-native-gates-v3.log",
+      "sha256": "53ec90809a22c76ca47f142b9f80953a0f93154b54406863509ad873485349fb"
+    },
+    {
+      "bytes": 2894,
+      "path": "df-streamed-panel-preview-runtime/df_generated_tiles.hpp",
+      "sha256": "2a62298eb041693d35ca8f925c1f297d4e215a91e6415e22fe95d7267199d26d"
+    },
+    {
+      "bytes": 14373,
+      "path": "df-streamed-panel-preview-runtime/optimization.patch",
+      "sha256": "9f077e27ddfd3546e7f010e9ded88bb451755bb4ea3858ac0427a9f8332469ef"
+    },
+    {
+      "bytes": 3510,
+      "path": "df-streamed-panel-v3-runtime/df_generated_tiles.hpp",
+      "sha256": "39015c076bfe4dad6a766bed342d66f1ca757a48783fd5ee78a706b873ee0a93"
+    },
+    {
+      "bytes": 14586,
+      "path": "df-streamed-panel-v3-runtime/optimization.patch",
+      "sha256": "ff09506d396f707e7b4a1352fe298b0cdc1429e5e0bc1057d4263df0d1918930"
+    },
+    {
+      "bytes": 6700,
+      "path": "df-streamed-preparation-build.log",
+      "sha256": "f00fe843c30ec7bb539a7163bd58b96c25ca26ff2563194963ee26a40110aa00"
+    },
+    {
+      "bytes": 714,
+      "path": "df-streamed-preparation-gpu-gates.log",
+      "sha256": "6526f07357b1292b20b257b961467305825a5c096e26e03f5a165b8c778e74f1"
+    },
+    {
+      "bytes": 1263,
+      "path": "df-streamed-preparation-hooks-v2.log",
+      "sha256": "53628d35898e3e79821323f1b7126cb0a22323090775fef2a2766d90e2108a0b"
+    },
+    {
+      "bytes": 1204,
+      "path": "df-streamed-preparation-hooks.log",
+      "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+    },
+    {
+      "bytes": 180,
+      "path": "df-streamed-preparation-host-gates.log",
+      "sha256": "2cc0f56efffc789844336b58134ac22f92bed13dfc20440dd8fdbaacd013cdd2"
+    },
+    {
+      "bytes": 1460,
+      "path": "df-streamed-preparation-matrix/192ao-b1.log",
+      "sha256": "0c30c0240842d2b1c94a50f19750badbe74361b4f32bc362be87730a98230c59"
+    },
+    {
+      "bytes": 1460,
+      "path": "df-streamed-preparation-matrix/192ao-b4.log",
+      "sha256": "0c30c0240842d2b1c94a50f19750badbe74361b4f32bc362be87730a98230c59"
+    },
+    {
+      "bytes": 1460,
+      "path": "df-streamed-preparation-matrix/96ao-b1.log",
+      "sha256": "0c30c0240842d2b1c94a50f19750badbe74361b4f32bc362be87730a98230c59"
+    },
+    {
+      "bytes": 1460,
+      "path": "df-streamed-preparation-matrix/96ao-b4.log",
+      "sha256": "0c30c0240842d2b1c94a50f19750badbe74361b4f32bc362be87730a98230c59"
+    },
+    {
+      "bytes": 5236,
+      "path": "df-streamed-preparation-matrix/manifest.json",
+      "sha256": "721639fd5b493b4c6133eb9e6c253821e4ba9bc9e65abb1318115ea88e83155d"
+    },
+    {
+      "bytes": 103450,
+      "path": "df-streamed-preparation-matrix-v2/192ao-b1.json",
+      "sha256": "beb30a0cf0b1e9230db515babcd9bf7a48f6364467be0f1e75503a39e10b68dc"
+    },
+    {
+      "bytes": 1216,
+      "path": "df-streamed-preparation-matrix-v2/192ao-b1.log",
+      "sha256": "336750c59ad94bede1c3a032dbe53d3cceaef22ea61240f0b97234e03ca87e5a"
+    },
+    {
+      "bytes": 382706,
+      "path": "df-streamed-preparation-matrix-v2/192ao-b4.json",
+      "sha256": "8166942585a1a5e440293b12280fe45fb3ea34062be04419b3166667261033df"
+    },
+    {
+      "bytes": 1281,
+      "path": "df-streamed-preparation-matrix-v2/192ao-b4.log",
+      "sha256": "7b3b6c7a00056e27867657ef41a6cebaa076b579cc4702a638fafed56c2e6843"
+    },
+    {
+      "bytes": 69633,
+      "path": "df-streamed-preparation-matrix-v2/96ao-b1.json",
+      "sha256": "e76a70ce268034de44f33aadbdc2a406d1a5f257045df4ec8d2b9fadec707a7f"
+    },
+    {
+      "bytes": 1212,
+      "path": "df-streamed-preparation-matrix-v2/96ao-b1.log",
+      "sha256": "96cc8933d3a7b055e7f81e63fd4d6c35af597cdcfa4d9415fac0983d83111787"
+    },
+    {
+      "bytes": 246328,
+      "path": "df-streamed-preparation-matrix-v2/96ao-b4.json",
+      "sha256": "4b565a2c894816e8412320e76654378cb30e26fd6f673561746b9afc265e776e"
+    },
+    {
+      "bytes": 1271,
+      "path": "df-streamed-preparation-matrix-v2/96ao-b4.log",
+      "sha256": "ca633e1158b17f9abee111821943b830b7f8d983a68ef3e022d6c932b6b4328a"
+    },
+    {
+      "bytes": 5560,
+      "path": "df-streamed-preparation-matrix-v2/manifest.json",
+      "sha256": "86e826aa4a03a0a907c8c1e31075f15971ad755932a05f6be1cc0499d9364f50"
+    },
+    {
+      "bytes": 88,
+      "path": "df-streamed-preparation-matrix-v2.log",
+      "sha256": "1bfa52986c1de3910f2dba22bbbb90bb895fcb4b9c945c5e420df593e302ec7e"
+    },
+    {
+      "bytes": 268,
+      "path": "df-streamed-preparation-matrix.log",
+      "sha256": "845ba2f9c09a2e37279f5b36b9be6b3ede510e21da7cc0ea4b8f9b2415dd8a86"
+    },
+    {
+      "bytes": 111,
+      "path": "df-streamed-preparation-one-electron.log",
+      "sha256": "6589c10123b26e0a3aa3a0b9f4eee226d86b19c4cad29d3e1c5bb820ac2ce869"
+    },
+    {
+      "bytes": 38011,
+      "path": "df-streamed-preparation-runtime/CMakeCache.txt",
+      "sha256": "14120dd393564e81859bcfeb8dd04cad3bdd17b3e47beab060b0df7fa6df5fa5"
+    },
+    {
+      "bytes": 40128,
+      "path": "df-streamed-preparation-runtime/optimization.patch",
+      "sha256": "010f509a1db358d97001c6a2de8c711b4d272cce37d81d9416171cfbaa4f173a"
+    }
+  ],
+  "schema": "vibeqc.evidence-archive.v1"
+}
