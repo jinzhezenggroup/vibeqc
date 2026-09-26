@@ -247,6 +247,22 @@ void provider_and_reference() {
           "native MO batch changed AO-to-MO transform work");
 
   const std::array<std::size_t, 4> batch_shape{2, 2, 2, 2};
+  const auto cuda_plan = provider.plan(batch_shape, true);
+  const auto cpu_common = provider.batch_bytes(batch_shape, 0, false);
+  const auto cuda_common = provider.batch_bytes(batch_shape, 0, true);
+  const auto cuda_one = provider.batch_bytes(batch_shape, 1, true);
+  const auto cuda_two = provider.batch_bytes(batch_shape, 2, true);
+  require(cuda_plan.device_bytes >= cuda_plan.aligned_numeric,
+          "CUDA batch plan fixed allowance underflow");
+  require(cuda_common - cpu_common == cuda_plan.device_bytes - cuda_plan.aligned_numeric,
+          "CUDA batch common capacity did not isolate the shared owner");
+  require(cuda_one >= cuda_common && cuda_two - cuda_one == cuda_one - cuda_common,
+          "CUDA batch request capacity is not additive after the shared owner");
+  const auto shared_two_budget = cuda_two;
+  vibeqc::posthf::NativeBlockProvider shared_cuda_provider(source, ref, shared_two_budget);
+  require(shared_cuda_provider.batch_capacity(batch_shape, true) >= 2,
+          "shared CUDA owner capacity was charged once per request");
+
   require(provider.batch_capacity(batch_shape) >= 2,
           "native MO batch capacity is unexpectedly one");
   const auto single_request_bytes = provider.batch_bytes(batch_shape, 1);
