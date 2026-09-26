@@ -128,7 +128,7 @@
     "libxc-method-metadata": {
       "canonical_inputs": {
         "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19",
-        "tools/libxc_method_metadata.py": "74617e950ab38dea5487566a4757f819c9442d35512b07bcbc09f252c0468b99"
+        "tools/libxc_method_metadata.py": "6cecd988b27ba74b6946243349659169a0e1f633ca659db222b88c0a5c44173d"
       },
       "generator": "tools/generate_libxc_methods.py",
       "generator_sha256": "df7d2a5b43708285ab915b9d45e148e41428c478cb1843cf8919d6d73dc19384",

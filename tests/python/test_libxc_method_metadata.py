@@ -16,10 +16,16 @@ from tools.libxc_method_metadata import extract_method_registrations
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC = ROOT / "upstream" / "libxc" / "7.0.0"
+FULL_LIBXC = ROOT / "upstream" / "libxc-fulltree" / "7.0.0" / "src"
 
 
 def _row(filename: str, registration: str) -> dict:
     rows = extract_method_registrations((LIBXC / filename).read_text(), filename)
+    return next(row for row in rows if row["registration"] == registration)
+
+
+def _full_row(filename: str, registration: str) -> dict:
+    rows = extract_method_registrations((FULL_LIBXC / filename).read_text(), filename)
     return next(row for row in rows if row["registration"] == registration)
 
 
@@ -45,6 +51,37 @@ def test_cam_b3lyp_uses_libxc_cam_convention_for_sr_lr_exchange() -> None:
         ["GGA_X_B88", "7/20"],
         ["GGA_X_ITYH", "23/50"],
     ]
+
+
+def test_m062x_split_global_hybrid_exchange_is_source_derived() -> None:
+    row = _full_row("hyb_mgga_x_m05.c", "HYB_MGGA_X_M06_2X")
+    assert row["status"] == "generated"
+    assert row["identifier"] == "M06-2X"
+    assert row["components"] == [["HYB_MGGA_X_M06_2X", "1"]]
+    assert row["split_exchange_component"] == "HYB_MGGA_X_M06_2X"
+    assert row["paired_correlation_component"] == "MGGA_C_M06_2X"
+    assert row["exact_exchange"] == "27/50"
+    assert row["short_range_exchange"] == "0"
+    assert row["long_range_exchange"] == "0"
+
+
+def test_mn15_split_global_hybrid_exchange_is_source_derived() -> None:
+    # This owner has registration-dependent initializer control flow. The
+    # audited set_ext_params_cpy_exx contract deliberately avoids interpreting
+    # that control flow and derives the global exact-exchange fraction from the
+    # last external parameter.
+    row = _full_row("mgga_x_mn12.c", "HYB_MGGA_X_MN15")
+    assert row["status"] == "generated"
+    assert row["identifier"] == "MN15"
+    assert row["components"] == [["HYB_MGGA_X_MN15", "1"]]
+    assert row["paired_correlation_component"] == "MGGA_C_MN15"
+    assert row["exact_exchange"] == "11/25"
+
+
+def test_split_range_hybrid_remains_fail_closed() -> None:
+    row = _full_row("mgga_x_mn12.c", "HYB_MGGA_X_MN12_SX")
+    assert row["status"] == "blocked"
+    assert "global-exchange setter" in row["reason"]
 
 
 def test_wb97mv_direct_semilocal_and_vv10_metadata_are_source_derived() -> None:
