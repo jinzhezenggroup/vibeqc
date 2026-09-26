@@ -885,20 +885,15 @@ class KsPreparedCalculation final : public PreparedCalculation {
     candidate.insert(candidate.end(), value.begin(), value.end());
     const std::vector<double> empty;
     const auto& beta = state.density.size() == 2 ? state.density[1] : empty;
-    auto spec = expected.identity.determinant.model.spec;
-    spec.derivative_order = 1;
-    for (unsigned source = 0; source < 3; ++source) {
-      spec.coulomb = {source == 0, 1.0};
-      const double fraction =
-          source == 1 ? execution_plan_.short_range_exchange : execution_plan_.long_range_exchange;
-      spec.exchange = {source != 0, -fraction / (state.density.size() == 1 ? 2.0 : 1.0),
-                       source == 1 ? scf::FockOperator::ShortRange : scf::FockOperator::LongRange,
-                       execution_plan_.range_omega};
-      status = scf::execute_cuda_direct_energy_derivative_item(
-          gradient_source_.get(), 0, spec, state.density[0], beta, value, detail);
-      if (status != VIBEQC_STATUS_SUCCESS) return status;
-      candidate.insert(candidate.end(), value.begin(), value.end());
-    }
+    const auto spin = expected.identity.determinant.model.spec.spin;
+    const double exchange_spin_scale = state.density.size() == 1 ? 2.0 : 1.0;
+    status = scf::execute_cuda_direct_rsh_energy_derivatives_item(
+        gradient_source_.get(), 0, spin, 1.0,
+        -execution_plan_.short_range_exchange / exchange_spin_scale,
+        -execution_plan_.long_range_exchange / exchange_spin_scale, execution_plan_.range_omega,
+        state.density[0], beta, value, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    candidate.insert(candidate.end(), value.begin(), value.end());
     output = std::move(candidate);
     return VIBEQC_STATUS_SUCCESS;
 #else
