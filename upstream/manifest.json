@@ -112,7 +112,7 @@
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/libxc_bulk.py": "6af8dc2b3c21ec49cf003af2d842fedd060a34a5302c1e01f4f75c31928f1967",
         "python/vibeqc_compiler/xc/libxc_maple.py": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
-        "tools/libxc_bulk_metadata.py": "74e68599572f1a2b918a80449df3b633c7e7e50bf492f258537e9d3139f9d656"
+        "tools/libxc_bulk_metadata.py": "a5d80a0e74a5b3d6d1665f92c6b355c54f2fc51188a122257aa859caf0057287"
       },
       "generator": "tools/import_libxc_bulk.py",
       "generator_sha256": "11e7c1601aa3b5306d29beb090597eff2b4184a22abc55b4dec5c1aa9bcb5bc3",
@@ -127,7 +127,7 @@
     },
     "libxc-method-metadata": {
       "canonical_inputs": {
-        "tools/libxc_bulk_metadata.py": "74e68599572f1a2b918a80449df3b633c7e7e50bf492f258537e9d3139f9d656",
+        "tools/libxc_bulk_metadata.py": "a5d80a0e74a5b3d6d1665f92c6b355c54f2fc51188a122257aa859caf0057287",
         "tools/libxc_method_metadata.py": "6cecd988b27ba74b6946243349659169a0e1f633ca659db222b88c0a5c44173d"
       },
       "generator": "tools/generate_libxc_methods.py",
