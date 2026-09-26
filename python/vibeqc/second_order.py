@@ -1,6 +1,6 @@
 """Production-owned method-neutral second-order orchestration for molecular HVPs.
 
-This installed runtime module owns ordering, transactional assembly and capability completeness.
+This installed runtime module owns ordering, transactional assembly and\ncapability completeness.
 It does not know HF, KS, functional names, CPHF/CPKS layouts, grids or integral
 providers. A plan supplies a complete source inventory; adapters supply one
 nuclear perturbation, one response solve and exactly one contributor per source.
