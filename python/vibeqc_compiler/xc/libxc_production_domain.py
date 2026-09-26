@@ -4,10 +4,13 @@ This module defines the evidence contract for promoting an imported semilocal
 Libxc registration beyond the interior pointwise domain.  It deliberately does
 not evaluate a functional and never grants production admission by itself.
 
-The profile is structural: every successful production-domain claim must prove
-the exact named boundary matrix for the registration's ingredient set and spin
-layout.  Numerical fixtures and runners live downstream, but their evidence is
-rejected unless it matches this exact versioned profile.
+The profile is structural and first-order: every successful production-domain
+claim must prove energy and vxc across the exact named boundary matrix for the
+registration's ingredient set and spin layout. Full feature Hessians remain
+owned by the independent response stage because some exact density/spin endpoints
+do not have a finite full Hessian. Numerical fixtures and runners live
+downstream, but their evidence is rejected unless it matches this exact versioned
+profile.
 """
 
 from __future__ import annotations
@@ -18,8 +21,8 @@ from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
-SCHEMA = "vibeqc.libxc-production-domain-profile.v2"
-PROFILE = "semilocal-boundary-matrix/v2"
+SCHEMA = "vibeqc.libxc-production-domain-profile.v3"
+PROFILE = "semilocal-boundary-matrix/v3"
 SUPPORTED_INGREDIENTS = frozenset(("rho", "sigma", "tau"))
 
 _DENSITY_CASES = (
@@ -55,7 +58,7 @@ _CONTROL_CASES = (
 
 @dataclass(frozen=True)
 class ProductionDomainProfile:
-    """Exact spin-aware boundary matrix required before production promotion."""
+    """Exact first-order spin-aware matrix required before production promotion."""
 
     family: str
     required_ingredients: tuple[str, ...]
@@ -64,7 +67,7 @@ class ProductionDomainProfile:
     schema: str = SCHEMA
     profile: str = PROFILE
     spin_layouts: tuple[str, ...] = ("polarized", "unpolarized")
-    outputs: tuple[str, ...] = ("energy", "vxc", "fxc")
+    outputs: tuple[str, ...] = ("energy", "vxc")
 
     @property
     def eligible(self) -> bool:

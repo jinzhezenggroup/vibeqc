@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from itertools import combinations_with_replacement
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -37,7 +36,7 @@ if TYPE_CHECKING:
     from vibeqc_compiler.xc.bulk_runtime import BulkRuntimeProgram
     from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
 
-CAMPAIGN_SCHEMA = "vibeqc.libxc-production-domain-campaign/v1"
+CAMPAIGN_SCHEMA = "vibeqc.libxc-production-domain-campaign/v2"
 
 
 def _reference(
@@ -47,7 +46,7 @@ def _reference(
     family: str,
     libxc: Any,
 ) -> np.ndarray:
-    """Return energy, physical-feature gradient, and packed Hessian."""
+    """Return energy per volume plus first physical feature derivatives."""
     polarized = case.spin == "polarized"
     raw = np.asarray(case.pyscf_rho(), dtype=np.float64)
     rho = raw[..., None] if polarized else raw[0, :, None]
@@ -64,57 +63,29 @@ def _reference(
     else:
         raise ValueError(f"unsupported semilocal family {family!r}")
 
-    exc, vxc, fxc, _ = libxc.eval_xc(
+    exc, vxc, _, _ = libxc.eval_xc(
         name,
         libxc_rho,
         spin=1 if polarized else 0,
-        deriv=2,
+        deriv=1,
     )
     total_rho = rho[:, 0].sum(axis=0) if polarized else rho[0]
     gradient = np.zeros((size, 1), dtype=np.float64)
-    hessian = np.zeros((size, size, 1), dtype=np.float64)
 
     if polarized:
         gradient[:2] = vxc[0].T
-        for index, (left, right) in enumerate(((0, 0), (0, 1), (1, 1))):
-            hessian[left, right] = hessian[right, left] = fxc[0][:, index]
         if family != "lda":
             gradient[2:5] = vxc[1].T
-            for index, (left, right) in enumerate(
-                (left, right) for left in range(2) for right in range(2, 5)
-            ):
-                hessian[left, right] = hessian[right, left] = fxc[1][:, index]
-            for index, (left, right) in enumerate(
-                combinations_with_replacement(range(2, 5), 2)
-            ):
-                hessian[left, right] = hessian[right, left] = fxc[2][:, index]
         if family == "mgga":
             gradient[5:7] = vxc[3].T
-            for index, (left, right) in enumerate(((5, 5), (5, 6), (6, 6))):
-                hessian[left, right] = hessian[right, left] = fxc[4][:, index]
-            for index, (left, right) in enumerate(((0, 5), (0, 6), (1, 5), (1, 6))):
-                hessian[left, right] = hessian[right, left] = fxc[6][:, index]
-            for index, (left, right) in enumerate(
-                ((2, 5), (2, 6), (3, 5), (3, 6), (4, 5), (4, 6))
-            ):
-                hessian[left, right] = hessian[right, left] = fxc[9][:, index]
     else:
-        gradient[0], hessian[0, 0] = vxc[0], fxc[0]
+        gradient[0] = vxc[0]
         if family != "lda":
-            gradient[1], hessian[1, 1] = vxc[1], fxc[2]
-            hessian[0, 1] = hessian[1, 0] = fxc[1]
+            gradient[1] = vxc[1]
         if family == "mgga":
-            gradient[2], hessian[2, 2] = vxc[3], fxc[4]
-            hessian[0, 2] = hessian[2, 0] = fxc[6]
-            hessian[1, 2] = hessian[2, 1] = fxc[9]
+            gradient[2] = vxc[3]
 
-    packed = np.stack(
-        [
-            hessian[left, right]
-            for left, right in combinations_with_replacement(range(size), 2)
-        ]
-    )
-    return np.concatenate(((total_rho * exc)[None], gradient, packed))[:, 0]
+    return np.concatenate(((total_rho * exc)[None], gradient))[:, 0]
 
 
 def _relative_error(
@@ -177,7 +148,7 @@ def _run_numeric_case(
             "reason": reason,
         }
     if not np.all(np.isfinite(expected)):
-        reason = "independent Libxc oracle produced nonfinite E/vxc/fxc"
+        reason = "independent Libxc oracle produced nonfinite E/vxc"
         return {**row, "status": "fail", "reason": reason}, {
             **detail,
             "status": "fail",
@@ -216,7 +187,7 @@ def _run_numeric_case(
     max_rel = _relative_error(observed, expected, atol=atol) if shape_ok else None
     reason = None
     if not finite:
-        reason = "production candidate produced nonfinite E/vxc/fxc"
+        reason = "production candidate produced nonfinite E/vxc"
     elif not shape_ok:
         reason = (
             f"candidate/reference shape mismatch: {observed.shape!r} "
@@ -289,7 +260,7 @@ def qualify_functional(
         spin: build_bulk_runtime_program(
             capability.name,
             spin=spin,
-            order=2,
+            order=1,
             domain=PRODUCTION_CANDIDATE_DOMAIN,
         )
         for spin in profile.spin_layouts
@@ -339,7 +310,7 @@ def qualify_functional(
         "oracle": {
             "pyscf": pyscf_version,
             "libxc": libxc.__version__,
-            "api": "pyscf.dft.libxc.eval_xc deriv=2",
+            "api": "pyscf.dft.libxc.eval_xc deriv=1",
         },
         "tolerance": {"rtol": rtol, "atol": atol},
         "details": details,
