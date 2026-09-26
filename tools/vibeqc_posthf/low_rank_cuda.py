@@ -174,9 +174,7 @@ class _NativePrefix:
             )
 
     def call(self, name: typing.Any, *args: typing.Any) -> None:
-        error = ct.create_string_buffer(2048)
-        if getattr(self._library, name)(*args, error, len(error)):
-            raise RuntimeError(error.value.decode())
+        checked_native_call(getattr(self._library, name), *args)
 
     def project(
         self, column: typing.Any, pivot: typing.Any, rank: typing.Any
