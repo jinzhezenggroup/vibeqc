@@ -96,12 +96,16 @@ def validate_result(
     evidence = value.get("evidence")
     if not isinstance(evidence, str) or not evidence.strip():
         raise ValueError("public-method result requires an evidence reference")
+    stored_payload = dict(value)
+    stored_identity = stored_payload.pop("identity", None)
+    if stored_identity != canonical_hash(stored_payload):
+        raise ValueError("public-method result identity mismatch")
     rebuilt = build_result(
         name,
         prerequisite_evidence=prerequisite_evidence,
         evidence=evidence,
     )
-    if value.get("identity") != rebuilt["identity"]:
+    if stored_identity != rebuilt["identity"]:
         raise ValueError("public-method result identity mismatch")
     if dict(value) != rebuilt:
         raise ValueError("public-method result is not canonical")
