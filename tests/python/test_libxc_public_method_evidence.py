@@ -25,8 +25,7 @@ def _coverage(*spins: str) -> dict:
     return {
         "schema": ENDPOINT_COVERAGE_SCHEMA,
         "coverage": [
-            {"backend": "cpu", "spin": spin, "products": ["energy"]}
-            for spin in spins
+            {"backend": "cpu", "spin": spin, "products": ["energy"]} for spin in spins
         ],
     }
 
@@ -79,11 +78,14 @@ def test_dual_spin_cpu_energy_endpoints_produce_public_method_evidence() -> None
     )
 
     assert result["schema"] == RESULT_SCHEMA
-    assert validate_result(
-        NAME,
-        result,
-        prerequisite_evidence=prerequisites,
-    ) == result
+    assert (
+        validate_result(
+            NAME,
+            result,
+            prerequisite_evidence=prerequisites,
+        )
+        == result
+    )
     assert envelope["stage"] == "public-method"
     assert envelope["status"] == "pass"
     assert envelope["qualification"]["schema"] == ENDPOINT_COVERAGE_SCHEMA
