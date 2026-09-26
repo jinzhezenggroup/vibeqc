@@ -57,20 +57,28 @@ NumericBlockPlan NativeBlockProvider::plan(const std::array<std::size_t, 4>& sha
 
 std::size_t NativeBlockProvider::batch_bytes(const std::array<std::size_t, 4>& shape,
                                              std::size_t requests, bool cuda) const {
-  if (!requests) return common_host_bytes();
   const auto p = plan(shape, cuda);
-  const auto common = common_host_bytes();
-  if (p.host_bytes < common) throw std::logic_error("native MO batch accounting underflow");
-  const auto per_request = checked_add(p.host_bytes - common, p.device_bytes);
+  const auto host_common = common_host_bytes();
+  if (p.host_bytes < host_common)
+    throw std::logic_error("native MO batch host accounting underflow");
+
+  auto common = host_common;
+  auto per_request = p.host_bytes - host_common;
+  if (cuda) {
+    if (p.device_bytes < p.aligned_numeric)
+      throw std::logic_error("native MO batch device accounting underflow");
+    common = checked_add(common, p.device_bytes - p.aligned_numeric);
+    per_request = checked_add(per_request, p.aligned_numeric);
+  }
   return checked_add(common, checked_mul(requests, per_request));
 }
 
 std::size_t NativeBlockProvider::batch_capacity(const std::array<std::size_t, 4>& shape,
                                                 bool cuda) const {
-  const auto p = plan(shape, cuda);
-  const auto common = common_host_bytes();
-  if (p.host_bytes < common) throw std::logic_error("native MO batch accounting underflow");
-  const auto per_request = checked_add(p.host_bytes - common, p.device_bytes);
+  const auto common = batch_bytes(shape, 0, cuda);
+  const auto one = batch_bytes(shape, 1, cuda);
+  if (one < common) throw std::logic_error("native MO batch accounting underflow");
+  const auto per_request = one - common;
   if (!per_request || budget_ <= common) return 0;
   return (budget_ - common) / per_request;
 }
@@ -85,14 +93,31 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
   std::vector<NumericBlockPlan> plans;
   shapes.reserve(requests.size());
   plans.reserve(requests.size());
-  auto batch_memory = common_host_bytes();
+  const auto host_common = common_host_bytes();
+  auto batch_memory = host_common;
+  std::size_t shared_device_fixed = 0;
+  bool shared_device_fixed_set = false;
   for (const auto& slots : requests) {
     std::array<std::size_t, 4> shape{};
     for (unsigned k = 0; k < 4; ++k) shape[k] = slots[k].size();
     const auto p = plan(shape, cuda);
-    const auto common = common_host_bytes();
-    if (p.host_bytes < common) throw std::logic_error("native MO batch accounting underflow");
-    batch_memory = checked_add(batch_memory, checked_add(p.host_bytes - common, p.device_bytes));
+    if (p.host_bytes < host_common)
+      throw std::logic_error("native MO batch host accounting underflow");
+    auto incremental = p.host_bytes - host_common;
+    if (cuda) {
+      if (p.device_bytes < p.aligned_numeric)
+        throw std::logic_error("native MO batch device accounting underflow");
+      const auto fixed = p.device_bytes - p.aligned_numeric;
+      if (!shared_device_fixed_set) {
+        shared_device_fixed = fixed;
+        shared_device_fixed_set = true;
+        batch_memory = checked_add(batch_memory, shared_device_fixed);
+      } else if (fixed != shared_device_fixed) {
+        throw std::logic_error("native MO batch fixed device allowance changed by request shape");
+      }
+      incremental = checked_add(incremental, p.aligned_numeric);
+    }
+    batch_memory = checked_add(batch_memory, incremental);
     shapes.push_back(shape);
     plans.push_back(p);
   }
