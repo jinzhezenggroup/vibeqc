@@ -22,7 +22,10 @@ def test_host_diis_gram_computes_each_symmetric_pair_once() -> None:
     assert "detail::solve_diis_coefficients" in body
 
     coefficients = COEFFICIENTS.read_text()
-    assert "for (double value : gram) scale = std::max(scale, std::abs(value));" in coefficients
+    assert (
+        "for (double value : gram) scale = std::max(scale, std::abs(value));"
+        in coefficients
+    )
 
 
 def test_host_diis_gram_pair_work_census() -> None:
