@@ -253,6 +253,7 @@ XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& gr
   record.ingredient_mask = 1;
   const auto* factor = resolve_density_source(n, density, source, record);
   std::vector<double> ao;
+  std::vector<double> contracted(n);
   const auto& points = grid.points();
   const auto& weights = grid.weights();
   for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
@@ -953,6 +954,9 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       basis.evaluate(points.data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
     }
     sample_xc_capacity(result, ao, count);
+    record.owned_numeric_bytes =
+        std::max(record.owned_numeric_bytes,
+                 runtime::vector_capacities(ao, result.potential, contracted));
     const double* ao_data = cache ? cache->jets.data() : ao.data();
     const std::size_t point_stride = cache ? cache->points : count;
     for (std::size_t point = 0; point < count; ++point) {
@@ -978,13 +982,21 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       const double weight = weights[begin + point];
       result.energy += weight * xc.energy;
       result.electrons += weight * rho;
+      const double rho_weight = 0.5 * weight * xc.rho[0];
+      const double gradient_weight[3]{weight * xc.gradient[0][0],
+                                      weight * xc.gradient[0][1],
+                                      weight * xc.gradient[0][2]};
+      for (std::size_t mu = 0; mu < n; ++mu)
+        contracted[mu] = rho_weight * phi[mu] + gradient_weight[0] * grad_x[mu] +
+                         gradient_weight[1] * grad_y[mu] + gradient_weight[2] * grad_z[mu];
+      // V = q phi^T + phi q^T with
+      // q = w * (0.5 * v_rho * phi + sum_a v_grad[a] * d_a phi).
+      // This is the same symmetric GGA weak form, but hoists the coefficient/AO
+      // contraction from every AO pair to once per AO.
       for (std::size_t mu = 0; mu < n; ++mu) {
         for (std::size_t nu = mu; nu < n; ++nu) {
-          double value = xc.rho[0] * phi[mu] * phi[nu];
-          value += xc.gradient[0][0] * (grad_x[mu] * phi[nu] + phi[mu] * grad_x[nu]) +
-                   xc.gradient[0][1] * (grad_y[mu] * phi[nu] + phi[mu] * grad_y[nu]) +
-                   xc.gradient[0][2] * (grad_z[mu] * phi[nu] + phi[mu] * grad_z[nu]);
-          const double contribution = weight * value;
+          const double contribution =
+              contracted[mu] * phi[nu] + phi[mu] * contracted[nu];
           result.potential[mu * n + nu] += contribution;
           if (nu != mu) result.potential[nu * n + mu] += contribution;
         }
