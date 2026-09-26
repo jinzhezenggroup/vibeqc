@@ -21,7 +21,7 @@ def _functional_code(functional: typing.Any, pbe: typing.Any) -> int:
     if functional is None:
         if type(pbe) is not bool:
             raise TypeError(
-                "geometry lowering requires functional=0/1/2 or a boolean PBE flag"
+                "geometry lowering requires functional=0/1/2/4 or a boolean PBE flag"
             )
         return int(pbe)
     if pbe is not None:
@@ -99,7 +99,7 @@ def _emit_stationary_point(
                 "  }",
                 "  const double total = rho[0] + rho[1];",
                 f"  constexpr double density_threshold = {DENSITY_THRESHOLD.hex()};",
-                f"  constexpr double sigma_threshold = {SIGMA_THRESHOLD.hex()};",
+                f"  constexpr double sigma_threshold = {float(SIGMA_THRESHOLD).hex()};",
                 f"  constexpr double tau_threshold = {TAU_THRESHOLD.hex()};",
                 "  if (total < density_threshold) return out;",
                 "  double sigma[3]{};",
