@@ -12,6 +12,7 @@ from vibeqc_compiler.common.schedule import (
     ScheduleTopology,
     select_measured_schedule_contract,
 )
+from vibeqc_compiler.integral.direct_fock_schedule import select_direct_fock_route
 
 
 def _contract(
@@ -99,3 +100,32 @@ def test_measured_schedule_selection_rejects_cross_workload_comparison() -> None
             (baseline, other),
             minimum_speedup=1.02,
         )
+
+
+def test_direct_fock_materialization_consumes_shared_schedule_selection() -> None:
+    """The Direct-J/K adapter must not implement a second promotion policy."""
+
+    common = {
+        "shell_class": 1,
+        "workload_hash": "1" * 64,
+        "profile_key": "2" * 64,
+        "target_hash": "3" * 64,
+        "precision_schedule_hash": "4" * 64,
+        "page_size": 8_388_608,
+    }
+    assert (
+        select_direct_fock_route(
+            paged=GpuProfitability(endpoint_seconds=1.0),
+            streaming=GpuProfitability(endpoint_seconds=0.75),
+            **common,
+        )
+        == "streaming"
+    )
+    assert (
+        select_direct_fock_route(
+            paged=GpuProfitability(endpoint_seconds=1.0),
+            streaming=GpuProfitability(endpoint_seconds=None),
+            **common,
+        )
+        == "paged"
+    )
