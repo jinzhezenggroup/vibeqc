@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 import weakref
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
