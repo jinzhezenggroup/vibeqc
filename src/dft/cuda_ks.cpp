@@ -719,8 +719,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       throw;
     }
     warm_energy_baseline = use_warm && !device_chunk_mode && std::isfinite(warm_energy);
-    previous_energy =
-        warm_energy_baseline ? warm_energy : std::numeric_limits<double>::infinity();
+    previous_energy = warm_energy_baseline ? warm_energy : std::numeric_limits<double>::infinity();
     is_active = true;
   }
 
@@ -1228,8 +1227,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       stabilize_occupations = true;
     const bool has_energy_history =
         output.iterations > 1 || (output.iterations == 1 && warm_energy_baseline);
-    const bool converged = has_energy_history &&
-                           output.energy_change < options.energy_tolerance &&
+    const bool converged = has_energy_history && output.energy_change < options.energy_tolerance &&
                            physical.density_change < options.density_tolerance &&
                            physical.residual < std::min(1e-9, options.density_tolerance) &&
                            physical.maximum_residual < std::min(1e-9, options.density_tolerance);
