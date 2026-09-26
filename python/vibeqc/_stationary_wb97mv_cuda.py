@@ -337,9 +337,10 @@ class PreparedWb97mvCudaGradient:
         for begin in range(0, npnt, tile_points):
             end = min(begin + tile_points, npnt)
             points = state.grid.points[begin:end]
-            with self.grid.xc_task_with_features(
-                points, ids, "WB97M-V"
-            ) as (features, task):
+            with self.grid.xc_task_with_features(points, ids, "WB97M-V") as (
+                features,
+                task,
+            ):
                 rho[begin:end] = features["rho"].sum(axis=0)
                 gradient[begin:end] = features["gradient"].sum(axis=0)
                 self.sources.geometry(
