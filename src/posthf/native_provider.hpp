@@ -20,6 +20,7 @@ struct ProviderWork {
   std::size_t transform_fmas{};
   std::size_t mo_blocks{};
   std::size_t cuda_transform_calls{};
+  std::size_t cuda_batch_calls{};
   std::size_t h2d_bytes{};
   std::size_t d2h_bytes{};
 };
