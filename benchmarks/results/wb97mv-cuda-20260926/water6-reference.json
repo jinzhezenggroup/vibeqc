@@ -1,0 +1,385 @@
+{
+  "schema": "vibeqc.readme-wb97mv.v1",
+  "status": "measured",
+  "atoms": 6,
+  "aos": 48,
+  "basis": "def2-svp spherical",
+  "method": "WB97M-V/RKS",
+  "endpoint": "SCF energy plus analytic forces",
+  "grid": {
+    "radial_points": 48,
+    "angular_polar": 16,
+    "angular_azimuth": 32,
+    "element_radii": [],
+    "partition_iterations": 3,
+    "coincident_tolerance": 1e-12,
+    "version": 1,
+    "radial_rule": "rational-legendre",
+    "angular_rule": "legendre-trapezoid",
+    "partition": "becke-equal-radius",
+    "pruning": "none",
+    "units": "Bohr",
+    "ordering": "atom-radial-polar-azimuth"
+  },
+  "warm_start_policy": {
+    "vibeqc": "engine-local fixed post-cold converged density snapshot",
+    "gpu4pyscf": "engine-local fixed post-cold converged density snapshot",
+    "cross_engine_density_identity": "not asserted because backend AO conventions are independent"
+  },
+  "native_samples": [],
+  "reference_samples": [
+    {
+      "seconds": 8.42056834930554,
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 6,
+          "final_residuals": {
+            "energy_change_hartree": 6.394884621840902e-12,
+            "density_rms": 3.422232075917083e-10,
+            "orbital_gradient_norm": 5.161855640223366e-10
+          },
+          "warm_start": {
+            "used": true,
+            "fallback": false
+          }
+        }
+      ],
+      "energies_hartree": [
+        -152.64980633436087
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            -0.02147516431489538,
+            -0.0108662918454967,
+            0.004901017279908437
+          ],
+          [
+            0.022641746135933616,
+            0.01738001455991256,
+            -0.0005427240902409203
+          ],
+          [
+            -0.0013937326681912054,
+            -0.006615023467039627,
+            -0.0032689091661213254
+          ],
+          [
+            -0.012054674966890389,
+            0.021122532004562933,
+            -0.007535518994796764
+          ],
+          [
+            -0.006224648476072958,
+            0.0012510722593914725,
+            0.003527871149802797
+          ],
+          [
+            0.01850647429008334,
+            -0.02227230351136189,
+            0.00291826382145427
+          ]
+        ]
+      ]
+    },
+    {
+      "seconds": 8.407018311787397,
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 6,
+          "final_residuals": {
+            "energy_change_hartree": 6.394884621840902e-12,
+            "density_rms": 3.4222019948346344e-10,
+            "orbital_gradient_norm": 5.161711689539669e-10
+          },
+          "warm_start": {
+            "used": true,
+            "fallback": false
+          }
+        }
+      ],
+      "energies_hartree": [
+        -152.6498063343608
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            -0.021475164314896156,
+            -0.010866291845485154,
+            0.0049010172799146545
+          ],
+          [
+            0.022641746135940277,
+            0.017380014559909895,
+            -0.0005427240902414199
+          ],
+          [
+            -0.0013937326681960904,
+            -0.006615023467041403,
+            -0.003268909166124434
+          ],
+          [
+            -0.012054674966895274,
+            0.02112253200455999,
+            -0.007535518994805646
+          ],
+          [
+            -0.006224648476072625,
+            0.0012510722593932488,
+            0.0035278711498050175
+          ],
+          [
+            0.01850647429007979,
+            -0.022272303511359226,
+            0.002918263821454825
+          ]
+        ]
+      ]
+    },
+    {
+      "seconds": 8.426949416752905,
+      "convergence": [
+        {
+          "converged": true,
+          "iterations": 6,
+          "final_residuals": {
+            "energy_change_hartree": 6.536993168992922e-12,
+            "density_rms": 3.422228170459428e-10,
+            "orbital_gradient_norm": 5.161845548669267e-10
+          },
+          "warm_start": {
+            "used": true,
+            "fallback": false
+          }
+        }
+      ],
+      "energies_hartree": [
+        -152.64980633436073
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            -0.02147516431489843,
+            -0.010866291845494924,
+            0.004901017279911768
+          ],
+          [
+            0.02264174613594827,
+            0.017380014559913892,
+            -0.000542724090242197
+          ],
+          [
+            -0.001393732668189429,
+            -0.006615023467040293,
+            -0.0032689091661222136
+          ],
+          [
+            -0.012054674966881063,
+            0.021122532004564265,
+            -0.007535518994802093
+          ],
+          [
+            -0.006224648476072847,
+            0.0012510722593963575,
+            0.0035278711497996884
+          ],
+          [
+            0.01850647429007979,
+            -0.02227230351135656,
+            0.0029182638214560186
+          ]
+        ]
+      ]
+    }
+  ],
+  "environment": {
+    "timestamp_utc": "2026-09-26T14:57:37.769699+00:00",
+    "git": {
+      "commit": "872b52f5de002787d68a3d5c724fd1224572ce36",
+      "dirty": true,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "processor": "x86_64"
+    },
+    "python": {
+      "version": "3.11.14",
+      "executable": "/home/jzzeng/codes/vibeqc-task-20260912/df-benchmark-env/bin/python"
+    },
+    "packages": {
+      "pyscf": "2.14.0",
+      "gpu4pyscf": "1.8.1",
+      "cupy": "14.2.0",
+      "numpy": "2.4.6"
+    },
+    "runtime": {
+      "vibeqc_library": "/home/jzzeng/codes/vibeqc-wb97mv-cuda/build/libvibeqc.so",
+      "cuda_visible_devices": "0"
+    },
+    "toolchain": {
+      "nvcc": {
+        "path": "/group/software/cuda-12.9.1/bin/nvcc",
+        "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "ptxas": {
+        "path": "/group/software/cuda-12.9.1/bin/ptxas",
+        "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "cuobjdump": {
+        "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+        "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      }
+    },
+    "accelerator": {
+      "backend": "cuda",
+      "device_id": 0,
+      "name": "NVIDIA GeForce RTX 5090",
+      "compute_capability": [
+        12,
+        0
+      ],
+      "total_global_memory_bytes": 33666498560,
+      "multiprocessor_count": 170,
+      "clock_rate_khz": 2407000,
+      "driver_version": 13000,
+      "runtime_version": 12090,
+      "nvidia_smi": {
+        "performance_state": "P0",
+        "power_draw_watts": 67.35,
+        "power_limit_watts": 575.0,
+        "sm_clock_mhz": 2632.0,
+        "memory_clock_mhz": 14001.0,
+        "temperature_celsius": 42.0,
+        "sampling_point": "after benchmark measurements"
+      }
+    }
+  },
+  "reference_prepare_seconds": 0.5069903046824038,
+  "stage": "complete",
+  "reference_cold": {
+    "seconds": 20.568460712675005,
+    "convergence": [
+      {
+        "converged": true,
+        "iterations": 17,
+        "final_residuals": {
+          "energy_change_hartree": 4.547473508864641e-12,
+          "density_rms": 7.838087726502736e-09,
+          "orbital_gradient_norm": 7.401777662781863e-09
+        },
+        "warm_start": {
+          "used": false,
+          "fallback": false
+        }
+      }
+    ],
+    "energies_hartree": [
+      -152.64980633448766
+    ],
+    "forces_hartree_per_bohr": [
+      [
+        [
+          -0.02147516500196789,
+          -0.010866291579527232,
+          0.004901016471727582
+        ],
+        [
+          0.02264174673277708,
+          0.01738001456385785,
+          -0.0005427236906579425
+        ],
+        [
+          -0.0013937325775321696,
+          -0.006615023740395076,
+          -0.003268908753201405
+        ],
+        [
+          -0.012054675688768945,
+          0.021122531658149202,
+          -0.007535519519870304
+        ],
+        [
+          -0.006224648276364819,
+          0.0012510727120897958,
+          0.0035278712486002117
+        ],
+        [
+          0.018506474811794904,
+          -0.022272303614188527,
+          0.002918264243408214
+        ]
+      ]
+    ]
+  },
+  "reference_priming": {
+    "seconds": 8.453996805939823,
+    "convergence": [
+      {
+        "converged": true,
+        "iterations": 6,
+        "final_residuals": {
+          "energy_change_hartree": 6.366462912410498e-12,
+          "density_rms": 3.4222072297710764e-10,
+          "orbital_gradient_norm": 5.161686826304979e-10
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      }
+    ],
+    "energies_hartree": [
+      -152.6498063343609
+    ],
+    "forces_hartree_per_bohr": [
+      [
+        [
+          -0.021475164314896933,
+          -0.01086629184547716,
+          0.004901017279910214
+        ],
+        [
+          0.02264174613594072,
+          0.017380014559917445,
+          -0.000542724090241975
+        ],
+        [
+          -0.0013937326681903173,
+          -0.006615023467039405,
+          -0.003268909166119993
+        ],
+        [
+          -0.012054674966886392,
+          0.02112253200456199,
+          -0.007535518994806756
+        ],
+        [
+          -0.006224648476071737,
+          0.0012510722593883639,
+          0.0035278711498014648
+        ],
+        [
+          0.018506474290083785,
+          -0.02227230351135434,
+          0.002918263821455769
+        ]
+      ]
+    ]
+  },
+  "timing": {
+    "gpu4pyscf": {
+      "median_seconds": 8.42056834930554,
+      "min_seconds": 8.407018311787397,
+      "max_seconds": 8.426949416752905
+    }
+  }
+}

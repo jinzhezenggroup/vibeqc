@@ -1,6 +1,7 @@
 #ifndef VIBEQC_METHODS_DFT_METHOD_HPP
 #define VIBEQC_METHODS_DFT_METHOD_HPP
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -23,6 +24,14 @@ struct KsDerivativeSnapshot {
 vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
                                         const dft::CudaKsFinalStateToken& expected,
                                         KsDerivativeSnapshot& output, std::string& detail);
+
+/** Five explicit CUDA stationary sources: hcore, overlap/Pulay, J, SR-K,
+ * LR-K. The live token binds D/W, geometry, radial parameters and spin.
+ * XC, nonlocal correlation and nuclear repulsion are separate consumers. */
+vibeqc_status dft_cuda_integral_gradient(PreparedBatch& batch, std::size_t index,
+                                         const dft::CudaKsFinalStateToken& expected,
+                                         std::vector<double>& output, std::size_t maximum_bytes,
+                                         std::array<std::uint64_t, 9>& work, std::string& detail);
 
 vibeqc_status validate_dft_system(vibeqc_method method, const core::System& system,
                                   std::string& detail);

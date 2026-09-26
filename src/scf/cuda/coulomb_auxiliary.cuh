@@ -102,46 +102,58 @@ __device__ inline void fill_coulomb(EvaluationReal<Scalar> exponent, const Vec3<
   }
 }
 
-/** Value-only SR/LR radial owner for exact CUDA exchange.
+/** SR/LR radial owner for exact CUDA exchange and nuclear derivatives.
  *
  * Range moments are shared with the CPU/generated range-ERI path. Keep this
  * separate from fill_coulomb so the established full-range Boys path and its
  * rounding remain unchanged.
  */
-template <unsigned MaximumAngular>
-__device__ inline bool fill_range_coulomb(double exponent, const Vec3<double>& product,
-                                          const Vec3<double>& center,
+template <unsigned MaximumAngular, typename Scalar>
+__device__ inline bool fill_range_coulomb(double exponent, const Vec3<Scalar>& product,
+                                          const Vec3<Scalar>& center,
                                           vibeqc::integrals::CoulombRange range, double omega,
-                                          CoulombAuxiliary<double, MaximumAngular>& auxiliary) {
+                                          CoulombAuxiliary<Scalar, MaximumAngular>& auxiliary) {
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   if (range == vibeqc::integrals::CoulombRange::Full) return false;
-  for (unsigned item = 0; item < CoulombAuxiliary<double, MaximumAngular>::kStateCount; ++item)
-    auxiliary.data[item] = 0.0;
+  for (unsigned item = 0; item < CoulombAuxiliary<Scalar, MaximumAngular>::kStateCount; ++item)
+    auxiliary.data[item] = scalar<Scalar>(0.0);
 
-  const Vec3<double> pc{product.x - center.x, product.y - center.y, product.z - center.z};
-  double moments[MaximumAngular + 1];
-  if (!vibeqc::integrals::bounded_range_moments<MaximumAngular>(
-          MaximumAngular, exponent * distance_squared(product, center), exponent, range, omega,
-          moments))
+  const Vec3<Scalar> pc{product.x - center.x, product.y - center.y, product.z - center.z};
+  const Scalar argument = exponent * distance_squared(product, center);
+  constexpr unsigned extra = std::is_same_v<Scalar, double> ? 0U : 1U;
+  double moments[MaximumAngular + extra + 1];
+  if (!vibeqc::integrals::bounded_range_moments<MaximumAngular + extra>(
+          MaximumAngular + extra, scalar_value(argument), exponent, range, omega, moments))
     return false;
 
   double factor = 1.0;
   for (unsigned n = 0; n <= MaximumAngular; ++n) {
-    auxiliary.at(n, 0, 0, 0) = factor * moments[n];
+    // At fixed exponents and omega, d M_n(T)/dT = -M_(n+1)(T)
+    // for both radial domains. Carry that seed through the SAME recurrence
+    // as values; no displaced integrals or subtraction of full/LR forces.
+    Scalar moment = scalar<Scalar>(moments[n]);
+    if constexpr (std::is_same_v<Scalar, Dual>)
+      moment.derivative = -moments[n + 1] * argument.derivative;
+    else if constexpr (std::is_same_v<Scalar, Dual3>) {
+      moment.derivative_x = -moments[n + 1] * argument.derivative_x;
+      moment.derivative_y = -moments[n + 1] * argument.derivative_y;
+      moment.derivative_z = -moments[n + 1] * argument.derivative_z;
+    }
+    auxiliary.at(n, 0, 0, 0) = factor * moment;
     factor *= -2.0 * exponent;
   }
   for (unsigned v = 1; v <= MaximumAngular; ++v) {
     for (unsigned n = 0; n + v <= MaximumAngular; ++n) {
-      double value = pc.z * auxiliary.at(n + 1, 0, 0, v - 1);
-      if (v > 1) value += static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
+      Scalar value = pc.z * auxiliary.at(n + 1, 0, 0, v - 1);
+      if (v > 1) value = value + static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
       auxiliary.at(n, 0, 0, v) = value;
     }
   }
   for (unsigned v = 0; v <= MaximumAngular; ++v) {
     for (unsigned u = 1; u + v <= MaximumAngular; ++u) {
       for (unsigned n = 0; n + u + v <= MaximumAngular; ++n) {
-        double value = pc.y * auxiliary.at(n + 1, 0, u - 1, v);
-        if (u > 1) value += static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
+        Scalar value = pc.y * auxiliary.at(n + 1, 0, u - 1, v);
+        if (u > 1) value = value + static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
         auxiliary.at(n, 0, u, v) = value;
       }
     }
@@ -150,8 +162,8 @@ __device__ inline bool fill_range_coulomb(double exponent, const Vec3<double>& p
     for (unsigned u = 0; u + v <= MaximumAngular; ++u) {
       for (unsigned t = 1; t + u + v <= MaximumAngular; ++t) {
         for (unsigned n = 0; n + t + u + v <= MaximumAngular; ++n) {
-          double value = pc.x * auxiliary.at(n + 1, t - 1, u, v);
-          if (t > 1) value += static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
+          Scalar value = pc.x * auxiliary.at(n + 1, t - 1, u, v);
+          if (t > 1) value = value + static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
           auxiliary.at(n, t, u, v) = value;
         }
       }

@@ -84,4 +84,14 @@ vibeqc_status execute_cuda_direct_energy_derivative_item(CudaDirectJkPlan* plan,
                                                          const std::vector<double>& beta,
                                                          std::vector<double>& derivative,
                                                          std::string& detail);
+
+/** Fused RSH fixed-density derivative for one item. Output is source-major:
+ * [J, short-range K, long-range K], each with coordinates_per_item values.
+ * Short-range derivatives are formed from Full - Long inside one quartet pass.
+ */
+vibeqc_status execute_cuda_direct_rsh_energy_derivatives_item(
+    CudaDirectJkPlan* plan, std::size_t item, FockSpin spin, double coulomb_coefficient,
+    double short_exchange_coefficient, double long_exchange_coefficient, double omega,
+    const std::vector<double>& density, const std::vector<double>& beta,
+    std::vector<double>& derivatives, std::string& detail);
 }  // namespace vibeqc::scf

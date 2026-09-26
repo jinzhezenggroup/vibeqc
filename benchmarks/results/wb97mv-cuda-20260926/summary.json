@@ -1,0 +1,408 @@
+{
+  "schema": "vibeqc.wb97mv-cuda-qualification.v1",
+  "scope": "Complete public Python CUDA forces accepted on H2/RKS, H3/UKS and water/def2-SVP; large-system performance not qualified.",
+  "source_base_commit": "872b52f5de002787d68a3d5c724fd1224572ce36",
+  "measured_worktree_dirty": true,
+  "native_build": {
+    "library_path": "/home/jzzeng/codes/vibeqc-wb97mv-cuda/build/libvibeqc.so.0.1.0",
+    "library_sha256": "551ae03cd5fc8e0db6691d413ef4e060568f26d85e3f5e7733cd097030df557b",
+    "probe": {
+      "source_identity": "1a2c74b660d3d3dd1fea45bf5e10e7595ee2a96df34d414fcaeb79f47cfae49d",
+      "native_abi": 0,
+      "schema": 1,
+      "policy": {
+        "precision": "fp64",
+        "spin": [
+          "rhf",
+          "uhf"
+        ],
+        "consumers": [
+          "fock",
+          "force"
+        ]
+      },
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "libc": [
+          "glibc",
+          "2.35"
+        ]
+      },
+      "device": {
+        "name": "NVIDIA GeForce RTX 5090",
+        "official_profile": "sm_120",
+        "major": 12,
+        "minor": 0,
+        "warp_size": 32,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "maximum_blocks_per_sm": 24,
+        "registers_per_sm": 65536,
+        "maximum_registers_per_thread": 255,
+        "sm_count": 170,
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "runtime_version": 12090,
+        "driver_version": 13000,
+        "toolkit_version": 12090,
+        "release_build": 1,
+        "fast_compile": 0,
+        "portable": 0
+      }
+    }
+  },
+  "environment": {
+    "timestamp_utc": "2026-09-26T15:51:34.457542+00:00",
+    "git": {
+      "commit": "872b52f5de002787d68a3d5c724fd1224572ce36",
+      "dirty": true,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "processor": "x86_64"
+    },
+    "python": {
+      "version": "3.11.14",
+      "executable": "/home/jzzeng/codes/vibeqc-task-20260912/df-benchmark-env/bin/python"
+    },
+    "packages": {
+      "pyscf": "2.14.0",
+      "gpu4pyscf": "1.8.1",
+      "cupy": "14.2.0",
+      "numpy": "2.4.6"
+    },
+    "runtime": {
+      "vibeqc_library": "/home/jzzeng/codes/vibeqc-wb97mv-cuda/build/libvibeqc.so",
+      "cuda_visible_devices": "0"
+    },
+    "toolchain": {
+      "nvcc": {
+        "path": "/group/software/cuda-12.9.1/bin/nvcc",
+        "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "ptxas": {
+        "path": "/group/software/cuda-12.9.1/bin/ptxas",
+        "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "cuobjdump": {
+        "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+        "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      }
+    },
+    "accelerator": {
+      "backend": "cuda",
+      "device_id": 0,
+      "name": "NVIDIA GeForce RTX 5090",
+      "compute_capability": [
+        12,
+        0
+      ],
+      "total_global_memory_bytes": 33666498560,
+      "multiprocessor_count": 170,
+      "clock_rate_khz": 2407000,
+      "driver_version": 13000,
+      "runtime_version": 12090,
+      "nvidia_smi": {
+        "performance_state": "P0",
+        "power_draw_watts": 71.29,
+        "power_limit_watts": 575.0,
+        "sm_clock_mhz": 2557.0,
+        "memory_clock_mhz": 14001.0,
+        "temperature_celsius": 54.0,
+        "sampling_point": "after benchmark measurements"
+      }
+    }
+  },
+  "grid": {
+    "radial_points": 48,
+    "angular_polar": 16,
+    "angular_azimuth": 32,
+    "element_radii": [],
+    "partition_iterations": 3,
+    "coincident_tolerance": 1e-12,
+    "version": 1,
+    "radial_rule": "rational-legendre",
+    "angular_rule": "legendre-trapezoid",
+    "partition": "becke-equal-radius",
+    "pruning": "none",
+    "units": "Bohr",
+    "ordering": "atom-radial-polar-azimuth"
+  },
+  "paired_water_accuracy": {
+    "selection": "all_measured_pairs",
+    "pair_count": 5,
+    "maximum_energy_error_hartree": 4.7253365664801095e-09,
+    "maximum_force_error_hartree_per_bohr": 4.762853667017453e-09
+  },
+  "paired_water_timing": {
+    "vibeqc": {
+      "median_seconds": 19.215569545980543,
+      "min_seconds": 19.201270878780633,
+      "max_seconds": 19.252665149979293
+    },
+    "gpu4pyscf": {
+      "median_seconds": 2.31034482922405,
+      "min_seconds": 2.292564420029521,
+      "max_seconds": 2.3116136007010937
+    }
+  },
+  "paired_water_force_work": {
+    "execution": "cuda-complete-wb97mv",
+    "plan_identity": "bd4f51f4c101f3c2ed02fa6e833b34d4f2892a37f2df4a33b477954aea096038",
+    "source_names": [
+      "one_electron",
+      "coulomb",
+      "exchange_short_range",
+      "exchange_long_range",
+      "xc_ao",
+      "xc_grid",
+      "xc_weight",
+      "nonlocal_ao",
+      "nonlocal_grid",
+      "nonlocal_weight",
+      "overlap_pulay",
+      "nuclear"
+    ],
+    "grid_points": 73728,
+    "ao_collocation_point_visits": 221184,
+    "geometry_point_visits": 147456,
+    "partition_pair_visits": 884736,
+    "nonlocal_active_points": 57220,
+    "nonlocal_pair_evaluations": 3274128400,
+    "ordered_quartets_per_integral_source": 331776,
+    "coordinate_quartet_visits_per_integral_source": 2985984,
+    "additional_device_peak_bound": 377062408,
+    "additional_host_numeric_bound": 308987832,
+    "native_integral_resources": {
+      "retained_device_bytes": 29252,
+      "source_host_preparation_bytes": 22009,
+      "one_electron_device_peak_bytes": 8700,
+      "one_electron_host_peak_bytes": 6696,
+      "one_electron_h2d_bytes": 17256,
+      "one_electron_d2h_bytes": 144,
+      "final_state_export_d2h_bytes": 14020,
+      "final_state_export_reads": 1,
+      "final_state_export_synchronizations": 1
+    },
+    "prepared_execution_reused": true,
+    "execution_index": 5,
+    "snapshot_export_work": {
+      "d2h_bytes": 14020,
+      "reads": 1,
+      "synchronizations": 1
+    },
+    "host_scope": "snapshot validation, tiling, total-feature/active-set packing",
+    "endpoint_seconds": 15.420612697023898,
+    "component_seconds": {
+      "prepare": 0.0019367379136383533,
+      "integral_derivatives": 13.394548619166017,
+      "semilocal_geometry_and_features": 1.1798721211962402,
+      "vv10_pairs": 0.3739474848844111,
+      "nonlocal_geometry": 0.4674088633619249,
+      "reduction_and_validation": 0.0023425337858498096
+    }
+  },
+  "attempts": [
+    {
+      "atoms": 3,
+      "aos": 24,
+      "group": "wb97mv",
+      "status": "measured",
+      "stage": "complete",
+      "outcome": {
+        "exit_code": 0,
+        "time_limit_seconds": 600
+      },
+      "raw_sha256": "cc9e349a1116fcc609017009abe379d159bc0a0f3e3f3c7452b1169fd338d3a1",
+      "timing": {
+        "vibeqc": {
+          "median_seconds": 19.215569545980543,
+          "min_seconds": 19.201270878780633,
+          "max_seconds": 19.252665149979293
+        },
+        "gpu4pyscf": {
+          "median_seconds": 2.31034482922405,
+          "min_seconds": 2.292564420029521,
+          "max_seconds": 2.3116136007010937
+        }
+      },
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv/direct-3.json"
+    },
+    {
+      "atoms": 3,
+      "aos": 24,
+      "group": "wb97mv-reference",
+      "status": "measured",
+      "stage": "complete",
+      "outcome": {
+        "exit_code": 0,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "6d3458c471a1c5aeeaf8d5f469516f5a46908ad8581863e7e1b09ee235287e21",
+      "timing": {
+        "gpu4pyscf": {
+          "median_seconds": 2.2839553342200816,
+          "min_seconds": 2.2712059412151575,
+          "max_seconds": 2.2873932300135493
+        }
+      },
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv-reference/direct-3.json"
+    },
+    {
+      "atoms": 6,
+      "aos": 48,
+      "group": "wb97mv",
+      "status": "timeout",
+      "stage": "native/cold",
+      "outcome": {
+        "exit_code": 124,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "f5353ecc7f6db4635a2211743b9f9c9f0a32b4f60eb2d0545f9a706569efc4ae",
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv/direct-6.json"
+    },
+    {
+      "atoms": 6,
+      "aos": 48,
+      "group": "wb97mv-reference",
+      "status": "measured",
+      "stage": "complete",
+      "outcome": {
+        "exit_code": 0,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "10ea8495d8a9e0bc06e5ec65c9f3bf8c74d818f334fc77391e6aff6e906921b5",
+      "timing": {
+        "gpu4pyscf": {
+          "median_seconds": 8.42056834930554,
+          "min_seconds": 8.407018311787397,
+          "max_seconds": 8.426949416752905
+        }
+      },
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv-reference/direct-6.json"
+    },
+    {
+      "atoms": 12,
+      "aos": 96,
+      "group": "wb97mv",
+      "status": "interrupted",
+      "stage": "native/cold",
+      "outcome": {
+        "status": "interrupted",
+        "reason": "Remaining scaling benchmarks stopped at user request; performance analysis deferred."
+      },
+      "raw_sha256": "7991863ca818e515f8189a0bf3ee99ce17310e7ef01c02dfb01288868df471a0",
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv/direct-12.json"
+    },
+    {
+      "atoms": 12,
+      "aos": 96,
+      "group": "wb97mv-reference",
+      "status": "timeout",
+      "stage": "reference/cold",
+      "outcome": {
+        "exit_code": 124,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "2d3a84122f87bd7186a3172b23d670f04cdaea7a2065fc4ecd300706ee8571c8",
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv-reference/direct-12.json"
+    },
+    {
+      "atoms": 24,
+      "aos": 192,
+      "group": "wb97mv",
+      "status": "not_run",
+      "stage": null,
+      "outcome": {
+        "status": "not_run",
+        "reason": "Remaining scaling benchmarks stopped at user request; performance analysis deferred."
+      },
+      "raw_sha256": null,
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv/direct-24.json"
+    },
+    {
+      "atoms": 24,
+      "aos": 192,
+      "group": "wb97mv-reference",
+      "status": "timeout",
+      "stage": "reference/cold",
+      "outcome": {
+        "exit_code": 124,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "23a2e7eb0849e6d7deeb0f89b33de9d0e3b7a0513dde5f882bf908fa052b46a0",
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv-reference/direct-24.json"
+    },
+    {
+      "atoms": 48,
+      "aos": 384,
+      "group": "wb97mv",
+      "status": "not_run",
+      "stage": null,
+      "outcome": {
+        "status": "not_run",
+        "reason": "Remaining scaling benchmarks stopped at user request; performance analysis deferred."
+      },
+      "raw_sha256": null,
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv/direct-48.json"
+    },
+    {
+      "atoms": 48,
+      "aos": 384,
+      "group": "wb97mv-reference",
+      "status": "timeout",
+      "stage": "reference/cold",
+      "outcome": {
+        "exit_code": 124,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "1aa169ef4e7f4e8cb5b5b32bf03c12d43d637533245b915f5e56008d56216e46",
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv-reference/direct-48.json"
+    },
+    {
+      "atoms": 96,
+      "aos": 768,
+      "group": "wb97mv",
+      "status": "not_run",
+      "stage": null,
+      "outcome": {
+        "status": "not_run",
+        "reason": "Remaining scaling benchmarks stopped at user request; performance analysis deferred."
+      },
+      "raw_sha256": null,
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv/direct-96.json"
+    },
+    {
+      "atoms": 96,
+      "aos": 768,
+      "group": "wb97mv-reference",
+      "status": "timeout",
+      "stage": "reference/cold",
+      "outcome": {
+        "exit_code": 124,
+        "time_limit_seconds": 150
+      },
+      "raw_sha256": "c5ce1258491cb4559474186b18353f118dac6f226de065752ea5d9463a7d19a7",
+      "timing": null,
+      "raw_path": ".artifacts/readme-wb97mv-20260926/wb97mv-reference/direct-96.json"
+    }
+  ],
+  "remaining_work": "Performance analysis and optimization deferred at user request. Remaining native scaling runs stopped; no headline README timing chart."
+}

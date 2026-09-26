@@ -377,7 +377,8 @@ void warm_preparation_failure(bool retained_plan) {
               std::abs(results[1].energy - expected) < 2e-10,
           "warm preparation failure corrupted its neighbor");
   require(execute(target, true) == VIBEQC_STATUS_SUCCESS && results[0].converged &&
-              results[0].warm_start_used && std::abs(results[0].energy - expected) < 2e-10,
+              results[0].warm_start_used && results[0].iterations > 1 &&
+              std::abs(results[0].energy - expected) < 2e-10,
           "warm preparation failure lost the imported seed or target geometry");
 }
 
@@ -415,7 +416,7 @@ void warm_execution_allocation_failure() {
           "warm SCF allocation failure was hidden by a cold retry or affected its neighbor");
   require(execute() == VIBEQC_STATUS_SUCCESS && results[0].converged &&
               results[0].warm_start_used && std::abs(results[0].energy - energy) < 2e-10,
-          "warm SCF allocation failure lost its last-good seed");
+          "warm SCF allocation failure lost its last-good density/energy pair");
 }
 
 }  // namespace
@@ -843,6 +844,9 @@ int main() {
                 cuda_result.iterations <= cold.iterations &&
                 std::abs(cuda_result.energy - cold.energy) < 1e-11,
             "public CUDA KS compatible replay changed the endpoint");
+        if (!uks)
+          require(cuda_result.iterations == 1,
+                  "same-geometry CUDA RKS warm replay did not reuse its validated energy baseline");
 
         auto auto_method = method;
         auto_method.precision_mode = VIBEQC_PRECISION_AUTO;

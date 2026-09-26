@@ -1,0 +1,51 @@
+{
+  "schema": "vibeqc.wb97mv-cuda-validation.v1",
+  "complete_force_gates": {
+    "energy_absolute_hartree": 1e-08,
+    "force_absolute_hartree_per_bohr": 1e-07,
+    "force_relative": 1e-07,
+    "translation_absolute": 2e-08,
+    "directional_finite_difference_steps_bohr": [
+      0.001,
+      0.0003,
+      0.0001
+    ],
+    "directional_finite_difference_gates": [
+      1e-05,
+      2e-06,
+      2e-06
+    ]
+  },
+  "logs": [
+    {
+      "path": ".artifacts/complete-accepted.log",
+      "sha256": "93ecb1e647c6106e494fb3c13b103b7ac2b49298bf1a15aad05f81343583649c",
+      "text": "============================= test session starts ==============================\nplatform linux -- Python 3.11.14, pytest-9.1.1, pluggy-1.6.0 -- /home/jzzeng/codes/vibeqc-task-20260912/df-benchmark-env/bin/python\ncachedir: .pytest_cache\nrootdir: /home/jzzeng/codes/vibeqc-wb97mv-cuda\nconfigfile: pyproject.toml\ncollecting ... collected 4 items\n\ntests/python/test_wb97mv_complete_cuda.py::test_complete_cuda_force_matches_independent_engine[wb97m-v-0-atoms0-sto-3g] PASSED [ 25%]\ntests/python/test_wb97mv_complete_cuda.py::test_complete_cuda_force_matches_independent_engine[wb97m-v-uks-1-atoms1-sto-3g] PASSED [ 50%]\ntests/python/test_wb97mv_complete_cuda.py::test_complete_cuda_force_matches_independent_engine[wb97m-v-0-atoms2-def2-svp] PASSED [ 75%]\ntests/python/test_wb97mv_complete_cuda.py::test_cuda_force_rebuild_failure_isolation_and_stale_snapshot PASSED [100%]\n\n=============================== warnings summary ===============================\ntests/python/test_wb97mv_complete_cuda.py::test_complete_cuda_force_matches_independent_engine[wb97m-v-0-atoms0-sto-3g]\n  /home/jzzeng/codes/vibeqc-task-20260912/df-benchmark-env/lib/python3.11/site-packages/gpu4pyscf/lib/cutensor.py:154: UserWarning: using cupy as the tensor contraction engine.\n    warnings.warn(f'using {contract_engine} as the tensor contraction engine.')\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=================== 4 passed, 1 warning in 188.46s (0:03:08) ===================\n"
+    },
+    {
+      "path": ".artifacts/range-response-final.log",
+      "sha256": "f3ab89ab5ef9dc0309d1445a6e3893c5d206f1975f6304fa345ce1bbbd06ba1f",
+      "text": "CUDA s/p/d/f SR/LR derivative gates PASS\n"
+    },
+    {
+      "path": ".artifacts/vv10-native-tests.log",
+      "sha256": "c0d604dd8e01b9898dc4330c094f29911b0b626afa2e47bdee5eb5280868434e",
+      "text": "........                                                                 [100%]\n8 passed in 0.55s\n"
+    },
+    {
+      "path": ".artifacts/cpu-proof-regression.log",
+      "sha256": "bfad7e1352a22f02f3c1c5355fac443b754bb60d91761c600ad0ae46772e6f7f",
+      "text": "...                                                                      [100%]\n3 passed, 4 deselected in 26.64s\n"
+    },
+    {
+      "path": ".artifacts/compiler-regression.log",
+      "sha256": "3955227935012163838ab35e24cc96c45191dcb17374b2729451fcf2da8a87ac",
+      "text": "..............................................................           [100%]\n62 passed in 15.82s\n"
+    },
+    {
+      "path": ".artifacts/fock-build-test.log",
+      "sha256": "05fc9fd58b9b01f34306ca0e5affd80a0a2e6c2c7c6495a78d334c8f0d3e1f14",
+      "text": "exact Fock providers: raw J/K, spin, terms, derivatives, preflight, identity PASS\n"
+    }
+  ]
+}

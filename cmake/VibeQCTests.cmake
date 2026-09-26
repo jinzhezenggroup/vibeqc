@@ -280,6 +280,9 @@ macro(vibeqc_add_native_tests)
     set_tests_properties(vibeqc_dft_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
     vibeqc_native_test(vibeqc_ks_cuda_tests tests/native/test_ks_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    target_include_directories(vibeqc_ks_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    target_sources(vibeqc_ks_cuda_tests PRIVATE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_split_hybrid_registry.cuh")
     add_executable(vibeqc_cosx_cuda_tests
       tests/native/test_cosx_cuda.cu
       src/dft/cuda_cosx.cu

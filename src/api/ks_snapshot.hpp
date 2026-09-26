@@ -21,6 +21,9 @@ vibeqc_status vibeqc_ks_snapshot_copy_v1(const vibeqc_batch* batch,
                                          const vibeqc_ks_snapshot* snapshot, double* values,
                                          std::size_t count);
 void vibeqc_ks_snapshot_destroy_v1(vibeqc_ks_snapshot* snapshot);
+vibeqc_status vibeqc_ks_snapshot_cuda_integral_gradient_v1(
+    vibeqc_batch* batch, const vibeqc_ks_snapshot* snapshot, double* values, std::size_t count,
+    std::size_t maximum_bytes, std::uint64_t* work, std::size_t work_count);
 vibeqc_status vibeqc_ks_snapshot_energy_v1(const vibeqc_batch* batch,
                                            const vibeqc_ks_snapshot* snapshot, double* energy);
 /** Live native proof: 0=all-electron, 1=ECP; never inferred from electron count. */

@@ -9,10 +9,10 @@ readme_timeout="${README_BENCHMARK_POINT_TIMEOUT:-900}"
 [[ "$readme_timeout" =~ ^[1-9][0-9]*$ ]] || { printf 'Invalid point timeout\n' >&2; exit 2; }
 export OMP_NUM_THREADS=8 OPENBLAS_NUM_THREADS=8 MKL_NUM_THREADS=8
 export PYTHONPATH=".:python${PYTHONPATH:+:$PYTHONPATH}"
-mkdir -p "$readme_output"/{hf,dft,dft-reference,cc}
+mkdir -p "$readme_output"/{hf,dft,dft-reference,cc,wb97mv,wb97mv-reference}
 readme_group="${1:-all}"
 case "$readme_group" in
-    all|hf|hf-direct|dft|dft-reference|dft-paired|cc|smoke) ;;
+    all|hf|hf-direct|dft|dft-reference|dft-paired|cc|smoke|wb97mv|wb97mv-reference) ;;
     *) printf 'Unknown benchmark group: %s\n' "$readme_group" >&2; exit 2 ;;
 esac
 readme_failed=0
@@ -38,6 +38,18 @@ run_point() {
     printf '{"exit_code":%s,"time_limit_seconds":%s}\n' "$result" "$readme_timeout" \
         > "$readme_output/$name.outcome"
 }
+
+# WB97M-V includes self-consistent VV10 and analytic grid/partition response.
+# Keep a reference-only group so a native timeout cannot erase its comparator.
+if [[ "$readme_group" == wb97mv || "$readme_group" == wb97mv-reference ]]; then
+    readme_extra=()
+    [[ "$readme_group" == wb97mv-reference ]] && readme_extra=(--reference-only)
+    for atoms in 3 6 12 24 48 96; do
+        run_point "$readme_group/direct-$atoms" -m benchmarks.readme_wb97mv \
+            --atoms "$atoms" --repeats 3 "${readme_extra[@]}" \
+            --output "$readme_output/$readme_group/direct-$atoms.json"
+    done
+fi
 
 # The reviewed paired subset stops immediately at an error or timeout. Large
 # reference-only workloads are measured independently, so a slow native route

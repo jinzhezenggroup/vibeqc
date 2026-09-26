@@ -2,7 +2,7 @@
   "path": "src/scf/cuda/direct_jk_kernels.cu",
   "role": "scientific",
   "subsystem": "scf_tensor",
-  "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
+  "reason": "Retained direct public-AO J/K and fixed-density derivative contractions against shared native recurrence definitions. FP64 SR/LR coordinate derivatives contract current spin-density weights; participating-atom filtering and bounded block sums retain the screened ordered-quartet domain.",
   "regions": [
     {
       "start": "namespace cuda_execution {",

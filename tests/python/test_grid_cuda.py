@@ -70,6 +70,34 @@ def test_all_jets_features_partial_tiles_and_resident_density(
             cuda.evaluate(arrays["points"][:1])
 
 
+def test_xc_task_with_features_reuses_one_evaluated_tile(
+    artifact: typing.Any,
+) -> None:
+    meta, arrays = load_fixture("water")
+    with NativeAO(**basis_arguments(meta)) as basis:
+        ids = np.arange(basis.nao, dtype=np.uintp)
+        with CudaGrid(
+            basis,
+            artifact,
+            order=2,
+            tile_points=7,
+            active_ao_capacity=basis.nao,
+            ingredients=("rho", "gradient", "tau"),
+        ) as cuda:
+            cuda.set_density(arrays["density"])
+            with cuda.xc_task_with_features(arrays["points"][:7], ids, "WB97M-V") as (
+                features,
+                task,
+            ):
+                check(features["rho"], arrays["rho"][:, :7])
+                check(features["gradient"], arrays["gradient"][:, :7])
+                check(features["tau"], arrays["tau"][:, :7])
+                assert task.view.npoint == 7
+                assert task.view.nactive == basis.nao
+            with pytest.raises(RuntimeError, match="expired"):
+                _ = task.view
+
+
 def test_orders_zero_to_three_and_budget_rejection(artifact: typing.Any) -> None:
     meta, arrays = load_fixture("f_spherical")
     with NativeAO(**basis_arguments(meta)) as basis:
