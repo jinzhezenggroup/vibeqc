@@ -337,10 +337,11 @@ class PreparedWb97mvCudaGradient:
         for begin in range(0, npnt, tile_points):
             end = min(begin + tile_points, npnt)
             points = state.grid.points[begin:end]
-            features = self.grid.evaluate(points, ao_ids=ids)
-            rho[begin:end] = features["rho"].sum(axis=0)
-            gradient[begin:end] = features["gradient"].sum(axis=0)
-            with self.grid.xc_task(points, ids, "WB97M-V") as task:
+            with self.grid.xc_task_with_features(
+                points, ids, "WB97M-V"
+            ) as (features, task):
+                rho[begin:end] = features["rho"].sum(axis=0)
+                gradient[begin:end] = features["gradient"].sum(axis=0)
                 self.sources.geometry(
                     task,
                     np.asarray(state.grid.owners[begin:end], dtype=np.int64),
@@ -428,7 +429,7 @@ class PreparedWb97mvCudaGradient:
             "plan_identity": plan.identity,
             "source_names": list(plan.source_names),
             "grid_points": npnt,
-            "ao_collocation_point_visits": 3 * npnt,
+            "ao_collocation_point_visits": 2 * npnt,
             "geometry_point_visits": 2 * npnt,
             "partition_pair_visits": 2 * npnt * na * (na - 1),
             "nonlocal_active_points": count,
