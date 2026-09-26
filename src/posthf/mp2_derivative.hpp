@@ -24,6 +24,13 @@ std::vector<double> conventional_derivative_cpu(const core::System& system,
                                                 const scf::PhysicalReference& reference,
                                                 const LagrangianWeights& weights);
 
+/** Contract public-AO RI Lagrangian weights through the bounded #143 CPU
+ * derivative consumers. Nuclear repulsion is added exactly once.
+ */
+std::vector<double> density_fitted_derivative_cpu(
+    const core::System& orbital, const core::System& auxiliary,
+    const DensityFittedLagrangianWeights& weights, std::size_t stage_budget);
+
 std::vector<double> conventional_derivative_cuda(const core::System& system,
                                                  const scf::PhysicalReference& reference,
                                                  const LagrangianWeights& weights, int device_id,

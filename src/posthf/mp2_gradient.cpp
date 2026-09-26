@@ -553,4 +553,64 @@ GradientResourcePlan conventional_gradient_plan(
   return plan;
 }
 
+DensityFittedGradientResourcePlan density_fitted_gradient_plan(
+    std::size_t orbitals, std::size_t occupied, std::size_t auxiliaries,
+    std::size_t provider_bytes, const response::GmresPlan& response_plan,
+    std::size_t cartesian_orbitals, std::size_t cartesian_auxiliaries,
+    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes) {
+  if (!orbitals || !occupied || occupied >= orbitals || !auxiliaries || !cartesian_orbitals ||
+      !cartesian_auxiliaries || !coordinate_count ||
+      response_plan.dimension != posthf::checked_mul(occupied, orbitals - occupied))
+    throw std::invalid_argument("invalid RI-MP2 gradient resource dimensions");
+  const auto virtuals = orbitals - occupied;
+  const auto n2 = square(orbitals), n4 = fourth_power(orbitals);
+  const auto a2 = square(auxiliaries);
+  const auto three = posthf::checked_mul(n2, auxiliaries);
+  const auto rotations = posthf::checked_mul(occupied, virtuals);
+  const auto amplitudes = posthf::checked_mul(square(occupied), square(virtuals));
+
+  DensityFittedGradientResourcePlan plan;
+  plan.provider_bytes = provider_bytes;
+  plan.adjoint_bytes =
+      posthf::checked_mul(sizeof(double), posthf::checked_add(amplitudes, orbitals));
+  plan.response_bytes = posthf::checked_add(
+      response_plan.workspace_bytes,
+      posthf::checked_mul(sizeof(double),
+                          posthf::checked_add(posthf::checked_mul(6, rotations), n2)));
+  auto relaxed_elements =
+      posthf::checked_add(posthf::checked_mul(2, n4), posthf::checked_mul(3, n2));
+  relaxed_elements = posthf::checked_add(relaxed_elements, posthf::checked_mul(2, rotations));
+  plan.relaxed_weight_bytes = posthf::checked_mul(sizeof(double), relaxed_elements);
+
+  auto reverse_result_elements =
+      posthf::checked_add(posthf::checked_mul(2, n2), posthf::checked_add(three, a2));
+  plan.reverse_result_bytes = posthf::checked_mul(sizeof(double), reverse_result_elements);
+  auto reverse_workspace_elements = posthf::checked_mul(2, three);
+  reverse_workspace_elements =
+      posthf::checked_add(reverse_workspace_elements, posthf::checked_mul(6, a2));
+  reverse_workspace_elements =
+      posthf::checked_add(reverse_workspace_elements, posthf::checked_mul(2, auxiliaries));
+  reverse_workspace_elements = posthf::checked_add(reverse_workspace_elements, n2);
+  plan.reverse_workspace_bytes =
+      posthf::checked_mul(sizeof(double), reverse_workspace_elements);
+
+  const auto cartesian_matrix = square(cartesian_orbitals);
+  const auto cartesian_three =
+      posthf::checked_mul(cartesian_matrix, cartesian_auxiliaries);
+  const auto cartesian_metric = square(cartesian_auxiliaries);
+  auto derivative_elements =
+      posthf::checked_add(cartesian_three, posthf::checked_add(cartesian_metric, coordinate_count));
+  plan.derivative_staging_bytes = posthf::checked_mul(sizeof(double), derivative_elements);
+  plan.candidate_output_bytes = candidate_output_bytes;
+
+  plan.peak_bytes = provider_bytes;
+  for (auto bytes : {plan.adjoint_bytes, plan.response_bytes, plan.relaxed_weight_bytes,
+                     plan.reverse_result_bytes, plan.reverse_workspace_bytes,
+                     plan.derivative_staging_bytes, plan.candidate_output_bytes})
+    plan.peak_bytes = posthf::checked_add(plan.peak_bytes, bytes);
+  if (plan.peak_bytes > budget_bytes)
+    throw std::length_error("RI-MP2 gradient exceeds numeric memory budget");
+  return plan;
+}
+
 }  // namespace vibeqc::mp2
