@@ -44,7 +44,7 @@ def test_fock_claim_metadata_follows_the_selected_value_schedule() -> None:
         assert f'{{"psss", 1U, 1U, 32U, 1U, 3U, {width}U}}' in profile_rows
 
 
-def test_profiled_fock_materialization_reaches_generated_registry(tmp_path) -> None:
+def test_profiled_fock_materialization_reaches_generated_registry(tmp_path: Path) -> None:
     """A measured profile may select streaming without a handwritten class switch."""
 
     root = Path(__file__).resolve().parents[2]
