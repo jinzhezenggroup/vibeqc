@@ -52,6 +52,7 @@ from vibeqc_compiler.integral.first_derivative_schedule import (
     derivative_requests,
 )
 from vibeqc_compiler.method.stationary_cuda import (
+    QUALIFIED_SPD_COMPONENTS,
     STATIONARY_RUNTIME_SOURCE_NAMES,
     compile_stationary_cuda,
     encode_stationary_derivative_kind,
@@ -185,6 +186,24 @@ def _component_domain(expansions: typing.Any) -> tuple[str, ...]:
     return domain
 
 
+def _artifact_derivative_requests(
+    requests: typing.Any, artifact: typing.Any
+) -> typing.Any:
+    """Use the loaded component artifact's inventory as the task-kind ABI.
+
+    JIT kernels use the compact basis inventory. Packaged kernels contain the
+    complete SPD inventory, whose request indices differ for a basis subset.
+    Selecting the package must therefore also select its request numbering.
+    """
+    domain = artifact.metadata.get("component_domain")
+    if domain is None:
+        return requests
+    inventory = derivative_requests(tuple(domain))
+    if not set(requests).issubset(inventory):
+        raise ValueError("stationary CUDA artifact omits required derivative requests")
+    return inventory
+
+
 def _layout(basis: typing.Any) -> typing.Any:
     """Read normalized s/p/d public-AO records without evaluating integrals."""
     if any(s.angular_momentum > 2 for s in basis.shells):
@@ -265,7 +284,10 @@ class _CudaSources:
         )
         self.topology_identity = _basis_topology_identity(basis)
         self.bound_basis_identity = basis.identity
-        self.kinds = {key: i for i, key in enumerate(requests)}
+        self.kinds = {
+            key: i
+            for i, key in enumerate(_artifact_derivative_requests(requests, artifact))
+        }
         tail = [ct.c_char_p, ct.c_size_t]
         lib.stationary_create.argtypes = (
             [ct.c_int] * 3 + [ct.c_size_t] * 8 + [ct.POINTER(ct.c_void_p), *tail]
@@ -898,7 +920,7 @@ class PreparedStationaryCudaExecution:
                     CUDA_REQUESTS_PER_UNIT if component_mode else None
                 ),
             )
-            if aot_directory is None or ecp or component_mode
+            if aot_directory is None or ecp
             else load_stationary_aot_artifact(
                 aot_directory,
                 functional=functional,
@@ -906,6 +928,7 @@ class PreparedStationaryCudaExecution:
                 plan=plan,
                 architecture=target.architecture,
                 iterations=spec.partition_iterations,
+                component_domain=(QUALIFIED_SPD_COMPONENTS if component_mode else None),
             )
         )
         grid_artifact = (
@@ -1201,10 +1224,6 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("CUDA diagnostic primitive-topology cap exceeded")
     _, aos, expansions, requests = _layout(basis)
     component_mode = _component_mode(expansions)
-    if component_mode and compiler is None:
-        raise TypeError(
-            "d-shell stationary CUDA requires an explicit CUDA compiler adapter"
-        )
     primitive_sum = sum(
         int(row[2]) * len(expansion)
         for row, expansion in zip(aos, expansions, strict=True)
@@ -1373,7 +1392,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                         CUDA_REQUESTS_PER_UNIT if component_mode else None
                     ),
                 )
-                if aot_directory is None or ecp or component_mode
+                if aot_directory is None or ecp
                 else load_stationary_aot_artifact(
                     aot_directory,
                     functional=functional,
@@ -1381,6 +1400,9 @@ def _complete_rks_cuda_gradient_diagnostic(
                     plan=plan,
                     architecture=target.architecture,
                     iterations=spec.partition_iterations,
+                    component_domain=(
+                        QUALIFIED_SPD_COMPONENTS if component_mode else None
+                    ),
                 )
             )
             grid_artifact = (

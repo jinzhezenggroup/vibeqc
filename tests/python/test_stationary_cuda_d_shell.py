@@ -186,16 +186,14 @@ def test_stationary_cuda_d_shell_work_cap_is_explicit() -> None:
     )
 
 
-def test_prepared_d_shell_execution_selects_sharded_jit(
+def test_prepared_d_shell_execution_selects_component_aot(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     from vibeqc import _stationary_cuda
     from vibeqc._stationary_cuda import PreparedStationaryCudaExecution
-    from vibeqc_compiler.integral.first_derivative_schedule import (
-        CUDA_REQUESTS_PER_UNIT,
-    )
+    from vibeqc_compiler.method.stationary_cuda import QUALIFIED_SPD_COMPONENTS
 
-    class StopAfterStationaryCompile(Exception):
+    class StopAfterStationaryLoad(Exception):
         pass
 
     captured = {}
@@ -203,29 +201,34 @@ def test_prepared_d_shell_execution_selects_sharded_jit(
     monkeypatch.setattr(owner, "_request", lambda **kwargs: object())
     monkeypatch.setattr(
         _stationary_cuda,
-        "derivative_cuda_sources",
-        lambda domain: (((), "shard-0"), ((), "shard-1")),
+        "compile_stationary_cuda",
+        lambda *args, **kwargs: pytest.fail(
+            "prepared component AOT path must not JIT-compile stationary CUDA"
+        ),
     )
 
-    def compile_stationary(primitive_source: object, **kwargs: object) -> object:
-        captured["primitive_source"] = primitive_source
-        captured["shard_width"] = kwargs["primitive_shard_width"]
+    def load_stationary(aot_directory: object, **kwargs: object) -> object:
+        captured["aot_directory"] = aot_directory
+        captured.update(kwargs)
         return object()
 
-    monkeypatch.setattr(_stationary_cuda, "compile_stationary_cuda", compile_stationary)
+    monkeypatch.setattr(
+        _stationary_cuda, "load_stationary_aot_artifact", load_stationary
+    )
 
     def stop(*args: object, **kwargs: object) -> None:
-        raise StopAfterStationaryCompile
+        raise StopAfterStationaryLoad
 
     monkeypatch.setattr(_stationary_cuda, "compile_grid", stop)
     target = SimpleNamespace(architecture="sm_90")
+    plan = SimpleNamespace(spin_blocks=1)
 
-    with pytest.raises(StopAfterStationaryCompile):
+    with pytest.raises(StopAfterStationaryLoad):
         owner.ensure(
             state=object(),
             basis=_d_shell_basis(),
-            contract=object(),
-            plan=SimpleNamespace(spin_blocks=1),
+            contract=SimpleNamespace(spin=0),
+            plan=plan,
             tensor_plans={},
             compiler=object(),
             cache=tmp_path,
@@ -248,6 +251,75 @@ def test_prepared_d_shell_execution_selects_sharded_jit(
         )
 
     assert captured == {
-        "primitive_source": ("shard-0", "shard-1"),
-        "shard_width": CUDA_REQUESTS_PER_UNIT,
+        "aot_directory": tmp_path,
+        "functional": 0,
+        "spin": 0,
+        "plan": plan,
+        "architecture": "sm_90",
+        "iterations": 3,
+        "component_domain": QUALIFIED_SPD_COMPONENTS,
     }
+
+
+def test_component_subset_loads_real_aot_contract_and_uses_packaged_kind_indices(
+    tmp_path: Path,
+) -> None:
+    """Opaque binary bytes exercise loading/ABI mapping without executing a GPU."""
+    import json
+
+    from vibeqc._stationary_cuda import _artifact_derivative_requests, _layout
+    from vibeqc_compiler.common.provenance import file_hash
+    from vibeqc_compiler.integral.first_derivative_schedule import derivative_requests
+    from vibeqc_compiler.method.stationary_cuda import (
+        QUALIFIED_SPD_COMPONENTS,
+        _qualified_aot_plan,
+        load_stationary_aot_artifact,
+        stationary_aot_contract_identity,
+    )
+
+    plan = _qualified_aot_plan(0, "unpolarized")
+    library = tmp_path / "libvibeqc_stationary_lda_rks_spd.so"
+    library.write_bytes(b"opaque component inventory fixture; never dlopen")
+    metadata = {
+        "schema": "vibeqc.stationary-cuda-aot.v3",
+        "functional": 0,
+        "spin": "unpolarized",
+        "plan_identity": plan.identity,
+        "partition_iterations": 3,
+        "architectures": ["sm_120"],
+        "code_objects": [{"architecture": "sm_120", "kind": "cubin"}],
+        "contract_identity": stationary_aot_contract_identity(
+            0, spin="unpolarized", component_domain=QUALIFIED_SPD_COMPONENTS
+        ),
+        "component_domain": list(QUALIFIED_SPD_COMPONENTS),
+        "primitive_shard_width": 16,
+        "primitive_shards": 23,
+        "source_identity": "opaque-component-fixture",
+        "binary_sha256": file_hash(library),
+        "binary_bytes": library.stat().st_size,
+        "compile_contract": {"fp64": True, "fmad": False},
+    }
+    (tmp_path / "vibeqc_stationary_lda_rks_spd.json").write_text(json.dumps(metadata))
+    artifact = load_stationary_aot_artifact(
+        tmp_path,
+        functional=0,
+        spin="unpolarized",
+        plan=plan,
+        architecture="sm_120",
+        component_domain=QUALIFIED_SPD_COMPONENTS,
+    )
+    _, _, _, subset = _layout(_d_shell_basis())
+    inventory = _artifact_derivative_requests(subset, artifact)
+    packaged = derivative_requests(QUALIFIED_SPD_COMPONENTS)
+    assert inventory == packaged
+    kinds = {request: index for index, request in enumerate(inventory)}
+    assert any(kinds[request] != index for index, request in enumerate(subset))
+    for request in subset:
+        assert packaged[kinds[request]] == request
+
+    # JIT keeps its compact ABI; a foreign package cannot silently drop kinds.
+    assert _artifact_derivative_requests(subset, SimpleNamespace(metadata={})) == subset
+    with pytest.raises(ValueError, match="omits required"):
+        _artifact_derivative_requests(
+            subset, SimpleNamespace(metadata={"component_domain": [""]})
+        )
