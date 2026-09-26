@@ -38,13 +38,22 @@ class ResidentKrylovBackend {
 struct ResidentGmresWorkspace {
   std::size_t vector_slots{};
   std::size_t host_scalar_bytes{};
+  std::size_t host_result_bytes{};
+};
+
+struct ResidentGmresResult {
+  GmresResult result;
+  ResidentGmresWorkspace workspace;
+  std::size_t resident_owned_bytes{};
+
+  [[nodiscard]] bool converged() const noexcept { return result.converged(); }
 };
 
 /** Exact slot/scalar requirement for the shared restarted-GMRES controller.
  *
- * Dimension-sized vectors remain resident. Only Hessenberg/Givens coefficients
- * and scalar reductions are host-owned. The slot inventory mirrors the existing
- * host solver: x/image/residual, (restart+1) Arnoldi vectors, restart
+ * Dimension-sized iteration vectors remain resident. Only Hessenberg/Givens
+ * coefficients and the final returned solution are host-owned. The slot
+ * inventory is x/RHS/residual, (restart+1) Arnoldi vectors, restart
  * preconditioned vectors, work/candidate/candidate-image/candidate-residual,
  * best-x and best-residual.
  */
@@ -65,9 +74,10 @@ inline ResidentGmresWorkspace resident_gmres_workspace(const GmresPlan& plan) {
   if (plan.restart > (maximum - square - 1) / 5)
     throw std::overflow_error("resident GMRES scalar workspace overflow");
   const auto scalar_elements = square + 5 * plan.restart + 1;
-  if (scalar_elements > maximum / sizeof(double))
-    throw std::overflow_error("resident GMRES scalar workspace overflow");
-  return {slots, scalar_elements * sizeof(double)};
+  if (scalar_elements > maximum / sizeof(double) ||
+      plan.dimension > maximum / sizeof(double))
+    throw std::overflow_error("resident GMRES host workspace overflow");
+  return {slots, scalar_elements * sizeof(double), plan.dimension * sizeof(double)};
 }
 
 /** Validate a resident backend before any upload or operator action. */
@@ -82,5 +92,17 @@ inline ResidentGmresWorkspace validate_resident_gmres_backend(
     throw std::invalid_argument("resident GMRES backend must report owned resident storage");
   return workspace;
 }
+
+/** Execute restarted GMRES while keeping all dimension-sized iteration vectors
+ * in backend-owned storage. The returned solution is downloaded exactly once.
+ *
+ * The current resident contract is intentionally unpreconditioned; it matches
+ * the physical RHF Z-vector and current RCCSD Lambda consumers. Elementwise
+ * preconditioners require a separate resident primitive rather than a hidden
+ * host round trip.
+ */
+ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBackend& backend,
+                                         std::span<const double> rhs,
+                                         std::span<const double> initial_guess = {});
 
 }  // namespace vibeqc::response
