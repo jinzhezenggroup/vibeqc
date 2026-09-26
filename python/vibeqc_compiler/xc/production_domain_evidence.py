@@ -7,8 +7,10 @@ evaluate XC mathematics and cannot promote partial coverage.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
-from typing import Any
+from itertools import combinations_with_replacement
+from typing import TYPE_CHECKING, Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
@@ -18,7 +20,12 @@ from .libxc_bulk_capabilities import (
     functional_capability,
 )
 
-RESULT_SCHEMA = "vibeqc.libxc-production-domain-result.v1"
+if TYPE_CHECKING:
+    from .bulk_runtime import BulkRuntimeProgram
+
+RESULT_SCHEMA = "vibeqc.libxc-production-domain-result.v2"
+EXECUTION_SCHEMA = "vibeqc.libxc-production-domain-execution/v1"
+EXECUTOR = "bulk-runtime-array-graph/v1"
 CASE_STATUSES = ("pass", "fail", "not-run")
 
 
@@ -32,6 +39,170 @@ def required_matrix(
         for spin in profile.spin_layouts
         for case_id in profile.case_ids_for_spin(spin)
     )
+
+
+def _expected_features(
+    capability: BulkFunctionalCapability, spin: str
+) -> tuple[str, ...]:
+    """Validate metadata against the profile's compact rho/sigma/tau ABI."""
+    polarized = spin == "polarized"
+    features = ("rho_a", "rho_b") if polarized else ("rho",)
+    if "sigma" in capability.required_ingredients:
+        features += ("sigma_aa", "sigma_ab", "sigma_bb") if polarized else ("sigma",)
+    if "tau" in capability.required_ingredients:
+        features += ("tau_a", "tau_b") if polarized else ("tau",)
+    return features
+
+
+def _expected_outputs(size: int) -> tuple[tuple[int, ...], ...]:
+    return (
+        (),
+        *((index,) for index in range(size)),
+        *combinations_with_replacement(range(size), 2),
+    )
+
+
+def build_execution_binding(
+    name: str,
+    programs: Mapping[str, BulkRuntimeProgram],
+) -> dict[str, Any]:
+    """Bind the exact two-spin order-2 programs used by a numerical campaign."""
+    capability = functional_capability(name)
+    profile = capability.production_domain_profile
+    if not isinstance(programs, Mapping):
+        raise TypeError("production-domain execution programs must be a mapping")
+    if set(programs) != set(profile.spin_layouts):
+        raise ValueError(
+            "production-domain execution binding requires every exact spin layout"
+        )
+
+    records = []
+    for spin in profile.spin_layouts:
+        program = programs[spin]
+        if program.spec.identifier != capability.name:
+            raise ValueError("production-domain execution functional mismatch")
+        if program.spec.capability_identity != capability.identity:
+            raise ValueError("production-domain execution capability identity mismatch")
+        if program.spec.spin != spin:
+            raise ValueError("production-domain execution spin mismatch")
+        if program.order != 2 or program.outputs != _expected_outputs(
+            len(program.spec.features)
+        ):
+            raise ValueError(
+                "production-domain execution requires complete E/vxc/fxc outputs"
+            )
+        records.append(
+            {
+                "spin": spin,
+                "executor": EXECUTOR,
+                "domain": program.spec.domain,
+                "source_identity": program.spec.source_identity,
+                "expression_identity": program.expression_hash,
+                "optimization": program.optimization,
+                "features": list(program.spec.features),
+                "outputs": [list(output) for output in program.outputs],
+            }
+        )
+    payload = {
+        "schema": EXECUTION_SCHEMA,
+        "subject_identity": capability.identity,
+        "programs": records,
+    }
+    return _normalize_execution(
+        {**payload, "identity": canonical_hash(payload)}, capability
+    )
+
+
+def _normalize_execution(
+    value: Mapping[str, Any],
+    capability: BulkFunctionalCapability,
+) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or value.get("schema") != EXECUTION_SCHEMA:
+        raise ValueError("unsupported production-domain execution schema")
+    if value.get("subject_identity") != capability.identity:
+        raise ValueError("production-domain execution subject identity mismatch")
+    raw_programs = value.get("programs")
+    if (
+        not isinstance(raw_programs, Sequence)
+        or isinstance(raw_programs, (str, bytes))
+        or not raw_programs
+    ):
+        raise TypeError("production-domain execution programs must be a sequence")
+
+    expected_spins = capability.production_domain_profile.spin_layouts
+    records: dict[str, dict[str, Any]] = {}
+    for raw in raw_programs:
+        if not isinstance(raw, Mapping):
+            raise TypeError("production-domain execution record must be a mapping")
+        spin = raw.get("spin")
+        if spin not in expected_spins:
+            raise ValueError(
+                f"production-domain execution has unsupported spin {spin!r}"
+            )
+        if spin in records:
+            raise ValueError(f"duplicate production-domain execution spin {spin!r}")
+        if raw.get("executor") != EXECUTOR:
+            raise ValueError("production-domain execution has unsupported executor")
+        for field in (
+            "domain",
+            "source_identity",
+            "expression_identity",
+            "optimization",
+        ):
+            field_value = raw.get(field)
+            if not isinstance(field_value, str) or not field_value.strip():
+                raise ValueError(
+                    f"production-domain execution {field} must be nonempty"
+                )
+        for field in ("source_identity", "expression_identity"):
+            if not re.fullmatch(r"[0-9a-f]{64}", raw[field]):
+                raise ValueError(f"production-domain execution {field} must be SHA-256")
+        if raw["optimization"] not in ("none", "before", "after"):
+            raise ValueError("production-domain execution optimization is unsupported")
+        features = raw.get("features")
+        if (
+            not isinstance(features, Sequence)
+            or isinstance(features, (str, bytes))
+            or not features
+            or not all(isinstance(item, str) and item for item in features)
+            or len(set(features)) != len(features)
+        ):
+            raise ValueError("production-domain execution features are invalid")
+        if tuple(features) != _expected_features(capability, spin):
+            raise ValueError("production-domain execution feature ABI mismatch")
+        outputs = raw.get("outputs")
+        expected_outputs = [list(output) for output in _expected_outputs(len(features))]
+        if outputs != expected_outputs or any(
+            type(index) is not int for output in outputs for index in output
+        ):
+            raise ValueError(
+                "production-domain execution must cover complete E/vxc/fxc outputs"
+            )
+        records[spin] = {
+            "spin": spin,
+            "executor": EXECUTOR,
+            "domain": raw["domain"],
+            "source_identity": raw["source_identity"],
+            "expression_identity": raw["expression_identity"],
+            "optimization": raw["optimization"],
+            "features": list(features),
+            "outputs": expected_outputs,
+        }
+
+    if tuple(records) != expected_spins:
+        missing = [spin for spin in expected_spins if spin not in records]
+        raise ValueError(
+            "production-domain execution does not cover exact spin layouts: "
+            f"missing={missing!r}"
+        )
+    payload = {
+        "schema": EXECUTION_SCHEMA,
+        "subject_identity": capability.identity,
+        "programs": [records[spin] for spin in expected_spins],
+    }
+    if value.get("identity") != canonical_hash(payload):
+        raise ValueError("production-domain execution identity mismatch")
+    return {**payload, "identity": value["identity"]}
 
 
 def _normalize_case(
@@ -79,6 +250,7 @@ def _canonical_payload(
     cases: Sequence[Mapping[str, Any]],
     *,
     evidence: str,
+    execution: Mapping[str, Any],
 ) -> dict[str, Any]:
     profile = capability.production_domain_profile
     if not profile.eligible:
@@ -87,6 +259,7 @@ def _canonical_payload(
         )
     if not isinstance(evidence, str) or not evidence.strip():
         raise ValueError("production-domain result requires an evidence reference")
+    normalized_execution = _normalize_execution(execution, capability)
 
     normalized: dict[tuple[str, str], dict[str, Any]] = {}
     for raw in cases:
@@ -109,6 +282,7 @@ def _canonical_payload(
         "schema": RESULT_SCHEMA,
         "subject_identity": capability.identity,
         "profile_identity": profile.identity,
+        "execution": normalized_execution,
         "evidence": evidence.strip(),
         "cases": ordered,
     }
@@ -119,10 +293,16 @@ def build_result(
     cases: Sequence[Mapping[str, Any]],
     *,
     evidence: str,
+    execution: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Build a deterministic receipt for one complete production-domain run."""
     capability = functional_capability(name)
-    payload = _canonical_payload(capability, cases, evidence=evidence)
+    payload = _canonical_payload(
+        capability,
+        cases,
+        evidence=evidence,
+        execution=execution,
+    )
     return {**payload, "identity": canonical_hash(payload)}
 
 
@@ -148,10 +328,14 @@ def validate_result(
     evidence = value.get("evidence")
     if not isinstance(evidence, str) or not evidence.strip():
         raise ValueError("production-domain result requires an evidence reference")
+    execution = value.get("execution")
+    if not isinstance(execution, Mapping):
+        raise TypeError("production-domain result requires execution binding")
     payload = _canonical_payload(
         capability,
         raw_cases,
         evidence=evidence,
+        execution=execution,
     )
     if value.get("identity") != canonical_hash(payload):
         raise ValueError("production-domain result identity mismatch")
