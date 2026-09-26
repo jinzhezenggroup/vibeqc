@@ -37,7 +37,7 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
                                           std::string& detail);
 vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                     const double* alpha, const double* beta, bool ready,
-                                    std::string& detail);
+                                    std::string& detail, bool retained_seed = false);
 void store_scf_factor(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                       const double* coefficients, bool beta);
 vibeqc_status verify_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,

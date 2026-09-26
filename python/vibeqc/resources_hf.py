@@ -51,6 +51,7 @@ _CUDA_SCHEDULE_EXTENSION_VARIABLES = (
     "VIBEQC_DF_DIIS_DOTS",
     "VIBEQC_DF_RESPONSE_STORAGE",
     "VIBEQC_DF_RESPONSE_SPACE",
+    "VIBEQC_DF_OCCUPIED_METRIC",
 )
 
 # These runtime switches are read by CUDA HF/DF policy code. Preserve even

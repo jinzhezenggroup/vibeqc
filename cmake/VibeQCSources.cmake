@@ -154,6 +154,7 @@ function(vibeqc_add_integrals_scf_sources target)
       src/scf/cuda/df_occupied_exchange.cpp
       src/scf/cuda/df_scf_factor.cpp
       src/scf/cuda/df_scf_final_state.cpp
+      src/scf/cuda/df_scf_warm.cpp
       src/scf/cuda/df_force_response.cpp
       src/scf/cuda/df_jk.cpp
       src/scf/cuda/df_jk_kernels.cu

@@ -1,0 +1,194 @@
+{
+  "schema": "vibeqc.df-warm-validation.v1",
+  "source_base": "f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4",
+  "library": {
+    "path": "build/cuda-release-sm120/libvibeqc.so",
+    "sha256": "7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e",
+    "bytes": 406230216
+  },
+  "source_verification": "Native, compiler, CMake and benchmark execution files match the measured-source patch retained at source_checkpoint; subsequent edits affect docs, evidence rendering and host tests only.",
+  "campaign": {
+    "slurm_job_id": "11809",
+    "partition": "main",
+    "gres": "gpu:5090:1",
+    "time_limit": "00:15:00",
+    "native_endpoints": 184,
+    "clean": 168,
+    "diagnostic": 16,
+    "all_independent_gates_pass": true,
+    "energy_gate_eh": 1e-08,
+    "force_gate_eh_per_bohr": 1e-07,
+    "summary": {
+      "path": "benchmarks/results/df-one-step-warm-20260926/summary.json",
+      "bytes": 22826,
+      "sha256": "80d334d2dc2a20257fac5633876e86c9ec02d795caf759d67cf2e15a6801d365"
+    }
+  },
+  "validation": [
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/validation.log",
+        "sha256": "e04fd41b9603884900a4a7628fab219da634299fbf843f1e86fffeace5663667",
+        "bytes": 121
+      },
+      "job": "11806",
+      "result": "Initial native analytic fixture lacked planned DIIS reservation; corrected the fixture, no production acceptance relaxation."
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/validation-retry.log",
+        "sha256": "b6fc614e86a75f42442799339085b46735a61e9b6dffff3b1e8f68910b521b60",
+        "bytes": 65923
+      },
+      "job": "11807",
+      "result": "Four native suites pass and 44 existing GPU cases pass. Four new test cases failed because execute(None) restored original geometry while their oracle expected moved geometry; tests corrected to pass moved positions explicitly."
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/warm-tests-retry.log",
+        "sha256": "f218dfd73c4a980909b5050cdee17ef0129eb986a356901798b4764fd0d787ef",
+        "bytes": 212
+      },
+      "result": "All four corrected new GPU cases pass in 8.98 s. Subsequent sanitizer command could not be found on PATH (exit 127); separate absolute-path retry below."
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/memcheck.log",
+        "sha256": "ac1191ce20e6de52e3ace023c57703e4a30715fe6cf6cf8e757463ed95178e39",
+        "bytes": 156
+      },
+      "job": "11810",
+      "result": "/group/software/cuda-12.9.1/bin/compute-sanitizer --tool memcheck --error-exitcode 97 build/cuda-release-sm120/vibeqc_df_final_snapshot_tests: ERROR SUMMARY: 0 errors"
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/host-tests.log",
+        "sha256": "4e2050507c46829efa399c63194cd14d20be07ed4b5be28f10622c762e7fb155",
+        "bytes": 180
+      },
+      "result": "134 passed in 4.53 s: test_df_direct_endpoint_protocol.py, test_scf_structure.py, test_cuda_ownership.py"
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/precommit-code.log",
+        "sha256": "96fef441825434cf568af1bd0156cb527f2017ffe49e545964199633a552902b",
+        "bytes": 1462
+      },
+      "result": "Staged native/code/test hooks pass."
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/renderer-tests.log",
+        "sha256": "30d881abf466353b6662fb9b4356f0c9442f1831e3fc597ba99df81b6d743112",
+        "bytes": 99
+      },
+      "result": "18 host endpoint/renderer tests pass, including three new exact compact-retention cases; overlaps the earlier 134-test group by 15 cases."
+    },
+    {
+      "log": {
+        "path": ".artifacts/df-warm-one-step-20260926/precommit-final.log",
+        "sha256": "8c0b688c3d758735168142b7d52f9b76b0b64629ebbe0816f462a29215a5cf99",
+        "bytes": 1462
+      },
+      "result": "All final staged hooks pass, including evidence retention, public metadata, compiler/CUDA/SCF/cross-method ownership, Ruff and clang-format."
+    }
+  ],
+  "build_logs": [
+    {
+      "path": ".artifacts/df-warm-one-step-20260926/build.log",
+      "sha256": "176ab5b796a2a159053ef17e29744858433a565000531f159ad2d12b26fb4c5c",
+      "bytes": 4231
+    },
+    {
+      "path": ".artifacts/df-warm-one-step-20260926/build-refine.log",
+      "sha256": "3ed81bc77de4dd7cc6da1bd579add53605753c7b2588c9cb2bf041e45a38cc63",
+      "bytes": 1366
+    },
+    {
+      "path": ".artifacts/df-warm-one-step-20260926/build-fixture.log",
+      "sha256": "935e82845d9a045e681c11270abd13dba2e5f72c7fa9316a82458c7c92c27e34",
+      "bytes": 215
+    }
+  ],
+  "reproduction_scripts": [
+    {
+      "path": ".artifacts/df-warm-one-step-20260926/validate.sh",
+      "sha256": "dbf1f9bdfd38a7762ff24df02b9bcd5c3f92f5c3dc977f5a3c11fa66a6c7d244",
+      "bytes": 974
+    },
+    {
+      "path": ".artifacts/df-warm-one-step-20260926/run-endpoints.sh",
+      "sha256": "a721af60c5deaf2721d3988901d63566329d9149a07e7202b9a54d1470526fa3",
+      "bytes": 1428
+    }
+  ],
+  "benchmark_log": {
+    "path": ".artifacts/df-warm-one-step-20260926/endpoints.log",
+    "sha256": "4dbb0439537591a521966176141eeebd4dbf2867d9953eb83b5ffb71de364846",
+    "bytes": 276
+  },
+  "gpu_tests": {
+    "existing_cases": 44,
+    "new_cases": 4,
+    "new_file": "tests/python/test_df_warm_state_cuda.py",
+    "new_oracle": "independent PySCF",
+    "new_energy_gate_eh": 1e-09,
+    "new_force_gate_eh_per_bohr": 1e-08
+  },
+  "baseline_regression": "Six previously disclosed packed-cache replay assertions remain separate; see ../df-final-occupied-endpoint-20260926/README.md.",
+  "retention": "Full logs, binaries, traces and preliminary smoke96 stay in ignored local artifacts; the smoke run is not pooled with this campaign.",
+  "cuda_ownership_change_from_pr_base": {
+    "definition": "Nonblank/noncomment physical code lines, SequenceMatcher(autojunk=False); unchanged lines changing role are separate from physical edits. Base 013675d52d3b2857fc425c96c9a3bf7a3883ce21",
+    "added": {
+      "runtime": 89,
+      "scientific": 27
+    },
+    "removed": {
+      "runtime": 65,
+      "scientific": 8
+    },
+    "unchanged_lines_reclassified": {}
+  },
+  "source_checkpoint": "b2e57efe9af86bcaf08936c5a2ca287942658a27",
+  "measured_patch_in_history": {
+    "path": "benchmarks/results/df-one-step-warm-20260926/measured-source.patch",
+    "sha256": "7fa1317a8bcaf71a7ce6849643505a9b4afd81ccfbb28d91097d074e4270faf3",
+    "bytes": 50935,
+    "revision": "b2e57efe9af86bcaf08936c5a2ca287942658a27"
+  },
+  "reference_campaign": {
+    "slurm_job_id": "11803",
+    "endpoints": 144,
+    "timings": "Previously measured GPU4PySCF direct/DF endpoints under the identical scientific and frozen-warm protocol. All timing samples and independent arrays are retained unchanged in references.json."
+  },
+  "cleanup": {
+    "checkpoint": "b2e57efe9af86bcaf08936c5a2ca287942658a27",
+    "exactly_preserved": "184 native samples, 144 reference samples, all independent force arrays and all grouped diagnostic work counters; historical final-K/root records reconstruct identically.",
+    "superseded_benchmark": "benchmarks/results/hf-unified-acceptance-20260926",
+    "historical_recovery": "git show <checkpoint>:<path>; no new external archive or release",
+    "host_tests": {
+      "path": ".artifacts/df-readme-cleanup-20260926/host-tests.log",
+      "bytes": 99,
+      "sha256": "1806c91c527d3727c7d7277f71c5678ec751086afc9d9a421bdf8c6a51977a0e"
+    },
+    "ci_regression": {
+      "failure": "https://github.com/jinzhezenggroup/vibeqc/actions/runs/36247621640/job/108419647056",
+      "cause": "Legacy codegen test searched for an inline first-iteration guard moved to the shared HF acceptance policy.",
+      "fix": "Assert both direct spin routes delegate to hf_iteration_converged; native numerical acceptance fixtures unchanged.",
+      "test": {
+        "path": ".artifacts/df-readme-cleanup-20260926/ci-regression.log",
+        "sha256": "036bb9390fb408c39eb19a61d865bc4044aa29eeea8139e62a988a5a83930a4d",
+        "bytes": 98
+      },
+      "result": "1 passed"
+    },
+    "file_audit": {
+      "benchmark_files_before": 55,
+      "benchmark_files_after": 12,
+      "pr_added_files_before": 70,
+      "pr_added_files_after": 25,
+      "removed": "superseded intermediate native measurements, split data companions, duplicate renderer, implemented proposal (diagnosis moved verbatim into the implemented note)",
+      "retained": "three private source/contract modules, focused regression tests, one runner/renderer, current benchmark/oracles and distinct final-K/root ablations"
+    }
+  }
+}

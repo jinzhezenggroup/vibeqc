@@ -11,8 +11,11 @@
 #include <vector>
 
 #include "scf/cuda/df_scf_kernels.hpp"
+#include "scf/cuda/scf_convergence_policy.cuh"
 
 namespace vibeqc::scf::cuda_df {
+using cuda_execution::hf_iteration_converged;
+using cuda_execution::maximum_physical_residual;
 
 __global__ void density_exchange_factor_kernel(std::size_t nbf, std::size_t rank,
                                                const double* vectors, const double* values,
@@ -110,10 +113,11 @@ __global__ void store_device_occupied_kernel(std::size_t nbf, std::size_t maximu
 __global__ void validate_device_occupied_kernel(std::size_t batch_size,
                                                 const std::uint32_t* iterations,
                                                 const std::uint32_t* alpha_generations,
-                                                const std::uint32_t* beta_generations, int* error) {
+                                                const std::uint32_t* beta_generations, int* error,
+                                                bool retained_seed) {
   const auto system = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (system >= batch_size) return;
-  if (!iterations[system] || alpha_generations[system] != iterations[system] ||
+  if ((!iterations[system] && !retained_seed) || alpha_generations[system] != iterations[system] ||
       (beta_generations && beta_generations[system] != iterations[system]))
     atomicExch(error, 1);
 }
@@ -132,9 +136,10 @@ void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t s
                                             cudaStream_t stream, std::size_t batch_size,
                                             const std::uint32_t* iterations,
                                             const std::uint32_t* alpha_generations,
-                                            const std::uint32_t* beta_generations, int* error) {
+                                            const std::uint32_t* beta_generations, int* error,
+                                            bool retained_seed) {
   validate_device_occupied_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch_size, iterations, alpha_generations, beta_generations, error);
+      batch_size, iterations, alpha_generations, beta_generations, error, retained_seed);
 }
 
 // Existing DF arithmetic and reduction order; host orchestration compiles separately.
@@ -226,17 +231,17 @@ __global__ void compute_device_uhf_energy_kernel(std::size_t batch_size, std::si
   if (threadIdx.x == 0) energy[system] = value + nuclear_repulsion[system];
 }
 
-__global__ void update_device_convergence_kernel(std::size_t batch_size, std::size_t nbf,
-                                                 double energy_tolerance, double density_tolerance,
-                                                 const double* energy, double* previous_energy,
-                                                 const double* next_density, double* density,
-                                                 std::uint8_t* active, std::uint8_t* converged,
-                                                 std::uint32_t* iterations, double* energy_change,
-                                                 double* density_rms) {
+__global__ void update_device_convergence_kernel(
+    std::size_t batch_size, std::size_t nbf, double energy_tolerance, double density_tolerance,
+    const double* energy, double* previous_energy, const double* next_density, double* density,
+    std::uint8_t* active, std::uint8_t* converged, std::uint32_t* iterations, double* energy_change,
+    double* density_rms, const double* physical_residual) {
   const std::size_t system = blockIdx.x;
   if (system >= batch_size || active[system] == 0) return;
   const std::size_t matrix_elements = nbf * nbf;
   const std::size_t offset = system * matrix_elements;
+  const double physical_maximum = maximum_physical_residual(
+      physical_residual ? physical_residual + offset : nullptr, matrix_elements);
   double square = 0.0;
   for (std::size_t element = threadIdx.x; element < matrix_elements; element += blockDim.x) {
     const double delta = next_density[offset + element] - density[offset + element];
@@ -254,7 +259,8 @@ __global__ void update_device_convergence_kernel(std::size_t batch_size, std::si
     iterations[system] = iteration;
     energy_change[system] = change;
     density_rms[system] = rms;
-    if ((iteration > 1 || has_baseline) && change < energy_tolerance && rms < density_tolerance) {
+    if (hf_iteration_converged(energy[system], previous_energy[system], energy_tolerance,
+                               density_tolerance, rms, physical_maximum)) {
       converged[system] = 1;
       active[system] = 0;
     } else {
@@ -291,12 +297,15 @@ __global__ void update_device_uhf_convergence_kernel(
     std::size_t batch_size, std::size_t nbf, double energy_tolerance, double density_tolerance,
     const double* energy, double* previous_energy, const double* next_alpha,
     const double* next_beta, double* alpha_density, double* beta_density, std::uint8_t* active,
-    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change,
-    double* density_rms) {
+    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual) {
   const std::size_t system = blockIdx.x;
   if (system >= batch_size || active[system] == 0) return;
   const std::size_t matrix_elements = nbf * nbf;
   const std::size_t offset = system * matrix_elements;
+  // DF DIIS stores the two physical spin residuals adjacent within each item.
+  const double physical_maximum = maximum_physical_residual(
+      physical_residual ? physical_residual + 2 * offset : nullptr, 2 * matrix_elements);
   double square = 0.0;
   for (std::size_t element = threadIdx.x; element < matrix_elements; element += blockDim.x) {
     const double da = next_alpha[offset + element] - alpha_density[offset + element];
@@ -315,7 +324,8 @@ __global__ void update_device_uhf_convergence_kernel(
     iterations[system] = iteration;
     energy_change[system] = change;
     density_rms[system] = rms;
-    if ((iteration > 1 || has_baseline) && change < energy_tolerance && rms < density_tolerance) {
+    if (hf_iteration_converged(energy[system], previous_energy[system], energy_tolerance,
+                               density_tolerance, rms, physical_maximum)) {
       converged[system] = 1;
       active[system] = 0;
     } else {
@@ -369,17 +379,15 @@ void launch_compute_device_uhf_energy_kernel(dim3 grid, dim3 block, std::size_t 
       batch_size, nbf, alpha_density, beta_density, hcore, alpha_fock, beta_fock, nuclear_repulsion,
       energy);
 }
-void launch_update_device_convergence_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
-                                             cudaStream_t stream, std::size_t batch_size,
-                                             std::size_t nbf, double energy_tolerance,
-                                             double density_tolerance, const double* energy,
-                                             double* previous_energy, const double* next_density,
-                                             double* density, std::uint8_t* active,
-                                             std::uint8_t* converged, std::uint32_t* iterations,
-                                             double* energy_change, double* density_rms) {
+void launch_update_device_convergence_kernel(
+    dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, std::size_t batch_size,
+    std::size_t nbf, double energy_tolerance, double density_tolerance, const double* energy,
+    double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
+    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual) {
   update_device_convergence_kernel<<<grid, block, shared_bytes, stream>>>(
       batch_size, nbf, energy_tolerance, density_tolerance, energy, previous_energy, next_density,
-      density, active, converged, iterations, energy_change, density_rms);
+      density, active, converged, iterations, energy_change, density_rms, physical_residual);
 }
 void launch_tail_cuda_density_fitting_scf_graph_kernel(
     dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, std::int32_t batch_size,
@@ -392,10 +400,11 @@ void launch_update_device_uhf_convergence_kernel(
     std::size_t nbf, double energy_tolerance, double density_tolerance, const double* energy,
     double* previous_energy, const double* next_alpha, const double* next_beta,
     double* alpha_density, double* beta_density, std::uint8_t* active, std::uint8_t* converged,
-    std::uint32_t* iterations, double* energy_change, double* density_rms) {
+    std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual) {
   update_device_uhf_convergence_kernel<<<grid, block, shared_bytes, stream>>>(
       batch_size, nbf, energy_tolerance, density_tolerance, energy, previous_energy, next_alpha,
       next_beta, alpha_density, beta_density, active, converged, iterations, energy_change,
-      density_rms);
+      density_rms, physical_residual);
 }
 }  // namespace vibeqc::scf::cuda_df

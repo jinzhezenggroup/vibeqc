@@ -48,7 +48,8 @@ void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t s
                                             cudaStream_t stream, std::size_t batch_size,
                                             const std::uint32_t* iterations,
                                             const std::uint32_t* alpha_generations,
-                                            const std::uint32_t* beta_generations, int* error);
+                                            const std::uint32_t* beta_generations, int* error,
+                                            bool retained_seed = false);
 
 /** Forward the caller's exact launch configuration on its existing stream. */
 void launch_assemble_rhf_fock_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
@@ -84,24 +85,30 @@ void launch_compute_device_uhf_energy_kernel(dim3 grid, dim3 block, std::size_t 
                                              const double* alpha_fock, const double* beta_fock,
                                              const double* nuclear_repulsion, double* energy);
 
-/** Forward the caller's exact launch configuration on its existing stream. */
+/** Shared direct/DF FP64 acceptance. Residuals are physical pre-DIIS FDS-SDF;
+ * UHF stores adjacent spins per item. Null preserves the low-level no-DIIS
+ * compatibility interface; final physical validation remains mandatory. */
 void launch_update_device_convergence_kernel(
     dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, std::size_t batch_size,
     std::size_t nbf, double energy_tolerance, double density_tolerance, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
-    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms);
+    std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual = nullptr);
 
 /** Forward the caller's exact launch configuration on its existing stream. */
 void launch_tail_cuda_density_fitting_scf_graph_kernel(
     dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, std::int32_t batch_size,
     std::uint32_t maximum_iterations, const std::uint8_t* active, const std::uint32_t* iterations);
 
-/** Forward the caller's exact launch configuration on its existing stream. */
+/** Shared direct/DF FP64 acceptance. Residuals are physical pre-DIIS FDS-SDF;
+ * UHF stores adjacent spins per item. Null preserves the low-level no-DIIS
+ * compatibility interface; final physical validation remains mandatory. */
 void launch_update_device_uhf_convergence_kernel(
     dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, std::size_t batch_size,
     std::size_t nbf, double energy_tolerance, double density_tolerance, const double* energy,
     double* previous_energy, const double* next_alpha, const double* next_beta,
     double* alpha_density, double* beta_density, std::uint8_t* active, std::uint8_t* converged,
-    std::uint32_t* iterations, double* energy_change, double* density_rms);
+    std::uint32_t* iterations, double* energy_change, double* density_rms,
+    const double* physical_residual = nullptr);
 
 }  // namespace vibeqc::scf::cuda_df

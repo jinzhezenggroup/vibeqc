@@ -219,12 +219,10 @@ print(first.energies)
 
 | Method | Performance |
 | --- | --- |
-| HF direct J/K | <a href="benchmarks/results/readme-direct-hf-20260925/hf.svg"><img src="benchmarks/results/readme-direct-hf-20260925/hf.svg" width="900" alt="Direct RHF energy-plus-force latency: VibeQC versus GPU4PySCF"></a> |
+| HF (direct / DF) | <a href="benchmarks/results/df-one-step-warm-20260926/hf.svg"><img src="benchmarks/results/df-one-step-warm-20260926/hf.svg" width="900" alt="VibeQC versus GPU4PySCF: direct and DF RHF energy-plus-force latency"></a> |
 
-HF: RHF direct J/K on an RTX 5090; warm energy-plus-force replay from
-3 atoms/24 AOs to 96 atoms/768 AOs. These measurements use source commit
-`fe534ebf`, not this README's later `master` commit. See the
-[per-repeat measurements and protocol](benchmarks/results/readme-direct-hf-20260925/README.md).
+RTX 5090, spherical def2-SVP: complete warm RHF energy + forces, five repeats.
+[Protocol and results](benchmarks/results/df-one-step-warm-20260926/README.md).
 
 ## Documentation
 

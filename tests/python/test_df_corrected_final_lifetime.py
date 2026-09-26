@@ -86,7 +86,7 @@ int build_occupied_exchange(Plan& p,std::size_t,const double*,std::size_t,bool,d
   return 0;
 }
 int run(Plan* plan,State* state,bool& used,std::vector<double>& coulomb,std::vector<double>& exchange) {
-  const bool corrected_streamed=true, download=mode!=15;
+  const bool corrected_private=true, download=mode!=15;
   const auto bytes=plan->matrix_elements*sizeof(double);
   Token current,expected; expected.identity.factor.density_generation=2;
   std::vector<double> density{1,0,0,1};
@@ -131,7 +131,7 @@ def final_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     if compiler is None:
         pytest.skip("requires a host C++ compiler")
     text = (ROOT / "src/scf/cuda/df_scf_final_state.cpp").read_text(encoding="utf-8")
-    start = text.index("  if (corrected_streamed) {")
+    start = text.index("  if (corrected_private) {")
     stop = text.index("\n  TraceOperation trace(", start)
     directory = tmp_path_factory.mktemp("corrected-final-lifetime")
     unit, executable = directory / "final.cpp", directory / "final"

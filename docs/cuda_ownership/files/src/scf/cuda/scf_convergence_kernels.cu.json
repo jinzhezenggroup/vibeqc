@@ -6,7 +6,7 @@
   "regions": [
     {
       "start": "__global__ void compute_energy_kernel",
-      "stop": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
+      "stop": "// Shared-policy convergence state transitions.",
       "role": "scientific",
       "reason": "Existing RHF/UHF electronic energy contractions; convergence routing remains generic runtime."
     }

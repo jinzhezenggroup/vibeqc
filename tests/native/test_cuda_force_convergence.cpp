@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "scf/cuda/df_scf_kernels.hpp"
 #include "scf/cuda/scf_convergence_kernels.hpp"
 
 namespace {
@@ -87,12 +88,88 @@ void check_convergence(unsigned spins, bool retain, bool require_physical, bool 
       tested_items.read() != std::vector<std::uint8_t>{1, 1, 1, 1, 1, 0})
     throw std::runtime_error("force validation missed a bad determinant or lost rejected work");
 }
+/** Independent fixtures from the 768-AO diagnosis plus adversarial states.
+ * Both kernel families must reach the same verdict, including first-step
+ * baseline admission, localized beta residuals and nonfinite observations. */
+void check_direct_df_acceptance(unsigned spins) {
+  constexpr unsigned n = 8, batch = 11;
+  const std::size_t matrix = n * n, size = spins * matrix;
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double infinity = std::numeric_limits<double>::infinity();
+  std::vector<double> energies(batch, -2431.0), baselines(batch, -2431.0),
+      residual(batch * size, 0.0), density(batch * size, 0.25), next(batch * size, 0.25 + 1e-12);
+  baselines[0] += 4.55e-12;  // Measured DF third-step scale: within the common guard.
+  baselines[1] += 2.01e-10;  // Measured seed-to-canonical scale: still rejected.
+  baselines[2] = infinity;   // An absent baseline is not a zero energy change.
+  energies[3] = nan;
+  for (std::size_t k = 4 * size; k < 5 * size; ++k) next[k] += 2e-10;
+  residual[6 * size - 1] = 2e-10;  // UHF error lies only in beta.
+  residual[7 * size - 1] = nan;
+  energies[7] = infinity;
+  next[9 * size - 1] = nan;
+  // Item 9 has a valid baseline at iteration zero; item 10 is inactive and
+  // must preserve its counters/flags even though every input is invalid.
+  energies[10] = baselines[10] = nan;
+  const std::vector<std::uint8_t> expected{1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
+  for (bool fitted : {false, true}) {
+    Device<double> d_energy(energies), previous(baselines), d_residual(residual),
+        change(std::vector<double>(batch, nan)), rms(std::vector<double>(batch, nan));
+    std::vector<std::uint8_t> mask(batch, 1);
+    mask.back() = 0;
+    Device<std::uint8_t> active(mask), converged(std::vector<std::uint8_t>(batch, 0));
+    Device<std::uint32_t> iterations(std::vector<std::uint32_t>(batch, 0));
+    if (!fitted) {
+      Device<double> current(density), proposal(next);
+      const auto launch = spins == 1
+                              ? vibeqc::scf::cuda_execution::launch_update_convergence_kernel
+                              : vibeqc::scf::cuda_execution::launch_update_uhf_convergence_kernel;
+      launch(false, batch, 32, 0, nullptr, batch, n, 1e-12, 1e-10, true, d_energy.data,
+             previous.data, proposal.data, current.data, active.data, converged.data,
+             iterations.data, change.data, rms.data, d_residual.data, nullptr);
+      check(cudaGetLastError());
+    } else {
+      std::vector<double> alpha(batch * matrix), beta(batch * matrix), next_alpha(batch * matrix),
+          next_beta(batch * matrix);
+      for (unsigned item = 0; item < batch; ++item)
+        for (std::size_t k = 0; k < matrix; ++k) {
+          alpha[item * matrix + k] = density[item * size + k];
+          next_alpha[item * matrix + k] = next[item * size + k];
+          if (spins == 2) {
+            beta[item * matrix + k] = density[item * size + matrix + k];
+            next_beta[item * matrix + k] = next[item * size + matrix + k];
+          }
+        }
+      Device<double> da(alpha), db(beta), na(next_alpha), nb(next_beta);
+      if (spins == 1)
+        vibeqc::scf::cuda_df::launch_update_device_convergence_kernel(
+            batch, 32, 0, nullptr, batch, n, 1e-12, 1e-10, d_energy.data, previous.data, na.data,
+            da.data, active.data, converged.data, iterations.data, change.data, rms.data,
+            d_residual.data);
+      else
+        vibeqc::scf::cuda_df::launch_update_device_uhf_convergence_kernel(
+            batch, 32, 0, nullptr, batch, n, 1e-12, 1e-10, d_energy.data, previous.data, na.data,
+            nb.data, da.data, db.data, active.data, converged.data, iterations.data, change.data,
+            rms.data, d_residual.data);
+      check(cudaGetLastError());
+    }
+    if (converged.read() != expected)
+      throw std::runtime_error("direct/DF RHF/UHF acceptance differs from independent fixtures");
+    const auto changes = change.read();
+    if (!(changes[0] > 1e-12 && changes[0] < 1e-11) || !std::isinf(changes[2]))
+      throw std::runtime_error("roundoff policy hid the raw energy delta or missing baseline");
+    const auto counts = iterations.read();
+    if (counts.back() != 0 ||
+        !std::all_of(counts.begin(), counts.end() - 1, [](auto value) { return value == 1; }))
+      throw std::runtime_error("shared acceptance changed work counts or inactive isolation");
+  }
+}
 }  // namespace
 
 int main() {
   if (!std::getenv("SLURM_JOB_ID")) return 77;
   try {
     check(cudaSetDevice(0));
+    for (unsigned spins : {1U, 2U}) check_direct_df_acceptance(spins);
     for (unsigned spins : {1U, 2U})
       for (bool retain : {false, true})
         for (bool physical : {false, true})

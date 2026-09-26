@@ -114,7 +114,9 @@ def test_compact_diis_independent_forces_and_warm_reset(
             if step == 1:
                 assert "host:df_plan_setup" not in progress["phases"]
                 assert any(
-                    r["key"] == "host_graph_replay" for r in progress["observations"]
+                    r["key"] == "host_graph_replay"
+                    or (r["key"] == "warm_seed_reused" and r["value"] == 1)
+                    for r in progress["observations"]
                 )
             assert "host:diis_retry" not in progress["phases"]
             assert not aggregate_host(read_host_trace(host_path))[

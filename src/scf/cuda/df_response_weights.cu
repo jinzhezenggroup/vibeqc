@@ -1,5 +1,8 @@
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
+#include <stdexcept>
+#include <string_view>
 
 #include "generated_df_hf_response.cuh"
 #include "generated_symmetric_matrix_function.cuh"
@@ -603,6 +606,16 @@ static cudaError_t contract_occupied_response(
   auto* transformed_projected = buffers.staging_weights;
   const auto* packed_raw = buffers.resident_packed_raw.data;
   const auto* fitted_occupied = buffers.fitted_occupied_source;
+  // The spectral route remains an explicit numerical/performance control.
+  // Only the qualified fitted/full-rank consumer may reuse this forward root;
+  // raw and truncated response retain their original eigenfactor ordering.
+  const char* metric_control = std::getenv("VIBEQC_DF_OCCUPIED_METRIC");
+  const std::string_view metric_policy = metric_control ? metric_control : "auto";
+  if (metric_policy != "auto" && metric_policy != "spectral" && metric_policy != "retained-root")
+    throw std::invalid_argument(
+        "VIBEQC_DF_OCCUPIED_METRIC must be auto, spectral or retained-root");
+  const bool retained_root = fitted_occupied && metric.full_rank && metric.inverse_square_root &&
+                             metric_policy != "spectral";
   const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
   const double one = 1, zero = 0;
   const auto checked = [](cublasStatus_t status) {
@@ -866,7 +879,12 @@ static cudaError_t contract_occupied_response(
       runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);
       if (metric.full_rank) {
         auto* fitted = transformed_projected + retained;
-        if (fitted_occupied) {
+        if (retained_root) {
+          checked(generated::df_occupied_apply_metric_root(
+              blas, ai, rri, metric.inverse_square_root, projected, fitted));
+          runtime::cuda_trace::trace_counter("response_fitted_occupied_metric_root_gemms", 1);
+          runtime::cuda_trace::trace_counter("response_retained_metric_root", 1);
+        } else if (fitted_occupied) {
           checked(generated::df_occupied_to_metric_eigenbasis(blas, ai, rri, metric.eigenvectors,
                                                               projected, fitted));
           cuda_df::launch_scale_metric_projection(stream, a, rr, metric.eigenvalues, true, fitted);
@@ -885,13 +903,17 @@ static cudaError_t contract_occupied_response(
         }
         // Retain each spin's final factors in the original disjoint staging
         // interval. The next spin reuses projected; it cannot overwrite them.
-        error = cudaMemcpyAsync(fitted, projected, rr * a * sizeof(double),
-                                cudaMemcpyDeviceToDevice, stream);
-        if (error != cudaSuccess) return error;
-        runtime::cuda_trace::trace_counter("response_occupied_inverse_gemms", 2);
-        runtime::cuda_trace::trace_counter("response_occupied_inverse_flops", 4 * rr * aa);
-        runtime::cuda_trace::trace_counter("response_occupied_factor_copy_bytes",
-                                           rr * a * sizeof(double));
+        if (!retained_root) {
+          error = cudaMemcpyAsync(fitted, projected, rr * a * sizeof(double),
+                                  cudaMemcpyDeviceToDevice, stream);
+          if (error != cudaSuccess) return error;
+          runtime::cuda_trace::trace_counter("response_occupied_factor_copy_bytes",
+                                             rr * a * sizeof(double));
+        }
+        runtime::cuda_trace::trace_counter("response_occupied_inverse_gemms",
+                                           retained_root ? 1 : 2);
+        runtime::cuda_trace::trace_counter("response_occupied_inverse_flops",
+                                           (retained_root ? 2 : 4) * rr * aa);
       } else {
         checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
                             inverse, ai, &zero, transformed_projected + retained, rri));

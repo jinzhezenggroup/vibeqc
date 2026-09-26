@@ -17,6 +17,7 @@
 #include "scf/cuda/df_scf_final_state.hpp"
 #include "scf/cuda/df_scf_kernels.hpp"
 #include "scf/cuda/df_scf_library.hpp"
+#include "scf/cuda/df_scf_warm.hpp"
 
 namespace vibeqc::scf {
 using namespace cuda_df;
@@ -45,6 +46,12 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     std::string& detail, const std::vector<double>& overlap, unsigned diis_history) {
   runtime::df_progress::Scope progress("compact_rhf_scf");
   detail.clear();
+  // Hold at most the matching immutable input while revoking all published
+  // cache entries before even an invalid solve attempt can return.
+  auto warm_seed = occupied.size() == 1 && nuclear_repulsion.size() == 1
+                       ? find_rhf_warm_state(plan, initial_density, hcore, overlap, orthogonalizer,
+                                             occupied[0], nuclear_repulsion[0])
+                       : nullptr;
   if (plan) {
     const auto epoch_status = begin_scf_final_state_solve(*plan, detail);
     if (epoch_status != VIBEQC_STATUS_SUCCESS) return epoch_status;
@@ -98,6 +105,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
       (!occupied_exchange || (state->factor_alpha_ranks == occupied &&
                               state->factor_beta_ranks == std::vector<std::int32_t>{}));
   if (!compatible) {
+    warm_seed.reset();
     destroy_persistent_scf_state(plan->persistent_scf_state);
     state = new (std::nothrow) PersistentScfState{};
     if (state == nullptr) {
@@ -253,6 +261,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   if (cuda_error != cudaSuccess)
     return cuda_failure(cuda_error, "upload CUDA DF device RHF SCF state", detail);
   std::vector<double> initial_previous(batch_size, std::numeric_limits<double>::infinity());
+  if (warm_seed) initial_previous[0] = warm_seed->energy;
   cuda_error = cudaMemcpyAsync(d_previous_energy, initial_previous.data(),
                                batch_size * sizeof(double), cudaMemcpyHostToDevice, plan->stream);
   if (cuda_error != cudaSuccess)
@@ -275,9 +284,20 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   state->energy_tolerance = energy_tolerance;
   state->density_tolerance = density_tolerance;
   DeviceIterationGraph& iteration_graph = state->graph;
-  const auto launch_iteration = [&](bool factors_ready, bool tail) -> vibeqc_status {
-    vibeqc_status iteration_status =
-        build_scf_occupied_jk(*plan, *state, d_density, nullptr, factors_ready, detail);
+  // Restored factors are pageable immutable snapshots. Any early provider or
+  // capture failure must drain their upload before dropping the final owner.
+  struct WarmSeedUploadDrain {
+    cudaStream_t stream;
+    bool pending;
+    ~WarmSeedUploadDrain() {
+      if (pending) (void)cudaStreamSynchronize(stream);
+    }
+  } warm_upload{plan->stream, bool(warm_seed)};
+  runtime::df_progress::number("warm_seed_reused", bool(warm_seed));
+  const auto launch_iteration = [&](bool factors_ready, bool tail,
+                                    bool retained_seed = false) -> vibeqc_status {
+    vibeqc_status iteration_status = build_scf_occupied_jk(*plan, *state, d_density, nullptr,
+                                                           factors_ready, detail, retained_seed);
     if (iteration_status != VIBEQC_STATUS_SUCCESS) return iteration_status;
     launch_assemble_rhf_fock_kernel(blocks_for(expected), kThreads, 0, plan->stream, expected,
                                     d_hcore, plan->coulomb, plan->alpha_exchange, d_fock);
@@ -310,7 +330,8 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     launch_update_device_convergence_kernel(
         static_cast<unsigned>(batch_size), 32, 0, plan->stream, batch_size, plan->nbf,
         energy_tolerance, density_tolerance, d_energy, d_previous_energy, d_next_density, d_density,
-        d_active, d_converged, d_iterations, d_energy_change, d_density_rms);
+        d_active, d_converged, d_iterations, d_energy_change, d_density_rms,
+        state->d_diis_residual);
     if (tail)
       launch_tail_cuda_density_fitting_scf_graph_kernel(1, 1, 0, plan->stream,
                                                         static_cast<std::int32_t>(batch_size),
@@ -320,15 +341,26 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
                ? VIBEQC_STATUS_SUCCESS
                : cuda_failure(iteration_error, "advance CUDA DF device RHF SCF", detail);
   };
-  // Imported/warm D has no trustworthy C. The seed can use a checked algebraic
-  // D=L L^T factor, then capture/replay only the canonical factor loop.
+  // Imported D uses the checked algebraic seed. A strictly validated warm
+  // snapshot supplies C and a compatible energy without another seed solve.
   // The seed has no tail launch and is downloaded once even at max_iterations=1.
   if (occupied_exchange) {
     runtime::cuda_trace::TraceOperation seed_trace(
         "scf_seed_iteration", plan->stream,
         {batch_size, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
     status = reset_scf_factors(*plan, *state, detail);
-    if (status == VIBEQC_STATUS_SUCCESS) status = launch_iteration(false, false);
+    if (status == VIBEQC_STATUS_SUCCESS && warm_seed) {
+      cuda_error = cudaMemcpyAsync(state->d_alpha_factor, warm_seed->factor.data(),
+                                   warm_seed->factor.size() * sizeof(double),
+                                   cudaMemcpyHostToDevice, plan->stream);
+      if (cuda_error != cudaSuccess)
+        return cuda_failure(cuda_error, "restore qualified warm occupied factor", detail);
+      state->warm_seed_used = true;
+      runtime::cuda_trace::trace_counter("warm_factor_upload_bytes",
+                                         warm_seed->factor.size() * sizeof(double));
+    }
+    if (status == VIBEQC_STATUS_SUCCESS)
+      status = launch_iteration(bool(warm_seed), false, bool(warm_seed));
     if (status != VIBEQC_STATUS_SUCCESS) return status;
     runtime::cuda_trace::trace_counter("factorized", state->density_seed_used);
   }
@@ -430,6 +462,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(plan->stream);
     if (cuda_error != cudaSuccess)
       return cuda_failure(cuda_error, "read CUDA DF device RHF SCF records", detail);
+    warm_upload.pending = false;
     for (std::size_t system = 0; system < batch_size; ++system) {
       runtime::df_progress::Scope readback("compact_iteration_readback");
       runtime::df_progress::number("system", system);
@@ -472,6 +505,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     if (!result.converged) result.status = VIBEQC_STATUS_SCF_NOT_CONVERGED;
   }
   publish_scf_final_frames(*state, results);
+  if (batch_size == 1 && results[0].converged) state->warm_replay_seed = std::move(warm_seed);
   return VIBEQC_STATUS_SUCCESS;
 }
 

@@ -305,12 +305,109 @@ void lifecycle(bool uhf, std::size_t batch) {
               VIBEQC_STATUS_INVALID_ARGUMENT,
           "epoch exhaustion preserved eligibility");
 }
+/** A closed-form nonidentity-overlap determinant tests one-step admission
+ * independently of a molecular oracle, including unpublished/stale/failed
+ * states and exact input matching. There are no two-electron contributions. */
+void warm_replay() {
+  exchange_policy("occupied");
+#ifdef _WIN32
+  _putenv_s("VIBEQC_DF_FINAL_EXCHANGE", "occupied");
+#else
+  setenv("VIBEQC_DF_FINAL_EXCHANGE", "occupied", 1);
+#endif
+  CudaDensityFittingJkPlan* raw{};
+  std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
+  std::string detail;
+  require(
+      create_cuda_density_fitting_jk_plan_tiled(0, 1, 2, 1, Matrix{1}, Matrix(4, 0), 1e-10, 1, 4,
+                                                &raw, diagnostics, detail) == VIBEQC_STATUS_SUCCESS,
+      detail);
+  Plan plan(raw, &destroy_cuda_density_fitting_jk_plan);
+  const Matrix h{-2, 0, 0, 12}, s{2, 0, 0, 4}, x{1 / std::sqrt(2.), 0, 0, .5};
+  // This unbudgeted analytic tensor fixture explicitly admits the two-slot
+  // history normally reserved by the high-level molecular plan builder.
+  plan->scf_diis_history = 2;
+  Matrix input{1, 0, 0, 0}, final;
+  std::vector<CudaDensityFittingDeviceScfItem> records;
+  const auto matches = [&] {
+    return cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, x, 1, .3);
+  };
+  const auto run = [&](unsigned maximum) {
+    return run_cuda_density_fitting_rhf_device_scf(plan.get(), h, x, input, {1}, {.3}, maximum,
+                                                   1e-12, 1e-10, final, records, detail, s, 2);
+  };
+  const auto publish = [&] {
+    CudaDfFinalStateToken token;
+    require(cuda_density_fitting_final_state_token(plan.get(), 0, token, detail) ==
+                VIBEQC_STATUS_SUCCESS,
+            detail);
+    const auto fock =
+        evaluate_cuda_density_fitting_final_fock(plan.get(), token.identity, {final}, h);
+    CudaDfFinalStateSnapshot snapshot;
+    require(read_cuda_density_fitting_final_state(plan.get(), token, snapshot, detail) ==
+                VIBEQC_STATUS_SUCCESS,
+            detail);
+    // CPU matrix products and the analytic -1.7 Eh energy are independent
+    // checks before the internal caller authorizes retention.
+    solver::FinalStateDiagnostic diagnostic;
+    require(
+        solver::validate_final_state(token.identity, s, h, .3, {final}, {token.identity, true, {h}},
+                                     snapshot.candidate, {}, diagnostic, detail),
+        detail);
+    require(std::abs(diagnostic.energy + 1.7) < 1e-12, "wrong analytic warm energy");
+    prepare_cuda_density_fitting_rhf_warm_state(plan.get(), token, final, h, s, x, 1, .3);
+    auto stale = token;
+    ++stale.identity.factor.density_generation;
+    commit_cuda_density_fitting_rhf_warm_state(plan.get(), stale);
+    require(!matches(), "unpublished or stale-token warm state escaped");
+    commit_cuda_density_fitting_rhf_warm_state(plan.get(), token);
+  };
+  require(!matches(), "cold plan manufactured a warm baseline");
+  require(run(8) == VIBEQC_STATUS_SUCCESS, detail);
+  require(records[0].converged && records[0].iterations > 1,
+          "cold determinant skipped its missing energy baseline");
+  input = final;
+  publish();
+  require(matches(), "strict accepted determinant did not become eligible");
+  auto changed = input;
+  changed[0] += 1e-14;
+  require(!cuda_density_fitting_rhf_warm_matches(plan.get(), changed, h, s, x, 1, .3),
+          "nearby imported density passed exact warm admission");
+  auto shifted_h = h;
+  shifted_h[0] += 1e-14;
+  require(!cuda_density_fitting_rhf_warm_matches(plan.get(), input, shifted_h, s, x, 1, .3) &&
+              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, x, x, 1, .3) &&
+              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, s, 1, .3) &&
+              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, x, 0, .3) &&
+              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, x, 1, .4),
+          "changed Hamiltonian/metric/projector/occupation/nuclear energy reused a baseline");
+  ++plan->factor_basis_identity;
+  require(!matches(), "another immutable source reused the warm frame");
+  --plan->factor_basis_identity;
+  for (int repeat = 0; repeat < 3; ++repeat) {
+    require(run(1) == VIBEQC_STATUS_SUCCESS && records[0].converged && records[0].iterations == 1,
+            "qualified frozen warm replay did not finish in exactly one iteration");
+    require(!matches(), "unfinalized solve published warm eligibility");
+    publish();
+    require(matches(), "frozen input was lost when the latest frame advanced");
+  }
+  require(run(0) == VIBEQC_STATUS_INVALID_ARGUMENT && !matches(),
+          "failed solve preserved a prior warm entry");
+  require(run(1) == VIBEQC_STATUS_SUCCESS && !records[0].converged && !matches(),
+          "failed/nonconverged solve manufactured first-step convergence");
+#ifdef _WIN32
+  _putenv_s("VIBEQC_DF_FINAL_EXCHANGE", "");
+#else
+  unsetenv("VIBEQC_DF_FINAL_EXCHANGE");
+#endif
+}
 }  // namespace
 
 int main() {
   try {
     for (const bool uhf : {false, true})
       for (const std::size_t batch : {1U, 4U}) lifecycle(uhf, batch);
+    warm_replay();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

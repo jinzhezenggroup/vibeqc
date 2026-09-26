@@ -1,0 +1,944 @@
+{
+  "schema": "vibeqc.hf-comparison.v2",
+  "repeats": 5,
+  "scope": "complete RHF energy and analytic forces; explicit packed-single fitted DF",
+  "timing": "separate engine processes; cold includes prepare; frozen warm replays; traces excluded",
+  "figure": "VibeQC/GPU4PySCF direct/DF medians and min-max over every warm repeat; crosses mark varying iteration counts",
+  "cases": [
+    {
+      "aos": 24,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.0334334787912667,
+          "gpu4pyscf_seconds": 12.39751091785729,
+          "native_iterations": [
+            19
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.08221699111163616,
+          "gpu4pyscf_seconds": 0.8804553467780352,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.5297181569039822,
+          "gpu4pyscf_seconds": 10.988660228904337,
+          "native_iterations": [
+            14
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.07466412568464875,
+          "gpu4pyscf_seconds": 0.8817134313285351,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 24,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 0.27057999232783914,
+          "gpu4pyscf_seconds": 1.0353392632678151,
+          "native_iterations": [
+            17
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.01361992908641696,
+          "gpu4pyscf_seconds": 0.20723749930039048,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.048412447795271873,
+          "gpu4pyscf_seconds": 0.4569094334729016,
+          "native_iterations": [
+            12
+          ],
+          "reference_iterations": [
+            40
+          ],
+          "reference_scf_jk_builds": [
+            41
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.0138017563149333,
+          "gpu4pyscf_seconds": 0.20713199814781547,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 48,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.1572116338647902,
+          "gpu4pyscf_seconds": 16.281824897043407,
+          "native_iterations": [
+            22
+          ],
+          "reference_iterations": [
+            53
+          ],
+          "reference_scf_jk_builds": [
+            54
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.09144422318786383,
+          "gpu4pyscf_seconds": 0.940502162091434,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.6054357620887458,
+          "gpu4pyscf_seconds": 11.684518078807741,
+          "native_iterations": [
+            15
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.08441960997879505,
+          "gpu4pyscf_seconds": 0.9378732098266482,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 48,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 0.36641285102814436,
+          "gpu4pyscf_seconds": 1.1752282977104187,
+          "native_iterations": [
+            19
+          ],
+          "reference_iterations": [
+            53
+          ],
+          "reference_scf_jk_builds": [
+            54
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.02743668295443058,
+          "gpu4pyscf_seconds": 0.2239007418975234,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.09892782615497708,
+          "gpu4pyscf_seconds": 0.5064067407511175,
+          "native_iterations": [
+            12
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.02750324970111251,
+          "gpu4pyscf_seconds": 0.2257041516713798,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.8030554638244212,
+          "gpu4pyscf_seconds": 18.938100798986852,
+          "native_iterations": [
+            27
+          ],
+          "reference_iterations": [
+            49
+          ],
+          "reference_scf_jk_builds": [
+            50
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.1304404861293733,
+          "gpu4pyscf_seconds": 1.1241175387986004,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.9365557739511132,
+          "gpu4pyscf_seconds": 14.071517487987876,
+          "native_iterations": [
+            16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.12087889341637492,
+          "gpu4pyscf_seconds": 1.1207973640412092,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 0.5716695478186011,
+          "gpu4pyscf_seconds": 1.3529962049797177,
+          "native_iterations": [
+            23
+          ],
+          "reference_iterations": [
+            49
+          ],
+          "reference_scf_jk_builds": [
+            50
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.06508533004671335,
+          "gpu4pyscf_seconds": 0.2607152322307229,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.25218676682561636,
+          "gpu4pyscf_seconds": 0.6618880839087069,
+          "native_iterations": [
+            12
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.0652780793607235,
+          "gpu4pyscf_seconds": 0.2604998401366174,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 3.3488858952187,
+          "gpu4pyscf_seconds": 23.721115314867347,
+          "native_iterations": [
+            20
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.26264404412359,
+          "gpu4pyscf_seconds": 1.6056677787564695,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 2.4504510234110057,
+          "gpu4pyscf_seconds": 20.725769786629826,
+          "native_iterations": [
+            15
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.26366649894043803,
+          "gpu4pyscf_seconds": 1.608630357310176,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.1746488423086703,
+          "gpu4pyscf_seconds": 2.0784009099006653,
+          "native_iterations": [
+            18
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.1819745870307088,
+          "gpu4pyscf_seconds": 0.530312106013298,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.7923245569691062,
+          "gpu4pyscf_seconds": 1.3748413999564946,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.1810499601997435,
+          "gpu4pyscf_seconds": 0.5312069272622466,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 11.661949367262423,
+          "gpu4pyscf_seconds": 33.84021986508742,
+          "native_iterations": [
+            24
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.7660560910589993,
+          "gpu4pyscf_seconds": 2.3810992748476565,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 7.386264869011939,
+          "gpu4pyscf_seconds": 28.548862878233194,
+          "native_iterations": [
+            16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.7680686330422759,
+          "gpu4pyscf_seconds": 2.395884314086288,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 5.56459382455796,
+          "gpu4pyscf_seconds": 7.958878741133958,
+          "native_iterations": [
+            21
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.803204009309411,
+          "gpu4pyscf_seconds": 1.7715042950585485,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 4.354593636933714,
+          "gpu4pyscf_seconds": 6.363677476067096,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.8128552748821676,
+          "gpu4pyscf_seconds": 1.8931543100625277,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "df-disabled",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 5.558820293750614,
+          "gpu4pyscf_seconds": 7.958878741133958,
+          "native_iterations": [
+            21
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 1.0059499349445105,
+          "gpu4pyscf_seconds": 1.7715042950585485,
+          "native_iterations": [
+            3
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 4.33110425202176,
+          "gpu4pyscf_seconds": 6.363677476067096,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 1.0110899950377643,
+          "gpu4pyscf_seconds": 1.8931543100625277,
+          "native_iterations": [
+            3
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 41.559255071915686,
+          "gpu4pyscf_seconds": 54.3223240012303,
+          "native_iterations": [
+            26
+          ],
+          "reference_iterations": [
+            47
+          ],
+          "reference_scf_jk_builds": [
+            48
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 3.0482525769621134,
+          "gpu4pyscf_seconds": 4.042482583317906,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 27.169431814923882,
+          "gpu4pyscf_seconds": 45.54239979200065,
+          "native_iterations": [
+            16
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 3.050436330959201,
+          "gpu4pyscf_seconds": 5.159640040248632,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 47.02914954954758,
+          "gpu4pyscf_seconds": 58.28801310341805,
+          "native_iterations": [
+            24
+          ],
+          "reference_iterations": [
+            45
+          ],
+          "reference_scf_jk_builds": [
+            46
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 6.174827445764095,
+          "gpu4pyscf_seconds": 11.254863393958658,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            2,
+            5,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            3,
+            6,
+            8
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 36.55369979375973,
+          "gpu4pyscf_seconds": 48.99169735470787,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 6.203995744232088,
+          "gpu4pyscf_seconds": 10.187480546999723,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "df-disabled",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 47.022523486521095,
+          "gpu4pyscf_seconds": 58.28801310341805,
+          "native_iterations": [
+            24
+          ],
+          "reference_iterations": [
+            45
+          ],
+          "reference_scf_jk_builds": [
+            46
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 8.021125746890903,
+          "gpu4pyscf_seconds": 11.254863393958658,
+          "native_iterations": [
+            3
+          ],
+          "reference_iterations": [
+            2,
+            5,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            3,
+            6,
+            8
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 36.57119046477601,
+          "gpu4pyscf_seconds": 48.99169735470787,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 8.040942395105958,
+          "gpu4pyscf_seconds": 10.187480546999723,
+          "native_iterations": [
+            3
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            8
+          ]
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "path": "samples.json",
+      "sha256": "478edc74c0c8d3fd78641353d1772954de3d95a7b1b50c0891275a34873e86b4",
+      "bytes": 54150
+    },
+    {
+      "path": "references.json",
+      "sha256": "6342a524e0658e1a59394ccd085d5c418bdd0655937b44a5c75f0163e8702814",
+      "bytes": 229005
+    },
+    {
+      "path": "work.json",
+      "sha256": "729c2687009cdd6e197dce27ea02507cc5cb4b2367b3cf56d2a59902d1f228f3",
+      "bytes": 202052
+    }
+  ],
+  "native_endpoint_samples": 184,
+  "reference_endpoint_samples": 144,
+  "maximum_energy_error": 2.6420821086503565e-10,
+  "maximum_force_error": 1.405107141749795e-10,
+  "native_identity": {
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+      "library_sha256": "7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e",
+      "probe": {
+        "source_identity": "f3c7de90e835ab4103b874b7465f1ef44fb2f9005a34d61540406111554585b5",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    },
+    "source_revision": "f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "slurm_job_id": "11809"
+  }
+}

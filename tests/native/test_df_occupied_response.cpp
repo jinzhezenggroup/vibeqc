@@ -137,12 +137,95 @@ void lifecycle(bool uhf) {
   force(&token, false);
 }
 
+/** Single-B final K must prove identity/capacity independently of force parity.
+ * Compare accepted exact/corrected factors against CPU raw-integral J/K and
+ * require every rejected attempt to revoke any preceding raw projection lease.
+ */
+void single_final_exchange(CudaDensityFittingJkPlan& plan, const CudaDfFinalStateToken& token,
+                           const std::vector<double>& density,
+                           const vibeqc::integrals::DensityFittingIntegralData& oracle,
+                           double cutoff) {
+  require(!plan.packed_raw && plan.three_center, "single-B fixture retained raw A");
+  const auto fitted = orthonormalize_density_fitting_three_center(
+      oracle.three_center, plan.nbf,
+      factor_density_fitting_metric(oracle.metric, plan.naux, cutoff));
+  const auto attempt = [&](const CudaDfFinalStateToken& requested, const std::vector<double>& d,
+                           bool expected) {
+    std::vector<double> j, k;
+    bool used = !expected;
+    std::string detail;
+    plan.final_projection_token = token;  // Even rejected calls must revoke stale leases.
+    require(try_cuda_density_fitting_final_rhf_jk(&plan, requested, d, j, k, used, detail) ==
+                    VIBEQC_STATUS_SUCCESS &&
+                used == expected && !plan.final_projection_token,
+            "single-B final qualification: " + detail);
+    if (used) {
+      const auto reference = build_density_fitting_rhf_jk(fitted, d);
+      require(j.size() == d.size() && k.size() == d.size(), "single-B final J/K shape");
+      for (std::size_t i = 0; i < d.size(); ++i)
+        require(std::abs(j[i] - reference.coulomb[i]) < 3e-11 &&
+                    std::abs(k[i] - reference.exchange[i]) < 3e-11,
+                "single-B final J/K differs from the raw-integral oracle");
+    }
+  };
+  for (const char* policy : {"auto", "occupied"}) {
+    setenv("VIBEQC_DF_FINAL_EXCHANGE", policy, 1);
+    attempt(token, density, true);
+    for (unsigned fault = 0; fault < 10; ++fault) {
+      auto stale = token;
+      if (fault == 0) ++stale.version;
+      if (fault == 1) ++stale.identity.factor.basis;
+      if (fault == 2) ++stale.identity.factor.reference;
+      if (fault == 3) ++stale.identity.solve_epoch;
+      if (fault == 4) ++stale.identity.occupied[0];
+      if (fault == 5) ++stale.identity.factor.density_generation;
+      if (fault == 6) ++stale.identity.factor.orbital_generation;
+      if (fault == 7) stale.identity.model.metric_relative_threshold *= 2;
+      if (fault == 8) {
+        stale.identity.factor.density_generation += 17;
+        stale.identity.factor.orbital_generation += 17;
+      }
+      if (fault == 9) {
+        --stale.identity.factor.density_generation;
+        --stale.identity.factor.orbital_generation;
+      }
+      attempt(stale, density, false);
+    }
+    auto changed = density;
+    for (auto& value : changed) value *= .8;
+    attempt(token, changed, false);  // Same token cannot authorize a different D.
+    for (std::uint64_t delta : {1U, 16U}) {
+      auto corrected = token;
+      corrected.identity.factor.density_generation += delta;
+      corrected.identity.factor.orbital_generation += delta;
+      attempt(corrected, changed, true);  // Algebraic L carries the density weight once.
+      auto excessive_rank = changed;
+      excessive_rank.back() += .01;
+      attempt(corrected, excessive_rank, false);
+    }
+    const auto capacity = plan.projection_capacity;
+    plan.projection_capacity = 0;
+    attempt(token, density, false);
+    plan.projection_capacity = capacity;
+    const auto rank_capacity = plan.value_storage.rank_capacity;
+    plan.value_storage.rank_capacity = 0;
+    attempt(token, density, false);
+    plan.value_storage.rank_capacity = rank_capacity;
+  }
+  setenv("VIBEQC_DF_FINAL_EXCHANGE", "dense", 1);
+  attempt(token, density, false);
+  setenv("VIBEQC_DF_FINAL_EXCHANGE", "auto", 1);
+  auto* state = static_cast<cuda_df::PersistentScfState*>(plan.persistent_scf_state);
+  check(cudaMemsetAsync(state->d_final_alpha_generation, 0, sizeof(std::uint64_t), plan.stream));
+  attempt(token, density, false);
+}
+
 /** Physical raw-integral derivative oracle for packed storage. Unequal AO and
  * auxiliary counts plus one-Q scratch cover direct raw projection, bounded
  * projection, empty spin, and discarded metric directions with the same data.
  */
 void packed_response(bool uhf, unsigned beta_occupied, std::size_t capacity, double cutoff,
-                     std::int32_t occupied = 1, std::size_t qtile = 1) {
+                     std::int32_t occupied = 1, std::size_t qtile = 1, bool single = false) {
   setenv("VIBEQC_DF_EXCHANGE", "occupied", 1);
   setenv("VIBEQC_DF_RESPONSE_STORAGE", "auto", 1);
   setenv("VIBEQC_DF_RESPONSE_SPACE", "occupied", 1);
@@ -171,7 +254,8 @@ void packed_response(bool uhf, unsigned beta_occupied, std::size_t capacity, dou
   std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
   require(create_cuda_density_fitting_jk_plan_from_source(
               0, &source, 1, n, a, metric, cutoff, qtile, n * n, &raw, diagnostics, detail, true,
-              {DfPairStorage::SymmetricLower, capacity}) == VIBEQC_STATUS_SUCCESS,
+              {single ? DfPairStorage::SymmetricLowerSingle : DfPairStorage::SymmetricLower,
+               capacity}) == VIBEQC_STATUS_SUCCESS,
           detail);
   std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)> plan(
       raw, destroy_cuda_density_fitting_jk_plan);
@@ -198,6 +282,10 @@ void packed_response(bool uhf, unsigned beta_occupied, std::size_t capacity, dou
   require(
       cuda_density_fitting_final_state_token(plan.get(), 0, token, detail) == VIBEQC_STATUS_SUCCESS,
       detail);
+  if (single) {
+    single_final_exchange(*plan, token, density, oracle, cutoff);
+    return;
+  }
   if (!uhf) {
     std::vector<double> j, k;
     bool used{};
@@ -656,6 +744,7 @@ int main() {
         packed_response(true, 1, capacity, cutoff);
       }
     for (double cutoff : {1e-12, .2}) {
+      packed_response(false, 0, 1, cutoff, 1, 1, true);
       packed_response(false, 0, 2, cutoff, 2, 3);
       packed_response(true, 1, 2, cutoff, 2, 3);
       packed_response(false, 0, 2, cutoff, 2, 1);  // Insufficient rank-squared panel.

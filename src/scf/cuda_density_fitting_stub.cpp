@@ -3,6 +3,19 @@
 #include "scf/cuda_density_fitting_final_state.hpp"
 
 namespace vibeqc::scf {
+bool cuda_density_fitting_rhf_warm_matches(const CudaDensityFittingJkPlan*,
+                                           const reference::Matrix&, const reference::Matrix&,
+                                           const reference::Matrix&, const reference::Matrix&,
+                                           std::size_t, double) {
+  return false;
+}
+void prepare_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan*,
+                                                 const CudaDfFinalStateToken&,
+                                                 const reference::Matrix&, const reference::Matrix&,
+                                                 const reference::Matrix&, const reference::Matrix&,
+                                                 std::size_t, double) {}
+void commit_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan*,
+                                                const CudaDfFinalStateToken&) noexcept {}
 vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan*,
                                                     const CudaDfFinalStateToken&,
                                                     const std::vector<double>&,

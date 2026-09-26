@@ -5,6 +5,7 @@
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/scf_constants.hpp"
 #include "scf/cuda/scf_convergence_kernels.hpp"
+#include "scf/cuda/scf_convergence_policy.cuh"
 
 namespace vibeqc::scf::cuda_execution {
 
@@ -53,32 +54,11 @@ __global__ void compute_uhf_energy_kernel(std::int32_t batch_size, std::int32_t 
   if (threadIdx.x == 0) energy[system] = nuclear_repulsion[system] + value;
 }
 
-/** Comparison guard for the nondeterministic FP64 direct-Fock reduction. */
-__device__ __forceinline__ double direct_fock_energy_roundoff_guard(bool enabled, double energy,
-                                                                    double previous_energy) {
-  if (!enabled || !isfinite(previous_energy)) return 0.0;
-  const double energy_scale = fmax(1.0, fmax(fabs(energy), fabs(previous_energy)));
-  return kDirectFockEnergyRoundoffFactor * kDoubleMachineEpsilon * energy_scale;
-}
-
-/** One-warp physical maximum, with nonfinite entries failing closed. The same
- * absolute criterion is used by the shared strict final-state contract. */
-__device__ double maximum_physical_residual(const double* values, std::size_t size) {
-  if (values == nullptr) return 0.0;
-  double maximum = 0.0;
-  for (std::size_t element = threadIdx.x; element < size; element += blockDim.x) {
-    maximum = isfinite(values[element]) ? fmax(maximum, fabs(values[element])) : CUDART_INF;
-  }
-  for (unsigned delta = warpSize / 2; delta != 0; delta >>= 1) {
-    maximum = fmax(maximum, __shfl_down_sync(0xffffffffU, maximum, delta));
-  }
-  return __shfl_sync(0xffffffffU, maximum, 0);
-}
-
+// Shared-policy convergence state transitions.
 template <bool RetainConvergedDensity>
 __global__ void update_convergence_kernel(
     std::int32_t batch_size, std::int32_t nbf, double energy_tolerance, double density_tolerance,
-    bool guard_direct_fock_roundoff, const double* energy, double* previous_energy,
+    bool guard_energy_roundoff, const double* energy, double* previous_energy,
     const double* next_density, double* density, std::uint8_t* active, std::uint8_t* converged,
     std::uint32_t* iterations, double* energy_change, double* density_rms,
     const double* physical_residual, const std::uint32_t* approximate_item_census) {
@@ -110,15 +90,13 @@ __global__ void update_convergence_kernel(
     const bool has_energy_baseline = isfinite(previous_energy[system]);
     const double change =
         has_energy_baseline ? fabs(energy[system] - previous_energy[system]) : CUDART_INF;
-    const double roundoff_guard = direct_fock_energy_roundoff_guard(
-        guard_direct_fock_roundoff, energy[system], previous_energy[system]);
     const double rms = sqrt(square / static_cast<double>(matrix_size));
     iterations[system] = iteration;
     energy_change[system] = change;
     density_rms[system] = rms;
     const bool did_converge =
-        (iteration > 1 || has_energy_baseline) && change < energy_tolerance + roundoff_guard &&
-        rms < density_tolerance && physical_maximum <= fmin(1e-8, density_tolerance);
+        hf_iteration_converged(energy[system], previous_energy[system], energy_tolerance,
+                               density_tolerance, rms, physical_maximum, guard_energy_roundoff);
     if (did_converge) {
       converged[system] = 1;
       active[system] = 0;
@@ -143,7 +121,7 @@ __global__ void update_convergence_kernel(
 template <bool RetainConvergedDensity>
 __global__ void update_uhf_convergence_kernel(
     std::int32_t batch_size, std::int32_t nbf, double energy_tolerance, double density_tolerance,
-    bool guard_direct_fock_roundoff, const double* energy, double* previous_energy,
+    bool guard_energy_roundoff, const double* energy, double* previous_energy,
     const double* next_density, double* density, std::uint8_t* active, std::uint8_t* converged,
     std::uint32_t* iterations, double* energy_change, double* density_rms,
     const double* physical_residual, const std::uint32_t* approximate_item_census) {
@@ -174,18 +152,17 @@ __global__ void update_uhf_convergence_kernel(
     const bool has_energy_baseline = isfinite(previous_energy[system]);
     const double change =
         has_energy_baseline ? fabs(energy[system] - previous_energy[system]) : CUDART_INF;
-    const double roundoff_guard = direct_fock_energy_roundoff_guard(
-        guard_direct_fock_roundoff, energy[system], previous_energy[system]);
     const double rms = sqrt(square / static_cast<double>(vector_size));
     // Preserve the existing UHF baseline update semantics, including the
     // converged iteration, because it is observable by the next warm replay.
+    const double baseline = previous_energy[system];
     previous_energy[system] = energy[system];
     energy_change[system] = change;
     density_rms[system] = rms;
-    const std::uint32_t iteration = ++iterations[system];
+    ++iterations[system];
     const bool did_converge =
-        (iteration > 1 || has_energy_baseline) && change < energy_tolerance + roundoff_guard &&
-        rms < density_tolerance && physical_maximum <= fmin(1e-8, density_tolerance);
+        hf_iteration_converged(energy[system], baseline, energy_tolerance, density_tolerance, rms,
+                               physical_maximum, guard_energy_roundoff);
     if (did_converge) {
       converged[system] = 1;
       active[system] = 0;
@@ -330,18 +307,18 @@ void launch_compute_uhf_energy_kernel(dim3 grid, dim3 block, std::size_t shared_
 void launch_update_convergence_kernel(
     bool retain_converged_density, dim3 grid, dim3 block, std::size_t shared_bytes,
     cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf, double energy_tolerance,
-    double density_tolerance, bool guard_direct_fock_roundoff, const double* energy,
+    double density_tolerance, bool guard_energy_roundoff, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
     std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
     const double* physical_residual, const std::uint32_t* approximate_item_census) {
   if (retain_converged_density) {
     update_convergence_kernel<true><<<grid, block, shared_bytes, stream>>>(
-        batch_size, nbf, energy_tolerance, density_tolerance, guard_direct_fock_roundoff, energy,
+        batch_size, nbf, energy_tolerance, density_tolerance, guard_energy_roundoff, energy,
         previous_energy, next_density, density, active, converged, iterations, energy_change,
         density_rms, physical_residual, approximate_item_census);
   } else {
     update_convergence_kernel<false><<<grid, block, shared_bytes, stream>>>(
-        batch_size, nbf, energy_tolerance, density_tolerance, guard_direct_fock_roundoff, energy,
+        batch_size, nbf, energy_tolerance, density_tolerance, guard_energy_roundoff, energy,
         previous_energy, next_density, density, active, converged, iterations, energy_change,
         density_rms, physical_residual, approximate_item_census);
   }
@@ -350,18 +327,18 @@ void launch_update_convergence_kernel(
 void launch_update_uhf_convergence_kernel(
     bool retain_converged_density, dim3 grid, dim3 block, std::size_t shared_bytes,
     cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf, double energy_tolerance,
-    double density_tolerance, bool guard_direct_fock_roundoff, const double* energy,
+    double density_tolerance, bool guard_energy_roundoff, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
     std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
     const double* physical_residual, const std::uint32_t* approximate_item_census) {
   if (retain_converged_density) {
     update_uhf_convergence_kernel<true><<<grid, block, shared_bytes, stream>>>(
-        batch_size, nbf, energy_tolerance, density_tolerance, guard_direct_fock_roundoff, energy,
+        batch_size, nbf, energy_tolerance, density_tolerance, guard_energy_roundoff, energy,
         previous_energy, next_density, density, active, converged, iterations, energy_change,
         density_rms, physical_residual, approximate_item_census);
   } else {
     update_uhf_convergence_kernel<false><<<grid, block, shared_bytes, stream>>>(
-        batch_size, nbf, energy_tolerance, density_tolerance, guard_direct_fock_roundoff, energy,
+        batch_size, nbf, energy_tolerance, density_tolerance, guard_energy_roundoff, energy,
         previous_energy, next_density, density, active, converged, iterations, energy_change,
         density_rms, physical_residual, approximate_item_census);
   }

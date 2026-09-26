@@ -242,6 +242,7 @@ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSta
   // Every solve discards old provenance before attempting an algebraic seed.
   // Only the first canonical SCF update may publish a new orbital generation.
   state.density_seed_used = false;
+  state.warm_seed_used = false;
   state.density_seed_rank = 0;
   auto error = cudaMemsetAsync(state.d_factor_error, 0, sizeof(int), plan.stream);
   if (error == cudaSuccess)
@@ -256,7 +257,13 @@ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSta
 
 vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                     const double* alpha, const double* beta, bool ready,
-                                    std::string& detail) {
+                                    std::string& detail, bool retained_seed) {
+  // Only the ordinary first iteration may consume the just-restored, qualified
+  // snapshot at generation zero. Captured iterations never enable this grant.
+  if (retained_seed && (!ready || !state.warm_seed_used || beta || plan.batch_size != 1)) {
+    detail = "invalid retained warm factor admission";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   bool seed = false;
   std::size_t seed_rank = 0;
   if (!ready && !beta && state.occupied_exchange) {
@@ -305,7 +312,8 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
   if (shared && ready)
     launch_validate_device_occupied_kernel(
         blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
-        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error,
+        retained_seed);
   const JkTermSelection terms{true, !ready && !seed};
   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
   if (shared) {
@@ -369,7 +377,8 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
   if (!shared)
     launch_validate_device_occupied_kernel(
         blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
-        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error,
+        retained_seed);
   if (shared) return status;
   for (std::size_t item = 0; item < plan.batch_size; ++item) {
     status = build_occupied_exchange(
@@ -423,10 +432,12 @@ vibeqc_status verify_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSt
     return VIBEQC_STATUS_NUMERICAL_FAILURE;
   }
   trace_counter("validated_density_generations", plan.batch_size);
-  trace_counter("dense_seed_iterations", !state.density_seed_used);
+  trace_counter("dense_seed_iterations", !state.density_seed_used && !state.warm_seed_used);
   trace_counter("factor_seed_iterations", state.density_seed_used);
+  trace_counter("warm_seed_iterations", state.warm_seed_used);
   trace_counter("density_seed_rank", state.density_seed_rank);
-  trace_counter("occupied_iterations", *std::max_element(iterations.begin(), iterations.end()) - 1);
+  trace_counter("occupied_iterations", *std::max_element(iterations.begin(), iterations.end()) -
+                                           (state.warm_seed_used ? 0 : 1));
   trace_counter("occupied_state_bytes",
                 plan.batch_size * plan.nbf * (state.alpha_factor_rank + state.beta_factor_rank) *
                         sizeof(double) +

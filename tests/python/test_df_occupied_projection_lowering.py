@@ -84,6 +84,11 @@ extern "C" int small_metric(int a,int rr,const double* e,const double* eigenvalu
   return vibeqc::scf::generated::df_occupied_from_metric_eigenbasis(
       nullptr,a,rr,e,temp,out);
 }
+extern "C" int retained_metric(int a,int rr,const double* x,const double* s,
+                                 double* out,int fail) {
+  calls=0;fail_on=fail;
+  return vibeqc::scf::generated::df_occupied_apply_metric_root(nullptr,a,rr,x,s,out);
+}
 """
 
 
@@ -134,6 +139,8 @@ def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
     lib.tile_size.restype = ct.c_size_t
     lib.small_metric.argtypes = [ct.c_int] * 2 + [ptr] * 5 + [ct.c_int]
     lib.small_metric.restype = ct.c_int
+    lib.retained_metric.argtypes = [ct.c_int] * 2 + [ptr] * 3 + [ct.c_int]
+    lib.retained_metric.restype = ct.c_int
     return lib
 
 
@@ -183,7 +190,10 @@ def test_projected_panel_layout_and_tails(
 
 @pytest.mark.parametrize("a,r", [(1, 1), (3, 2), (9, 3), (17, 5)])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6, 1e10])
-def test_small_metric_layout(native: ct.CDLL, a: int, r: int, condition: float) -> None:
+@pytest.mark.parametrize("retained", [False, True])
+def test_small_metric_layout(
+    native: ct.CDLL, a: int, r: int, condition: float, retained: bool
+) -> None:
     rng = np.random.default_rng(71 + a + r)
     eigenvectors = np.asfortranarray(np.linalg.qr(rng.normal(size=(a, a)))[0])
     eigenvalues = np.geomspace(1, condition, a)
@@ -204,10 +214,27 @@ def test_small_metric_layout(native: ct.CDLL, a: int, r: int, condition: float) 
         == 0
     )
     x = (eigenvectors / np.sqrt(eigenvalues)) @ eigenvectors.T
+    if retained:
+        assert (
+            native.retained_metric(
+                a, r * r, pointer(np.asfortranarray(x)), pointer(s), pointer(out), 0
+            )
+            == 0
+        )
     np.testing.assert_allclose(
         out, np.einsum("pq,qij->pij", x, s), atol=5e-14, rtol=2e-12
     )
-    assert native.call_count() == 2
+    assert native.call_count() == (1 if retained else 2)
+
+
+def test_retained_metric_failure_and_alias_contract(native: ct.CDLL) -> None:
+    """A failed BLAS call leaves output untouched; in-place contraction is invalid."""
+    x = np.eye(3)
+    s = np.arange(12.0)
+    out = np.full_like(s, np.nan)
+    assert native.retained_metric(3, 4, pointer(x), pointer(s), pointer(out), 1) == 13
+    assert np.isnan(out).all()
+    assert native.retained_metric(3, 4, pointer(x), pointer(s), pointer(s), 0) == 7
 
 
 def test_96_atom_capacity_and_overflow(native: ct.CDLL) -> None:
@@ -223,8 +250,15 @@ def test_96_atom_capacity_and_overflow(native: ct.CDLL) -> None:
 @pytest.mark.parametrize("n,r,a", [(4, 1, 3), (7, 3, 9), (12, 5, 13), (16, 8, 17)])
 @pytest.mark.parametrize("scale", [1.0, 2.0])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6])
+@pytest.mark.parametrize("retained", [False, True])
 def test_full_rank_adjoints_using_emitted_helpers(
-    native: ct.CDLL, n: int, r: int, a: int, scale: float, condition: float
+    native: ct.CDLL,
+    n: int,
+    r: int,
+    a: int,
+    scale: float,
+    condition: float,
+    retained: bool,
 ) -> None:
     rng = np.random.default_rng(800 + n + r + a)
     c = np.asfortranarray(np.linalg.qr(rng.normal(size=(n, r)))[0])
@@ -278,6 +312,13 @@ def test_full_rank_adjoints_using_emitted_helpers(
         == 0
     )
     qb = np.ascontiguousarray(np.einsum("qmn,mn->q", b, d))
+    if retained:
+        assert (
+            native.retained_metric(
+                a, r * r, pointer(np.asfortranarray(x)), pointer(s), pointer(u), 0
+            )
+            == 0
+        )
     q = np.empty_like(qb)
     qt = np.empty_like(qb)
     assert (
