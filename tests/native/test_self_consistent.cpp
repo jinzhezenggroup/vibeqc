@@ -168,10 +168,9 @@ void verify_shared_diis_coefficient_policy() {
 
   const double delta = 4.0e-7;
   const double off_diagonal = 1.0 + delta;
-  const double second_diagonal =
-      (1.0 + delta) * (1.0 + delta) + delta * delta;
-  action = solve_diis_coefficients(
-      {1.0, off_diagonal, off_diagonal, second_diagonal}, 2, shared, coefficients);
+  const double second_diagonal = (1.0 + delta) * (1.0 + delta) + delta * delta;
+  action = solve_diis_coefficients({1.0, off_diagonal, off_diagonal, second_diagonal}, 2, shared,
+                                   coefficients);
   require(action == DiisCoefficientAction::RetireOldest,
           "shared DIIS coefficient guard stopped retiring unstable history");
 
@@ -186,8 +185,8 @@ void verify_shared_diis_coefficient_policy() {
   action = solve_diis_coefficients({1.0, 1.0, 1.0, 1.0}, 2, ks, coefficients);
   require(action == DiisCoefficientAction::RetainCurrent,
           "two-state KS-style singular DIIS unexpectedly retired history");
-  action = solve_diis_coefficients({1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 3, ks,
-                                   coefficients);
+  action =
+      solve_diis_coefficients({1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 3, ks, coefficients);
   require(action == DiisCoefficientAction::RetireOldest,
           "KS-style singular DIIS stopped retiring older history");
 }

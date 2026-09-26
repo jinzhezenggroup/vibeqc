@@ -30,9 +30,10 @@ struct DiisCoefficientPolicy {
   double maximum_abs_coefficient{std::numeric_limits<double>::infinity()};
 };
 
-inline DiisCoefficientAction solve_diis_coefficients(
-    const std::vector<double>& gram, std::size_t history_size,
-    const DiisCoefficientPolicy& policy, std::vector<double>& coefficients) {
+inline DiisCoefficientAction solve_diis_coefficients(const std::vector<double>& gram,
+                                                     std::size_t history_size,
+                                                     const DiisCoefficientPolicy& policy,
+                                                     std::vector<double>& coefficients) {
   coefficients.clear();
   const auto maximum = std::numeric_limits<std::size_t>::max();
   if (!history_size || history_size > maximum / history_size ||
@@ -67,10 +68,9 @@ inline DiisCoefficientAction solve_diis_coefficients(
   rhs[history_size] = -1.0;
 
   if (solve_dense_linear(std::move(system), std::move(rhs), coefficients)) {
-    const bool accepted =
-        std::all_of(coefficients.begin(), coefficients.end(), [&](double value) {
-          return std::isfinite(value) && std::abs(value) <= policy.maximum_abs_coefficient;
-        });
+    const bool accepted = std::all_of(coefficients.begin(), coefficients.end(), [&](double value) {
+      return std::isfinite(value) && std::abs(value) <= policy.maximum_abs_coefficient;
+    });
     if (accepted) {
       coefficients.resize(history_size);
       return DiisCoefficientAction::Extrapolate;
@@ -78,7 +78,7 @@ inline DiisCoefficientAction solve_diis_coefficients(
   }
   coefficients.clear();
   return history_size > policy.failure_retirement_floor ? DiisCoefficientAction::RetireOldest
-                                                         : DiisCoefficientAction::RetainCurrent;
+                                                        : DiisCoefficientAction::RetainCurrent;
 }
 
 }  // namespace vibeqc::solver::detail
