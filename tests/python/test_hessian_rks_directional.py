@@ -14,8 +14,10 @@ from vibeqc_compiler.xc.grid_response import partition_response
 
 from tools.vibeqc_hessian import (
     directional_rks_response,
+    directional_rks_responses,
     native_rks_xc_hvp_components,
     rks_hvp,
+    rks_hvp_many,
 )
 from tools.vibeqc_response import GMRESOptions, NativeRKSResponse
 
@@ -145,6 +147,56 @@ def test_real_rks_geometry_direction_solves_shared_cpks(case: typing.Any) -> Non
         result.response.energy_weighted_density_derivative,
     ):
         assert not value.flags.writeable
+
+
+def test_rks_nuclear_response_multi_rhs_matches_single(
+    case: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The RKS response layer must use one shared solve_many call for all RHSs."""
+    import tools.vibeqc_hessian.rks_directional as rks_directional_module
+
+    _, operator, direction, single = case
+    other = np.roll(direction.reshape(-1), 1).reshape(direction.shape)
+    other /= np.linalg.norm(other)
+
+    calls = []
+    original = rks_directional_module.solve_stationary_nuclear_perturbations
+
+    def counted(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+        calls.append((args, kwargs))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        rks_directional_module, "solve_stationary_nuclear_perturbations", counted
+    )
+    result = directional_rks_responses(
+        operator,
+        np.stack((direction, other)),
+        strategy="blocked",
+        solver_options=GMRESOptions(atol=1e-12, rtol=1e-11),
+    )
+    assert len(calls) == 1
+    assert result.solve_result.converged
+    assert result.diagnostics["multi_rhs_calls"] == 1
+    assert result.diagnostics["nrhs"] == 2
+    assert result.diagnostics["strategy"] == "blocked"
+    np.testing.assert_allclose(
+        result.responses[0].response.density_derivative,
+        single.response.density_derivative,
+        atol=2e-10,
+        rtol=2e-9,
+    )
+    np.testing.assert_allclose(
+        result.responses[0].response.energy_weighted_density_derivative,
+        single.response.energy_weighted_density_derivative,
+        atol=2e-10,
+        rtol=2e-9,
+    )
+    for response, expected in zip(
+        result.responses, (direction, other), strict=True
+    ):
+        assert response.response.solve_result.converged
+        np.testing.assert_array_equal(response.direction, expected)
 
 
 def test_rks_nuclear_response_matches_reconverged_density_and_weighted_density(
@@ -314,3 +366,67 @@ def test_complete_rks_hvp_matches_reconverged_analytic_gradient(
         errors.append(float(np.max(np.abs(result.value - numeric))))
     assert errors[-1] < 4e-4, errors
     assert errors[-1] < max(0.35 * errors[0], 2e-5), errors
+
+
+def test_complete_rks_hvp_many_reuses_one_multi_rhs_response(
+    case: typing.Any, tmp_path: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Complete HVP blocks must not fall back to one CPKS solve per direction."""
+    import tools.vibeqc_hessian.rks_directional as rks_directional_module
+
+    method, operator, direction, _ = case
+    if method != "lda-rks":
+        pytest.skip("one semilocal method is sufficient for multi-RHS orchestration")
+
+    other = np.roll(direction.reshape(-1), 2).reshape(direction.shape)
+    other /= np.linalg.norm(other)
+    calls = []
+    original = rks_directional_module.solve_stationary_nuclear_perturbations
+
+    def counted(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+        calls.append((args, kwargs))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        rks_directional_module, "solve_stationary_nuclear_perturbations", counted
+    )
+    result = rks_hvp_many(
+        operator,
+        np.stack((direction, other)),
+        cache=tmp_path / "hvp-many",
+        strategy="blocked",
+        solver_options=GMRESOptions(atol=1e-12, rtol=1e-11),
+    )
+
+    assert len(calls) == 1
+    assert result.diagnostics["multi_rhs_calls"] == 1
+    assert result.diagnostics["nrhs"] == 2
+    assert result.diagnostics["strategy"] == "blocked"
+    assert result.directional_responses.solve_result.converged
+    assert not result.diagnostics["full_molecular_hessian_allocated"]
+    assert not result.diagnostics["full_ao_rank_four_weights"]
+    np.testing.assert_array_equal(result.directions, np.stack((direction, other)))
+    np.testing.assert_allclose(
+        result.values,
+        np.stack([item.value for item in result.results]),
+        atol=0,
+        rtol=0,
+    )
+    for item in result.results:
+        assert item.diagnostics["nuclear_response_solves"] == 0
+        assert item.diagnostics["complete_source_coverage"]
+        assert tuple(item.components) == (
+            "one_electron",
+            "coulomb",
+            "xc_ao",
+            "xc_grid",
+            "xc_weight",
+            "overlap_pulay",
+            "nuclear",
+        )
+        np.testing.assert_allclose(
+            sum(item.components.values(), start=np.zeros_like(item.value)),
+            item.value,
+            atol=2e-13,
+            rtol=0,
+        )
