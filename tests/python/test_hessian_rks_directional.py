@@ -472,7 +472,7 @@ def test_rks_hessian_assembles_raw_columns_in_blocks(
     assert not result.diagnostics["posthoc_symmetrization"]
     assert not result.diagnostics["public_calculator_endpoint"]
     assert not result.diagnostics["complete_resource_bound"]
-    assert result.diagnostics['raw_symmetry_error'] == float(
+    assert result.diagnostics["raw_symmetry_error"] == float(
         np.max(np.abs(expected - expected.T))
     )
 
