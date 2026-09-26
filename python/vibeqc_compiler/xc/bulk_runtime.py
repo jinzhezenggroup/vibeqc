@@ -22,6 +22,8 @@ from .libxc_bulk_capabilities import functional_capability
 from .spec import UnsupportedXC
 
 _SUPPORTED_RUNTIME_INGREDIENTS = frozenset(("rho", "sigma", "tau"))
+PRODUCTION_CANDIDATE_DOMAIN = "libxc-bulk-production-candidate/v1"
+_RUNTIME_DOMAINS = frozenset((libxc_bulk.BULK_SEMANTICS, PRODUCTION_CANDIDATE_DOMAIN))
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,7 @@ class BulkRuntimeSpec:
         order: typing.Any = 1,
         copy: typing.Any = True,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Validate only the declared positive-interior bulk runtime domain."""
+        """Validate the exact versioned bulk runtime-candidate domain."""
         if type(order) is not int or order not in (0, 1, 2):
             raise UnsupportedXC("bulk XC supports derivative orders 0, 1 and 2")
         if type(copy) is not bool:
@@ -91,19 +93,42 @@ class BulkRuntimeSpec:
                 aa = rows["sigma_aa"]
                 ab = rows["sigma_ab"]
                 bb = rows["sigma_bb"]
-                if np.any(aa <= 0) or np.any(bb <= 0):
+                sigma_invalid = (
+                    (aa < 0) | (bb < 0)
+                    if self.domain == PRODUCTION_CANDIDATE_DOMAIN
+                    else (aa <= 0) | (bb <= 0)
+                )
+                if np.any(sigma_invalid):
+                    requirement = (
+                        "nonnegative"
+                        if self.domain == PRODUCTION_CANDIDATE_DOMAIN
+                        else "positive"
+                    )
                     raise UnsupportedXC(
-                        "bulk Libxc runtime candidate requires positive same-spin sigma"
+                        "bulk Libxc runtime candidate requires "
+                        f"{requirement} same-spin sigma"
                     )
                 bound = np.sqrt(aa) * np.sqrt(bb)
                 if np.any(np.abs(ab) > bound * (1 + 16 * np.finfo(float).eps)):
                     raise UnsupportedXC(
                         "bulk XC sigma Gram matrix is not positive semidefinite"
                     )
-            elif np.any(rows["sigma"] <= 0):
-                raise UnsupportedXC(
-                    "bulk Libxc runtime candidate requires positive sigma"
+            else:
+                sigma = rows["sigma"]
+                sigma_invalid = (
+                    sigma < 0
+                    if self.domain == PRODUCTION_CANDIDATE_DOMAIN
+                    else sigma <= 0
                 )
+                if np.any(sigma_invalid):
+                    requirement = (
+                        "nonnegative"
+                        if self.domain == PRODUCTION_CANDIDATE_DOMAIN
+                        else "positive"
+                    )
+                    raise UnsupportedXC(
+                        f"bulk Libxc runtime candidate requires {requirement} sigma"
+                    )
 
         if "tau" in self.ingredients:
             tau_names = ("tau_a", "tau_b") if self.spin == "polarized" else ("tau",)
@@ -183,12 +208,19 @@ def build_bulk_runtime_program(
     order: int = 1,
     outputs: typing.Any = None,
     optimization: str = "after",
+    domain: str = libxc_bulk.BULK_SEMANTICS,
 ) -> BulkRuntimeProgram:
     """Build one pointwise-qualified runtime candidate without promoting it.
 
-    Only rho/sigma/tau registrations enter this bridge. Production-domain and
-    molecular capability remain evidence gates owned by downstream lanes.
+    Only rho/sigma/tau registrations enter this bridge. The default preserves
+    the strictly-positive interior domain. The versioned production candidate
+    additionally admits physical zero sigma so qualification can decide support
+    from actual E/vxc/fxc behavior. Density and tau endpoints remain unchanged
+    and fail closed. Production-domain and molecular capability remain evidence
+    gates owned by downstream lanes.
     """
+    if domain not in _RUNTIME_DOMAINS:
+        raise UnsupportedXC(f"unsupported bulk runtime domain {domain!r}")
     capability = functional_capability(name)
     ingredients = capability.required_ingredients
     unsupported = set(ingredients) - _SUPPORTED_RUNTIME_INGREDIENTS
@@ -224,6 +256,7 @@ def build_bulk_runtime_program(
         ingredients=ingredients,
         capability_identity=capability.identity,
         source_identity=bulk.identity,
+        domain=domain,
     )
     available = _output_set(len(spec.features), order)
     requested = available if outputs is None else tuple(tuple(v) for v in outputs)

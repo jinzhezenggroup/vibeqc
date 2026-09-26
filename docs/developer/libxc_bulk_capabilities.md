@@ -153,6 +153,21 @@ values. Backend compilation/runtime qualification remains a separate stage; the
 current B1 campaign explicitly records the shared array-Graph executor rather
 than pretending that interpreted evidence is a compiled-CPU or CUDA result.
 
+The B1 campaign uses the explicit
+`libxc-bulk-production-candidate/v1` runtime domain. It differs from the default
+`libxc-bulk-interior/v1` only by admitting physical zero sigma into candidate
+evaluation. Negative sigma, non-positive density, non-positive tau, non-PSD
+polarized sigma Gram matrices, and nonfinite inputs remain rejected. Admission of
+zero sigma is **not** a generic pass: the imported order-2 Graph must still
+produce finite E/vxc/fxc and match the independent Libxc oracle for that exact
+functional. Functionals whose imported algebra has a true or unresolved
+zero-gradient derivative singularity therefore remain blocked by their numerical
+matrix row.
+
+Ordinary bulk runtime consumers continue to default to the original interior
+domain; the production-candidate domain is selected explicitly by the evidence
+campaign and is part of its execution identity.
+
 `vibeqc_compiler.xc.production_domain_cases` instantiates every numerical
 rho/sigma/tau row in the exact v2 cases-by-spin matrix from finite physical
 density, Cartesian-gradient, and kinetic-density coordinates.

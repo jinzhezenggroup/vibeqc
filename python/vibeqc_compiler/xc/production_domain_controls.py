@@ -8,7 +8,7 @@ identity by the surrounding production-domain receipt.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -20,6 +20,9 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from .bulk_runtime import build_bulk_runtime_program
 from .libxc_bulk_capabilities import functional_capability
 from .spec import UnsupportedXC
+
+if TYPE_CHECKING:
+    from .bulk_runtime import BulkRuntimeProgram
 
 CONTROL_SEMANTICS = "libxc-production-domain-controls/v1"
 _LAZY_CASE = "control/lazy-inactive-branch"
@@ -136,10 +139,19 @@ def _lazy_inactive_branch(
     return row, detail
 
 
-def _invalid_nonfinite(name: str, spin: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def _invalid_nonfinite(
+    name: str,
+    spin: str,
+    program: BulkRuntimeProgram | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Require every nonfinite feature to fail before mathematical evaluation."""
+    if program is not None and (
+        program.spec.identifier != name or program.spec.spin != spin
+    ):
+        raise ValueError("production-domain control program identity mismatch")
     try:
-        program = build_bulk_runtime_program(name, spin=spin, order=2)
+        if program is None:
+            program = build_bulk_runtime_program(name, spin=spin, order=2)
         feature_count = len(program.spec.features)
         baseline = np.ones((feature_count, 1), dtype=np.float64)
     except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
@@ -209,7 +221,11 @@ def _invalid_nonfinite(name: str, spin: str) -> tuple[dict[str, Any], dict[str, 
 
 
 def run_control_case(
-    name: str, *, spin: str, case_id: str
+    name: str,
+    *,
+    spin: str,
+    case_id: str,
+    program: BulkRuntimeProgram | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Execute one exact v2 control row without fabricating numerical XC data."""
     capability = functional_capability(name)
@@ -221,7 +237,7 @@ def run_control_case(
     if case_id == _LAZY_CASE:
         return _lazy_inactive_branch(capability.name, spin)
     if case_id == _NONFINITE_CASE:
-        return _invalid_nonfinite(capability.name, spin)
+        return _invalid_nonfinite(capability.name, spin, program)
     raise ValueError(f"unsupported production-domain control case {case_id!r}")
 
 

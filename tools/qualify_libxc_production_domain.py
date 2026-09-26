@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from vibeqc_compiler.xc.bulk_runtime import build_bulk_runtime_program
+from vibeqc_compiler.xc.bulk_runtime import (
+    PRODUCTION_CANDIDATE_DOMAIN,
+    build_bulk_runtime_program,
+)
 from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
 from vibeqc_compiler.xc.production_domain_cases import (
     ProductionDomainCase,
@@ -276,7 +279,12 @@ def main() -> int:
         raise RuntimeError("independent Libxc family disagrees with imported catalog")
 
     programs = {
-        spin: build_bulk_runtime_program(capability.name, spin=spin, order=2)
+        spin: build_bulk_runtime_program(
+            capability.name,
+            spin=spin,
+            order=2,
+            domain=PRODUCTION_CANDIDATE_DOMAIN,
+        )
         for spin in profile.spin_layouts
     }
     execution = build_execution_binding(capability.name, programs)
@@ -292,6 +300,7 @@ def main() -> int:
                     capability.name,
                     spin=spin,
                     case_id=case_id,
+                    program=programs[spin],
                 )
                 rows.append(row)
                 details.append(detail)
