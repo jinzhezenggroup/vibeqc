@@ -433,10 +433,13 @@ class PreparedWb97mvCudaGradient:
             "partition_pair_visits": 2 * npnt * na * (na - 1),
             "nonlocal_active_points": count,
             "nonlocal_pair_evaluations": count**2,
-            "ordered_quartets_per_integral_source": n**4,
+            "symmetry_unique_quartets_per_integral_source": (
+                (n * (n + 1) // 2) * (n * (n + 1) // 2 + 1) // 2
+            ),
             "two_electron_quartet_traversals": 1,
-            "ordered_quartet_visits_total": n**4,
-            "maximum_center_dual3_evaluations_total": 6 * n**4,
+            "maximum_center_dual3_evaluations_total": (
+                6 * (n * (n + 1) // 2) * (n * (n + 1) // 2 + 1) // 2
+            ),
             "range_recurrences_per_participating_center": 2,
             "additional_device_peak_bound": device_bound,
             "additional_host_numeric_bound": host_bound,
