@@ -101,6 +101,35 @@ fail explicitly.
 can use it to decide which evidence jobs are meaningful next, while the registry
 itself remains a pure, deterministic admission evaluator.
 
+## Compiled CPU point evidence
+
+`tools/qualify_libxc_compiled_cpu.py` produces the concrete
+`compiled-cpu` evidence used by the automatic semilocal path. It builds the
+polarized first-order `libxc-bulk-production-candidate/v1` Graph, binds it to
+the native `SemilocalPointProgram` ABI, derives native domain version 2 from
+that compiler-owned domain, then compiles and executes one C++ translation unit.
+
+A pass binds all of the following into
+`vibeqc.libxc-compiled-cpu-result/v1`:
+
+- exact functional capability identity;
+- `vibeqc.libxc-bulk-point-program-binding/v3` identity and payload;
+- point-expression and emitted-artifact identities;
+- compiler executable hash and version;
+- generated translation-unit hash;
+- compiled executable hash; and
+- a deterministic native point smoke input plus expected/observed output vectors.
+
+The smoke comparison is an **artifact execution** check against the exact bound
+Graph. It is not the independent scientific oracle: boundary correctness remains
+owned by the production-domain Libxc campaign. Conversely, successful
+production-domain evidence is not proof that a C++ artifact compiled or ran.
+
+Compilation failure, unavailable compiler, native metadata mismatch, nonfinite
+output, or numerical mismatch remains explicit fail/not-run stage evidence.
+Passing `compiled-cpu` alone grants neither production-domain, molecular-SCF,
+force, response, nor public-method capability.
+
 ## Bulk inventory queries
 
 ```python
