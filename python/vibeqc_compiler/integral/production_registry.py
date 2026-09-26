@@ -66,6 +66,12 @@ def emit_registry_header(
     """Emit production metadata and the host launch API consumed by cuda_rhf."""
 
     selections = _stable_selection_order(specifications)
+    preferred_streaming_fock_mask = sum(
+        1 << shell_class_index(selection.spec)
+        for selection in selections
+        if KernelConsumer.FOCK in selection.consumers
+        and selection.fock_route == "streaming"
+    )
     rows = []
     for selection in selections:
         if KernelConsumer.FORCE not in selection.consumers:
@@ -147,6 +153,14 @@ inline constexpr std::array<ShellKernelMetadata, {len(mixed_fock_rows)}>
 }}}};
 inline constexpr std::size_t kMixedFockShellKernelCount =
     kMixedFockShellKernels.size();
+
+/** Compiler-profiled classes that prefer no-materialization Fock streaming. */
+inline constexpr std::uint64_t kPreferredStreamingFockShellClassMask =
+    ${preferred_streaming_fock_mask}ULL;
+
+inline constexpr std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {
+  return kPreferredStreamingFockShellClassMask;
+}
 
 /** Return the exact-class bit mask selected by VIBEQC_AOT_SHELL_CLASSES. */
 std::uint64_t enabled_shell_class_mask() noexcept;
