@@ -43,6 +43,14 @@ def test_pbesol_reaches_exact_molecular_scf_evidence() -> None:
         evidence="test://libxc-pbesol/molecular-scf",
     )
 
+    artifact = Path(".artifacts/libxc-pbesol-molecular-scf.json")
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    artifact.write_text(
+        __import__("json").dumps(molecular, indent=2, sort_keys=True, allow_nan=False)
+        + "\n",
+        encoding="utf-8",
+    )
+
     assert molecular["stage_evidence"]["status"] == "pass"
     assert molecular["stage_evidence"]["qualification"]["coverage"] == [
         {"backend": "cpu", "spin": "polarized", "products": ["energy"]},
