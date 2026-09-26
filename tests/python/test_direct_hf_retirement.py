@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
+
 from tools.check_direct_hf_retirement import (
     DEFAULT_LEDGER,
     validate_retirement_ledger,
@@ -115,6 +117,17 @@ def test_low_order_cached_geometry_is_compiler_owned(name: str) -> None:
     assert "geometry.rho = p * q / (p + q)" not in source
     assert "2.0 * pow(kPi, 2.5)" not in source
     assert "geometry.decay[0][axis] =" not in source
+
+
+def test_direct_cached_geometry_is_generated_from_shared_ir() -> None:
+    """Keep Direct cached-pair Gaussian geometry compiler-owned."""
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    assert "make_direct_cached_geometry" in source
+    assert "first_pair.reduced_exponent" in source
+    assert "second_pair.reduced_exponent" in source
+    assert "first_pair.weighted_coefficient" in source
+    assert "second_pair.weighted_coefficient" in source
+    assert "return boys_argument;" in source
 
 
 def test_generated_low_order_force_roots_remain_in_use() -> None:
