@@ -9,6 +9,7 @@
 #include "api/handles.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/mean_field.hpp"
+#include "scf/resident_rhf_response.hpp"
 #include "vibeqc/fock.h"
 
 #if VIBEQC_HAS_CUDA
@@ -446,6 +447,133 @@ void resident_sync(vibeqc_rhf_response_resident* owner) {
 #endif
 }  // namespace
 
+namespace {
+#if VIBEQC_HAS_CUDA
+std::unique_ptr<vibeqc_rhf_response_resident> make_rhf_resident_owner(
+    vibeqc::scf::PreparedFockPlan& source, const double* coefficients,
+    std::uint64_t coefficient_count, const double* orbital_energies, std::uint64_t energy_count,
+    std::uint32_t nocc, std::uint32_t vector_slots, std::uint64_t device_budget_bytes) {
+  require(coefficients && orbital_energies, "resident RHF response requires reference arrays");
+  const auto& strategy = source.strategy();
+  require(strategy.backend == vibeqc::scf::FockBackend::Cuda,
+          "resident RHF response requires CUDA Fock plan");
+  require(strategy.spec.spin == vibeqc::scf::FockSpin::Restricted &&
+              strategy.spec.coulomb.present && strategy.spec.exchange.present &&
+              strategy.spec.coulomb.approximation == vibeqc::scf::FockApproximation::Exact &&
+              strategy.spec.exchange.approximation == vibeqc::scf::FockApproximation::Exact &&
+              strategy.spec.coulomb.op == vibeqc::scf::FockOperator::FullRange &&
+              strategy.spec.exchange.op == vibeqc::scf::FockOperator::FullRange &&
+              strategy.spec.coulomb.coefficient == 1.0 &&
+              strategy.spec.exchange.coefficient == -0.5 && strategy.screening_tolerance == 0.0,
+          "resident RHF response requires exact unscreened conventional RHF J/K");
+  auto* direct = source.cuda_direct_source();
+  require(direct != nullptr, "resident RHF response direct CUDA source unavailable");
+  const auto n = source.one_electron().nbf;
+  require(n > 1 && nocc > 0 && nocc < n && vector_slots >= 8 && vector_slots <= 4096,
+          "resident RHF response dimensions/slot count are invalid");
+  require(coefficient_count == n * n && energy_count == n,
+          "resident RHF response reference dimensions mismatch");
+  for (std::size_t i = 0; i < coefficient_count; ++i)
+    require(std::isfinite(coefficients[i]), "nonfinite resident RHF coefficients");
+  for (std::size_t i = 0; i < energy_count; ++i)
+    require(std::isfinite(orbital_energies[i]), "nonfinite resident RHF orbital energies");
+
+  const auto o = static_cast<std::size_t>(nocc);
+  const auto v = n - o;
+  const auto dim = resident_product(o, v);
+  const auto matrix = resident_product(n, n);
+  const auto cublas_limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  require(n <= cublas_limit && o <= cublas_limit && v <= cublas_limit && dim <= cublas_limit &&
+              matrix <= cublas_limit,
+          "resident RHF response dimensions exceed cuBLAS int limits");
+  const auto transform = resident_product(n, o);
+  const auto occupied_matrix = resident_product(o, o);
+  const auto virtual_matrix = resident_product(v, v);
+  const auto slot_values = resident_product(static_cast<std::size_t>(vector_slots), dim);
+  const auto doubles = resident_sum(
+      {slot_values, matrix, occupied_matrix, virtual_matrix, 3 * matrix, 2 * transform, dim});
+  const auto bytes = resident_sum({resident_product(doubles, sizeof(double)), sizeof(int)});
+  require(device_budget_bytes > 0 && bytes <= device_budget_bytes,
+          "resident RHF response device budget is insufficient");
+
+  auto owner = std::make_unique<vibeqc_rhf_response_resident>();
+  owner->parent = &source;
+  owner->direct = direct;
+  owner->device_id = vibeqc::scf::cuda_direct_jk_device(direct);
+  owner->stream = vibeqc::scf::cuda_direct_jk_stream(direct);
+  owner->nbf = n;
+  owner->nocc = o;
+  owner->nvirt = v;
+  owner->dimension = dim;
+  owner->vector_slots = vector_slots;
+  owner->allocation_bytes = bytes;
+  owner->orbital_energies.assign(orbital_energies, orbital_energies + energy_count);
+
+  resident_cuda(cudaSetDevice(owner->device_id));
+  resident_blas(cublasCreate(&owner->blas));
+  try {
+    resident_blas(cublasSetStream(owner->blas, owner->stream));
+    resident_blas(cublasSetPointerMode(owner->blas, CUBLAS_POINTER_MODE_HOST));
+    resident_cuda(vibeqc::runtime::resource_cuda_malloc(&owner->allocation, bytes));
+    auto* cursor = static_cast<double*>(owner->allocation);
+    owner->slots = cursor;
+    cursor += slot_values;
+    owner->coefficients = cursor;
+    cursor += matrix;
+    owner->energy_occ = cursor;
+    cursor += occupied_matrix;
+    owner->energy_virt = cursor;
+    cursor += virtual_matrix;
+    owner->density = cursor;
+    cursor += matrix;
+    owner->coulomb = cursor;
+    cursor += matrix;
+    owner->exchange = cursor;
+    cursor += matrix;
+    owner->transform_one = cursor;
+    cursor += transform;
+    owner->transform_two = cursor;
+    cursor += transform;
+    owner->gap_scratch = cursor;
+    cursor += dim;
+    owner->numerical_error = reinterpret_cast<int*>(cursor);
+
+    std::vector<double> column_major(matrix);
+    for (std::size_t row = 0; row < n; ++row)
+      for (std::size_t column = 0; column < n; ++column)
+        column_major[column * n + row] = coefficients[row * n + column];
+    std::vector<double> energy_occ(occupied_matrix, 0.0);
+    std::vector<double> energy_virt(virtual_matrix, 0.0);
+    for (std::size_t i = 0; i < o; ++i) energy_occ[i * o + i] = orbital_energies[i];
+    for (std::size_t a = 0; a < v; ++a) energy_virt[a * v + a] = orbital_energies[o + a];
+    resident_cuda(cudaMemcpyAsync(owner->coefficients, column_major.data(),
+                                  matrix * sizeof(double), cudaMemcpyHostToDevice,
+                                  owner->stream));
+    resident_cuda(cudaMemcpyAsync(owner->energy_occ, energy_occ.data(),
+                                  occupied_matrix * sizeof(double), cudaMemcpyHostToDevice,
+                                  owner->stream));
+    resident_cuda(cudaMemcpyAsync(owner->energy_virt, energy_virt.data(),
+                                  virtual_matrix * sizeof(double), cudaMemcpyHostToDevice,
+                                  owner->stream));
+    owner->h2d_bytes = (matrix + occupied_matrix + virtual_matrix) * sizeof(double);
+    resident_sync(owner.get());
+  } catch (...) {
+    if (owner->allocation) {
+      (void)cudaStreamSynchronize(owner->stream);
+      (void)vibeqc::runtime::resource_cuda_free(owner->allocation);
+      owner->allocation = nullptr;
+    }
+    if (owner->blas) {
+      (void)cublasDestroy(owner->blas);
+      owner->blas = nullptr;
+    }
+    throw;
+  }
+  return owner;
+}
+#endif
+}  // namespace
+
 extern "C" vibeqc_status vibeqc_rhf_response_resident_create(
     vibeqc_fock_plan* plan, const double* coefficients, uint64_t coefficient_count,
     const double* orbital_energies, uint64_t energy_count, uint32_t nocc, uint32_t vector_slots,
@@ -455,122 +583,9 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_create(
 #if VIBEQC_HAS_CUDA
   plan->detail.clear();
   try {
-    const auto& source = *plan->source;
-    const auto& strategy = source.strategy();
-    require(strategy.backend == vibeqc::scf::FockBackend::Cuda,
-            "resident RHF response requires CUDA Fock plan");
-    require(strategy.spec.spin == vibeqc::scf::FockSpin::Restricted &&
-                strategy.spec.coulomb.present && strategy.spec.exchange.present &&
-                strategy.spec.coulomb.approximation == vibeqc::scf::FockApproximation::Exact &&
-                strategy.spec.exchange.approximation == vibeqc::scf::FockApproximation::Exact &&
-                strategy.spec.coulomb.op == vibeqc::scf::FockOperator::FullRange &&
-                strategy.spec.exchange.op == vibeqc::scf::FockOperator::FullRange &&
-                strategy.spec.coulomb.coefficient == 1.0 &&
-                strategy.spec.exchange.coefficient == -0.5 && strategy.screening_tolerance == 0.0,
-            "resident RHF response requires exact unscreened conventional RHF J/K");
-    auto* direct = source.cuda_direct_source();
-    require(direct != nullptr, "resident RHF response direct CUDA source unavailable");
-    const auto n = source.one_electron().nbf;
-    require(n > 1 && nocc > 0 && nocc < n && vector_slots >= 8 && vector_slots <= 4096,
-            "resident RHF response dimensions/slot count are invalid");
-    require(coefficient_count == n * n && energy_count == n,
-            "resident RHF response reference dimensions mismatch");
-    for (std::size_t i = 0; i < coefficient_count; ++i)
-      require(std::isfinite(coefficients[i]), "nonfinite resident RHF coefficients");
-    for (std::size_t i = 0; i < energy_count; ++i)
-      require(std::isfinite(orbital_energies[i]), "nonfinite resident RHF orbital energies");
-
-    const auto o = static_cast<std::size_t>(nocc);
-    const auto v = n - o;
-    const auto dim = resident_product(o, v);
-    const auto matrix = resident_product(n, n);
-    const auto cublas_limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
-    require(n <= cublas_limit && o <= cublas_limit && v <= cublas_limit && dim <= cublas_limit &&
-                matrix <= cublas_limit,
-            "resident RHF response dimensions exceed cuBLAS int limits");
-    const auto transform = resident_product(n, o);
-    const auto occupied_matrix = resident_product(o, o);
-    const auto virtual_matrix = resident_product(v, v);
-    const auto slot_values = resident_product(static_cast<std::size_t>(vector_slots), dim);
-    const auto doubles = resident_sum(
-        {slot_values, matrix, occupied_matrix, virtual_matrix, 3 * matrix, 2 * transform, dim});
-    const auto bytes = resident_sum({resident_product(doubles, sizeof(double)), sizeof(int)});
-    require(device_budget_bytes > 0 && bytes <= device_budget_bytes,
-            "resident RHF response device budget is insufficient");
-
-    auto owner = std::make_unique<vibeqc_rhf_response_resident>();
-    owner->parent = plan->source.get();
-    owner->direct = direct;
-    owner->device_id = vibeqc::scf::cuda_direct_jk_device(direct);
-    owner->stream = vibeqc::scf::cuda_direct_jk_stream(direct);
-    owner->nbf = n;
-    owner->nocc = o;
-    owner->nvirt = v;
-    owner->dimension = dim;
-    owner->vector_slots = vector_slots;
-    owner->allocation_bytes = bytes;
-    owner->orbital_energies.assign(orbital_energies, orbital_energies + energy_count);
-
-    resident_cuda(cudaSetDevice(owner->device_id));
-    resident_blas(cublasCreate(&owner->blas));
-    try {
-      resident_blas(cublasSetStream(owner->blas, owner->stream));
-      resident_blas(cublasSetPointerMode(owner->blas, CUBLAS_POINTER_MODE_HOST));
-      resident_cuda(vibeqc::runtime::resource_cuda_malloc(&owner->allocation, bytes));
-      auto* cursor = static_cast<double*>(owner->allocation);
-      owner->slots = cursor;
-      cursor += slot_values;
-      owner->coefficients = cursor;
-      cursor += matrix;
-      owner->energy_occ = cursor;
-      cursor += occupied_matrix;
-      owner->energy_virt = cursor;
-      cursor += virtual_matrix;
-      owner->density = cursor;
-      cursor += matrix;
-      owner->coulomb = cursor;
-      cursor += matrix;
-      owner->exchange = cursor;
-      cursor += matrix;
-      owner->transform_one = cursor;
-      cursor += transform;
-      owner->transform_two = cursor;
-      cursor += transform;
-      owner->gap_scratch = cursor;
-      cursor += dim;
-      owner->numerical_error = reinterpret_cast<int*>(cursor);
-
-      std::vector<double> column_major(matrix);
-      for (std::size_t row = 0; row < n; ++row)
-        for (std::size_t column = 0; column < n; ++column)
-          column_major[column * n + row] = coefficients[row * n + column];
-      std::vector<double> energy_occ(occupied_matrix, 0.0);
-      std::vector<double> energy_virt(virtual_matrix, 0.0);
-      for (std::size_t i = 0; i < o; ++i) energy_occ[i * o + i] = orbital_energies[i];
-      for (std::size_t a = 0; a < v; ++a) energy_virt[a * v + a] = orbital_energies[o + a];
-      resident_cuda(cudaMemcpyAsync(owner->coefficients, column_major.data(),
-                                    matrix * sizeof(double), cudaMemcpyHostToDevice,
-                                    owner->stream));
-      resident_cuda(cudaMemcpyAsync(owner->energy_occ, energy_occ.data(),
-                                    occupied_matrix * sizeof(double), cudaMemcpyHostToDevice,
-                                    owner->stream));
-      resident_cuda(cudaMemcpyAsync(owner->energy_virt, energy_virt.data(),
-                                    virtual_matrix * sizeof(double), cudaMemcpyHostToDevice,
-                                    owner->stream));
-      owner->h2d_bytes = (matrix + occupied_matrix + virtual_matrix) * sizeof(double);
-      resident_sync(owner.get());
-    } catch (...) {
-      if (owner->allocation) {
-        (void)cudaStreamSynchronize(owner->stream);
-        (void)vibeqc::runtime::resource_cuda_free(owner->allocation);
-        owner->allocation = nullptr;
-      }
-      if (owner->blas) {
-        (void)cublasDestroy(owner->blas);
-        owner->blas = nullptr;
-      }
-      throw;
-    }
+    auto owner = make_rhf_resident_owner(*plan->source, coefficients, coefficient_count,
+                                         orbital_energies, energy_count, nocc, vector_slots,
+                                         device_budget_bytes);
     *output = owner.release();
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
@@ -1556,3 +1571,105 @@ extern "C" vibeqc_status vibeqc_uhf_response_resident_apply(vibeqc_uhf_response_
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
 #endif
 }
+
+
+namespace vibeqc::scf {
+namespace {
+class ResidentRHFResponseBackend final : public response::ResidentKrylovBackend {
+ public:
+  explicit ResidentRHFResponseBackend(std::unique_ptr<vibeqc_rhf_response_resident> owner)
+      : owner_(owner.release()) {
+    if (!owner_) throw std::invalid_argument("null resident RHF response owner");
+    vibeqc_rhf_response_resident_diagnostic diagnostic{};
+    diagnostic.struct_size = sizeof(diagnostic);
+    diagnostic.abi_version = VIBEQC_ABI_VERSION;
+    checked(vibeqc_rhf_response_resident_get_diagnostic(owner_, &diagnostic));
+    dimension_ = diagnostic.dimension;
+    slots_ = diagnostic.vector_slots;
+    bytes_ = diagnostic.owned_device_bytes;
+  }
+
+  ~ResidentRHFResponseBackend() override { vibeqc_rhf_response_resident_destroy(owner_); }
+  ResidentRHFResponseBackend(const ResidentRHFResponseBackend&) = delete;
+  ResidentRHFResponseBackend& operator=(const ResidentRHFResponseBackend&) = delete;
+
+  [[nodiscard]] std::size_t dimension() const noexcept override { return dimension_; }
+  [[nodiscard]] std::size_t vector_slots() const noexcept override { return slots_; }
+  [[nodiscard]] std::size_t owned_resident_bytes() const noexcept override { return bytes_; }
+
+  void upload(std::size_t slot, std::span<const double> values) override {
+    checked(vibeqc_rhf_response_resident_upload(owner_, narrow(slot), values.data(), values.size()));
+  }
+  void download(std::size_t slot, std::span<double> values) override {
+    checked(
+        vibeqc_rhf_response_resident_download(owner_, narrow(slot), values.data(), values.size()));
+  }
+  void zero(std::size_t slot) override {
+    checked(vibeqc_rhf_response_resident_zero(owner_, narrow(slot)));
+  }
+  void copy(std::size_t destination, std::size_t source) override {
+    checked(vibeqc_rhf_response_resident_copy(owner_, narrow(destination), narrow(source)));
+  }
+  void scale(std::size_t slot, double alpha) override {
+    checked(vibeqc_rhf_response_resident_scale(owner_, narrow(slot), alpha));
+  }
+  void axpy(std::size_t destination, double alpha, std::size_t source) override {
+    checked(vibeqc_rhf_response_resident_axpy(owner_, narrow(destination), alpha, narrow(source)));
+  }
+  [[nodiscard]] double dot(std::size_t left, std::size_t right) override {
+    double value = 0.0;
+    checked(vibeqc_rhf_response_resident_dot(owner_, narrow(left), narrow(right), &value));
+    return value;
+  }
+  [[nodiscard]] double norm(std::size_t slot) override {
+    double value = 0.0;
+    checked(vibeqc_rhf_response_resident_norm(owner_, narrow(slot), &value));
+    return value;
+  }
+  void apply(std::size_t destination, std::size_t source) override {
+    checked(vibeqc_rhf_response_resident_apply(owner_, narrow(destination), narrow(source)));
+  }
+
+ private:
+  static std::uint32_t narrow(std::size_t slot) {
+    if (slot > std::numeric_limits<std::uint32_t>::max())
+      throw std::length_error("resident RHF response slot exceeds the C ABI");
+    return static_cast<std::uint32_t>(slot);
+  }
+
+  void checked(vibeqc_status status) const {
+    if (status == VIBEQC_STATUS_SUCCESS) return;
+    const char* detail = vibeqc_rhf_response_resident_last_error(owner_);
+    throw std::runtime_error(detail && *detail ? detail : "resident RHF response operation failed");
+  }
+
+  vibeqc_rhf_response_resident* owner_{};
+  std::size_t dimension_{}, slots_{}, bytes_{};
+};
+}  // namespace
+
+std::unique_ptr<response::ResidentKrylovBackend> make_resident_rhf_krylov_backend(
+    PreparedFockPlan& plan, std::span<const double> coefficients,
+    std::span<const double> orbital_energies, std::size_t nocc, std::size_t vector_slots,
+    std::size_t device_budget_bytes) {
+#if VIBEQC_HAS_CUDA
+  if (nocc > std::numeric_limits<std::uint32_t>::max() ||
+      vector_slots > std::numeric_limits<std::uint32_t>::max())
+    throw std::length_error("resident RHF response dimensions exceed the C ABI");
+  auto owner = make_rhf_resident_owner(
+      plan, coefficients.data(), coefficients.size(), orbital_energies.data(),
+      orbital_energies.size(), static_cast<std::uint32_t>(nocc),
+      static_cast<std::uint32_t>(vector_slots), device_budget_bytes);
+  return std::make_unique<ResidentRHFResponseBackend>(std::move(owner));
+#else
+  (void)plan;
+  (void)coefficients;
+  (void)orbital_energies;
+  (void)nocc;
+  (void)vector_slots;
+  (void)device_budget_bytes;
+  throw std::runtime_error("resident RHF response requires a CUDA-enabled library");
+#endif
+}
+
+}  // namespace vibeqc::scf
