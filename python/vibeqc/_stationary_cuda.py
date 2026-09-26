@@ -529,12 +529,12 @@ class _CudaSources:
         if functional is None:
             if type(pbe) is not bool:
                 raise TypeError(
-                    "stationary geometry requires functional=0/1/2 or pbe bool"
+                    "stationary geometry requires functional=0/1/2/4 or pbe bool"
                 )
             functional = int(pbe)
         elif pbe is not None:
             raise ValueError("specify functional or pbe, not both")
-        if type(functional) is not int or functional not in (0, 1, 2):
+        if type(functional) is not int or functional not in (0, 1, 2, 4):
             raise ValueError("unsupported stationary semilocal functional")
         work = task.density_jets(4 if functional else 1)
         self._call(
