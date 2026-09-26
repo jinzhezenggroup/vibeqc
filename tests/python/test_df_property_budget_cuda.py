@@ -137,7 +137,9 @@ def test_resident_response_budget_replans_without_reference_factors(
                 for scope in read_progress(progress)["scopes"].values()
                 if scope["begin"]["name"] == "df_resource_policy"
             ]
-            assert policies, "response override change did not re-resolve the cached owner"
+            assert policies, (
+                "response override change did not re-resolve the cached owner"
+            )
             assert policies[-1]["resolved_response_budget_bytes"] == budget
             (response,) = [
                 r for r in read_trace(trace) if r["operation"] == "force_response"
@@ -162,9 +164,7 @@ def test_resident_response_budget_replans_without_reference_factors(
         assert policies[-1]["resolved_response_budget_bytes"] == tight_budget
         if tight.status == _native.STATUS_SUCCESS:
             (response,) = [
-                r
-                for r in read_trace(tight_trace)
-                if r["operation"] == "force_response"
+                r for r in read_trace(tight_trace) if r["operation"] == "force_response"
             ]
             assert response["counters"]["response_scratch_bytes"] <= tight_budget
         else:
