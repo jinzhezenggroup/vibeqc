@@ -722,7 +722,9 @@ macro(vibeqc_register_cuda_generated_sources target)
   endforeach()
   file(GLOB VIBEQC_MP2_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/*.py"
-       "python/vibeqc_compiler/common/cuda_target.py"
+       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/cuda_target.py"
+       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/source_reuse.py"
+       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/mp2_schedule.py"
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_mp2/*.py"
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_posthf/*.py")
   vibeqc_register_generated_sources(
