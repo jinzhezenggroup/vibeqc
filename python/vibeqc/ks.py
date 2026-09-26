@@ -370,9 +370,18 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
         if family == _NativeSemilocalFamily.PBE:
             exchange_scale = components.get("GGA_X_PBE", Fraction(0))
             correlation_scale = components.get("GGA_C_PBE", Fraction(0))
+        elif family in (
+            _NativeSemilocalFamily.LDA,
+            _NativeSemilocalFamily.R2SCAN,
+        ):
+            if len(method_ir.primitives) != 1:
+                raise NotImplementedError(
+                    "unsupported native KS semilocal composition"
+                )
+            exchange_scale = correlation_scale = Fraction(1)
         else:
-            # Curated LDA/r2SCAN/B3LYP/WB97M-V point programs own their
-            # internal component coefficients. Native outer X/C scales stay unity.
+            # B3LYP/WB97M-V point programs own their internal component
+            # coefficients. Native outer X/C scales stay unity.
             exchange_scale = correlation_scale = Fraction(1)
     if not plan.exchange:
         fock_exchange = Fraction(0)
