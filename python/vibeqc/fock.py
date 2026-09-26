@@ -544,7 +544,7 @@ class FockPlan:
                 self._library, "vibeqc_fock_plan_df_pair_storage_v1", None
             )
             pair_storage = storage(self._handle) if storage is not None else 0
-            if pair_storage not in (0, 1):
+            if pair_storage not in (0, 1, 2):
                 raise RuntimeError("invalid prepared Fock DF storage diagnostic")
             return {
                 "requested": _spec_dict(out.requested),
@@ -570,7 +570,7 @@ class FockPlan:
                 },
                 "df_streamed": bool(out.df_streamed),
                 "df_pair_storage": (
-                    ("packed" if pair_storage else "dense")
+                    ("dense", "packed", "packed-single")[pair_storage]
                     if out.auxiliary_rank
                     else "absent"
                 ),

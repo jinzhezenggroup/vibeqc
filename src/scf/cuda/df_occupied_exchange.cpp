@@ -226,7 +226,7 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
                                                weight, schedule.rows, exchange, detail);
   }
 
-  const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;
+  const bool packed = df_packed_pairs(plan.value_storage.pairs);
   const bool complete_projection =
       packed ? rank <= plan.value_storage.rank_capacity : plan.auxiliary_tile == plan.naux;
   if (plan.resident_exchange_enabled && !plan.streamed && plan.row_tile == plan.nbf &&

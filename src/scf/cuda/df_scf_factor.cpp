@@ -29,9 +29,8 @@ bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
   // Q panel. Dense generated sources use the same contract only after the
   // complete raw owner has been validated during setup; that owner is also
   // required by the exact force-response borrow below.
-  const bool packed_resident = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
-                               plan.integral_source && plan.packed_raw &&
-                               rank <= plan.value_storage.rank_capacity;
+  const bool packed_resident = df_packed_pairs(plan.value_storage.pairs) && plan.integral_source &&
+                               plan.packed_raw && rank <= plan.value_storage.rank_capacity;
   const bool dense_resident = plan.value_storage.pairs == DfPairStorage::Dense &&
                               plan.auxiliary_tile == plan.naux &&
                               (!plan.integral_source || plan.resident_raw_valid);
@@ -40,6 +39,13 @@ bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
 
 bool qualified_value_rhf_exchange(const CudaDensityFittingJkPlan& plan, std::size_t rank) noexcept {
   if (qualified_resident_rhf_exchange(plan, rank)) return true;
+  if (plan.value_storage.pairs == DfPairStorage::SymmetricLowerSingle &&
+      df_occupied_exchange_preferred(plan.nbf, plan.naux, plan.batch_size, rank) &&
+      plan.occupied_scf_reserved && plan.resident_exchange_enabled && !plan.streamed &&
+      plan.integral_source && plan.three_center && plan.row_tile == plan.nbf &&
+      rank <= plan.value_storage.rank_capacity &&
+      rank <= plan.projection_capacity / plan.nbf / plan.naux)
+    return true;
   // Streamed projections are private eigendirection factors: they cannot grant
   // the symmetric-C final-state/force-response lease of the resident gate.
   return df_occupied_exchange_preferred(plan.nbf, plan.naux, plan.batch_size, rank) &&
@@ -63,8 +69,8 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
   rank = 0;
   // Reuse the existing singleton RHF solver/scratch. Streamed value factors
   // need a profitable full-rank source schedule, but never a resident lease.
-  const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
-                      plan.integral_source && plan.packed_raw;
+  const bool packed =
+      df_packed_pairs(plan.value_storage.pairs) && plan.integral_source && plan.three_center;
   const bool source_dense_resident = plan.integral_source && !packed && plan.resident_raw_valid;
   const bool resident = !plan.streamed &&
                         (!plan.integral_source || packed || source_dense_resident) &&

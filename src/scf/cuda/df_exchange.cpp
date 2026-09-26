@@ -334,7 +334,7 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
         return cuda_failure(cuda_error, "transpose CUDA DF exchange density", detail);
       }
     }
-    const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;
+    const bool packed = df_packed_pairs(plan.value_storage.pairs);
     const bool retain_raw =
         !packed && plan.resident_exchange_enabled && plan.row_tile == plan.nbf &&
         plan.auxiliary_tile == plan.naux &&

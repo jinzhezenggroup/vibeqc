@@ -156,8 +156,9 @@ vibeqc_status select_corrected_occupied_response_factor(
     CudaDfOccupiedResponseView& view, std::string& detail) {
   auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state);
   if (!requested || !state || state->unrestricted || !state->occupied_exchange ||
-      !state->final_frames_available || !plan.streamed || !plan.integral_source ||
-      plan.batch_size != 1 || system != 0 || terms.size() != 1 ||
+      !state->final_frames_available ||
+      (!plan.streamed && plan.value_storage.pairs != DfPairStorage::SymmetricLowerSingle) ||
+      !plan.integral_source || plan.batch_size != 1 || system != 0 || terms.size() != 1 ||
       terms[0].density.size() != plan.matrix_elements || terms[0].coulomb_coefficient != 1.0 ||
       terms[0].exchange_coefficient != .25 || requested->identity.occupied.size() != 1 ||
       !requested->identity.occupied[0] ||
@@ -286,8 +287,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
       plan->auxiliary_tile_values && plan->exchange_intermediate && plan->exchange_contributions;
   const bool packed_resident = !host_weights && plan->integral_source && !plan->streamed &&
-                               plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
-                               plan->packed_raw && plan->row_tile == plan->nbf;
+                               df_packed_pairs(plan->value_storage.pairs) && plan->packed_raw &&
+                               plan->row_tile == plan->nbf;
   const char* space_control = std::getenv("VIBEQC_DF_RESPONSE_SPACE");
   const std::string_view space = space_control ? space_control : "auto";
   if (space != "auto" && space != "dense" && space != "occupied") {
@@ -463,17 +464,20 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                   plan->nbf,
                   plan->naux,
                   plan->stored_pair_count,
-                  plan->value_storage.pairs == DfPairStorage::SymmetricLower,
+                  df_packed_pairs(plan->value_storage.pairs),
                   plan->factor_basis_identity,
                   metric};
     }
     CudaDfOccupiedResponseView streamed_factors;
-    if (!borrow && plan->integral_source && plan->streamed && metric.full_rank &&
-        space != "dense") {
-      // A streamed value plan has no all-Q raw or symmetric-C owner to lend.
-      // It can still lend validated canonical C while the response bridge
-      // budgets its own much smaller C^T A_P C projections. Never lend the
-      // streamed K eigenbasis projection as if it were symmetric whitening.
+    if (!borrow && plan->integral_source &&
+        (plan->streamed || (plan->value_storage.pairs == DfPairStorage::SymmetricLowerSingle &&
+                            space == "occupied")) &&
+        metric.full_rank && space != "dense") {
+      // Neither streamed nor single-factor values own raw A for response.
+      // Lend only validated canonical C; the bridge projects the physical
+      // source within its independent bounded response allowance. At large
+      // shapes that projection costs more than borrowing fitted B, so only
+      // streamed plans select it automatically.
       const auto selected = select_occupied_response_factors(
           *plan, system, final_state, terms, maximum_bytes, streamed_factors, detail);
       if (selected != VIBEQC_STATUS_SUCCESS) return selected;
@@ -482,6 +486,9 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
             *plan, system, final_state, terms, maximum_bytes, streamed_factors, detail);
         if (corrected != VIBEQC_STATUS_SUCCESS) return corrected;
       }
+      // The response bridge has mutually exclusive fitted-panel and physical
+      // raw-projection contracts; occupied factors must take the latter.
+      if (streamed_factors.owner_identity) whitened = {};
     }
     // The diagnostic upload route writes the former raw scratch buffer.
     // Revoke its immutable view before submission, so an interrupted copy

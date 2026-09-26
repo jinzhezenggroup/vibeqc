@@ -14,7 +14,15 @@ namespace vibeqc::scf {
  * for physical integral sources; it stores unit-weight (mu>=nu) pairs with Q
  * contiguous. Geometry/metric/source ownership remains part of the plan token.
  */
-enum class DfPairStorage { Dense, SymmetricLower };
+enum class DfPairStorage { Dense, SymmetricLower, SymmetricLowerSingle };
+
+inline bool df_packed_pairs(DfPairStorage storage) noexcept {
+  return storage == DfPairStorage::SymmetricLower || storage == DfPairStorage::SymmetricLowerSingle;
+}
+
+inline bool df_retains_packed_raw(DfPairStorage storage) noexcept {
+  return storage == DfPairStorage::SymmetricLower;
+}
 
 /** Explicit comparison selector for physical SCF preparation. Automatic
  * selection stays dense until complete endpoint/capacity qualification; the
@@ -25,7 +33,9 @@ inline DfPairStorage requested_df_pair_storage() {
   if (!value || std::strcmp(value, "auto") == 0 || std::strcmp(value, "dense") == 0)
     return DfPairStorage::Dense;
   if (std::strcmp(value, "packed") == 0) return DfPairStorage::SymmetricLower;
-  throw std::invalid_argument("VIBEQC_DF_VALUE_STORAGE must be auto, dense or packed");
+  if (std::strcmp(value, "packed-single") == 0) return DfPairStorage::SymmetricLowerSingle;
+  throw std::invalid_argument(
+      "VIBEQC_DF_VALUE_STORAGE must be auto, dense, packed or packed-single");
 }
 
 /** A lower-pair address cannot be mistaken for mu*nbf+nu. The owning shape
@@ -57,7 +67,8 @@ struct DfPackedValueCapacity {
 
 inline DfPackedValueCapacity df_packed_value_capacity(std::size_t batch, std::size_t n,
                                                       std::size_t a, std::size_t rank,
-                                                      std::size_t auxiliary_tile) {
+                                                      std::size_t auxiliary_tile,
+                                                      bool retain_raw = true) {
   if (!batch || !n || !a || rank > n || !auxiliary_tile || auxiliary_tile > a)
     throw std::invalid_argument("invalid packed DF storage dimensions");
   const auto multiply = [](std::size_t x, std::size_t y) {
@@ -82,8 +93,8 @@ inline DfPackedValueCapacity df_packed_value_capacity(std::size_t batch, std::si
   c.factor_bytes = multiply(c.all_tensor_elements, sizeof(double));
   c.scratch_bytes =
       multiply(add(c.projection_elements, multiply(2, c.panel_elements)), sizeof(double));
-  // Validate both immutable owners together before either is allocated.
-  (void)add(multiply(2, c.factor_bytes), c.scratch_bytes);
+  // The single-factor route regenerates raw response slices from its source.
+  (void)add(add(c.factor_bytes, retain_raw ? c.factor_bytes : 0), c.scratch_bytes);
   return c;
 }
 

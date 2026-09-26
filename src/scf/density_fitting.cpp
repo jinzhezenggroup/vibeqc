@@ -1219,10 +1219,10 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch, std::size_t
 
 static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
     std::size_t batch, std::size_t n, std::size_t a, std::size_t rank, std::size_t budget,
-    std::size_t fixed_device_bytes, bool occupied_exchange) {
-  // Validate capacities before forming products below, including both raw and
-  // transformed owners. This helper is shared with the actual native allocator.
-  (void)df_packed_value_capacity(batch, n, a, rank, 1);
+    std::size_t fixed_device_bytes, bool occupied_exchange, bool retain_raw) {
+  // Validate the actual number of simultaneous immutable owners before any
+  // shape arithmetic; the native allocator must use the same representation.
+  (void)df_packed_value_capacity(batch, n, a, rank, 1, retain_raw);
   std::size_t matrix{}, metric_elements{}, metric_bytes{};
   if (!checked_multiply(n, n, matrix) || !checked_multiply(a, a, metric_elements) ||
       !checked_multiply(metric_elements, sizeof(double), metric_bytes) ||
@@ -1230,7 +1230,7 @@ static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
       a > static_cast<std::size_t>(std::numeric_limits<int>::max()))
     throw std::overflow_error("packed DF dimensions exceed native indexing");
   const auto bytes = [&](std::size_t q) {
-    const auto capacity = df_packed_value_capacity(batch, n, a, rank, q);
+    const auto capacity = df_packed_value_capacity(batch, n, a, rank, q, retain_raw);
     const auto legacy = workspace_bytes(matrix, q, batch, n, a, metric_bytes, fixed_device_bytes,
                                         true, occupied_exchange, true);
     if (legacy == std::numeric_limits<std::size_t>::max())
@@ -1239,16 +1239,20 @@ static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
     // replace only the representation's actual simultaneous tensor allocations.
     const long double dense = static_cast<long double>(batch) * matrix * a * sizeof(double) +
                               3.0L * matrix * q * sizeof(double);
-    const long double packed = 2.0L * capacity.factor_bytes + capacity.scratch_bytes;
+    const long double packed =
+        (retain_raw ? 2.0L : 1.0L) * capacity.factor_bytes + capacity.scratch_bytes;
     const long double total = static_cast<long double>(legacy) - dense + packed;
     if (total < 0 || total >= static_cast<long double>(std::numeric_limits<std::size_t>::max()))
       throw std::overflow_error("packed DF reservation overflows size_t");
     return static_cast<std::size_t>(total);
   };
-  std::size_t q = std::min<std::size_t>(a, 128);
+  // Single-owner setup must fit one complete raw auxiliary pair before it
+  // can whiten that pair into B; the retained raw owner has no such floor.
+  const std::size_t minimum_q = retain_raw ? 1 : a / matrix + (a % matrix != 0);
+  std::size_t q = std::max(minimum_q, std::min<std::size_t>(a, 128));
   if (budget && bytes(q) > budget) {
-    if (bytes(1) > budget) throw DensityFittingBudgetError();
-    std::size_t low = 1, high = q;
+    if (bytes(minimum_q) > budget) throw DensityFittingBudgetError();
+    std::size_t low = minimum_q, high = q;
     while (low < high) {
       const auto middle = low + (high - low + 1) / 2;
       if (bytes(middle) <= budget)
@@ -1264,7 +1268,7 @@ static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
           std::min<std::size_t>(rank, 32),
           bytes(q),
           true,
-          {DfPairStorage::SymmetricLower, rank}};
+          {retain_raw ? DfPairStorage::SymmetricLower : DfPairStorage::SymmetricLowerSingle, rank}};
 }
 
 /** Packed U is independently requested storage; optional automatic SCF factors
@@ -1272,20 +1276,28 @@ static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
 DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std::size_t nbf,
                                                          std::size_t naux, std::size_t rank,
                                                          std::size_t budget, std::size_t fixed,
-                                                         std::size_t automatic_rhf_rank) {
+                                                         std::size_t automatic_rhf_rank,
+                                                         bool retain_raw) {
   if (df_occupied_exchange_auto_requested() && automatic_rhf_rank <= rank &&
       df_occupied_exchange_requested(nbf, naux, batch, automatic_rhf_rank)) {
     try {
-      auto plan =
-          plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed, true);
+      auto plan = plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed,
+                                                         true, retain_raw);
       plan.automatic_rhf_rank = automatic_rhf_rank;
       return plan;
     } catch (const DensityFittingBudgetError&) {
       // Packing remains explicit; only the unused SCF reservation is dropped.
     }
   }
-  return plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed,
-                                                df_occupied_exchange_requested());
+  try {
+    return plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed,
+                                                  df_occupied_exchange_requested(), retain_raw);
+  } catch (const DensityFittingBudgetError&) {
+    if (retain_raw || !rank || !df_occupied_exchange_auto_requested()) throw;
+    // A single fitted B may fit when a complete occupied U does not. Drop
+    // only that optional SCF scratch: J/K remains exact via bounded panels.
+    return plan_packed_density_fitting_tiles_impl(batch, nbf, naux, 0, budget, fixed, false, false);
+  }
 }
 
 std::size_t density_fitting_scf_diis_device_bytes(std::size_t batch, std::size_t nbf,

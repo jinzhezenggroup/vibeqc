@@ -311,12 +311,14 @@ extern "C" vibeqc_status vibeqc_fock_plan_solve(vibeqc_fock_plan* plan,
 /** Private additive query preserves the public diagnostic struct's ABI.
  * Read the prepared variant, not the current environment: existing owners keep
  * their actual representation across later diagnostic selector changes.
- * Return 0 for dense, 1 for packed lower pairs, and -1 for an invalid handle.
+ * Return 0 for dense, 1 for dual-owner packed, 2 for single-owner packed,
+ * and -1 for an invalid handle.
  */
 extern "C" int vibeqc_fock_plan_df_pair_storage_v1(const vibeqc_fock_plan* plan) {
   if (!plan) return -1;
-  return plan->source->diagnostic().variant.df_pair_storage == DfPairStorage::SymmetricLower ? 1
-                                                                                             : 0;
+  const auto storage = plan->source->diagnostic().variant.df_pair_storage;
+  if (storage == DfPairStorage::SymmetricLowerSingle) return 2;
+  return storage == DfPairStorage::SymmetricLower ? 1 : 0;
 }
 
 extern "C" vibeqc_status vibeqc_fock_plan_diagnostic(const vibeqc_fock_plan* plan,
