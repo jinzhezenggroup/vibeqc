@@ -277,7 +277,8 @@ void provider_and_reference() {
   } catch (const std::invalid_argument&) {
     invalid_rejected = true;
   }
-  require(invalid_rejected && rejected_work.source_reads == 0 && rejected_work.mo_blocks == 0,
+  require(invalid_rejected && rejected_work.source_scans == 0 &&
+              rejected_work.source_reads == 0 && rejected_work.mo_blocks == 0,
           "invalid later MO request reached AO traversal or published work");
 
   bool overflow = false;
@@ -355,8 +356,9 @@ void conventional_energy_reuses_ao_scans() {
   vibeqc::posthf::RawSource source(system);
   const auto energy =
       vibeqc::mp2::conventional_energy(*hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
-  require(energy.tiles == 1 && energy.provider_work.mo_blocks == 2,
-          "batched MP2 energy request count");
+  require(energy.tiles == 1 && energy.provider_work.mo_blocks == 2 &&
+              energy.provider_work.source_scans == 1,
+          "batched MP2 energy request/source-scan count");
   std::size_t full_ao_values = 1;
   for (unsigned k = 0; k < 4; ++k) full_ao_values *= hf.reference->nbf;
   require(energy.provider_work.source_values == full_ao_values,
