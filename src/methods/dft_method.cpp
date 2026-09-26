@@ -16,6 +16,7 @@
 #include "dft/ao_grid.hpp"
 #include "dft/dispersion/d4_runtime.hpp"
 #include "dft/grid.hpp"
+#include "dft/xc.hpp"
 #include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "dft/semilocal_family.hpp"
 #include "generated_method_parameters.hpp"
@@ -637,6 +638,22 @@ class KsPreparedCalculation final : public PreparedCalculation {
         basis_(system_),
         grid_(ks_molecular_grid(system_, grid, backend_, device)) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
+    if (backend_ == VIBEQC_BACKEND_CPU && !unrestricted(execution_plan_) &&
+        execution_plan_.semilocal_family == dft::SemilocalFamily::Pbe &&
+        !execution_plan_.range_exchange && !execution_plan_.nonlocal_correlation &&
+        !options_.experimental_incremental_xc) {
+      constexpr std::size_t kCpuRksAoCacheMaximumBytes = 64ULL * 1024ULL * 1024ULL;
+      const auto cache_bytes = dft::rks_ao_cache_bytes(basis_, grid_, 1U);
+      if (cache_bytes <= kCpuRksAoCacheMaximumBytes) {
+        try {
+          cpu_rks_ao_cache_.emplace(dft::prepare_rks_ao_cache(basis_, grid_, 1U));
+        } catch (const std::bad_alloc&) {
+          // This is an optional prepared acceleration; run_rks retains its
+          // bounded streamed/local-cache fallback when owner retention fails.
+          cpu_rks_ao_cache_.reset();
+        }
+      }
+    }
     if (execution_plan_.range_exchange) prepare_range_exchange(device);
     if (execution_plan_.nonlocal_correlation) prepare_nonlocal(device);
 #if VIBEQC_HAS_CUDA
@@ -669,9 +686,12 @@ class KsPreparedCalculation final : public PreparedCalculation {
    * inferred from this lower-bound observation. Grid/basis buffers are owned. */
   std::size_t host_numeric_capacity() const noexcept {
     auto bytes =
-        runtime::add_capacity(fock_.cpu_observation_capacity(),
-                              runtime::vector_capacities(basis_.packed, grid_.points(),
-                                                         grid_.weights(), grid_.owners(), warm_));
+        runtime::add_capacity(
+            fock_.cpu_observation_capacity(),
+            runtime::add_capacity(
+                runtime::vector_capacities(basis_.packed, grid_.points(), grid_.weights(),
+                                           grid_.owners(), warm_),
+                cpu_rks_ao_cache_ ? cpu_rks_ao_cache_->numeric_capacity_bytes() : 0));
     if (range_correction_)
       bytes = runtime::add_capacity(bytes, range_correction_->cpu_observation_capacity());
     if (cpu_physical_)
@@ -900,9 +920,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
                    ? scf::run_pbe_uks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_)
                    : scf::run_pbe_rks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_);
     else
-      native = scf::run_curated_semilocal_ks(fock_, basis_, grid_, options_,
-                                             execution_plan_.semilocal_family,
-                                             execution_plan_.spin_channels, seed);
+      native = scf::run_curated_semilocal_ks(
+          fock_, basis_, grid_, options_, execution_plan_.semilocal_family,
+          execution_plan_.spin_channels, seed,
+          cpu_rks_ao_cache_ ? &*cpu_rks_ao_cache_ : nullptr);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
@@ -1048,6 +1069,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   std::unique_ptr<scf::PreparedFockPlan> range_correction_;
   dft::AoBasis basis_;
   dft::MolecularGrid grid_;
+  std::optional<dft::RksAoCache> cpu_rks_ao_cache_;
   std::vector<double> warm_;
   const std::uint64_t cpu_owner_{next_cpu_ks_owner()};
   std::uint64_t cpu_epoch_{};
