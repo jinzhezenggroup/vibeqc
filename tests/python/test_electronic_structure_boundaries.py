@@ -30,6 +30,7 @@ def test_current_cross_method_boundaries_are_valid() -> None:
     assert {
         "solver/dense_linear.hpp",
         "solver/diis.hpp",
+        "solver/diis_coefficients.hpp",
         "solver/diis_history.hpp",
         "solver/iteration_control.hpp",
     } <= {module["path"] for module in report["modules"] if module["owner"] == "solver"}

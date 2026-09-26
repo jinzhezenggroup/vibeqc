@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "solver/diis.hpp"
+#include "solver/diis_coefficients.hpp"
 #include "solver/self_consistent.hpp"
 
 namespace {
@@ -147,6 +148,49 @@ void verify_diis_shape_rejection_preserves_history() {
           "invalid DIIS update poisoned the retained history");
 }
 
+void verify_shared_diis_coefficient_policy() {
+  using vibeqc::solver::detail::DiisCoefficientAction;
+  using vibeqc::solver::detail::DiisCoefficientPolicy;
+  using vibeqc::solver::detail::DiisMetricScaling;
+  using vibeqc::solver::detail::solve_diis_coefficients;
+
+  DiisCoefficientPolicy shared;
+  shared.metric_scaling = DiisMetricScaling::MaximumAbsoluteEntry;
+  shared.failure_retirement_floor = 1;
+  shared.maximum_abs_coefficient = 1.0e6;
+
+  std::vector<double> coefficients;
+  auto action = solve_diis_coefficients({1.0, 0.0, 0.0, 1.0}, 2, shared, coefficients);
+  require(action == DiisCoefficientAction::Extrapolate && coefficients.size() == 2 &&
+              std::abs(coefficients[0] - 0.5) < 1.0e-14 &&
+              std::abs(coefficients[1] - 0.5) < 1.0e-14,
+          "shared DIIS coefficient solve changed");
+
+  const double delta = 4.0e-7;
+  const double off_diagonal = 1.0 + delta;
+  const double second_diagonal = (1.0 + delta) * (1.0 + delta) + delta * delta;
+  action = solve_diis_coefficients({1.0, off_diagonal, off_diagonal, second_diagonal}, 2, shared,
+                                   coefficients);
+  require(action == DiisCoefficientAction::RetireOldest,
+          "shared DIIS coefficient guard stopped retiring unstable history");
+
+  DiisCoefficientPolicy hf;
+  action = solve_diis_coefficients({1.0, 1.0, 1.0, 1.0}, 2, hf, coefficients);
+  require(action == DiisCoefficientAction::RetainCurrent,
+          "HF-style singular DIIS unexpectedly retired history");
+
+  DiisCoefficientPolicy ks;
+  ks.metric_scaling = DiisMetricScaling::MaximumDiagonal;
+  ks.failure_retirement_floor = 2;
+  action = solve_diis_coefficients({1.0, 1.0, 1.0, 1.0}, 2, ks, coefficients);
+  require(action == DiisCoefficientAction::RetainCurrent,
+          "two-state KS-style singular DIIS unexpectedly retired history");
+  action =
+      solve_diis_coefficients({1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 3, ks, coefficients);
+  require(action == DiisCoefficientAction::RetireOldest,
+          "KS-style singular DIIS stopped retiring older history");
+}
+
 void verify_method_neutral_diis() {
   vibeqc::solver::Diis disabled(0, 2);
   const std::vector<double> original{2.0, 4.0};
@@ -206,6 +250,7 @@ int main() {
     verify_nonconverged_state_retention();
     verify_accept_owns_update_policy();
     verify_terminal_accept_can_keep_current_state();
+    verify_shared_diis_coefficient_policy();
     verify_method_neutral_diis();
     verify_three_history_diis_gram_symmetry();
     verify_diis_shape_rejection_preserves_history();
