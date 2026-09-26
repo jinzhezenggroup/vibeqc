@@ -37,7 +37,9 @@ def _inventory(source_root: Path, manifest_path: Path) -> list[Path]:
             raise ValueError(f"unsafe source identity root: {relative_root}")
         group_root = root / relative_root
         if not group_root.is_dir():
-            raise ValueError(f"source identity root is not a directory: {relative_root}")
+            raise ValueError(
+                f"source identity root is not a directory: {relative_root}"
+            )
         patterns = group.get("patterns", [])
         if not patterns:
             raise ValueError(f"source identity root has no patterns: {relative_root}")
