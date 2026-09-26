@@ -9,9 +9,11 @@ The implementation was measured in a dirty worktree based on
 library SHA-256 is
 `551ae03cd5fc8e0db6691d413ef4e060568f26d85e3f5e7733cd097030df557b`.
 Shell and stationary-force AOT were enabled. The [source file hashes](measured-source-files.json)
-identify the modified scientific sources used for acceptance; subsequent native
-source edits before submission are formatting only. The submitted implementation
-and retained binary identity must not be confused with unmodified master.
+identify the modified scientific sources used for this retained acceptance run.
+These timings predate the later quartet-driven direct-JK derivative scheduling
+optimization on the PR branch, so they are a baseline for the old kernel only
+and must not be attributed to the current head. The retained binary identity
+must not be confused with either unmodified master or the later optimized head.
 
 ## Numerical acceptance
 
