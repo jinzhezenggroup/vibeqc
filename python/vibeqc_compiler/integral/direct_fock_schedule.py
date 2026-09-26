@@ -104,6 +104,9 @@ def select_direct_fock_route(
         precision_schedule_hash=precision_schedule_hash,
         page_size=page_size,
     )
+    candidate_reasons = streaming_reasons
+    if not streaming_legal and not candidate_reasons:
+        candidate_reasons = ("streaming route is not legal for this workload",)
     candidate = direct_fock_route_contract(
         "streaming",
         shell_class=shell_class,
@@ -113,7 +116,7 @@ def select_direct_fock_route(
         target_hash=target_hash,
         precision_schedule_hash=precision_schedule_hash,
         legal=streaming_legal,
-        reasons=streaming_reasons,
+        reasons=candidate_reasons,
     )
     selected = select_measured_schedule_contract(
         (baseline, candidate),
