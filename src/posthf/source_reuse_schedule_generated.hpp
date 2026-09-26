@@ -89,7 +89,7 @@ struct SourceTilePlan {
 inline std::size_t source_reads_per_scan(std::size_t nbf, std::size_t axis_tile) {
   if (!nbf || !axis_tile || axis_tile > nbf)
     throw std::invalid_argument("invalid source-tile dimensions");
-  const auto tiles = (nbf + axis_tile - 1) / axis_tile;
+  const auto tiles = 1 + (nbf - 1) / axis_tile;
   const auto squared = posthf::checked_mul(tiles, tiles);
   return posthf::checked_mul(squared, squared);
 }
