@@ -98,73 +98,97 @@ __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begi
 }
 
 /** Differentiate the same screened discrete energy at fixed spin densities.
- * Relabel exchange indices so a single ERI derivative serves J and both K
- * terms. The 1/2 energy factor is separate from signed Fock coefficients.
+ *
+ * Traverse each ordered AO quartet once, then differentiate only the unique
+ * nuclear centers that actually occur in that quartet. Dual3 carries x/y/z
+ * together and translational invariance reconstructs the final center. This
+ * removes the previous coordinate-by-AO^4 scan without changing screening,
+ * public-AO spherical expansion, coefficients, or radial operators.
  */
 __global__ void independent_jk_derivative_kernel(
-    DeviceBatch batch, std::size_t coordinates_per_item, std::size_t system_begin, unsigned chunks,
-    double cj, double ck, bool unrestricted, vibeqc::integrals::CoulombRange exchange_range,
-    double exchange_omega, double screening, const double* bounds, const double* density,
-    const double* beta, double* out) {
-  __shared__ double sums[kIndependentJkThreads];
+    DeviceBatch batch, std::size_t system_begin, std::size_t system_count, double cj, double ck,
+    bool unrestricted, vibeqc::integrals::CoulombRange exchange_range, double exchange_omega,
+    double screening, const double* bounds, const double* density, const double* beta,
+    double* out) {
   const std::size_t n = batch.nbf, matrix = n * n, quartets = matrix * matrix;
-  const std::size_t coordinate = system_begin * coordinates_per_item + blockIdx.x / chunks;
-  const auto system = static_cast<std::int32_t>(coordinate / coordinates_per_item);
-  const std::size_t offset = static_cast<std::size_t>(system) * matrix;
-  double sum = 0.0;
-  // Several blocks share a coordinate so small molecules can occupy the GPU.
-  // Each quartet still belongs to exactly one lane; only the bounded block
-  // sums are atomically accumulated into the zeroed coordinate output.
-  for (std::size_t quartet = (blockIdx.x % chunks) * blockDim.x + threadIdx.x; quartet < quartets;
-       quartet += static_cast<std::size_t>(chunks) * blockDim.x) {
+  const std::size_t work_count = system_count * quartets;
+  const std::size_t stride = static_cast<std::size_t>(blockDim.x) * gridDim.x;
+  for (std::size_t work = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       work < work_count; work += stride) {
+    const std::size_t local_system = work / quartets;
+    const auto system = static_cast<std::int32_t>(system_begin + local_system);
+    const std::size_t quartet = work % quartets;
+    const std::size_t offset = static_cast<std::size_t>(system) * matrix;
     const std::size_t ij = quartet / matrix, kl = quartet % matrix;
     if (bounds[offset + ij] * bounds[offset + kl] < screening) continue;
+
     const auto i = static_cast<std::int32_t>(ij / n), j = static_cast<std::int32_t>(ij % n);
     const auto k = static_cast<std::int32_t>(kl / n), l = static_cast<std::int32_t>(kl % n);
-    // A coordinate absent from the quartet has an exactly zero derivative.
-    // Reject it before the primitive recurrence, including spherical expansion.
-    const auto atom = static_cast<std::int32_t>(coordinate / 3);
-    const auto base = static_cast<std::size_t>(system) * n;
-    if (batch.shell_atoms[batch.ao_shells[base + i]] != atom &&
-        batch.shell_atoms[batch.ao_shells[base + j]] != atom &&
-        batch.shell_atoms[batch.ao_shells[base + k]] != atom &&
-        batch.shell_atoms[batch.ao_shells[base + l]] != atom)
-      continue;
-    double weight = 0.0, range_weight = 0.0;
+    double full_weight = 0.0, range_weight = 0.0;
     // An absent/zero-weight term must not evaluate a quadratic that can
     // overflow, even when the requested total-density contribution is finite.
     if (cj != 0.0) {
       const double total_ij = density[offset + ij] + (unrestricted ? beta[offset + ij] : 0.0);
       const double total_kl = density[offset + kl] + (unrestricted ? beta[offset + kl] : 0.0);
-      weight += cj * total_ij * total_kl;
+      full_weight += 0.5 * cj * total_ij * total_kl;
     }
     if (ck != 0.0) {
-      const std::size_t ik = i * n + k, jl = j * n + l;
+      const std::size_t ik = static_cast<std::size_t>(i) * n + k;
+      const std::size_t jl = static_cast<std::size_t>(j) * n + l;
       const double exchange = density[offset + ik] * density[offset + jl] +
                               (unrestricted ? beta[offset + ik] * beta[offset + jl] : 0.0);
       if (exchange_range == vibeqc::integrals::CoulombRange::Full)
-        weight += ck * exchange;
+        full_weight += 0.5 * ck * exchange;
       else
         range_weight = 0.5 * ck * exchange;
     }
-    weight *= 0.5;
-    if (weight != 0.0)
-      sum += weight *
-             contracted_eri<Dual>(batch, system, i, j, k, l, static_cast<std::int64_t>(coordinate))
-                 .derivative;
-    if (range_weight != 0.0)
-      sum += range_weight * contracted_eri<Dual>(batch, system, i, j, k, l,
-                                                 static_cast<std::int64_t>(coordinate),
-                                                 exchange_range, exchange_omega)
-                                .derivative;
+    if (full_weight == 0.0 && range_weight == 0.0) continue;
+
+    const std::size_t base = static_cast<std::size_t>(system) * n;
+    const std::int32_t center_atoms[4] = {
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(i)]],
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(j)]],
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(k)]],
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(l)]],
+    };
+    std::int32_t unique_atoms[4];
+    unsigned unique_count = 0;
+    for (unsigned center = 0; center < 4; ++center) {
+      bool duplicate = false;
+      for (unsigned previous = 0; previous < unique_count; ++previous)
+        duplicate = duplicate || unique_atoms[previous] == center_atoms[center];
+      if (!duplicate) unique_atoms[unique_count++] = center_atoms[center];
+    }
+    if (unique_count <= 1) continue;
+
+    double reconstructed[3]{};
+    for (unsigned center = 0; center + 1 < unique_count; ++center) {
+      const std::int64_t coordinate = static_cast<std::int64_t>(unique_atoms[center]) * 3;
+      double derivative[3]{};
+      if (full_weight != 0.0) {
+        const Dual3 value =
+            contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate);
+        derivative[0] += full_weight * value.derivative_x;
+        derivative[1] += full_weight * value.derivative_y;
+        derivative[2] += full_weight * value.derivative_z;
+      }
+      if (range_weight != 0.0) {
+        const Dual3 value = contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate,
+                                                  exchange_range, exchange_omega);
+        derivative[0] += range_weight * value.derivative_x;
+        derivative[1] += range_weight * value.derivative_y;
+        derivative[2] += range_weight * value.derivative_z;
+      }
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        reconstructed[axis] += derivative[axis];
+        if (derivative[axis] != 0.0)
+          atomicAdd(out + static_cast<std::size_t>(coordinate) + axis, derivative[axis]);
+      }
+    }
+    const std::size_t final_coordinate = static_cast<std::size_t>(unique_atoms[unique_count - 1]) * 3;
+    for (unsigned axis = 0; axis < 3; ++axis)
+      if (reconstructed[axis] != 0.0) atomicAdd(out + final_coordinate + axis, -reconstructed[axis]);
   }
-  sums[threadIdx.x] = sum;
-  __syncthreads();
-  for (unsigned stride = blockDim.x / 2; stride; stride /= 2) {
-    if (threadIdx.x < stride) sums[threadIdx.x] += sums[threadIdx.x + stride];
-    __syncthreads();
-  }
-  if (threadIdx.x == 0) atomicAdd(out + coordinate, sums[0]);
 }
 
 }  // namespace
@@ -206,12 +230,15 @@ void launch_independent_jk_derivative_kernel(
     bool unrestricted, DirectCoulombRange exchange_range, double exchange_omega, double screening,
     const double* bounds, const double* density, const double* beta, double* out) {
   const std::size_t matrix = static_cast<std::size_t>(batch.nbf) * batch.nbf;
-  const unsigned chunks = static_cast<unsigned>(std::min<std::size_t>(
-      {256, (matrix * matrix + block.x - 1) / block.x, 2147483647U / grid.x}));
-  const dim3 parallel_grid(grid.x * chunks);
-  independent_jk_derivative_kernel<<<parallel_grid, block, shared_bytes, stream>>>(
-      batch, coordinates_per_item, system_begin, chunks, cj, ck, unrestricted,
-      integral_range(exchange_range), exchange_omega, screening, bounds, density, beta, out);
+  const std::size_t system_count =
+      coordinates_per_item == 0 ? 0 : static_cast<std::size_t>(grid.x) / coordinates_per_item;
+  const std::size_t quartet_count = system_count * matrix * matrix;
+  const unsigned blocks = static_cast<unsigned>(
+      std::min<std::size_t>((quartet_count + block.x - 1) / block.x, 65535));
+  if (blocks == 0) return;
+  independent_jk_derivative_kernel<<<blocks, block, shared_bytes, stream>>>(
+      batch, system_begin, system_count, cj, ck, unrestricted, integral_range(exchange_range),
+      exchange_omega, screening, bounds, density, beta, out);
 }
 
 }  // namespace cuda_execution
