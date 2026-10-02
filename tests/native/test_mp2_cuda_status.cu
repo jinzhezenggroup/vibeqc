@@ -59,6 +59,100 @@ void ri_mp2_block_planner() {
   require(rejected, "RI-MP2 planner accepted a budget without one B block");
 }
 
+void batched_eri_derivatives() {
+  // Distinct shell slots deliberately share atoms. Full p quartets force
+  // primitive-buffer splits; many s quartets force output-tile splits.
+  for (auto representation : {GENERATIVEQC_BASIS_CARTESIAN, GENERATIVEQC_BASIS_SPHERICAL}) {
+    generativeqc::core::System system;
+    system.basis_representation = representation;
+    system.atoms = {{1, {0.0, 0.0, 0.0}}, {1, {1.2, 0.3, -0.4}}, {1, {-0.2, 0.7, 0.5}}};
+    const std::vector<generativeqc::core::Primitive> p{{1.4, .3}, {.7, .4}, {.2, .5}};
+    system.shells = {{0, 0, {{1.1, 1.0}}}, {1, 1, p},           {0, 1, p},
+                     {2, 2, {{.8, 1.0}}},  {1, 3, {{.6, 1.0}}}, {2, 0, {{.9, 1.0}}}};
+    std::string detail;
+    require(generativeqc::molecule::validate_and_normalize(system, detail) ==
+                GENERATIVEQC_STATUS_SUCCESS,
+            "batch fixture normalization failed");
+    struct Tile {
+      std::array<std::size_t, 4> shells;
+      std::vector<double> weights;
+    };
+    std::vector<Tile> tiles;
+    for (std::size_t index = 0; index < 310; ++index) {
+      std::array<std::size_t, 4> shells;
+      if (index < 5)
+        shells = {1, 2, 1, 2};
+      else if (index == 5)
+        shells = {4, 0, 1, 0};
+      else if (index == 6)
+        shells = {3, 0, 1, 2};
+      else if (index == 7)
+        shells = {1, 0, 0, 0};
+      else
+        shells = {0, 5, 0, 5};
+      std::size_t count = 1;
+      for (const auto shell : shells) {
+        const auto l = system.shells[shell].angular_momentum;
+        count *= representation == GENERATIVEQC_BASIS_SPHERICAL
+                     ? 2 * l + 1
+                     : generativeqc::molecule::cartesian_count(l);
+      }
+      std::vector<double> weights(count);
+      for (std::size_t k = 0; k < count; ++k)
+        weights[k] = index == 8 ? 0.0 : .03 * std::sin(1.0 + k + 3 * index);
+      tiles.push_back({shells, std::move(weights)});
+    }
+    std::vector<double> expected(9);
+    for (const auto& tile : tiles) {
+      const auto center = generativeqc::integrals::contract_weighted_eri_shell_derivative(
+          system, tile.shells, tile.weights);
+      for (std::size_t slot = 0; slot < 4; ++slot)
+        for (std::size_t axis = 0; axis < 3; ++axis)
+          expected[3 * system.shells[tile.shells[slot]].atom_index + axis] +=
+              center[3 * slot + axis];
+    }
+    std::size_t records = 0;
+    for (const auto budget : {8ULL << 20, 32768ULL, 8192ULL}) {
+      generativeqc::posthf::CudaEriDerivativeBatch batch(0, system, budget, true);
+      std::vector<double> actual(9);
+      for (const auto& tile : tiles) batch.append(tile.shells, tile.weights, actual);
+      batch.finish(actual);
+      require(batch.numeric_capacity_bytes() <= budget, "ERI batch exceeded its numeric cap");
+      require(batch.batched() == (budget != 8192), "ERI batch/fallback admission changed");
+      if (!records) records = batch.diagnostic().primitive_records;
+      require(batch.diagnostic().primitive_records == records,
+              "batching repeated or lost primitives");
+      if (budget == (8ULL << 20))
+        require(batch.diagnostic().consumer_calls < 10, "large batch retained per-shell work");
+      for (std::size_t i = 0; i < actual.size(); ++i)
+        require(std::abs(actual[i] - expected[i]) < 2e-9,
+                "batched derivative differs from independent CPU shell oracle");
+      const auto calls = batch.diagnostic().consumer_calls;
+      batch.finish(actual);
+      require(batch.diagnostic().consumer_calls == calls, "empty finish repeated GPU work");
+      bool rejected = false;
+      try {
+        batch.append(tiles.front().shells, {}, actual);
+      } catch (const std::invalid_argument&) {
+        rejected = true;
+      }
+      require(rejected, "batch accepted malformed shell weights");
+    }
+  }
+  const auto system = h2();
+  generativeqc::posthf::CudaEriDerivativeBatch tiny(0, system, 1, true);
+  std::vector<double> gradient(6);
+  bool rejected = false;
+  try {
+    tiny.append({0, 1, 0, 1}, std::array<double, 1>{.3}, gradient);
+  } catch (const std::length_error&) {
+    rejected = true;
+  }
+  require(rejected, "tiny derivative stage budget was accepted");
+  std::cout
+      << "Batched ERI: Cartesian/spherical s/p/d/f, split quartets, repeated atoms, budgets PASS\n";
+}
+
 void derivative_and_force_parity() {
   const auto system = h2();
   const std::array<std::size_t, 4> shells{0, 1, 0, 1};
@@ -112,9 +206,13 @@ void derivative_and_force_parity() {
 }
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   if (!std::getenv("GENERATIVEQC_MP2_CUDA_TEST")) return 77;
   try {
+    batched_eri_derivatives();
+    // Memcheck the scientific batch paths without the intentional cudaMalloc
+    // failure below, which compute-sanitizer correctly reports as an API error.
+    if (argc == 2 && std::string(argv[1]) == "--eri-batches-only") return 0;
     ri_mp2_block_planner();
     derivative_and_force_parity();
     bool cuda_oom = false, blas_oom = false;

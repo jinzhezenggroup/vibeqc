@@ -1,0 +1,742 @@
+diff --git a/src/posthf/cuda_derivative.cpp b/src/posthf/cuda_derivative.cpp
+index 3cf7bfd2e..69c7a48ae 100644
+--- a/src/posthf/cuda_derivative.cpp
++++ b/src/posthf/cuda_derivative.cpp
+@@ -14,6 +14,107 @@
+ 
+ namespace generativeqc::posthf {
+ 
++#if GENERATIVEQC_HAS_CUDA
++namespace {
++// Shared public-basis normalization and primitive record producer. Both the
++// synchronous one-shell API and streamed batches retain this exact algebra.
++generativeqc_status validate_shell(const core::System& system,
++                                   const std::array<std::size_t, 4>& shell_indices,
++                                   std::span<const double> weights,
++                                   std::array<const core::Shell*, 4>& selected,
++                                   std::size_t& expansion_terms, std::string& detail) {
++  std::size_t expected = 1;
++  expansion_terms = 0;
++  for (std::size_t slot = 0; slot < selected.size(); ++slot) {
++    if (shell_indices[slot] >= system.shells.size()) {
++      detail = "weighted ERI shell index is out of range";
++      return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
++    }
++    selected[slot] = &system.shells[shell_indices[slot]];
++    if (selected[slot]->atom_index >= system.atoms.size()) {
++      detail = "weighted ERI shell atom is out of range";
++      return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
++    }
++    const auto cartesian = molecule::cartesian_count(selected[slot]->angular_momentum);
++    const auto public_count = system.basis_representation == GENERATIVEQC_BASIS_SPHERICAL
++                                  ? 2 * selected[slot]->angular_momentum + 1
++                                  : cartesian;
++    expected = checked_mul(expected, public_count);
++    expansion_terms = checked_add(expansion_terms, checked_mul(public_count, cartesian));
++  }
++  if (weights.size() != expected || !std::all_of(weights.begin(), weights.end(), [](double value) {
++        return std::isfinite(value);
++      })) {
++    detail = "weighted ERI shell weights have the wrong shape or are nonfinite";
++    return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
++  }
++
++  return GENERATIVEQC_STATUS_SUCCESS;
++}
++
++template <class Emit>
++generativeqc_status emit_shell_records(const core::System& system,
++                                       const std::array<const core::Shell*, 4>& selected,
++                                       std::span<const double> weights, Emit&& emit) {
++  const std::array<std::vector<molecule::AoExpansion>, 4> expansions{
++      molecule::ao_expansions(selected[0]->angular_momentum, system.basis_representation),
++      molecule::ao_expansions(selected[1]->angular_momentum, system.basis_representation),
++      molecule::ao_expansions(selected[2]->angular_momentum, system.basis_representation),
++      molecule::ao_expansions(selected[3]->angular_momentum, system.basis_representation)};
++  for (std::size_t i = 0; i < expansions[0].size(); ++i)
++    for (std::size_t j = 0; j < expansions[1].size(); ++j)
++      for (std::size_t k = 0; k < expansions[2].size(); ++k)
++        for (std::size_t l = 0; l < expansions[3].size(); ++l) {
++          const auto weight = weights[((i * expansions[1].size() + j) * expansions[2].size() + k) *
++                                          expansions[3].size() +
++                                      l];
++          if (weight == 0.0) continue;
++          for (const auto& ei : expansions[0][i])
++            for (const auto& ej : expansions[1][j])
++              for (const auto& ek : expansions[2][k])
++                for (const auto& el : expansions[3][l]) {
++                  const std::array<const molecule::CartesianExpansionTerm*, 4> terms{&ei, &ej, &ek,
++                                                                                     &el};
++                  double component_weight = weight;
++                  for (const auto* term : terms)
++                    component_weight *=
++                        term->coefficient *
++                        molecule::cartesian_component_normalization(term->component);
++                  for (const auto& pi : selected[0]->primitives)
++                    for (const auto& pj : selected[1]->primitives)
++                      for (const auto& pk : selected[2]->primitives)
++                        for (const auto& pl : selected[3]->primitives) {
++                          scf::CudaWeightedEriPrimitive record{};
++                          record.kind = 0;
++                          const std::array<const core::Primitive*, 4> primitives{&pi, &pj, &pk,
++                                                                                 &pl};
++                          for (std::size_t slot = 0; slot < 4; ++slot) {
++                            for (std::size_t axis = 0; axis < 3; ++axis) {
++                              record.angular[slot][axis] = terms[slot]->component[axis];
++                              record.centers[slot][axis] =
++                                  system.atoms[selected[slot]->atom_index].position[axis];
++                            }
++                            record.exponents[slot] = primitives[slot]->exponent;
++                          }
++                          record.weights[0] = component_weight * pi.coefficient * pj.coefficient *
++                                              pk.coefficient * pl.coefficient;
++                          const auto status = emit(record);
++                          if (status != GENERATIVEQC_STATUS_SUCCESS) return status;
++                        }
++                }
++        }
++  return GENERATIVEQC_STATUS_SUCCESS;
++}
++
++void check_consumer(generativeqc_status status, const std::string& detail) {
++  if (status == GENERATIVEQC_STATUS_SUCCESS) return;
++  if (status == GENERATIVEQC_STATUS_OUT_OF_MEMORY) throw std::length_error(detail);
++  if (status == GENERATIVEQC_STATUS_INVALID_ARGUMENT) throw std::invalid_argument(detail);
++  throw std::runtime_error(detail);
++}
++}  // namespace
++#endif
++
+ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+     int device_id, const core::System& system, const std::array<std::size_t, 4>& shell_indices,
+     std::span<const double> weights, std::size_t stage_budget,
+@@ -37,35 +138,14 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+   }
+   try {
+     std::array<const core::Shell*, 4> selected{};
+-    std::size_t expected = 1;
+     std::size_t expansion_terms = 0;
+-    for (std::size_t slot = 0; slot < selected.size(); ++slot) {
+-      if (shell_indices[slot] >= system.shells.size()) {
+-        detail = "weighted ERI shell index is out of range";
+-        return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
+-      }
+-      selected[slot] = &system.shells[shell_indices[slot]];
+-      if (selected[slot]->atom_index >= system.atoms.size()) {
+-        detail = "weighted ERI shell atom is out of range";
+-        return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
+-      }
+-      const auto cartesian = molecule::cartesian_count(selected[slot]->angular_momentum);
+-      const auto public_count = system.basis_representation == GENERATIVEQC_BASIS_SPHERICAL
+-                                    ? 2 * selected[slot]->angular_momentum + 1
+-                                    : cartesian;
+-      expected = checked_mul(expected, public_count);
+-      expansion_terms = checked_add(expansion_terms, checked_mul(public_count, cartesian));
+-    }
+-    if (weights.size() != expected ||
+-        !std::all_of(weights.begin(), weights.end(),
+-                     [](double value) { return std::isfinite(value); })) {
+-      detail = "weighted ERI shell weights have the wrong shape or are nonfinite";
+-      return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
+-    }
++    const auto validation =
++        validate_shell(system, shell_indices, weights, selected, expansion_terms, detail);
++    if (validation != GENERATIVEQC_STATUS_SUCCESS) return validation;
+ 
+     constexpr std::size_t record_bytes = sizeof(scf::CudaWeightedEriPrimitive);
+     constexpr std::size_t result_bytes = 2 * sizeof(scf::CudaWeightedEriResult);
+-    auto fixed_bytes = checked_mul(std::size_t{12}, sizeof(double));
++    auto fixed_bytes = checked_add(checked_mul(std::size_t{12}, sizeof(double)), record_bytes);
+     fixed_bytes = checked_add(
+         fixed_bytes, checked_mul(expansion_terms, sizeof(molecule::CartesianExpansionTerm)));
+     if (stage_budget <= checked_add(fixed_bytes, result_bytes)) {
+@@ -80,11 +160,6 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+     }
+     const auto record_storage = checked_mul(capacity, record_bytes);
+     const auto consumer_budget = stage_budget - fixed_bytes - record_storage;
+-    const std::array<std::vector<molecule::AoExpansion>, 4> expansions{
+-        molecule::ao_expansions(selected[0]->angular_momentum, system.basis_representation),
+-        molecule::ao_expansions(selected[1]->angular_momentum, system.basis_representation),
+-        molecule::ao_expansions(selected[2]->angular_momentum, system.basis_representation),
+-        molecule::ao_expansions(selected[3]->angular_momentum, system.basis_representation)};
+     std::vector<scf::CudaWeightedEriPrimitive> records;
+     records.reserve(capacity);
+     std::vector<scf::CudaWeightedEriResult> output;
+@@ -115,49 +190,13 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+           candidate[3 * slot + axis] += output[0].center[slot][axis];
+       records.clear();
+     };
+-    for (std::size_t i = 0; i < expansions[0].size(); ++i)
+-      for (std::size_t j = 0; j < expansions[1].size(); ++j)
+-        for (std::size_t k = 0; k < expansions[2].size(); ++k)
+-          for (std::size_t l = 0; l < expansions[3].size(); ++l) {
+-            const auto weight =
+-                weights[((i * expansions[1].size() + j) * expansions[2].size() + k) *
+-                            expansions[3].size() +
+-                        l];
+-            if (weight == 0.0) continue;
+-            for (const auto& ei : expansions[0][i])
+-              for (const auto& ej : expansions[1][j])
+-                for (const auto& ek : expansions[2][k])
+-                  for (const auto& el : expansions[3][l]) {
+-                    const std::array<const molecule::CartesianExpansionTerm*, 4> terms{&ei, &ej,
+-                                                                                       &ek, &el};
+-                    double component_weight = weight;
+-                    for (const auto* term : terms)
+-                      component_weight *=
+-                          term->coefficient *
+-                          molecule::cartesian_component_normalization(term->component);
+-                    for (const auto& pi : selected[0]->primitives)
+-                      for (const auto& pj : selected[1]->primitives)
+-                        for (const auto& pk : selected[2]->primitives)
+-                          for (const auto& pl : selected[3]->primitives) {
+-                            if (records.size() == capacity) flush();
+-                            if (status != GENERATIVEQC_STATUS_SUCCESS) return status;
+-                            auto& record = records.emplace_back();
+-                            record.kind = 0;
+-                            const std::array<const core::Primitive*, 4> primitives{&pi, &pj, &pk,
+-                                                                                   &pl};
+-                            for (std::size_t slot = 0; slot < 4; ++slot) {
+-                              for (std::size_t axis = 0; axis < 3; ++axis) {
+-                                record.angular[slot][axis] = terms[slot]->component[axis];
+-                                record.centers[slot][axis] =
+-                                    system.atoms[selected[slot]->atom_index].position[axis];
+-                              }
+-                              record.exponents[slot] = primitives[slot]->exponent;
+-                            }
+-                            record.weights[0] = component_weight * pi.coefficient * pj.coefficient *
+-                                                pk.coefficient * pl.coefficient;
+-                          }
+-                  }
+-          }
++    status = emit_shell_records(system, selected, weights,
++                                [&](const auto& record) -> generativeqc_status {
++                                  if (records.size() == capacity) flush();
++                                  if (status != GENERATIVEQC_STATUS_SUCCESS) return status;
++                                  records.push_back(record);
++                                  return GENERATIVEQC_STATUS_SUCCESS;
++                                });
+     flush();
+     if (status != GENERATIVEQC_STATUS_SUCCESS) return status;
+     if (!std::all_of(candidate.begin(), candidate.end(),
+@@ -180,4 +219,181 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+ #endif
+ }
+ 
++struct CudaEriDerivativeBatch::Impl {
++  int device_id;
++  const core::System& system;
++  std::size_t stage_budget, budget, fixed_bytes{}, record_capacity{}, tile_capacity{};
++  std::size_t planned_bytes{};
++  bool trace;
++  CudaShellDerivativeDiagnostic diagnostic;
++#if GENERATIVEQC_HAS_CUDA
++  std::vector<scf::CudaWeightedEriPrimitive> records;
++  std::vector<std::array<std::size_t, 4>> atoms;
++
++  void validate_gradient(std::span<double> gradient) const {
++    if (gradient.size() != checked_mul(3, system.atoms.size()))
++      throw std::invalid_argument("CUDA ERI batch gradient shape mismatch");
++  }
++
++  void flush(std::span<double> gradient) {
++    if (records.empty()) return;
++    // Charge actual retained host capacities, the current shell's expansion,
++    // and its one producer record before admitting the device consumer.
++    const auto host = checked_add(checked_mul(records.capacity(), sizeof(records[0])),
++                                  checked_mul(atoms.capacity(), sizeof(atoms[0])));
++    if (checked_add(fixed_bytes, host) > budget)
++      throw std::length_error("CUDA ERI batch host capacity exceeds its stage budget");
++    const auto consumer_budget = budget - fixed_bytes - host;
++    std::vector<scf::CudaWeightedEriResult> output;
++    scf::CudaWeightedEriDiagnostic consumer;
++    std::string detail;
++    using Clock = std::chrono::steady_clock;
++    const auto started = trace ? Clock::now() : Clock::time_point{};
++    const auto status = scf::contract_cuda_weighted_eri_primitives(
++        device_id, records.data(), records.size(), atoms.size(), consumer_budget, false, output,
++        consumer, detail);
++    check_consumer(status, detail);
++    diagnostic.primitive_records += records.size();
++    ++diagnostic.consumer_calls;
++    if (trace)
++      diagnostic.consumer_nanoseconds +=
++          std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - started).count();
++    if (output.size() != atoms.size())
++      throw std::runtime_error("CUDA ERI batch returned an incomplete tile set");
++    for (std::size_t tile = 0; tile < atoms.size(); ++tile)
++      for (std::size_t slot = 0; slot < 4; ++slot)
++        for (std::size_t axis = 0; axis < 3; ++axis)
++          gradient[3 * atoms[tile][slot] + axis] += output[tile].center[slot][axis];
++    records.clear();
++    atoms.clear();
++  }
++#endif
++
++  Impl(int device, const core::System& source, std::size_t stage, bool tracing)
++      : device_id(device),
++        system(source),
++        stage_budget(stage),
++        budget(std::min(stage, source_scratch_bytes)),
++        trace(tracing) {
++    if (device_id < 0 || !stage_budget)
++      throw std::invalid_argument("invalid CUDA ERI derivative batch request");
++#if GENERATIVEQC_HAS_CUDA
++    std::size_t max_terms = 0;
++    for (const auto& shell : system.shells) {
++      // The retained primitive consumer validates through f. Leave any other
++      // regime on the existing shell path, including its established errors.
++      if (shell.angular_momentum > 3) return;
++      const auto cart = molecule::cartesian_count(shell.angular_momentum);
++      const auto pub = system.basis_representation == GENERATIVEQC_BASIS_SPHERICAL
++                           ? 2 * shell.angular_momentum + 1
++                           : cart;
++      max_terms = std::max(max_terms, checked_mul(pub, cart));
++    }
++    fixed_bytes = checked_add(
++        sizeof(scf::CudaWeightedEriPrimitive),
++        checked_mul(checked_mul(4, max_terms), sizeof(molecule::CartesianExpansionTerm)));
++    if (budget <= fixed_bytes) return;
++    const auto available = budget - fixed_bytes;
++    constexpr auto tile_bytes =
++        sizeof(std::array<std::size_t, 4>) + 2 * sizeof(scf::CudaWeightedEriResult);
++    tile_capacity = std::min<std::size_t>(256, available / 8 / tile_bytes);
++    if (tile_capacity < 2) {
++      tile_capacity = 0;
++      return;
++    }
++    record_capacity = std::min<std::size_t>(16384, (available - tile_capacity * tile_bytes) /
++                                                       (2 * sizeof(scf::CudaWeightedEriPrimitive)));
++    if (!record_capacity) {
++      tile_capacity = 0;
++      return;
++    }
++    planned_bytes = fixed_bytes + tile_capacity * tile_bytes +
++                    2 * record_capacity * sizeof(scf::CudaWeightedEriPrimitive);
++#else
++    throw std::runtime_error("CUDA ERI derivative batches are unavailable in this build");
++#endif
++  }
++};
++
++CudaEriDerivativeBatch::CudaEriDerivativeBatch(int device_id, const core::System& system,
++                                               std::size_t stage_budget, bool trace)
++    : impl_(std::make_unique<Impl>(device_id, system, stage_budget, trace)) {}
++CudaEriDerivativeBatch::~CudaEriDerivativeBatch() = default;
++const CudaShellDerivativeDiagnostic& CudaEriDerivativeBatch::diagnostic() const {
++  return impl_->diagnostic;
++}
++bool CudaEriDerivativeBatch::batched() const { return impl_->record_capacity != 0; }
++std::size_t CudaEriDerivativeBatch::numeric_capacity_bytes() const { return impl_->planned_bytes; }
++
++void CudaEriDerivativeBatch::append(const std::array<std::size_t, 4>& shells,
++                                    std::span<const double> weights, std::span<double> gradient) {
++#if GENERATIVEQC_HAS_CUDA
++  auto& state = *impl_;
++  state.validate_gradient(gradient);
++  std::string detail;
++  if (!batched()) {
++    std::array<double, 12> center{};
++    CudaShellDerivativeDiagnostic diagnostic;
++    check_consumer(contract_weighted_eri_shell_derivative_cuda(
++                       state.device_id, state.system, shells, weights, state.stage_budget, center,
++                       detail, state.trace ? &diagnostic : nullptr),
++                   detail);
++    state.diagnostic.primitive_records += diagnostic.primitive_records;
++    state.diagnostic.consumer_calls += diagnostic.consumer_calls;
++    state.diagnostic.consumer_nanoseconds += diagnostic.consumer_nanoseconds;
++    for (std::size_t slot = 0; slot < 4; ++slot)
++      for (std::size_t axis = 0; axis < 3; ++axis)
++        gradient[3 * state.system.shells[shells[slot]].atom_index + axis] +=
++            center[3 * slot + axis];
++    return;
++  }
++  std::array<const core::Shell*, 4> selected{};
++  std::size_t expansion_terms = 0;
++  check_consumer(validate_shell(state.system, shells, weights, selected, expansion_terms, detail),
++                 detail);
++  if (state.records.capacity() == 0) {
++    // Allocate only during the first two-electron callback. The one-electron
++    // consumer has already completed, so its scratch does not coexist here.
++    state.records.reserve(state.record_capacity);
++    state.atoms.reserve(state.tile_capacity);
++  }
++  std::size_t tile = 0;
++  bool has_tile = false;
++  const auto status = emit_shell_records(state.system, selected, weights, [&](auto& record) {
++    if (state.records.size() == state.record_capacity ||
++        (!has_tile && state.atoms.size() == state.tile_capacity)) {
++      state.flush(gradient);
++      has_tile = false;
++    }
++    if (!has_tile) {
++      tile = state.atoms.size();
++      state.atoms.push_back({selected[0]->atom_index, selected[1]->atom_index,
++                             selected[2]->atom_index, selected[3]->atom_index});
++      has_tile = true;
++    }
++    record.output_tile = static_cast<std::uint32_t>(tile);
++    state.records.push_back(record);
++    return GENERATIVEQC_STATUS_SUCCESS;
++  });
++  check_consumer(status, detail);
++#else
++  (void)shells;
++  (void)weights;
++  (void)gradient;
++  throw std::runtime_error("CUDA ERI derivative batches are unavailable in this build");
++#endif
++}
++
++void CudaEriDerivativeBatch::finish(std::span<double> gradient) {
++#if GENERATIVEQC_HAS_CUDA
++  impl_->validate_gradient(gradient);
++  impl_->flush(gradient);
++  if (!std::all_of(gradient.begin(), gradient.end(), [](double x) { return std::isfinite(x); }))
++    throw std::runtime_error("CUDA ERI derivative batch produced a nonfinite gradient");
++#else
++  (void)gradient;
++  throw std::runtime_error("CUDA ERI derivative batches are unavailable in this build");
++#endif
++}
++
+ }  // namespace generativeqc::posthf
+diff --git a/src/posthf/cuda_derivative.hpp b/src/posthf/cuda_derivative.hpp
+index 8913865b0..d09a34c41 100644
+--- a/src/posthf/cuda_derivative.hpp
++++ b/src/posthf/cuda_derivative.hpp
+@@ -3,6 +3,7 @@
+ #include <array>
+ #include <cstddef>
+ #include <cstdint>
++#include <memory>
+ #include <span>
+ #include <string>
+ 
+@@ -33,4 +34,36 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+     std::array<double, 12>& center_gradient, std::string& detail,
+     CudaShellDerivativeDiagnostic* diagnostic = nullptr);
+ 
++/** Bounded stream of shell cotangents into an atom-ordered gradient.
++ *
++ * append consumes its weights immediately. Several quartets may share one
++ * primitive upload; finish drains the final partial batch before publication.
++ * Four center slots remain distinct until their results are added to atoms.
++ * The borrowed system/gradient must remain stable until finish; errors throw
++ * and the caller must discard its partial gradient. No CPU fallback is used.
++ *
++ * Numeric storage is capped by both stage_budget and source_scratch_bytes.
++ * Below the batching admission threshold, append uses the one-shell consumer.
++ * Buffers are allocated lazily so one-electron work need not overlap them.
++ */
++class CudaEriDerivativeBatch {
++ public:
++  CudaEriDerivativeBatch(int device_id, const core::System& system, std::size_t stage_budget,
++                         bool trace = false);
++  ~CudaEriDerivativeBatch();
++  CudaEriDerivativeBatch(const CudaEriDerivativeBatch&) = delete;
++  CudaEriDerivativeBatch& operator=(const CudaEriDerivativeBatch&) = delete;
++  void append(const std::array<std::size_t, 4>& shells, std::span<const double> weights,
++              std::span<double> gradient);
++  void finish(std::span<double> gradient);
++  const CudaShellDerivativeDiagnostic& diagnostic() const;
++  bool batched() const;
++  /** Planned batch payload; zero selects the separately bounded shell path. */
++  std::size_t numeric_capacity_bytes() const;
++
++ private:
++  struct Impl;
++  std::unique_ptr<Impl> impl_;
++};
++
+ }  // namespace generativeqc::posthf
+diff --git a/src/posthf/mp2_derivative_common.cpp b/src/posthf/mp2_derivative_common.cpp
+index 02ab54a37..abb65cf03 100644
+--- a/src/posthf/mp2_derivative_common.cpp
++++ b/src/posthf/mp2_derivative_common.cpp
+@@ -58,7 +58,7 @@ double symmetric_eri_weight(std::span<const double> weights, std::size_t n, std:
+ void transform_remaining_shells(const core::System& system, const hf::PhysicalReference& reference,
+                                 const std::vector<std::size_t>& offsets, std::size_t si,
+                                 std::span<const double> first,
+-                                const EriShellDerivativeContract& eri_shell,
++                                const EriShellDerivativeAccumulate& eri_shell,
+                                 std::vector<double>& derivative, bool canonical_shells) {
+   const auto n = reference.nbf;
+   const auto di = offsets[si + 1] - offsets[si];
+@@ -110,23 +110,18 @@ void transform_remaining_shells(const core::System& system, const hf::PhysicalRe
+           for (double& value : local) value *= orbit;
+         }
+         const std::array<std::size_t, 4> shells{si, sj, sk, sl};
+-        const auto center = eri_shell(shells, local);
+-        for (std::size_t slot = 0; slot < 4; ++slot) {
+-          const auto atom = system.shells[shells[slot]].atom_index;
+-          for (std::size_t axis = 0; axis < 3; ++axis)
+-            derivative[3 * atom + axis] += center[3 * slot + axis];
+-        }
++        eri_shell(shells, local, derivative);
+       }
+     }
+   }
+ }
+ }  // namespace
+ 
+-std::vector<double> conventional_derivative(const core::System& system,
+-                                            const hf::PhysicalReference& reference,
+-                                            const LagrangianWeights& weights,
+-                                            const OneElectronDerivativeContract& one_electron,
+-                                            const EriShellDerivativeContract& eri_shell) {
++std::vector<double> conventional_derivative_accumulate(
++    const core::System& system, const hf::PhysicalReference& reference,
++    const LagrangianWeights& weights, const OneElectronDerivativeContract& one_electron,
++    const EriShellDerivativeAccumulate& eri_shell,
++    const std::function<void(std::span<double>)>& finalize) {
+   const auto n = reference.nbf;
+   bool dense_two = false;
+   if (!weights.two_electron.empty())
+@@ -159,15 +154,14 @@ std::vector<double> conventional_derivative(const core::System& system,
+     throw std::runtime_error("conventional derivative shell offsets disagree with the reference");
+ 
+   std::uint64_t shell_ns = 0, shell_calls = 0;
+-  EriShellDerivativeContract measured_shell;
++  EriShellDerivativeAccumulate measured_shell;
+   if (trace.enabled()) {
+-    measured_shell = [&](const auto& shells, auto local) {
++    measured_shell = [&](const auto& shells, auto local, auto gradient) {
+       const auto shell_started = Clock::now();
+-      const auto result = eri_shell(shells, local);
++      eri_shell(shells, local, gradient);
+       shell_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - shell_started)
+                       .count();
+       ++shell_calls;
+-      return result;
+     };
+   }
+   const auto& shell_contract = trace.enabled() ? measured_shell : eri_shell;
+@@ -218,6 +212,11 @@ std::vector<double> conventional_derivative(const core::System& system,
+     transform_remaining_shells(system, reference, offsets, si, first, shell_contract, derivative,
+                                dense_two);
+   }
++  const auto finalize_started = now();
++  if (finalize) finalize(derivative);
++  const auto finalize_ns =
++      std::chrono::duration_cast<std::chrono::nanoseconds>(now() - finalize_started).count();
++  if (trace.enabled()) shell_ns += finalize_ns;
+   if (!finite(derivative)) throw std::runtime_error("conventional derivative is nonfinite");
+   if (trace.enabled()) {
+     using runtime::df_progress::Scope;
+@@ -233,9 +232,25 @@ std::vector<double> conventional_derivative(const core::System& system,
+     Scope::number("one_electron_ns", ns(two_started - one_started));
+     Scope::number("two_electron_shell_calls", shell_calls);
+     Scope::number("two_electron_shell_ns", shell_ns);
++    Scope::number("two_electron_finalize_ns", finalize_ns);
+     Scope::number("two_electron_pullback_scatter_ns", two_ns - shell_ns);
+   }
+   return derivative;
+ }
+ 
++std::vector<double> conventional_derivative(const core::System& system,
++                                            const hf::PhysicalReference& reference,
++                                            const LagrangianWeights& weights,
++                                            const OneElectronDerivativeContract& one_electron,
++                                            const EriShellDerivativeContract& eri_shell) {
++  if (!eri_shell) throw std::invalid_argument("missing conventional ERI derivative consumer");
++  return conventional_derivative_accumulate(
++      system, reference, weights, one_electron, [&](const auto& shells, auto local, auto gradient) {
++        const auto center = eri_shell(shells, local);
++        for (std::size_t slot = 0; slot < 4; ++slot)
++          for (std::size_t axis = 0; axis < 3; ++axis)
++            gradient[3 * system.shells[shells[slot]].atom_index + axis] += center[3 * slot + axis];
++      });
++}
++
+ }  // namespace generativeqc::mp2::detail
+diff --git a/src/posthf/mp2_derivative_common.hpp b/src/posthf/mp2_derivative_common.hpp
+index 28977d54d..d8f06f5c0 100644
+--- a/src/posthf/mp2_derivative_common.hpp
++++ b/src/posthf/mp2_derivative_common.hpp
+@@ -22,6 +22,19 @@ using OneElectronDerivativeContract =
+ using EriShellDerivativeContract = std::function<std::array<double, 12>(
+     const std::array<std::size_t, 4>&, std::span<const double>)>;
+ 
++/** Consume each local cotangent immediately, accumulating into an atom gradient.
++ * A bounded consumer may defer part of its work until finalize; no weights or
++ * gradient spans may escape the call. The gradient is published only after
++ * successful finalization and a final finiteness check.
++ */
++using EriShellDerivativeAccumulate = std::function<void(
++    const std::array<std::size_t, 4>&, std::span<const double>, std::span<double>)>;
++std::vector<double> conventional_derivative_accumulate(
++    const core::System& system, const hf::PhysicalReference& reference,
++    const LagrangianWeights& weights, const OneElectronDerivativeContract& one_electron,
++    const EriShellDerivativeAccumulate& eri_shell,
++    const std::function<void(std::span<double>)>& finalize = {});
++
+ std::vector<double> conventional_derivative(const core::System& system,
+                                             const hf::PhysicalReference& reference,
+                                             const LagrangianWeights& weights,
+diff --git a/src/posthf/mp2_derivative_cuda.cpp b/src/posthf/mp2_derivative_cuda.cpp
+index 3aced809f..319ce945e 100644
+--- a/src/posthf/mp2_derivative_cuda.cpp
++++ b/src/posthf/mp2_derivative_cuda.cpp
+@@ -60,8 +60,8 @@ std::vector<double> conventional_derivative_cuda(const core::System& system,
+   if (device_id < 0 || !stage_budget)
+     throw std::invalid_argument("invalid CUDA conventional derivative request");
+   runtime::df_progress::Scope trace("cuda_conventional_derivative");
+-  posthf::CudaShellDerivativeDiagnostic total;
+-  auto derivative = detail::conventional_derivative(
++  posthf::CudaEriDerivativeBatch batch(device_id, system, stage_budget, trace.enabled());
++  auto derivative = detail::conventional_derivative_accumulate(
+       system, reference, weights,
+       [&](std::span<const double> overlap, std::span<const double> hcore) {
+         std::vector<double> gradient;
+@@ -74,24 +74,17 @@ std::vector<double> conventional_derivative_cuda(const core::System& system,
+         add_nuclear_repulsion_gradient(system, gradient);
+         return gradient;
+       },
+-      [&](const std::array<std::size_t, 4>& shells, std::span<const double> local) {
+-        std::array<double, 12> center{};
+-        std::string detail;
+-        posthf::CudaShellDerivativeDiagnostic diagnostic;
+-        const auto status = posthf::contract_weighted_eri_shell_derivative_cuda(
+-            device_id, system, shells, local, stage_budget, center, detail,
+-            trace.enabled() ? &diagnostic : nullptr);
+-        check_cuda_derivative(status, detail);
+-        total.primitive_records += diagnostic.primitive_records;
+-        total.consumer_calls += diagnostic.consumer_calls;
+-        total.consumer_nanoseconds += diagnostic.consumer_nanoseconds;
+-        return center;
+-      });
++      [&](const std::array<std::size_t, 4>& shells, std::span<const double> local,
++          std::span<double> gradient) { batch.append(shells, local, gradient); },
++      [&](std::span<double> gradient) { batch.finish(gradient); });
+   if (trace.enabled()) {
+     // These completed consumer calls include record upload, primitive kernels,
+     // result download, and stream/allocation lifetime. Host record construction
+     // belongs to the enclosing shell callback, not consumer_ns.
+     using runtime::df_progress::Scope;
++    const auto& total = batch.diagnostic();
++    Scope::number("batched_shells", batch.batched());
++    Scope::number("batch_numeric_capacity_bytes", batch.numeric_capacity_bytes());
+     Scope::number("primitive_records", total.primitive_records);
+     Scope::number("consumer_calls", total.consumer_calls);
+     Scope::number("consumer_ns", total.consumer_nanoseconds);
+diff --git a/tests/native/test_mp2_cuda_status.cu b/tests/native/test_mp2_cuda_status.cu
+index 95926d9d8..261300b5f 100644
+--- a/tests/native/test_mp2_cuda_status.cu
++++ b/tests/native/test_mp2_cuda_status.cu
+@@ -59,6 +59,100 @@ void ri_mp2_block_planner() {
+   require(rejected, "RI-MP2 planner accepted a budget without one B block");
+ }
+ 
++void batched_eri_derivatives() {
++  // Distinct shell slots deliberately share atoms. Full p quartets force
++  // primitive-buffer splits; many s quartets force output-tile splits.
++  for (auto representation : {GENERATIVEQC_BASIS_CARTESIAN, GENERATIVEQC_BASIS_SPHERICAL}) {
++    generativeqc::core::System system;
++    system.basis_representation = representation;
++    system.atoms = {{1, {0.0, 0.0, 0.0}}, {1, {1.2, 0.3, -0.4}}, {1, {-0.2, 0.7, 0.5}}};
++    const std::vector<generativeqc::core::Primitive> p{{1.4, .3}, {.7, .4}, {.2, .5}};
++    system.shells = {{0, 0, {{1.1, 1.0}}}, {1, 1, p},           {0, 1, p},
++                     {2, 2, {{.8, 1.0}}},  {1, 3, {{.6, 1.0}}}, {2, 0, {{.9, 1.0}}}};
++    std::string detail;
++    require(generativeqc::molecule::validate_and_normalize(system, detail) ==
++                GENERATIVEQC_STATUS_SUCCESS,
++            "batch fixture normalization failed");
++    struct Tile {
++      std::array<std::size_t, 4> shells;
++      std::vector<double> weights;
++    };
++    std::vector<Tile> tiles;
++    for (std::size_t index = 0; index < 310; ++index) {
++      std::array<std::size_t, 4> shells;
++      if (index < 5)
++        shells = {1, 2, 1, 2};
++      else if (index == 5)
++        shells = {4, 0, 1, 0};
++      else if (index == 6)
++        shells = {3, 0, 1, 2};
++      else if (index == 7)
++        shells = {1, 0, 0, 0};
++      else
++        shells = {0, 5, 0, 5};
++      std::size_t count = 1;
++      for (const auto shell : shells) {
++        const auto l = system.shells[shell].angular_momentum;
++        count *= representation == GENERATIVEQC_BASIS_SPHERICAL
++                     ? 2 * l + 1
++                     : generativeqc::molecule::cartesian_count(l);
++      }
++      std::vector<double> weights(count);
++      for (std::size_t k = 0; k < count; ++k)
++        weights[k] = index == 8 ? 0.0 : .03 * std::sin(1.0 + k + 3 * index);
++      tiles.push_back({shells, std::move(weights)});
++    }
++    std::vector<double> expected(9);
++    for (const auto& tile : tiles) {
++      const auto center = generativeqc::integrals::contract_weighted_eri_shell_derivative(
++          system, tile.shells, tile.weights);
++      for (std::size_t slot = 0; slot < 4; ++slot)
++        for (std::size_t axis = 0; axis < 3; ++axis)
++          expected[3 * system.shells[tile.shells[slot]].atom_index + axis] +=
++              center[3 * slot + axis];
++    }
++    std::size_t records = 0;
++    for (const auto budget : {8ULL << 20, 32768ULL, 8192ULL}) {
++      generativeqc::posthf::CudaEriDerivativeBatch batch(0, system, budget, true);
++      std::vector<double> actual(9);
++      for (const auto& tile : tiles) batch.append(tile.shells, tile.weights, actual);
++      batch.finish(actual);
++      require(batch.numeric_capacity_bytes() <= budget, "ERI batch exceeded its numeric cap");
++      require(batch.batched() == (budget != 8192), "ERI batch/fallback admission changed");
++      if (!records) records = batch.diagnostic().primitive_records;
++      require(batch.diagnostic().primitive_records == records,
++              "batching repeated or lost primitives");
++      if (budget == (8ULL << 20))
++        require(batch.diagnostic().consumer_calls < 10, "large batch retained per-shell work");
++      for (std::size_t i = 0; i < actual.size(); ++i)
++        require(std::abs(actual[i] - expected[i]) < 2e-9,
++                "batched derivative differs from independent CPU shell oracle");
++      const auto calls = batch.diagnostic().consumer_calls;
++      batch.finish(actual);
++      require(batch.diagnostic().consumer_calls == calls, "empty finish repeated GPU work");
++      bool rejected = false;
++      try {
++        batch.append(tiles.front().shells, {}, actual);
++      } catch (const std::invalid_argument&) {
++        rejected = true;
++      }
++      require(rejected, "batch accepted malformed shell weights");
++    }
++  }
++  const auto system = h2();
++  generativeqc::posthf::CudaEriDerivativeBatch tiny(0, system, 1, true);
++  std::vector<double> gradient(6);
++  bool rejected = false;
++  try {
++    tiny.append({0, 1, 0, 1}, std::array<double, 1>{.3}, gradient);
++  } catch (const std::length_error&) {
++    rejected = true;
++  }
++  require(rejected, "tiny derivative stage budget was accepted");
++  std::cout
++      << "Batched ERI: Cartesian/spherical s/p/d/f, split quartets, repeated atoms, budgets PASS\n";
++}
++
+ void derivative_and_force_parity() {
+   const auto system = h2();
+   const std::array<std::size_t, 4> shells{0, 1, 0, 1};
+@@ -112,9 +206,13 @@ void derivative_and_force_parity() {
+ }
+ }  // namespace
+ 
+-int main() {
++int main(int argc, char** argv) {
+   if (!std::getenv("GENERATIVEQC_MP2_CUDA_TEST")) return 77;
+   try {
++    batched_eri_derivatives();
++    // Memcheck the scientific batch paths without the intentional cudaMalloc
++    // failure below, which compute-sanitizer correctly reports as an API error.
++    if (argc == 2 && std::string(argv[1]) == "--eri-batches-only") return 0;
+     ri_mp2_block_planner();
+     derivative_and_force_parity();
+     bool cuda_oom = false, blas_oom = false;

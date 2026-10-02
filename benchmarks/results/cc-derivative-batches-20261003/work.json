@@ -1,0 +1,2481 @@
+{
+  "interpretation": "Each phase list follows cold/warm/warm-repeat/changed. Consumer time nests inside shell time, including final batch drain. finalize_ns nests inside shell_ns; raw provider/source times nest inside raw Hamiltonian. CPU triples remain explicit. CUDA source-read time is submission.",
+  "records": {
+    "a12-p0-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 91873355,
+            "rank_two_pullback_ns": 43906,
+            "two_electron_pullback_scatter_ns": 112220842,
+            "two_electron_shell_ns": 6126114189
+          },
+          {
+            "one_electron_ns": 1118461,
+            "rank_two_pullback_ns": 39660,
+            "two_electron_pullback_scatter_ns": 101174982,
+            "two_electron_shell_ns": 6157880918
+          },
+          {
+            "one_electron_ns": 936607,
+            "rank_two_pullback_ns": 39099,
+            "two_electron_pullback_scatter_ns": 99997527,
+            "two_electron_shell_ns": 6157448926
+          },
+          {
+            "one_electron_ns": 897029,
+            "rank_two_pullback_ns": 39058,
+            "two_electron_pullback_scatter_ns": 100653473,
+            "two_electron_shell_ns": 6156014239
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 5974858075
+          },
+          {
+            "consumer_ns": 6007411561
+          },
+          {
+            "consumer_ns": 6005789550
+          },
+          {
+            "consumer_ns": 6004483365
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 6330824511,
+            "lambda_parameter_ns": 2628414314,
+            "orbital_response_ns": 487309964,
+            "raw_hamiltonian_ns": 473839182,
+            "raw_provider_ns": 473155154,
+            "raw_source_read_ns": 18909,
+            "triples_response_ns": 2686575984
+          },
+          {
+            "derivative_ns": 6260799450,
+            "lambda_parameter_ns": 2614187377,
+            "orbital_response_ns": 486694445,
+            "raw_hamiltonian_ns": 465719576,
+            "raw_provider_ns": 464999414,
+            "raw_source_read_ns": 15373,
+            "triples_response_ns": 2695041808
+          },
+          {
+            "derivative_ns": 6258924654,
+            "lambda_parameter_ns": 2608943407,
+            "orbital_response_ns": 487081673,
+            "raw_hamiltonian_ns": 467435800,
+            "raw_provider_ns": 466778513,
+            "raw_source_read_ns": 19399,
+            "triples_response_ns": 2642905335
+          },
+          {
+            "derivative_ns": 6258099724,
+            "lambda_parameter_ns": 2605982677,
+            "orbital_response_ns": 485398909,
+            "raw_hamiltonian_ns": 467128674,
+            "raw_provider_ns": 466465047,
+            "raw_source_read_ns": 11968,
+            "triples_response_ns": 2652387914
+          }
+        ]
+      },
+      "trace_sha256": "c16177fbf5d5c9e1a1d6ce9742cd3241b75688e3dc25c33c785682f77ca6259a",
+      "profile": "ao28-batched0"
+    },
+    "a12-p0-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 93924561,
+            "rank_two_pullback_ns": 40691,
+            "two_electron_finalize_ns": 1915018,
+            "two_electron_pullback_scatter_ns": 104540677,
+            "two_electron_shell_ns": 1407464384
+          },
+          {
+            "one_electron_ns": 1092081,
+            "rank_two_pullback_ns": 38688,
+            "two_electron_finalize_ns": 1802168,
+            "two_electron_pullback_scatter_ns": 91902636,
+            "two_electron_shell_ns": 1401783327
+          },
+          {
+            "one_electron_ns": 914715,
+            "rank_two_pullback_ns": 39079,
+            "two_electron_finalize_ns": 1836650,
+            "two_electron_pullback_scatter_ns": 93522590,
+            "two_electron_shell_ns": 1405871301
+          },
+          {
+            "one_electron_ns": 905130,
+            "rank_two_pullback_ns": 38568,
+            "two_electron_finalize_ns": 1810641,
+            "two_electron_pullback_scatter_ns": 94036009,
+            "two_electron_shell_ns": 1397565011
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1228421281
+          },
+          {
+            "consumer_ns": 1223895318
+          },
+          {
+            "consumer_ns": 1227590203
+          },
+          {
+            "consumer_ns": 1223125466
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1606988854,
+            "lambda_parameter_ns": 2630795977,
+            "orbital_response_ns": 612062634,
+            "raw_hamiltonian_ns": 467332617,
+            "raw_provider_ns": 466632414,
+            "raw_source_read_ns": 21212,
+            "triples_response_ns": 2701052466
+          },
+          {
+            "derivative_ns": 1495409743,
+            "lambda_parameter_ns": 2599756572,
+            "orbital_response_ns": 611070789,
+            "raw_hamiltonian_ns": 466932408,
+            "raw_provider_ns": 466228681,
+            "raw_source_read_ns": 27310,
+            "triples_response_ns": 2701011445
+          },
+          {
+            "derivative_ns": 1500874926,
+            "lambda_parameter_ns": 2604492077,
+            "orbital_response_ns": 610838303,
+            "raw_hamiltonian_ns": 466983388,
+            "raw_provider_ns": 466330047,
+            "raw_source_read_ns": 11287,
+            "triples_response_ns": 2644771220
+          },
+          {
+            "derivative_ns": 1493071440,
+            "lambda_parameter_ns": 2598740621,
+            "orbital_response_ns": 609760948,
+            "raw_hamiltonian_ns": 464787392,
+            "raw_provider_ns": 464119197,
+            "raw_source_read_ns": 11137,
+            "triples_response_ns": 2661697925
+          }
+        ]
+      },
+      "trace_sha256": "6444ae52d54ff849d3031bf6493f5d9f9c5e6ebb75436fade711b97471d8cdfa",
+      "profile": "ao28-batched1"
+    },
+    "a12-p1-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 91230543,
+            "rank_two_pullback_ns": 38338,
+            "two_electron_pullback_scatter_ns": 114788579,
+            "two_electron_shell_ns": 6136293774
+          },
+          {
+            "one_electron_ns": 1069658,
+            "rank_two_pullback_ns": 38829,
+            "two_electron_pullback_scatter_ns": 99796854,
+            "two_electron_shell_ns": 6162394682
+          },
+          {
+            "one_electron_ns": 929505,
+            "rank_two_pullback_ns": 39290,
+            "two_electron_pullback_scatter_ns": 100843188,
+            "two_electron_shell_ns": 6157156759
+          },
+          {
+            "one_electron_ns": 905219,
+            "rank_two_pullback_ns": 39489,
+            "two_electron_pullback_scatter_ns": 100681521,
+            "two_electron_shell_ns": 6156432513
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 5987124944
+          },
+          {
+            "consumer_ns": 6010381615
+          },
+          {
+            "consumer_ns": 6006350835
+          },
+          {
+            "consumer_ns": 6005029524
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 6343388243,
+            "lambda_parameter_ns": 2621302400,
+            "orbital_response_ns": 487756498,
+            "raw_hamiltonian_ns": 470291883,
+            "raw_provider_ns": 469574167,
+            "raw_source_read_ns": 23956,
+            "triples_response_ns": 2697980700
+          },
+          {
+            "derivative_ns": 6263900912,
+            "lambda_parameter_ns": 2601882228,
+            "orbital_response_ns": 486825339,
+            "raw_hamiltonian_ns": 466506461,
+            "raw_provider_ns": 465761054,
+            "raw_source_read_ns": 21693,
+            "triples_response_ns": 2657081670
+          },
+          {
+            "derivative_ns": 6259467376,
+            "lambda_parameter_ns": 2597285170,
+            "orbital_response_ns": 486257242,
+            "raw_hamiltonian_ns": 466110860,
+            "raw_provider_ns": 465447707,
+            "raw_source_read_ns": 16805,
+            "triples_response_ns": 2640483078
+          },
+          {
+            "derivative_ns": 6258553761,
+            "lambda_parameter_ns": 2597920691,
+            "orbital_response_ns": 485474004,
+            "raw_hamiltonian_ns": 465612627,
+            "raw_provider_ns": 464951147,
+            "raw_source_read_ns": 11196,
+            "triples_response_ns": 2639944181
+          }
+        ]
+      },
+      "trace_sha256": "141ebccbc2959b0e528454213dd78a69195459502cc26e3ab852c5119bebd3b2",
+      "profile": "ao28-batched0"
+    },
+    "a12-p1-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 94207419,
+            "rank_two_pullback_ns": 38848,
+            "two_electron_finalize_ns": 1812383,
+            "two_electron_pullback_scatter_ns": 101677281,
+            "two_electron_shell_ns": 1433566737
+          },
+          {
+            "one_electron_ns": 1090449,
+            "rank_two_pullback_ns": 46710,
+            "two_electron_finalize_ns": 1823991,
+            "two_electron_pullback_scatter_ns": 94495326,
+            "two_electron_shell_ns": 1463606240
+          },
+          {
+            "one_electron_ns": 919952,
+            "rank_two_pullback_ns": 38929,
+            "two_electron_finalize_ns": 1824269,
+            "two_electron_pullback_scatter_ns": 93355155,
+            "two_electron_shell_ns": 1399812759
+          },
+          {
+            "one_electron_ns": 915996,
+            "rank_two_pullback_ns": 39449,
+            "two_electron_finalize_ns": 1825942,
+            "two_electron_pullback_scatter_ns": 93122577,
+            "two_electron_shell_ns": 1428248786
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1257621968
+          },
+          {
+            "consumer_ns": 1288178828
+          },
+          {
+            "consumer_ns": 1224819824
+          },
+          {
+            "consumer_ns": 1253578970
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1630062395,
+            "lambda_parameter_ns": 2638186490,
+            "orbital_response_ns": 612775814,
+            "raw_hamiltonian_ns": 468108626,
+            "raw_provider_ns": 467383887,
+            "raw_source_read_ns": 17857,
+            "triples_response_ns": 2703981628
+          },
+          {
+            "derivative_ns": 1559827530,
+            "lambda_parameter_ns": 2611002357,
+            "orbital_response_ns": 611826081,
+            "raw_hamiltonian_ns": 471457923,
+            "raw_provider_ns": 470680754,
+            "raw_source_read_ns": 30666,
+            "triples_response_ns": 2695710677
+          },
+          {
+            "derivative_ns": 1494638990,
+            "lambda_parameter_ns": 2594326301,
+            "orbital_response_ns": 610923683,
+            "raw_hamiltonian_ns": 468865612,
+            "raw_provider_ns": 468200875,
+            "raw_source_read_ns": 12489,
+            "triples_response_ns": 2653320763
+          },
+          {
+            "derivative_ns": 1522801637,
+            "lambda_parameter_ns": 2603599549,
+            "orbital_response_ns": 609517477,
+            "raw_hamiltonian_ns": 466420730,
+            "raw_provider_ns": 465745938,
+            "raw_source_read_ns": 14181,
+            "triples_response_ns": 2664816074
+          }
+        ]
+      },
+      "trace_sha256": "bf92e94bc17c3984ff446c0fb460110ec13ed963190ef96517972baab6c4aeac",
+      "profile": "ao28-batched1"
+    },
+    "a12-p2-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 68972203,
+            "rank_two_pullback_ns": 38067,
+            "two_electron_pullback_scatter_ns": 100599310,
+            "two_electron_shell_ns": 6172037472
+          },
+          {
+            "one_electron_ns": 957517,
+            "rank_two_pullback_ns": 42744,
+            "two_electron_pullback_scatter_ns": 99920530,
+            "two_electron_shell_ns": 6143790674
+          },
+          {
+            "one_electron_ns": 914412,
+            "rank_two_pullback_ns": 38338,
+            "two_electron_pullback_scatter_ns": 98934759,
+            "two_electron_shell_ns": 6145064802
+          },
+          {
+            "one_electron_ns": 906280,
+            "rank_two_pullback_ns": 39279,
+            "two_electron_pullback_scatter_ns": 100067261,
+            "two_electron_shell_ns": 6149067701
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 6022027168
+          },
+          {
+            "consumer_ns": 5994131641
+          },
+          {
+            "consumer_ns": 5993430521
+          },
+          {
+            "consumer_ns": 5997774721
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 6342238306,
+            "lambda_parameter_ns": 2622609819,
+            "orbital_response_ns": 489040765,
+            "raw_hamiltonian_ns": 469147920,
+            "raw_provider_ns": 468440051,
+            "raw_source_read_ns": 39059,
+            "triples_response_ns": 2713253111
+          },
+          {
+            "derivative_ns": 6245268117,
+            "lambda_parameter_ns": 2599034438,
+            "orbital_response_ns": 487006662,
+            "raw_hamiltonian_ns": 467424930,
+            "raw_provider_ns": 466664000,
+            "raw_source_read_ns": 19850,
+            "triples_response_ns": 2651780205
+          },
+          {
+            "derivative_ns": 6245492557,
+            "lambda_parameter_ns": 2599087105,
+            "orbital_response_ns": 487329234,
+            "raw_hamiltonian_ns": 471944868,
+            "raw_provider_ns": 469166169,
+            "raw_source_read_ns": 12449,
+            "triples_response_ns": 2659416812
+          },
+          {
+            "derivative_ns": 6250583781,
+            "lambda_parameter_ns": 2597122227,
+            "orbital_response_ns": 485630824,
+            "raw_hamiltonian_ns": 467341562,
+            "raw_provider_ns": 466697228,
+            "raw_source_read_ns": 10625,
+            "triples_response_ns": 2638033153
+          }
+        ]
+      },
+      "trace_sha256": "23ab3cca99125047da66c486448f5a3cb1b0864deaa7b9be2bad8eee31938444",
+      "profile": "ao28-batched0"
+    },
+    "a12-p2-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 69364869,
+            "rank_two_pullback_ns": 38449,
+            "two_electron_finalize_ns": 1822443,
+            "two_electron_pullback_scatter_ns": 93809533,
+            "two_electron_shell_ns": 1379822423
+          },
+          {
+            "one_electron_ns": 3167816,
+            "rank_two_pullback_ns": 37987,
+            "two_electron_finalize_ns": 2826651,
+            "two_electron_pullback_scatter_ns": 91464633,
+            "two_electron_shell_ns": 1712995149
+          },
+          {
+            "one_electron_ns": 884446,
+            "rank_two_pullback_ns": 37867,
+            "two_electron_finalize_ns": 1814451,
+            "two_electron_pullback_scatter_ns": 91171823,
+            "two_electron_shell_ns": 1706891206
+          },
+          {
+            "one_electron_ns": 902243,
+            "rank_two_pullback_ns": 38358,
+            "two_electron_finalize_ns": 1809804,
+            "two_electron_pullback_scatter_ns": 91873167,
+            "two_electron_shell_ns": 1384251226
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1206230712
+          },
+          {
+            "consumer_ns": 1537205123
+          },
+          {
+            "consumer_ns": 1531639529
+          },
+          {
+            "consumer_ns": 1209470305
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1543610112,
+            "lambda_parameter_ns": 2614230720,
+            "orbital_response_ns": 616201152,
+            "raw_hamiltonian_ns": 467979122,
+            "raw_provider_ns": 467333356,
+            "raw_source_read_ns": 13410,
+            "triples_response_ns": 2731127312
+          },
+          {
+            "derivative_ns": 1808197319,
+            "lambda_parameter_ns": 2601028082,
+            "orbital_response_ns": 612087550,
+            "raw_hamiltonian_ns": 472715172,
+            "raw_provider_ns": 470230619,
+            "raw_source_read_ns": 11849,
+            "triples_response_ns": 2652919249
+          },
+          {
+            "derivative_ns": 1799503996,
+            "lambda_parameter_ns": 2596044122,
+            "orbital_response_ns": 611980574,
+            "raw_hamiltonian_ns": 469870306,
+            "raw_provider_ns": 468180162,
+            "raw_source_read_ns": 11718,
+            "triples_response_ns": 2638892948
+          },
+          {
+            "derivative_ns": 1477581354,
+            "lambda_parameter_ns": 2602213488,
+            "orbital_response_ns": 609141644,
+            "raw_hamiltonian_ns": 466741451,
+            "raw_provider_ns": 466061654,
+            "raw_source_read_ns": 11907,
+            "triples_response_ns": 2648652160
+          }
+        ]
+      },
+      "trace_sha256": "8632aed68336e8d58fe24d249c7c6264c34ea620cc303a41cb21a240461b188e",
+      "profile": "ao28-batched1"
+    },
+    "a12-p3-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 77437270,
+            "rank_two_pullback_ns": 38789,
+            "two_electron_pullback_scatter_ns": 102264136,
+            "two_electron_shell_ns": 6159451224
+          },
+          {
+            "one_electron_ns": 902833,
+            "rank_two_pullback_ns": 42204,
+            "two_electron_pullback_scatter_ns": 100938635,
+            "two_electron_shell_ns": 6152428166
+          },
+          {
+            "one_electron_ns": 914030,
+            "rank_two_pullback_ns": 38648,
+            "two_electron_pullback_scatter_ns": 100314968,
+            "two_electron_shell_ns": 6143225892
+          },
+          {
+            "one_electron_ns": 900840,
+            "rank_two_pullback_ns": 38147,
+            "two_electron_pullback_scatter_ns": 100827857,
+            "two_electron_shell_ns": 6143450071
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 6009619254
+          },
+          {
+            "consumer_ns": 6000609154
+          },
+          {
+            "consumer_ns": 5993271377
+          },
+          {
+            "consumer_ns": 5993966388
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 6339786277,
+            "lambda_parameter_ns": 2611223489,
+            "orbital_response_ns": 487654978,
+            "raw_hamiltonian_ns": 466481361,
+            "raw_provider_ns": 465805080,
+            "raw_source_read_ns": 11246,
+            "triples_response_ns": 2711983679
+          },
+          {
+            "derivative_ns": 6254803821,
+            "lambda_parameter_ns": 2602750471,
+            "orbital_response_ns": 486291364,
+            "raw_hamiltonian_ns": 466328008,
+            "raw_provider_ns": 465602963,
+            "raw_source_read_ns": 11498,
+            "triples_response_ns": 2635140318
+          },
+          {
+            "derivative_ns": 6245014364,
+            "lambda_parameter_ns": 2604363338,
+            "orbital_response_ns": 488444282,
+            "raw_hamiltonian_ns": 470658474,
+            "raw_provider_ns": 469010567,
+            "raw_source_read_ns": 12249,
+            "triples_response_ns": 2649929557
+          },
+          {
+            "derivative_ns": 6245701968,
+            "lambda_parameter_ns": 2605580904,
+            "orbital_response_ns": 486852518,
+            "raw_hamiltonian_ns": 473306032,
+            "raw_provider_ns": 470578876,
+            "raw_source_read_ns": 11397,
+            "triples_response_ns": 2647078084
+          }
+        ]
+      },
+      "trace_sha256": "478fb42296fed802ff74c08e55dfd741706b9c0852e4a7c48db21abf5b8cb6ff",
+      "profile": "ao28-batched0"
+    },
+    "a12-p3-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 72420691,
+            "rank_two_pullback_ns": 38638,
+            "two_electron_finalize_ns": 1827691,
+            "two_electron_pullback_scatter_ns": 92765873,
+            "two_electron_shell_ns": 1478192910
+          },
+          {
+            "one_electron_ns": 896594,
+            "rank_two_pullback_ns": 38518,
+            "two_electron_finalize_ns": 1815021,
+            "two_electron_pullback_scatter_ns": 92119767,
+            "two_electron_shell_ns": 1436109280
+          },
+          {
+            "one_electron_ns": 892819,
+            "rank_two_pullback_ns": 38608,
+            "two_electron_finalize_ns": 1828101,
+            "two_electron_pullback_scatter_ns": 92114555,
+            "two_electron_shell_ns": 1821700986
+          },
+          {
+            "one_electron_ns": 895132,
+            "rank_two_pullback_ns": 38217,
+            "two_electron_finalize_ns": 1816143,
+            "two_electron_pullback_scatter_ns": 91826309,
+            "two_electron_shell_ns": 1635184885
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1265011363
+          },
+          {
+            "consumer_ns": 1222746076
+          },
+          {
+            "consumer_ns": 1607956993
+          },
+          {
+            "consumer_ns": 1460290315
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1643993511,
+            "lambda_parameter_ns": 2607289541,
+            "orbital_response_ns": 616604147,
+            "raw_hamiltonian_ns": 470174992,
+            "raw_provider_ns": 469523638,
+            "raw_source_read_ns": 11998,
+            "triples_response_ns": 2707735191
+          },
+          {
+            "derivative_ns": 1529685576,
+            "lambda_parameter_ns": 2603921057,
+            "orbital_response_ns": 610803537,
+            "raw_hamiltonian_ns": 466912740,
+            "raw_provider_ns": 466250741,
+            "raw_source_read_ns": 11367,
+            "triples_response_ns": 2667986574
+          },
+          {
+            "derivative_ns": 1918400956,
+            "lambda_parameter_ns": 2601485059,
+            "orbital_response_ns": 611827445,
+            "raw_hamiltonian_ns": 471143318,
+            "raw_provider_ns": 468899060,
+            "raw_source_read_ns": 12098,
+            "triples_response_ns": 2648078444
+          },
+          {
+            "derivative_ns": 1728463006,
+            "lambda_parameter_ns": 2594617963,
+            "orbital_response_ns": 610049049,
+            "raw_hamiltonian_ns": 475078148,
+            "raw_provider_ns": 472559845,
+            "raw_source_read_ns": 12559,
+            "triples_response_ns": 2657310312
+          }
+        ]
+      },
+      "trace_sha256": "a052c1cfe735415fe4467658b3af1093cce1cc95872e6e043bb8b01b5758fc24",
+      "profile": "ao28-batched1"
+    },
+    "a12-p4-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 75270382,
+            "rank_two_pullback_ns": 39109,
+            "two_electron_pullback_scatter_ns": 107020523,
+            "two_electron_shell_ns": 6155904577
+          },
+          {
+            "one_electron_ns": 894780,
+            "rank_two_pullback_ns": 39460,
+            "two_electron_pullback_scatter_ns": 100332112,
+            "two_electron_shell_ns": 6144660205
+          },
+          {
+            "one_electron_ns": 915271,
+            "rank_two_pullback_ns": 39359,
+            "two_electron_pullback_scatter_ns": 100019992,
+            "two_electron_shell_ns": 6150574954
+          },
+          {
+            "one_electron_ns": 892697,
+            "rank_two_pullback_ns": 39139,
+            "two_electron_pullback_scatter_ns": 99773526,
+            "two_electron_shell_ns": 6146686094
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 6003730184
+          },
+          {
+            "consumer_ns": 5994499035
+          },
+          {
+            "consumer_ns": 5999458755
+          },
+          {
+            "consumer_ns": 5995623224
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 6338830832,
+            "lambda_parameter_ns": 2606780323,
+            "orbital_response_ns": 487350889,
+            "raw_hamiltonian_ns": 469234409,
+            "raw_provider_ns": 468555124,
+            "raw_source_read_ns": 11017,
+            "triples_response_ns": 2714156794
+          },
+          {
+            "derivative_ns": 6246426732,
+            "lambda_parameter_ns": 2597456691,
+            "orbital_response_ns": 486351243,
+            "raw_hamiltonian_ns": 467037990,
+            "raw_provider_ns": 466388430,
+            "raw_source_read_ns": 10475,
+            "triples_response_ns": 2636606470
+          },
+          {
+            "derivative_ns": 6252077884,
+            "lambda_parameter_ns": 2598184512,
+            "orbital_response_ns": 486236305,
+            "raw_hamiltonian_ns": 465830866,
+            "raw_provider_ns": 465177882,
+            "raw_source_read_ns": 11637,
+            "triples_response_ns": 2636863665
+          },
+          {
+            "derivative_ns": 6247887305,
+            "lambda_parameter_ns": 2600178382,
+            "orbital_response_ns": 484794086,
+            "raw_hamiltonian_ns": 467031958,
+            "raw_provider_ns": 466367005,
+            "raw_source_read_ns": 11368,
+            "triples_response_ns": 2648126965
+          }
+        ]
+      },
+      "trace_sha256": "cb17c5c3e5451023fff0abdb923281cc4c5030be5d9543d278591d45dea70f06",
+      "profile": "ao28-batched0"
+    },
+    "a12-p4-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 76229819,
+            "rank_two_pullback_ns": 38478,
+            "two_electron_finalize_ns": 1815469,
+            "two_electron_pullback_scatter_ns": 92567523,
+            "two_electron_shell_ns": 1429414786
+          },
+          {
+            "one_electron_ns": 899517,
+            "rank_two_pullback_ns": 45398,
+            "two_electron_finalize_ns": 1817281,
+            "two_electron_pullback_scatter_ns": 92762372,
+            "two_electron_shell_ns": 1390625689
+          },
+          {
+            "one_electron_ns": 945306,
+            "rank_two_pullback_ns": 38548,
+            "two_electron_finalize_ns": 1819846,
+            "two_electron_pullback_scatter_ns": 93254802,
+            "two_electron_shell_ns": 1393958491
+          },
+          {
+            "one_electron_ns": 894119,
+            "rank_two_pullback_ns": 37536,
+            "two_electron_finalize_ns": 1832054,
+            "two_electron_pullback_scatter_ns": 92669019,
+            "two_electron_shell_ns": 1411648465
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1254626036
+          },
+          {
+            "consumer_ns": 1216774467
+          },
+          {
+            "consumer_ns": 1219812980
+          },
+          {
+            "consumer_ns": 1237634523
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1598824993,
+            "lambda_parameter_ns": 2614236280,
+            "orbital_response_ns": 612436531,
+            "raw_hamiltonian_ns": 467736203,
+            "raw_provider_ns": 467040263,
+            "raw_source_read_ns": 15832,
+            "triples_response_ns": 2687125737
+          },
+          {
+            "derivative_ns": 1484856836,
+            "lambda_parameter_ns": 2605656199,
+            "orbital_response_ns": 610846221,
+            "raw_hamiltonian_ns": 466536733,
+            "raw_provider_ns": 465847724,
+            "raw_source_read_ns": 12709,
+            "triples_response_ns": 2653703516
+          },
+          {
+            "derivative_ns": 1488712394,
+            "lambda_parameter_ns": 2599476965,
+            "orbital_response_ns": 612152942,
+            "raw_hamiltonian_ns": 465755799,
+            "raw_provider_ns": 465065337,
+            "raw_source_read_ns": 16485,
+            "triples_response_ns": 2647362715
+          },
+          {
+            "derivative_ns": 1505760641,
+            "lambda_parameter_ns": 2593038357,
+            "orbital_response_ns": 610236264,
+            "raw_hamiltonian_ns": 464928823,
+            "raw_provider_ns": 464281566,
+            "raw_source_read_ns": 12259,
+            "triples_response_ns": 2653206167
+          }
+        ]
+      },
+      "trace_sha256": "234199fc2ddc3b53bae8f33782bd295b5038a50cf60e16fbb0f3ab8bf7c27e75",
+      "profile": "ao28-batched1"
+    },
+    "a12-p5-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 74248301,
+            "rank_two_pullback_ns": 38998,
+            "two_electron_pullback_scatter_ns": 101774658,
+            "two_electron_shell_ns": 6137375085
+          },
+          {
+            "one_electron_ns": 941099,
+            "rank_two_pullback_ns": 38679,
+            "two_electron_pullback_scatter_ns": 101504640,
+            "two_electron_shell_ns": 6132044952
+          },
+          {
+            "one_electron_ns": 915781,
+            "rank_two_pullback_ns": 37887,
+            "two_electron_pullback_scatter_ns": 100445613,
+            "two_electron_shell_ns": 6155574772
+          },
+          {
+            "one_electron_ns": 882902,
+            "rank_two_pullback_ns": 44346,
+            "two_electron_pullback_scatter_ns": 99680964,
+            "two_electron_shell_ns": 6133433641
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 5988648855
+          },
+          {
+            "consumer_ns": 5981501527
+          },
+          {
+            "consumer_ns": 6004339615
+          },
+          {
+            "consumer_ns": 5982990582
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 6314062395,
+            "lambda_parameter_ns": 2627452816,
+            "orbital_response_ns": 488089857,
+            "raw_hamiltonian_ns": 469704782,
+            "raw_provider_ns": 468994831,
+            "raw_source_read_ns": 21492,
+            "triples_response_ns": 2732757037
+          },
+          {
+            "derivative_ns": 6235072469,
+            "lambda_parameter_ns": 2598158233,
+            "orbital_response_ns": 486984118,
+            "raw_hamiltonian_ns": 467954003,
+            "raw_provider_ns": 467125243,
+            "raw_source_read_ns": 10727,
+            "triples_response_ns": 2644103698
+          },
+          {
+            "derivative_ns": 6260259236,
+            "lambda_parameter_ns": 2597101955,
+            "orbital_response_ns": 487322118,
+            "raw_hamiltonian_ns": 467391438,
+            "raw_provider_ns": 466734727,
+            "raw_source_read_ns": 10717,
+            "triples_response_ns": 2663959247
+          },
+          {
+            "derivative_ns": 6234524180,
+            "lambda_parameter_ns": 2595047560,
+            "orbital_response_ns": 484769231,
+            "raw_hamiltonian_ns": 465734834,
+            "raw_provider_ns": 465091263,
+            "raw_source_read_ns": 10546,
+            "triples_response_ns": 2643162393
+          }
+        ]
+      },
+      "trace_sha256": "738f5161cb830048e35fb43d340bb805adbffab0d93592a17c1b8ae635840f95",
+      "profile": "ao28-batched0"
+    },
+    "a12-p5-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 77571587,
+            "rank_two_pullback_ns": 38979,
+            "two_electron_finalize_ns": 1832965,
+            "two_electron_pullback_scatter_ns": 94667992,
+            "two_electron_shell_ns": 1395922538
+          },
+          {
+            "one_electron_ns": 986147,
+            "rank_two_pullback_ns": 54022,
+            "two_electron_finalize_ns": 1831553,
+            "two_electron_pullback_scatter_ns": 93069233,
+            "two_electron_shell_ns": 1423406838
+          },
+          {
+            "one_electron_ns": 905486,
+            "rank_two_pullback_ns": 38488,
+            "two_electron_finalize_ns": 1819824,
+            "two_electron_pullback_scatter_ns": 92949283,
+            "two_electron_shell_ns": 1423404487
+          },
+          {
+            "one_electron_ns": 896772,
+            "rank_two_pullback_ns": 39340,
+            "two_electron_finalize_ns": 2468973,
+            "two_electron_pullback_scatter_ns": 93161345,
+            "two_electron_shell_ns": 1431590511
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1220100545
+          },
+          {
+            "consumer_ns": 1248043669
+          },
+          {
+            "consumer_ns": 1248414036
+          },
+          {
+            "consumer_ns": 1254550804
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1568843195,
+            "lambda_parameter_ns": 2651115814,
+            "orbital_response_ns": 613782783,
+            "raw_hamiltonian_ns": 470854856,
+            "raw_provider_ns": 470152947,
+            "raw_source_read_ns": 23406,
+            "triples_response_ns": 2798542795
+          },
+          {
+            "derivative_ns": 1518059059,
+            "lambda_parameter_ns": 2596504317,
+            "orbital_response_ns": 613486188,
+            "raw_hamiltonian_ns": 467673612,
+            "raw_provider_ns": 466939965,
+            "raw_source_read_ns": 19310,
+            "triples_response_ns": 2714611517
+          },
+          {
+            "derivative_ns": 1517825410,
+            "lambda_parameter_ns": 2602732385,
+            "orbital_response_ns": 610942055,
+            "raw_hamiltonian_ns": 466844075,
+            "raw_provider_ns": 466198722,
+            "raw_source_read_ns": 11618,
+            "triples_response_ns": 2729390171
+          },
+          {
+            "derivative_ns": 1526211197,
+            "lambda_parameter_ns": 2600560094,
+            "orbital_response_ns": 609519183,
+            "raw_hamiltonian_ns": 478608954,
+            "raw_provider_ns": 465801959,
+            "raw_source_read_ns": 11247,
+            "triples_response_ns": 2719124185
+          }
+        ]
+      },
+      "trace_sha256": "df974f311196b5a277f13d7bc943c4b5c13bd4da89dd56d56760003c02fe6b26",
+      "profile": "ao28-batched1"
+    },
+    "a6-p0-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 97896979,
+            "rank_two_pullback_ns": 6399,
+            "two_electron_pullback_scatter_ns": 2433919,
+            "two_electron_shell_ns": 456266918
+          },
+          {
+            "one_electron_ns": 840974,
+            "rank_two_pullback_ns": 6469,
+            "two_electron_pullback_scatter_ns": 2336937,
+            "two_electron_shell_ns": 438984857
+          },
+          {
+            "one_electron_ns": 837448,
+            "rank_two_pullback_ns": 6470,
+            "two_electron_pullback_scatter_ns": 2339547,
+            "two_electron_shell_ns": 438979554
+          },
+          {
+            "one_electron_ns": 821254,
+            "rank_two_pullback_ns": 6590,
+            "two_electron_pullback_scatter_ns": 2262632,
+            "two_electron_shell_ns": 436815782
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 444850689
+          },
+          {
+            "consumer_ns": 428028465
+          },
+          {
+            "consumer_ns": 427967107
+          },
+          {
+            "consumer_ns": 425872421
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 556892699,
+            "lambda_parameter_ns": 509708730,
+            "orbital_response_ns": 20712402,
+            "raw_hamiltonian_ns": 28264620,
+            "raw_provider_ns": 27951520,
+            "raw_source_read_ns": 10796,
+            "triples_response_ns": 79149209
+          },
+          {
+            "derivative_ns": 442450720,
+            "lambda_parameter_ns": 490294059,
+            "orbital_response_ns": 18411295,
+            "raw_hamiltonian_ns": 28448726,
+            "raw_provider_ns": 28113553,
+            "raw_source_read_ns": 12419,
+            "triples_response_ns": 79622019
+          },
+          {
+            "derivative_ns": 442446505,
+            "lambda_parameter_ns": 489734198,
+            "orbital_response_ns": 18415150,
+            "raw_hamiltonian_ns": 28063348,
+            "raw_provider_ns": 27735275,
+            "raw_source_read_ns": 11868,
+            "triples_response_ns": 73057926
+          },
+          {
+            "derivative_ns": 440257746,
+            "lambda_parameter_ns": 489146046,
+            "orbital_response_ns": 18186056,
+            "raw_hamiltonian_ns": 28526884,
+            "raw_provider_ns": 28204981,
+            "raw_source_read_ns": 10105,
+            "triples_response_ns": 72665045
+          }
+        ]
+      },
+      "trace_sha256": "b75ee196716a685980bf2586d4c406a8c43ef6e9dae6df7d85430338c356d760",
+      "profile": "ao14-batched0"
+    },
+    "a6-p0-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 87212255,
+            "rank_two_pullback_ns": 6299,
+            "two_electron_finalize_ns": 1318872,
+            "two_electron_pullback_scatter_ns": 2137602,
+            "two_electron_shell_ns": 103397544
+          },
+          {
+            "one_electron_ns": 840693,
+            "rank_two_pullback_ns": 7231,
+            "two_electron_finalize_ns": 1304901,
+            "two_electron_pullback_scatter_ns": 2093325,
+            "two_electron_shell_ns": 100936938
+          },
+          {
+            "one_electron_ns": 839131,
+            "rank_two_pullback_ns": 6319,
+            "two_electron_finalize_ns": 1314235,
+            "two_electron_pullback_scatter_ns": 2060032,
+            "two_electron_shell_ns": 101049120
+          },
+          {
+            "one_electron_ns": 843948,
+            "rank_two_pullback_ns": 7071,
+            "two_electron_finalize_ns": 1313994,
+            "two_electron_pullback_scatter_ns": 2062636,
+            "two_electron_shell_ns": 123607305
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 89388854
+          },
+          {
+            "consumer_ns": 88272999
+          },
+          {
+            "consumer_ns": 88350844
+          },
+          {
+            "consumer_ns": 111041661
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 193081273,
+            "lambda_parameter_ns": 513469686,
+            "orbital_response_ns": 21296640,
+            "raw_hamiltonian_ns": 28590590,
+            "raw_provider_ns": 28246222,
+            "raw_source_read_ns": 24016,
+            "triples_response_ns": 80986850
+          },
+          {
+            "derivative_ns": 104176956,
+            "lambda_parameter_ns": 489892299,
+            "orbital_response_ns": 18958517,
+            "raw_hamiltonian_ns": 28444991,
+            "raw_provider_ns": 28120854,
+            "raw_source_read_ns": 11508,
+            "triples_response_ns": 88499539
+          },
+          {
+            "derivative_ns": 104262724,
+            "lambda_parameter_ns": 502518651,
+            "orbital_response_ns": 18784205,
+            "raw_hamiltonian_ns": 28280094,
+            "raw_provider_ns": 27954274,
+            "raw_source_read_ns": 12369,
+            "triples_response_ns": 73392269
+          },
+          {
+            "derivative_ns": 126818978,
+            "lambda_parameter_ns": 489537116,
+            "orbital_response_ns": 18799287,
+            "raw_hamiltonian_ns": 28165632,
+            "raw_provider_ns": 27824890,
+            "raw_source_read_ns": 12639,
+            "triples_response_ns": 73432339
+          }
+        ]
+      },
+      "trace_sha256": "e3651d9a0b1a8e4a898e7cd143927fb4ca306d3fa0dc79592d315af26a52ecba",
+      "profile": "ao14-batched1"
+    },
+    "a6-p1-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 91200408,
+            "rank_two_pullback_ns": 8723,
+            "two_electron_pullback_scatter_ns": 2404876,
+            "two_electron_shell_ns": 451995018
+          },
+          {
+            "one_electron_ns": 840332,
+            "rank_two_pullback_ns": 6941,
+            "two_electron_pullback_scatter_ns": 2444620,
+            "two_electron_shell_ns": 446720759
+          },
+          {
+            "one_electron_ns": 861365,
+            "rank_two_pullback_ns": 6089,
+            "two_electron_pullback_scatter_ns": 2351366,
+            "two_electron_shell_ns": 451356869
+          },
+          {
+            "one_electron_ns": 843177,
+            "rank_two_pullback_ns": 6770,
+            "two_electron_pullback_scatter_ns": 2298350,
+            "two_electron_shell_ns": 452594977
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 440529689
+          },
+          {
+            "consumer_ns": 435395179
+          },
+          {
+            "consumer_ns": 440292126
+          },
+          {
+            "consumer_ns": 441455250
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 545910558,
+            "lambda_parameter_ns": 510480269,
+            "orbital_response_ns": 20692382,
+            "raw_hamiltonian_ns": 28261245,
+            "raw_provider_ns": 27930709,
+            "raw_source_read_ns": 11457,
+            "triples_response_ns": 80926340
+          },
+          {
+            "derivative_ns": 450310850,
+            "lambda_parameter_ns": 490377844,
+            "orbital_response_ns": 18688281,
+            "raw_hamiltonian_ns": 28779034,
+            "raw_provider_ns": 28425913,
+            "raw_source_read_ns": 11938,
+            "triples_response_ns": 79555661
+          },
+          {
+            "derivative_ns": 454860998,
+            "lambda_parameter_ns": 491619500,
+            "orbital_response_ns": 18730074,
+            "raw_hamiltonian_ns": 28209798,
+            "raw_provider_ns": 27887493,
+            "raw_source_read_ns": 12218,
+            "triples_response_ns": 77623939
+          },
+          {
+            "derivative_ns": 456033360,
+            "lambda_parameter_ns": 489916102,
+            "orbital_response_ns": 18501420,
+            "raw_hamiltonian_ns": 28074415,
+            "raw_provider_ns": 27733623,
+            "raw_source_read_ns": 11637,
+            "triples_response_ns": 73283205
+          }
+        ]
+      },
+      "trace_sha256": "4ab9c0e3372c4af750a598978f53dcd9b7aac44fd07eafe0717883caa080c8f4",
+      "profile": "ao14-batched0"
+    },
+    "a6-p1-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 88566420,
+            "rank_two_pullback_ns": 6680,
+            "two_electron_finalize_ns": 1304310,
+            "two_electron_pullback_scatter_ns": 2132640,
+            "two_electron_shell_ns": 102833532
+          },
+          {
+            "one_electron_ns": 854224,
+            "rank_two_pullback_ns": 7401,
+            "two_electron_finalize_ns": 1309377,
+            "two_electron_pullback_scatter_ns": 2079448,
+            "two_electron_shell_ns": 127978867
+          },
+          {
+            "one_electron_ns": 862606,
+            "rank_two_pullback_ns": 7421,
+            "two_electron_finalize_ns": 1303198,
+            "two_electron_pullback_scatter_ns": 2094441,
+            "two_electron_shell_ns": 102031489
+          },
+          {
+            "one_electron_ns": 851880,
+            "rank_two_pullback_ns": 6750,
+            "two_electron_finalize_ns": 1307114,
+            "two_electron_pullback_scatter_ns": 2048507,
+            "two_electron_shell_ns": 101084490
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 88920942
+          },
+          {
+            "consumer_ns": 115370085
+          },
+          {
+            "consumer_ns": 88488621
+          },
+          {
+            "consumer_ns": 88551431
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 193849708,
+            "lambda_parameter_ns": 510576782,
+            "orbital_response_ns": 21094607,
+            "raw_hamiltonian_ns": 28555377,
+            "raw_provider_ns": 28221025,
+            "raw_source_read_ns": 11988,
+            "triples_response_ns": 81251779
+          },
+          {
+            "derivative_ns": 131221063,
+            "lambda_parameter_ns": 485122234,
+            "orbital_response_ns": 19253841,
+            "raw_hamiltonian_ns": 28191130,
+            "raw_provider_ns": 27858420,
+            "raw_source_read_ns": 14652,
+            "triples_response_ns": 79685145
+          },
+          {
+            "derivative_ns": 105290870,
+            "lambda_parameter_ns": 497507325,
+            "orbital_response_ns": 19146970,
+            "raw_hamiltonian_ns": 28522448,
+            "raw_provider_ns": 28180344,
+            "raw_source_read_ns": 13410,
+            "triples_response_ns": 73466240
+          },
+          {
+            "derivative_ns": 104296877,
+            "lambda_parameter_ns": 499132617,
+            "orbital_response_ns": 18805938,
+            "raw_hamiltonian_ns": 28410199,
+            "raw_provider_ns": 28067564,
+            "raw_source_read_ns": 13100,
+            "triples_response_ns": 78034204
+          }
+        ]
+      },
+      "trace_sha256": "2f62f0b7f1faff907f9951e4952fa0ae70b6c7d9df4a4a5b56c020e2faea5fca",
+      "profile": "ao14-batched1"
+    },
+    "a6-p2-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 97407275,
+            "rank_two_pullback_ns": 5859,
+            "two_electron_pullback_scatter_ns": 2397454,
+            "two_electron_shell_ns": 438732293
+          },
+          {
+            "one_electron_ns": 818230,
+            "rank_two_pullback_ns": 5939,
+            "two_electron_pullback_scatter_ns": 2311394,
+            "two_electron_shell_ns": 436004765
+          },
+          {
+            "one_electron_ns": 811469,
+            "rank_two_pullback_ns": 5889,
+            "two_electron_pullback_scatter_ns": 2319617,
+            "two_electron_shell_ns": 435455541
+          },
+          {
+            "one_electron_ns": 817308,
+            "rank_two_pullback_ns": 6219,
+            "two_electron_pullback_scatter_ns": 2327177,
+            "two_electron_shell_ns": 438110281
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 427304197
+          },
+          {
+            "consumer_ns": 424713222
+          },
+          {
+            "consumer_ns": 424480200
+          },
+          {
+            "consumer_ns": 426850571
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 538837534,
+            "lambda_parameter_ns": 511882250,
+            "orbital_response_ns": 20648216,
+            "raw_hamiltonian_ns": 28307315,
+            "raw_provider_ns": 27985351,
+            "raw_source_read_ns": 19079,
+            "triples_response_ns": 80482904
+          },
+          {
+            "derivative_ns": 439408831,
+            "lambda_parameter_ns": 490718550,
+            "orbital_response_ns": 18231575,
+            "raw_hamiltonian_ns": 28436429,
+            "raw_provider_ns": 28116077,
+            "raw_source_read_ns": 10405,
+            "triples_response_ns": 79394740
+          },
+          {
+            "derivative_ns": 438872766,
+            "lambda_parameter_ns": 488989212,
+            "orbital_response_ns": 18043262,
+            "raw_hamiltonian_ns": 28378001,
+            "raw_provider_ns": 28061786,
+            "raw_source_read_ns": 11207,
+            "triples_response_ns": 73246872
+          },
+          {
+            "derivative_ns": 441564712,
+            "lambda_parameter_ns": 502497129,
+            "orbital_response_ns": 18116482,
+            "raw_hamiltonian_ns": 45369113,
+            "raw_provider_ns": 45029712,
+            "raw_source_read_ns": 13971,
+            "triples_response_ns": 73140332
+          }
+        ]
+      },
+      "trace_sha256": "f2cdda44fb4f73353d58f8efbe7828a915aedd85b3eb867b698a58653df21540",
+      "profile": "ao14-batched0"
+    },
+    "a6-p2-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 88716156,
+            "rank_two_pullback_ns": 6520,
+            "two_electron_finalize_ns": 1325521,
+            "two_electron_pullback_scatter_ns": 2093147,
+            "two_electron_shell_ns": 162661376
+          },
+          {
+            "one_electron_ns": 838369,
+            "rank_two_pullback_ns": 7101,
+            "two_electron_finalize_ns": 1304981,
+            "two_electron_pullback_scatter_ns": 2031945,
+            "two_electron_shell_ns": 101157810
+          },
+          {
+            "one_electron_ns": 839631,
+            "rank_two_pullback_ns": 6390,
+            "two_electron_finalize_ns": 1305312,
+            "two_electron_pullback_scatter_ns": 2013064,
+            "two_electron_shell_ns": 101150973
+          },
+          {
+            "one_electron_ns": 844839,
+            "rank_two_pullback_ns": 6500,
+            "two_electron_finalize_ns": 1317299,
+            "two_electron_pullback_scatter_ns": 2005026,
+            "two_electron_shell_ns": 101145591
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 145552693
+          },
+          {
+            "consumer_ns": 88606713
+          },
+          {
+            "consumer_ns": 88571706
+          },
+          {
+            "consumer_ns": 88497558
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 253816600,
+            "lambda_parameter_ns": 516272511,
+            "orbital_response_ns": 22660159,
+            "raw_hamiltonian_ns": 32625684,
+            "raw_provider_ns": 31268404,
+            "raw_source_read_ns": 19780,
+            "triples_response_ns": 79912328
+          },
+          {
+            "derivative_ns": 104370980,
+            "lambda_parameter_ns": 497260533,
+            "orbital_response_ns": 18341360,
+            "raw_hamiltonian_ns": 28744482,
+            "raw_provider_ns": 28375287,
+            "raw_source_read_ns": 11727,
+            "triples_response_ns": 77729558
+          },
+          {
+            "derivative_ns": 104349808,
+            "lambda_parameter_ns": 489763779,
+            "orbital_response_ns": 18879609,
+            "raw_hamiltonian_ns": 44832216,
+            "raw_provider_ns": 44492986,
+            "raw_source_read_ns": 15203,
+            "triples_response_ns": 74512584
+          },
+          {
+            "derivative_ns": 104321376,
+            "lambda_parameter_ns": 489025079,
+            "orbital_response_ns": 18804696,
+            "raw_hamiltonian_ns": 28458473,
+            "raw_provider_ns": 28129759,
+            "raw_source_read_ns": 11858,
+            "triples_response_ns": 72908503
+          }
+        ]
+      },
+      "trace_sha256": "792397479fa2520349cd1e6812207499125d02bfc151381a124693512b2f8b83",
+      "profile": "ao14-batched1"
+    },
+    "a6-p3-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 89914358,
+            "rank_two_pullback_ns": 6029,
+            "two_electron_pullback_scatter_ns": 2408138,
+            "two_electron_shell_ns": 445199851
+          },
+          {
+            "one_electron_ns": 843788,
+            "rank_two_pullback_ns": 6089,
+            "two_electron_pullback_scatter_ns": 2299936,
+            "two_electron_shell_ns": 445310217
+          },
+          {
+            "one_electron_ns": 814955,
+            "rank_two_pullback_ns": 5838,
+            "two_electron_pullback_scatter_ns": 2326741,
+            "two_electron_shell_ns": 435888415
+          },
+          {
+            "one_electron_ns": 813142,
+            "rank_two_pullback_ns": 5928,
+            "two_electron_pullback_scatter_ns": 2351891,
+            "two_electron_shell_ns": 435292018
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 433800285
+          },
+          {
+            "consumer_ns": 434075747
+          },
+          {
+            "consumer_ns": 424910752
+          },
+          {
+            "consumer_ns": 424326633
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 537840465,
+            "lambda_parameter_ns": 511641408,
+            "orbital_response_ns": 20620866,
+            "raw_hamiltonian_ns": 28148306,
+            "raw_provider_ns": 27818251,
+            "raw_source_read_ns": 18568,
+            "triples_response_ns": 79428872
+          },
+          {
+            "derivative_ns": 448738749,
+            "lambda_parameter_ns": 490309113,
+            "orbital_response_ns": 21000226,
+            "raw_hamiltonian_ns": 32724543,
+            "raw_provider_ns": 30990007,
+            "raw_source_read_ns": 11286,
+            "triples_response_ns": 78245715
+          },
+          {
+            "derivative_ns": 439308349,
+            "lambda_parameter_ns": 488712475,
+            "orbital_response_ns": 18069301,
+            "raw_hamiltonian_ns": 28332343,
+            "raw_provider_ns": 28004190,
+            "raw_source_read_ns": 10216,
+            "triples_response_ns": 73137078
+          },
+          {
+            "derivative_ns": 438740045,
+            "lambda_parameter_ns": 483026532,
+            "orbital_response_ns": 18040158,
+            "raw_hamiltonian_ns": 28409639,
+            "raw_provider_ns": 28075127,
+            "raw_source_read_ns": 10245,
+            "triples_response_ns": 73126572
+          }
+        ]
+      },
+      "trace_sha256": "fc1767b41b57abea2037d7e3847b9557e3f8debb6af49c1990baaf100a28c3ad",
+      "profile": "ao14-batched0"
+    },
+    "a6-p3-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 92074574,
+            "rank_two_pullback_ns": 6890,
+            "two_electron_finalize_ns": 1307365,
+            "two_electron_pullback_scatter_ns": 2139116,
+            "two_electron_shell_ns": 103426038
+          },
+          {
+            "one_electron_ns": 819171,
+            "rank_two_pullback_ns": 7041,
+            "two_electron_finalize_ns": 1296819,
+            "two_electron_pullback_scatter_ns": 2054021,
+            "two_electron_shell_ns": 101007782
+          },
+          {
+            "one_electron_ns": 835185,
+            "rank_two_pullback_ns": 6400,
+            "two_electron_finalize_ns": 1302137,
+            "two_electron_pullback_scatter_ns": 2075366,
+            "two_electron_shell_ns": 100629761
+          },
+          {
+            "one_electron_ns": 825421,
+            "rank_two_pullback_ns": 6680,
+            "two_electron_finalize_ns": 1308606,
+            "two_electron_pullback_scatter_ns": 2049967,
+            "two_electron_shell_ns": 100706507
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 89356056
+          },
+          {
+            "consumer_ns": 88168447
+          },
+          {
+            "consumer_ns": 88040731
+          },
+          {
+            "consumer_ns": 88142733
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 197955653,
+            "lambda_parameter_ns": 509430442,
+            "orbital_response_ns": 20834716,
+            "raw_hamiltonian_ns": 28339434,
+            "raw_provider_ns": 28015937,
+            "raw_source_read_ns": 19970,
+            "triples_response_ns": 79725026
+          },
+          {
+            "derivative_ns": 104186904,
+            "lambda_parameter_ns": 499449986,
+            "orbital_response_ns": 18622372,
+            "raw_hamiltonian_ns": 28295337,
+            "raw_provider_ns": 27964550,
+            "raw_source_read_ns": 11287,
+            "triples_response_ns": 79733239
+          },
+          {
+            "derivative_ns": 103832912,
+            "lambda_parameter_ns": 489209589,
+            "orbital_response_ns": 31978592,
+            "raw_hamiltonian_ns": 28249719,
+            "raw_provider_ns": 27936208,
+            "raw_source_read_ns": 10566,
+            "triples_response_ns": 73394614
+          },
+          {
+            "derivative_ns": 103883137,
+            "lambda_parameter_ns": 488804040,
+            "orbital_response_ns": 18475723,
+            "raw_hamiltonian_ns": 28023719,
+            "raw_provider_ns": 27703849,
+            "raw_source_read_ns": 10856,
+            "triples_response_ns": 73393573
+          }
+        ]
+      },
+      "trace_sha256": "6a57742966c9feda23b645edc70a34cc98ccf3fffbd2d896adb2c1727b1d13b3",
+      "profile": "ao14-batched1"
+    },
+    "a6-p4-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 92224039,
+            "rank_two_pullback_ns": 5940,
+            "two_electron_pullback_scatter_ns": 2375973,
+            "two_electron_shell_ns": 438577730
+          },
+          {
+            "one_electron_ns": 827584,
+            "rank_two_pullback_ns": 5908,
+            "two_electron_pullback_scatter_ns": 2301314,
+            "two_electron_shell_ns": 445286398
+          },
+          {
+            "one_electron_ns": 808515,
+            "rank_two_pullback_ns": 6169,
+            "two_electron_pullback_scatter_ns": 2321690,
+            "two_electron_shell_ns": 434754467
+          },
+          {
+            "one_electron_ns": 823228,
+            "rank_two_pullback_ns": 6449,
+            "two_electron_pullback_scatter_ns": 2317672,
+            "two_electron_shell_ns": 435047360
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 427190452
+          },
+          {
+            "consumer_ns": 433998378
+          },
+          {
+            "consumer_ns": 423797341
+          },
+          {
+            "consumer_ns": 424043876
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 533464664,
+            "lambda_parameter_ns": 511472687,
+            "orbital_response_ns": 20781287,
+            "raw_hamiltonian_ns": 28267886,
+            "raw_provider_ns": 27942978,
+            "raw_source_read_ns": 19760,
+            "triples_response_ns": 79410616
+          },
+          {
+            "derivative_ns": 448692472,
+            "lambda_parameter_ns": 490283018,
+            "orbital_response_ns": 18440460,
+            "raw_hamiltonian_ns": 28307756,
+            "raw_provider_ns": 27988436,
+            "raw_source_read_ns": 10355,
+            "triples_response_ns": 79443404
+          },
+          {
+            "derivative_ns": 438156130,
+            "lambda_parameter_ns": 488716253,
+            "orbital_response_ns": 18058005,
+            "raw_hamiltonian_ns": 28140115,
+            "raw_provider_ns": 27831541,
+            "raw_source_read_ns": 10136,
+            "triples_response_ns": 73181275
+          },
+          {
+            "derivative_ns": 438471495,
+            "lambda_parameter_ns": 488585648,
+            "orbital_response_ns": 18059377,
+            "raw_hamiltonian_ns": 28554377,
+            "raw_provider_ns": 28239845,
+            "raw_source_read_ns": 10005,
+            "triples_response_ns": 73216377
+          }
+        ]
+      },
+      "trace_sha256": "4b9dcbbe6995e7025319d29f3b7d79d25beca6371594f62980605ee8754a3dce",
+      "profile": "ao14-batched0"
+    },
+    "a6-p4-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 94514842,
+            "rank_two_pullback_ns": 6290,
+            "two_electron_finalize_ns": 1310129,
+            "two_electron_pullback_scatter_ns": 2152907,
+            "two_electron_shell_ns": 131310400
+          },
+          {
+            "one_electron_ns": 831920,
+            "rank_two_pullback_ns": 6510,
+            "two_electron_finalize_ns": 1301746,
+            "two_electron_pullback_scatter_ns": 2062132,
+            "two_electron_shell_ns": 101938864
+          },
+          {
+            "one_electron_ns": 818961,
+            "rank_two_pullback_ns": 7081,
+            "two_electron_finalize_ns": 1297981,
+            "two_electron_pullback_scatter_ns": 2035022,
+            "two_electron_shell_ns": 100867684
+          },
+          {
+            "one_electron_ns": 820984,
+            "rank_two_pullback_ns": 6620,
+            "two_electron_finalize_ns": 1299393,
+            "two_electron_pullback_scatter_ns": 2023578,
+            "two_electron_shell_ns": 101674654
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 117157544
+          },
+          {
+            "consumer_ns": 88291345
+          },
+          {
+            "consumer_ns": 88206613
+          },
+          {
+            "consumer_ns": 88890540
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 228305231,
+            "lambda_parameter_ns": 511930829,
+            "orbital_response_ns": 21151073,
+            "raw_hamiltonian_ns": 28462498,
+            "raw_provider_ns": 28135327,
+            "raw_source_read_ns": 18458,
+            "triples_response_ns": 79761283
+          },
+          {
+            "derivative_ns": 105128720,
+            "lambda_parameter_ns": 496638090,
+            "orbital_response_ns": 19062595,
+            "raw_hamiltonian_ns": 28885164,
+            "raw_provider_ns": 28541368,
+            "raw_source_read_ns": 11156,
+            "triples_response_ns": 78699097
+          },
+          {
+            "derivative_ns": 104003910,
+            "lambda_parameter_ns": 497381267,
+            "orbital_response_ns": 18484155,
+            "raw_hamiltonian_ns": 28122128,
+            "raw_provider_ns": 27796359,
+            "raw_source_read_ns": 11317,
+            "triples_response_ns": 77561438
+          },
+          {
+            "derivative_ns": 104840408,
+            "lambda_parameter_ns": 488651971,
+            "orbital_response_ns": 18503254,
+            "raw_hamiltonian_ns": 28220996,
+            "raw_provider_ns": 27898271,
+            "raw_source_read_ns": 10706,
+            "triples_response_ns": 73408687
+          }
+        ]
+      },
+      "trace_sha256": "87adf506585aa26e7090d1031291775ccf5293d77c5e52f57186f94095d6ddfa",
+      "profile": "ao14-batched1"
+    },
+    "a6-p5-baseline": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 84528908,
+            "rank_two_pullback_ns": 6099,
+            "two_electron_pullback_scatter_ns": 2369763,
+            "two_electron_shell_ns": 437829734
+          },
+          {
+            "one_electron_ns": 816096,
+            "rank_two_pullback_ns": 5939,
+            "two_electron_pullback_scatter_ns": 2313333,
+            "two_electron_shell_ns": 443602485
+          },
+          {
+            "one_electron_ns": 817599,
+            "rank_two_pullback_ns": 6199,
+            "two_electron_pullback_scatter_ns": 2327310,
+            "two_electron_shell_ns": 445739480
+          },
+          {
+            "one_electron_ns": 812331,
+            "rank_two_pullback_ns": 6089,
+            "two_electron_pullback_scatter_ns": 2327351,
+            "two_electron_shell_ns": 438407012
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 426560947
+          },
+          {
+            "consumer_ns": 432371431
+          },
+          {
+            "consumer_ns": 434785171
+          },
+          {
+            "consumer_ns": 427411048
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 525026313,
+            "lambda_parameter_ns": 511402050,
+            "orbital_response_ns": 20736760,
+            "raw_hamiltonian_ns": 28451022,
+            "raw_provider_ns": 28130451,
+            "raw_source_read_ns": 21321,
+            "triples_response_ns": 79869246
+          },
+          {
+            "derivative_ns": 447010852,
+            "lambda_parameter_ns": 490226180,
+            "orbital_response_ns": 18407350,
+            "raw_hamiltonian_ns": 28135679,
+            "raw_provider_ns": 27801587,
+            "raw_source_read_ns": 11187,
+            "triples_response_ns": 79207912
+          },
+          {
+            "derivative_ns": 449157419,
+            "lambda_parameter_ns": 488800449,
+            "orbital_response_ns": 18050424,
+            "raw_hamiltonian_ns": 39068466,
+            "raw_provider_ns": 38709437,
+            "raw_source_read_ns": 12869,
+            "triples_response_ns": 73114246
+          },
+          {
+            "derivative_ns": 441823289,
+            "lambda_parameter_ns": 488969844,
+            "orbital_response_ns": 18063714,
+            "raw_hamiltonian_ns": 28316670,
+            "raw_provider_ns": 27985863,
+            "raw_source_read_ns": 11918,
+            "triples_response_ns": 73170670
+          }
+        ]
+      },
+      "trace_sha256": "e418ad9bf7336463ae0f7bfcbf3530fd62c36a838c95b1bec85d3abc39e2e3bf",
+      "profile": "ao14-batched0"
+    },
+    "a6-p5-candidate": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 87272220,
+            "rank_two_pullback_ns": 6570,
+            "two_electron_finalize_ns": 1304139,
+            "two_electron_pullback_scatter_ns": 2138215,
+            "two_electron_shell_ns": 103321303
+          },
+          {
+            "one_electron_ns": 835175,
+            "rank_two_pullback_ns": 7171,
+            "two_electron_finalize_ns": 1298040,
+            "two_electron_pullback_scatter_ns": 2083222,
+            "two_electron_shell_ns": 101838105
+          },
+          {
+            "one_electron_ns": 841625,
+            "rank_two_pullback_ns": 7652,
+            "two_electron_finalize_ns": 1302988,
+            "two_electron_pullback_scatter_ns": 2075928,
+            "two_electron_shell_ns": 129973616
+          },
+          {
+            "one_electron_ns": 829276,
+            "rank_two_pullback_ns": 6570,
+            "two_electron_finalize_ns": 1304309,
+            "two_electron_pullback_scatter_ns": 2080382,
+            "two_electron_shell_ns": 128406815
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 89294601
+          },
+          {
+            "consumer_ns": 88280658
+          },
+          {
+            "consumer_ns": 117453525
+          },
+          {
+            "consumer_ns": 115792783
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 193059460,
+            "lambda_parameter_ns": 511505132,
+            "orbital_response_ns": 21108709,
+            "raw_hamiltonian_ns": 28331582,
+            "raw_provider_ns": 28001256,
+            "raw_source_read_ns": 17867,
+            "triples_response_ns": 79051196
+          },
+          {
+            "derivative_ns": 105068201,
+            "lambda_parameter_ns": 495172521,
+            "orbital_response_ns": 20075396,
+            "raw_hamiltonian_ns": 33160088,
+            "raw_provider_ns": 31055596,
+            "raw_source_read_ns": 11326,
+            "triples_response_ns": 79791158
+          },
+          {
+            "derivative_ns": 133183458,
+            "lambda_parameter_ns": 496124302,
+            "orbital_response_ns": 19082434,
+            "raw_hamiltonian_ns": 30166850,
+            "raw_provider_ns": 27955067,
+            "raw_source_read_ns": 11988,
+            "triples_response_ns": 77895279
+          },
+          {
+            "derivative_ns": 131624955,
+            "lambda_parameter_ns": 488755159,
+            "orbital_response_ns": 18441651,
+            "raw_hamiltonian_ns": 28143099,
+            "raw_provider_ns": 27827164,
+            "raw_source_read_ns": 12008,
+            "triples_response_ns": 73463780
+          }
+        ]
+      },
+      "trace_sha256": "3e18482eda939b8e6beaf542ef079c3f39c03dc9caf734b4ab3fcea210eb08fa",
+      "profile": "ao14-batched1"
+    },
+    "memcheck-6": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 277351549,
+            "rank_two_pullback_ns": 8282,
+            "two_electron_finalize_ns": 14230873,
+            "two_electron_pullback_scatter_ns": 2239562,
+            "two_electron_shell_ns": 1318958687
+          },
+          {
+            "one_electron_ns": 3063765,
+            "rank_two_pullback_ns": 7682,
+            "two_electron_finalize_ns": 14134968,
+            "two_electron_pullback_scatter_ns": 2188870,
+            "two_electron_shell_ns": 601984866
+          },
+          {
+            "one_electron_ns": 3073961,
+            "rank_two_pullback_ns": 7892,
+            "two_electron_finalize_ns": 14138245,
+            "two_electron_pullback_scatter_ns": 2190629,
+            "two_electron_shell_ns": 600985037
+          },
+          {
+            "one_electron_ns": 3075353,
+            "rank_two_pullback_ns": 7512,
+            "two_electron_finalize_ns": 14112277,
+            "two_electron_pullback_scatter_ns": 2196387,
+            "two_electron_shell_ns": 601652839
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1305769665
+          },
+          {
+            "consumer_ns": 588733675
+          },
+          {
+            "consumer_ns": 587794732
+          },
+          {
+            "consumer_ns": 588552841
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1598890104,
+            "lambda_parameter_ns": 83144634691,
+            "orbital_response_ns": 7299931986,
+            "raw_hamiltonian_ns": 149158767,
+            "raw_provider_ns": 148725088,
+            "raw_source_read_ns": 111760,
+            "triples_response_ns": 81464559
+          },
+          {
+            "derivative_ns": 607536206,
+            "lambda_parameter_ns": 16754691256,
+            "orbital_response_ns": 523656688,
+            "raw_hamiltonian_ns": 148087720,
+            "raw_provider_ns": 147664787,
+            "raw_source_read_ns": 104329,
+            "triples_response_ns": 81152686
+          },
+          {
+            "derivative_ns": 606542593,
+            "lambda_parameter_ns": 16751527866,
+            "orbital_response_ns": 523410092,
+            "raw_hamiltonian_ns": 147774627,
+            "raw_provider_ns": 147342581,
+            "raw_source_read_ns": 109416,
+            "triples_response_ns": 76565102
+          },
+          {
+            "derivative_ns": 607219988,
+            "lambda_parameter_ns": 16751429984,
+            "orbital_response_ns": 522997193,
+            "raw_hamiltonian_ns": 148050561,
+            "raw_provider_ns": 147623652,
+            "raw_source_read_ns": 109146,
+            "triples_response_ns": 76417215
+          }
+        ]
+      },
+      "trace_sha256": "c19e71a71396fe2f52894add54119d124938c58b232103d53d34c35defc47b4d",
+      "profile": "ao14-batched1"
+    },
+    "qualification-12": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 76392570,
+            "rank_two_pullback_ns": 37877,
+            "two_electron_finalize_ns": 1833354,
+            "two_electron_pullback_scatter_ns": 93817883,
+            "two_electron_shell_ns": 1412195630
+          },
+          {
+            "one_electron_ns": 935515,
+            "rank_two_pullback_ns": 43446,
+            "two_electron_finalize_ns": 1812122,
+            "two_electron_pullback_scatter_ns": 91147553,
+            "two_electron_shell_ns": 1510790755
+          },
+          {
+            "one_electron_ns": 893853,
+            "rank_two_pullback_ns": 45338,
+            "two_electron_finalize_ns": 1815818,
+            "two_electron_pullback_scatter_ns": 92570938,
+            "two_electron_shell_ns": 1425386704
+          },
+          {
+            "one_electron_ns": 894734,
+            "rank_two_pullback_ns": 38618,
+            "two_electron_finalize_ns": 1810290,
+            "two_electron_pullback_scatter_ns": 90802331,
+            "two_electron_shell_ns": 1391283139
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 1238497816
+          },
+          {
+            "consumer_ns": 1337402646
+          },
+          {
+            "consumer_ns": 1251925088
+          },
+          {
+            "consumer_ns": 1216749188
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 1583038622,
+            "lambda_parameter_ns": 2632514018,
+            "orbital_response_ns": 613833974,
+            "raw_hamiltonian_ns": 468001050,
+            "raw_provider_ns": 467345796,
+            "raw_source_read_ns": 19690,
+            "triples_response_ns": 2731080565
+          },
+          {
+            "derivative_ns": 1603423519,
+            "lambda_parameter_ns": 2619747586,
+            "orbital_response_ns": 611091179,
+            "raw_hamiltonian_ns": 465719347,
+            "raw_provider_ns": 465064924,
+            "raw_source_read_ns": 19819,
+            "triples_response_ns": 2652315501
+          },
+          {
+            "derivative_ns": 1519407931,
+            "lambda_parameter_ns": 2608695388,
+            "orbital_response_ns": 610855903,
+            "raw_hamiltonian_ns": 467608280,
+            "raw_provider_ns": 466943511,
+            "raw_source_read_ns": 12328,
+            "triples_response_ns": 2649062503
+          },
+          {
+            "derivative_ns": 1483533004,
+            "lambda_parameter_ns": 2608461625,
+            "orbital_response_ns": 609683848,
+            "raw_hamiltonian_ns": 467400062,
+            "raw_provider_ns": 466728493,
+            "raw_source_read_ns": 11337,
+            "triples_response_ns": 2645794220
+          }
+        ]
+      },
+      "trace_sha256": "5a52eacef2f51751c1193b404550fe00a02ea57ba9da8c20f72eec8e1a077498",
+      "profile": "ao28-batched1"
+    },
+    "qualification-6": {
+      "phases": {
+        "conventional_derivative": [
+          {
+            "one_electron_ns": 82593366,
+            "rank_two_pullback_ns": 7320,
+            "two_electron_finalize_ns": 1313724,
+            "two_electron_pullback_scatter_ns": 2112802,
+            "two_electron_shell_ns": 112972451
+          },
+          {
+            "one_electron_ns": 845791,
+            "rank_two_pullback_ns": 6580,
+            "two_electron_finalize_ns": 1305762,
+            "two_electron_pullback_scatter_ns": 2050802,
+            "two_electron_shell_ns": 101282765
+          },
+          {
+            "one_electron_ns": 831069,
+            "rank_two_pullback_ns": 6049,
+            "two_electron_finalize_ns": 1316068,
+            "two_electron_pullback_scatter_ns": 2008332,
+            "two_electron_shell_ns": 102787442
+          },
+          {
+            "one_electron_ns": 828094,
+            "rank_two_pullback_ns": 6310,
+            "two_electron_finalize_ns": 1312102,
+            "two_electron_pullback_scatter_ns": 2024257,
+            "two_electron_shell_ns": 123953863
+          }
+        ],
+        "cuda_conventional_derivative": [
+          {
+            "consumer_ns": 89912702
+          },
+          {
+            "consumer_ns": 88641674
+          },
+          {
+            "consumer_ns": 90203340
+          },
+          {
+            "consumer_ns": 111224923
+          }
+        ],
+        "relaxed_cc_force_completed": [
+          {
+            "derivative_ns": 198002154,
+            "lambda_parameter_ns": 519250635,
+            "orbital_response_ns": 21410099,
+            "raw_hamiltonian_ns": 28535894,
+            "raw_provider_ns": 28193010,
+            "raw_source_read_ns": 19709,
+            "triples_response_ns": 78673725
+          },
+          {
+            "derivative_ns": 104490185,
+            "lambda_parameter_ns": 495948044,
+            "orbital_response_ns": 19074449,
+            "raw_hamiltonian_ns": 28500441,
+            "raw_provider_ns": 28157576,
+            "raw_source_read_ns": 12228,
+            "triples_response_ns": 79699767
+          },
+          {
+            "derivative_ns": 105946353,
+            "lambda_parameter_ns": 490889443,
+            "orbital_response_ns": 18590442,
+            "raw_hamiltonian_ns": 28554022,
+            "raw_provider_ns": 28228333,
+            "raw_source_read_ns": 10155,
+            "triples_response_ns": 89041263
+          },
+          {
+            "derivative_ns": 127126235,
+            "lambda_parameter_ns": 490913049,
+            "orbital_response_ns": 18655640,
+            "raw_hamiltonian_ns": 28843057,
+            "raw_provider_ns": 28519670,
+            "raw_source_read_ns": 10676,
+            "triples_response_ns": 72896125
+          }
+        ]
+      },
+      "trace_sha256": "23c2425218a512b9bca5f3f72169572a28ad3d65bb9515f30fa4e0be93452e13",
+      "profile": "ao14-batched1"
+    }
+  },
+  "schema": "generativeqc.cc-derivative-batch-work.v1",
+  "profile_defaults": {
+    "ao28-batched0": {
+      "conventional_derivative": {
+        "ao_functions": 28,
+        "canonical_shells": 1,
+        "completed": true,
+        "two_electron_shell_calls": 22155
+      },
+      "cuda_conventional_derivative": {
+        "completed": true,
+        "consumer_calls": 22210,
+        "primitive_records": 7137963
+      },
+      "relaxed_cc_force_completed": {
+        "ao_functions": 28,
+        "completed": true,
+        "cuda_response_actions": 1,
+        "include_triples": 1,
+        "lambda_d2h_bytes": 46628104,
+        "lambda_h2d_bytes": 46627224,
+        "lambda_iterations": 105,
+        "lambda_operator_actions": 210,
+        "lambda_synchronizations": 226,
+        "numeric_capacity_bytes": 179377456,
+        "orbital_iterations": 30,
+        "raw_device_source_reads": 1,
+        "raw_source_reads": 1,
+        "raw_source_values": 614656,
+        "raw_transform_fmas": 68841472,
+        "response_d2h_bytes": 5278848,
+        "response_h2d_bytes": 16420256,
+        "response_synchronizations": 225,
+        "triples_response_backend": "cpu",
+        "triples_response_pages": 8
+      }
+    },
+    "ao28-batched1": {
+      "conventional_derivative": {
+        "ao_functions": 28,
+        "canonical_shells": 1,
+        "completed": true,
+        "two_electron_shell_calls": 22155
+      },
+      "cuda_conventional_derivative": {
+        "batch_numeric_capacity_bytes": 6878256,
+        "batched_shells": 1,
+        "completed": true,
+        "consumer_calls": 436,
+        "primitive_records": 7137963
+      },
+      "relaxed_cc_force_completed": {
+        "ao_functions": 28,
+        "completed": true,
+        "cuda_response_actions": 1,
+        "include_triples": 1,
+        "lambda_d2h_bytes": 46628104,
+        "lambda_h2d_bytes": 46627224,
+        "lambda_iterations": 105,
+        "lambda_operator_actions": 210,
+        "lambda_synchronizations": 226,
+        "numeric_capacity_bytes": 179377456,
+        "orbital_iterations": 30,
+        "raw_device_source_reads": 1,
+        "raw_source_reads": 1,
+        "raw_source_values": 614656,
+        "raw_transform_fmas": 68841472,
+        "response_d2h_bytes": 5278848,
+        "response_h2d_bytes": 16420256,
+        "response_synchronizations": 225,
+        "triples_response_backend": "cpu",
+        "triples_response_pages": 8
+      }
+    },
+    "ao14-batched0": {
+      "conventional_derivative": {
+        "ao_functions": 14,
+        "canonical_shells": 1,
+        "completed": true,
+        "two_electron_shell_calls": 1540
+      },
+      "cuda_conventional_derivative": {
+        "completed": true,
+        "consumer_calls": 1546,
+        "primitive_records": 516132
+      },
+      "relaxed_cc_force_completed": {
+        "ao_functions": 14,
+        "completed": true,
+        "cuda_response_actions": 1,
+        "include_triples": 1,
+        "lambda_d2h_bytes": 2652424,
+        "lambda_h2d_bytes": 2651640,
+        "lambda_iterations": 93,
+        "lambda_operator_actions": 186,
+        "lambda_synchronizations": 202,
+        "numeric_capacity_bytes": 117433444,
+        "orbital_iterations": 22,
+        "raw_device_source_reads": 1,
+        "raw_source_reads": 1,
+        "raw_source_values": 38416,
+        "raw_transform_fmas": 2151296,
+        "response_d2h_bytes": 354336,
+        "response_h2d_bytes": 1079040,
+        "response_synchronizations": 89,
+        "triples_response_backend": "cpu",
+        "triples_response_pages": 2
+      }
+    },
+    "ao14-batched1": {
+      "conventional_derivative": {
+        "ao_functions": 14,
+        "canonical_shells": 1,
+        "completed": true,
+        "two_electron_shell_calls": 1540
+      },
+      "cuda_conventional_derivative": {
+        "batch_numeric_capacity_bytes": 6878256,
+        "batched_shells": 1,
+        "completed": true,
+        "consumer_calls": 32,
+        "primitive_records": 516132
+      },
+      "relaxed_cc_force_completed": {
+        "ao_functions": 14,
+        "completed": true,
+        "cuda_response_actions": 1,
+        "include_triples": 1,
+        "lambda_d2h_bytes": 2652424,
+        "lambda_h2d_bytes": 2651640,
+        "lambda_iterations": 93,
+        "lambda_operator_actions": 186,
+        "lambda_synchronizations": 202,
+        "numeric_capacity_bytes": 117433444,
+        "orbital_iterations": 22,
+        "raw_device_source_reads": 1,
+        "raw_source_reads": 1,
+        "raw_source_values": 38416,
+        "raw_transform_fmas": 2151296,
+        "response_d2h_bytes": 354336,
+        "response_h2d_bytes": 1079040,
+        "response_synchronizations": 89,
+        "triples_response_backend": "cpu",
+        "triples_response_pages": 2
+      }
+    }
+  },
+  "encoding": "Merge profile_defaults[record.profile][scope] with each phase row; rows override defaults. Every original observation is preserved."
+}
