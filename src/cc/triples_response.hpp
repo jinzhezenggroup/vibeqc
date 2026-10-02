@@ -29,6 +29,10 @@ struct TriplesResponseResult {
   std::size_t pages{};
   std::size_t arena_bytes{};
   std::size_t numeric_capacity_bytes{};
+  std::size_t device_capacity_bytes{};
+  std::size_t host_to_device_bytes{};
+  std::size_t device_to_host_bytes{};
+  std::size_t kernel_launches{};
   double minimum_absolute_denominator{};
   const char* program_hash{};
   std::string reason;
@@ -38,5 +42,17 @@ TriplesResponseResult triples_response_cpu(const Problem& problem, const SolverR
                                            const std::vector<double>& eps_o,
                                            const std::vector<double>& eps_v,
                                            const TriplesResponseOptions& options = {});
+
+/** Evaluate all eight standard-(T) cotangents on the selected CUDA device.
+ * Inputs remain resident across triangular virtual-triple pages. Only bounded
+ * controls are uploaded per page; projected cotangents are downloaded once.
+ * Insufficient budget or device failure is explicit; no CPU fallback occurs.
+ */
+#if GENERATIVEQC_HAS_CUDA
+TriplesResponseResult triples_response_cuda(const Problem& problem, const SolverResult& cc,
+                                            const std::vector<double>& eps_o,
+                                            const std::vector<double>& eps_v, int device,
+                                            const TriplesResponseOptions& options = {});
+#endif
 
 }  // namespace generativeqc::cc

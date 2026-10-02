@@ -1,0 +1,59 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All 112 complete calls pass independent energy/triples/force/residual gates; all eight native cotangents, page/budget/error gates, public tests and memcheck pass. Paired speed observations with uncertainty and work counts are retained separately.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 2837,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "c8711a1da03eb7f0b6dfe01d138a57113772c8d1e40488496b4e079a73d62966"
+    },
+    {
+      "bytes": 11676,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "99e77da30f5c7151b82892defa89b4b9246d59426ed5385143026da5f6709c18"
+    },
+    {
+      "bytes": 152952,
+      "path": "records.json",
+      "role": "samples",
+      "sha256": "0d1d562b6676d2d81be44abff0566aa9d5aff60f624a77a94cf43b5b9cf0e520"
+    },
+    {
+      "bytes": 25693,
+      "path": "work.json",
+      "role": "summary",
+      "sha256": "4af06ebaaa10538b1456b6275abc00b0469b35dfe2fb5537b5355886500a8a6b"
+    },
+    {
+      "bytes": 77644,
+      "path": "source.patch",
+      "role": "source-patch",
+      "sha256": "2af0d7b4e51ef785b1b6d9fc511e514d64f8a0e6010761cd40ddb29b8d98b95d"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "benchmarks/ccsdt_prepared_endpoint.py",
+      "--device",
+      "cuda",
+      "--atoms",
+      "12",
+      "--forces",
+      "--output",
+      ".artifacts/cc-triples-response-reproduction.json"
+    ],
+    "instructions": "Apply source.patch to the parent revision. Configure Release CUDA 12.9 sm_120 with explicit CXX/CUDA ccache launchers, checkout-root CCACHE_BASEDIR and fast_compile=false. Build generativeqc_triples_response_cuda_tests. Use finite Slurm main allocations (gpu:5090:1 on n1; gpu:pro6000:1 on n2), preserve CUDA_VISIBLE_DEVICES. Set GENERATIVEQC_LIBRARY, PYTHONPATH=python:., CPU library threads=1 and a new GENERATIVEQC_DF_PROGRESS_TRACE path. Alternate parent/candidate processes in six AB/BA pairs for --atoms 6 and 12; retain cold, warm, warm-repeat and changed calls. Run native test plus test_rccsdt_public.py/test_rccsd_public.py with CUDA opt-in environment variables. Memcheck native probe and all four complete 14-AO calls. Profile four 28-AO calls with Nsight CUDA tracing to verify launches and copies."
+  },
+  "schema": "generativeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": true,
+    "revision": "c56f33452ad43187cc949d3319e4f7a07e500086"
+  }
+}

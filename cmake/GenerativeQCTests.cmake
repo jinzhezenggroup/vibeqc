@@ -83,6 +83,10 @@ macro(generativeqc_add_native_tests)
                        LIBRARIES CUDA::cudart)
     generativeqc_native_test(generativeqc_mp2_cuda_status_tests tests/native/test_mp2_cuda_status.cu
                        LIBRARIES CUDA::cudart CUDA::cublas SKIP_77)
+    generativeqc_native_test(generativeqc_triples_response_cuda_tests tests/native/test_triples_response_cuda.cu
+                       LIBRARIES CUDA::cudart SKIP_77)
+    target_include_directories(generativeqc_triples_response_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    add_dependencies(generativeqc_triples_response_cuda_tests generativeqc_rccsd_cpu_codegen)
   endif()
 
   generativeqc_native_test(generativeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)

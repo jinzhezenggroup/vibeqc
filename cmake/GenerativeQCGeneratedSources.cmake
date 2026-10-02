@@ -945,6 +945,17 @@ macro(generativeqc_register_cuda_generated_sources target)
     DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cuda-source "${GENERATIVEQC_RCCSD_CUDA_SOURCE}")
 
+  set(GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_triples_response_cuda.cu")
+  generativeqc_register_generated_sources(
+    NAME generativeqc_triples_response_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+    OUTPUTS "${GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE}"
+    DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+    ARGS --triples-cuda-source "${GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE}")
+
   set(GENERATIVEQC_RCCSDT_CUDA_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cuda.cu")
   generativeqc_register_generated_sources(

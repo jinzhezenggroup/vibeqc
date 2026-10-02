@@ -84,7 +84,7 @@ PREFIX = r"""
 #include <iostream>
 #include <stdexcept>
 #include "cc/rccsdt_force.hpp"
-#include "cc/triples_response.hpp"
+#include "cc/triples_response_internal.hpp"
 #include "hf/reference.hpp"
 #include "posthf/block_capacity_generated.hpp"
 
@@ -95,6 +95,13 @@ namespace generativeqc::response {
 GmresPlan prepare_gmres(std::size_t, const GmresOptions&) { return {}; }
 }
 namespace generativeqc::cc {
+namespace detail {
+// This harness isolates the raw MO-provider phase. Like the generated response
+// arena stubs, the separately owned triples layout contributes no scratch here.
+TriplesResponseLayout triples_response_layout(std::size_t, std::size_t, std::size_t, bool) {
+  return {};
+}
+}
 std::size_t problem_host_bytes(const Problem&) { return 1024; }
 std::size_t lambda_cpu_numeric_capacity(const Problem& p, const SolverResult& result,
                                       const LambdaOptions&, bool) {

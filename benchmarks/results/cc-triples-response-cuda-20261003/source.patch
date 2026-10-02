@@ -1,0 +1,1433 @@
+diff --git a/cmake/GenerativeQCGeneratedSources.cmake b/cmake/GenerativeQCGeneratedSources.cmake
+index 6cf230eb6..d9c60d3c7 100644
+--- a/cmake/GenerativeQCGeneratedSources.cmake
++++ b/cmake/GenerativeQCGeneratedSources.cmake
+@@ -945,6 +945,17 @@ macro(generativeqc_register_cuda_generated_sources target)
+     DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+     ARGS --cuda-source "${GENERATIVEQC_RCCSD_CUDA_SOURCE}")
+ 
++  set(GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE
++      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_triples_response_cuda.cu")
++  generativeqc_register_generated_sources(
++    NAME generativeqc_triples_response_cuda_codegen
++    TARGET ${target}
++    ADD_TO_TARGET
++    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
++    OUTPUTS "${GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE}"
++    DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
++    ARGS --triples-cuda-source "${GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE}")
++
+   set(GENERATIVEQC_RCCSDT_CUDA_SOURCE
+       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cuda.cu")
+   generativeqc_register_generated_sources(
+diff --git a/cmake/GenerativeQCSources.cmake b/cmake/GenerativeQCSources.cmake
+index e37f0b888..b4ca4019f 100644
+--- a/cmake/GenerativeQCSources.cmake
++++ b/cmake/GenerativeQCSources.cmake
+@@ -103,6 +103,7 @@ function(generativeqc_add_posthf_cc_sources target)
+     target_sources(${target} PRIVATE
+       src/cc/cuda_solver.cu
+       src/cc/lambda_response_cuda.cu
++      src/cc/triples_response_cuda.cu
+       src/posthf/df_bridge.cu
+       src/posthf/cuda_transform.cu
+       src/posthf/ri_mp2_cuda.cu)
+diff --git a/cmake/GenerativeQCTests.cmake b/cmake/GenerativeQCTests.cmake
+index bec9eeed8..1cf2b1283 100644
+--- a/cmake/GenerativeQCTests.cmake
++++ b/cmake/GenerativeQCTests.cmake
+@@ -83,6 +83,10 @@ macro(generativeqc_add_native_tests)
+                        LIBRARIES CUDA::cudart)
+     generativeqc_native_test(generativeqc_mp2_cuda_status_tests tests/native/test_mp2_cuda_status.cu
+                        LIBRARIES CUDA::cudart CUDA::cublas SKIP_77)
++    generativeqc_native_test(generativeqc_triples_response_cuda_tests tests/native/test_triples_response_cuda.cu
++                       LIBRARIES CUDA::cudart SKIP_77)
++    target_include_directories(generativeqc_triples_response_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
++    add_dependencies(generativeqc_triples_response_cuda_tests generativeqc_rccsd_cpu_codegen)
+   endif()
+ 
+   generativeqc_native_test(generativeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+diff --git a/src/cc/rccsdt_force.cpp b/src/cc/rccsdt_force.cpp
+index 7d88b36b6..96553d46e 100644
+--- a/src/cc/rccsdt_force.cpp
++++ b/src/cc/rccsdt_force.cpp
+@@ -14,6 +14,7 @@
+ #include <vector>
+ 
+ #include "cc/triples_response.hpp"
++#include "cc/triples_response_internal.hpp"
+ #include "generated_rccsd_cpu.hpp"
+ #include "posthf/capacity.hpp"
+ #include "posthf/mp2_derivative.hpp"
+@@ -428,14 +429,11 @@ static RccsdtForcePlan plan_relaxed_rccsd_force_cpu(const core::System& system,
+           ? bytes(sum({checked_mul(o, checked_mul(v, square(v))), checked_mul(ov, square(o)),
+                        checked_mul(2, square(ov)), checked_mul(2, ov), n}))
+           : 0;
+-  const auto pages = include_triples
+-                         ? std::min<std::size_t>(TriplesResponseOptions{}.batch_capacity,
+-                                                 checked_mul(v, checked_mul(v + 1, v + 2)) / 6)
+-                         : 0;
+   plan.triples_phase_bytes =
+-      include_triples ? sum({plan.retained_input_bytes, bytes(n), triples_retained,
+-                             bytes(generated::triples_response_arena_elements(o, v, pages)),
+-                             checked_mul(pages, 3 * sizeof(std::int64_t) + 2 * sizeof(double))})
++      include_triples ? sum({plan.retained_input_bytes, bytes(n),
++                             detail::triples_response_layout(
++                                 o, v, TriplesResponseOptions{}.batch_capacity, cuda_transform)
++                                 .numeric_bytes()})
+                       : 0;
+   LambdaOptions lambda_options;
+   lambda_options.max_bytes = max_bytes;
+@@ -627,10 +625,17 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
+   if (include_triples) {
+     TriplesResponseOptions triples_options;
+     triples_options.denominator_threshold = denominator_threshold;
+-    triples_options.max_bytes = max_bytes;
+-    triples.emplace(
+-        triples_response_cpu(problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
+-                             std::vector<double>(eps_v.begin(), eps_v.end()), triples_options));
++    triples_options.max_bytes = max_bytes - resources.retained_input_bytes - bytes(n);
++#if GENERATIVEQC_HAS_CUDA
++    if (cuda_derivative)
++      triples.emplace(triples_response_cuda(
++          problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
++          std::vector<double>(eps_v.begin(), eps_v.end()), device_id, triples_options));
++    else
++#endif
++      triples.emplace(
++          triples_response_cpu(problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
++                               std::vector<double>(eps_v.begin(), eps_v.end()), triples_options));
+   }
+ 
+   LambdaOptions lambda_options;
+@@ -882,7 +887,10 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
+       std::chrono::duration<double>(Clock::now() - derivative_started).count();
+ #if GENERATIVEQC_HAS_CUDA
+   if (cuda_response) {
+-    result.response_owned_device_bytes = cuda_response->owned_device_bytes();
++    // These owners execute serially; the public device high-water mark must
++    // include triples scratch even when it exceeds the later response arena.
++    result.response_owned_device_bytes =
++        std::max(cuda_response->owned_device_bytes(), triples ? triples->device_capacity_bytes : 0);
+     result.response_h2d_bytes = cuda_response->h2d_bytes();
+     result.response_d2h_bytes = cuda_response->d2h_bytes();
+     result.response_synchronizations = cuda_response->synchronizations();
+@@ -902,7 +910,13 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
+     Scope::number("ao_functions", n);
+     Scope::number("include_triples", include_triples);
+     Scope::number("cuda_response_actions", result.cuda_response_actions);
+-    Scope::label("triples_response_backend", include_triples ? "cpu" : "absent");
++    Scope::label("triples_response_backend",
++                 include_triples ? (cuda_derivative ? "cuda" : "cpu") : "absent");
++    Scope::number("triples_response_capacity_bytes", triples ? triples->numeric_capacity_bytes : 0);
++    Scope::number("triples_response_device_bytes", triples ? triples->device_capacity_bytes : 0);
++    Scope::number("triples_response_h2d_bytes", triples ? triples->host_to_device_bytes : 0);
++    Scope::number("triples_response_d2h_bytes", triples ? triples->device_to_host_bytes : 0);
++    Scope::number("triples_response_kernel_launches", triples ? triples->kernel_launches : 0);
+     Scope::number("triples_response_ns", nanoseconds(result.triples_seconds));
+     Scope::number("lambda_parameter_ns", nanoseconds(result.lambda_parameter_seconds));
+     Scope::number("raw_hamiltonian_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(
+diff --git a/src/cc/rccsdt_force.hpp b/src/cc/rccsdt_force.hpp
+index 4f8656c96..1ed7be628 100644
+--- a/src/cc/rccsdt_force.hpp
++++ b/src/cc/rccsdt_force.hpp
+@@ -78,6 +78,9 @@ struct RccsdtForceResult {
+   // Together with complete endpoint time these locate work amplification at
+   // larger dimensions without treating a single faster phase as a speedup.
+   double triples_seconds{}, lambda_parameter_seconds{}, orbital_seconds{}, derivative_seconds{};
++  // Peak device capacity across the serialized triples and orbital owners.
++  // Transfer and synchronization counters below describe the orbital owner;
++  // triples transfers have their own completed-phase ledger fields.
+   std::size_t response_owned_device_bytes{};
+   std::size_t response_h2d_bytes{};
+   std::size_t response_d2h_bytes{};
+@@ -127,7 +130,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
+ 
+ /** Publish the qualified conventional RCCSD(T) force through a CUDA derivative consumer.
+  *
+- * Generated Lambda actions plus Hamiltonian/Fock/orbital TensorIR execute on
++ * Generated triples/Lambda actions plus Hamiltonian/Fock/orbital TensorIR execute on
+  * CUDA in the promoted response path, while the physical Z/GMRES control flow
+  * remains host-owned. device_id selects the CUDA response/derivative device;
+  * derivative_stage_budget bounds each generated one-/two-electron derivative
+diff --git a/src/cc/triples_response.cpp b/src/cc/triples_response.cpp
+index 42e0aa81c..1908bb079 100644
+--- a/src/cc/triples_response.cpp
++++ b/src/cc/triples_response.cpp
+@@ -1,5 +1,3 @@
+-#include "cc/triples_response.hpp"
+-
+ #include <algorithm>
+ #include <array>
+ #include <cmath>
+@@ -8,6 +6,7 @@
+ #include <stdexcept>
+ #include <vector>
+ 
++#include "cc/triples_response_internal.hpp"
+ #include "generated_rccsd_cpu.hpp"
+ 
+ namespace generativeqc::cc {
+@@ -72,10 +71,10 @@ void add_last_two_symmetric_block(std::vector<double>& target, const double* sou
+ 
+ }  // namespace
+ 
+-TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult& cc,
+-                                           const std::vector<double>& eps_o,
+-                                           const std::vector<double>& eps_v,
+-                                           const TriplesResponseOptions& options) {
++double detail::validate_triples_response(const Problem& p, const SolverResult& cc,
++                                         const std::vector<double>& eps_o,
++                                         const std::vector<double>& eps_v,
++                                         const TriplesResponseOptions& options) {
+   validate_problem(p);
+   if (!cc.converged())
+     throw std::invalid_argument("RCCSD(T) response requires converged RCCSD amplitudes");
+@@ -106,6 +105,52 @@ TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult&
+   if (minimum_denominator <= options.denominator_threshold)
+     throw std::invalid_argument("near-zero RCCSD(T) denominator");
+ 
++  return minimum_denominator;
++}
++detail::TriplesResponseLayout detail::triples_response_layout(std::size_t o, std::size_t v,
++                                                              std::size_t batch_capacity,
++                                                              bool cuda) {
++  if (!o || !v || !batch_capacity)
++    throw std::invalid_argument("invalid triples response dimensions");
++  const std::array<std::size_t, 8> output_sizes{checked_mul(checked_mul(o, v), checked_mul(v, v)),
++                                                checked_mul(checked_mul(o, v), checked_mul(o, o)),
++                                                checked_mul(checked_mul(o, v), checked_mul(o, v)),
++                                                checked_mul(o, v),
++                                                checked_mul(o, v),
++                                                checked_mul(checked_mul(o, o), checked_mul(v, v)),
++                                                o,
++                                                v};
++  std::size_t output_elements = 0;
++  for (const auto size : output_sizes) output_elements = checked_add(output_elements, size);
++  const std::size_t total_triples = checked_mul(v, checked_mul(v + 1, v + 2)) / 6;
++  TriplesResponseLayout result;
++  result.sizes = output_sizes;
++  result.outputs = output_elements;
++  result.q = std::min(batch_capacity, total_triples);
++  result.arena = generated::triples_response_arena_elements(o, v, result.q);
++  const auto controls = checked_mul(result.q, 3 * sizeof(std::int64_t) + 2 * sizeof(double));
++  result.host_bytes = checked_add(bytes(output_elements), controls);
++  if (cuda) {
++    // Resident scientific inputs and accumulated cotangents each have the same
++    // eight shapes. The energy seed and asynchronous error flag are also owned.
++    const auto elements = checked_add(checked_mul(2, output_elements), result.arena);
++    const auto raw =
++        checked_add(bytes(elements), checked_add(controls, sizeof(double) + sizeof(int)));
++    result.device_bytes = checked_mul(checked_add(raw, 255) / 256, 256);
++    (void)checked_add(result.host_bytes, result.device_bytes);
++  } else {
++    result.host_bytes = checked_add(result.host_bytes, bytes(result.arena));
++  }
++  return result;
++}
++
++TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult& cc,
++                                           const std::vector<double>& eps_o,
++                                           const std::vector<double>& eps_v,
++                                           const TriplesResponseOptions& options) {
++  const double minimum_denominator =
++      detail::validate_triples_response(p, cc, eps_o, eps_v, options);
++
+   TriplesResponseResult result;
+   result.minimum_absolute_denominator = minimum_denominator;
+   const std::array<std::size_t, 8> output_sizes{
+diff --git a/src/cc/triples_response.hpp b/src/cc/triples_response.hpp
+index ec4ca6e16..85d9feaae 100644
+--- a/src/cc/triples_response.hpp
++++ b/src/cc/triples_response.hpp
+@@ -29,6 +29,10 @@ struct TriplesResponseResult {
+   std::size_t pages{};
+   std::size_t arena_bytes{};
+   std::size_t numeric_capacity_bytes{};
++  std::size_t device_capacity_bytes{};
++  std::size_t host_to_device_bytes{};
++  std::size_t device_to_host_bytes{};
++  std::size_t kernel_launches{};
+   double minimum_absolute_denominator{};
+   const char* program_hash{};
+   std::string reason;
+@@ -39,4 +43,16 @@ TriplesResponseResult triples_response_cpu(const Problem& problem, const SolverR
+                                            const std::vector<double>& eps_v,
+                                            const TriplesResponseOptions& options = {});
+ 
++/** Evaluate all eight standard-(T) cotangents on the selected CUDA device.
++ * Inputs remain resident across triangular virtual-triple pages. Only bounded
++ * controls are uploaded per page; projected cotangents are downloaded once.
++ * Insufficient budget or device failure is explicit; no CPU fallback occurs.
++ */
++#if GENERATIVEQC_HAS_CUDA
++TriplesResponseResult triples_response_cuda(const Problem& problem, const SolverResult& cc,
++                                            const std::vector<double>& eps_o,
++                                            const std::vector<double>& eps_v, int device,
++                                            const TriplesResponseOptions& options = {});
++#endif
++
+ }  // namespace generativeqc::cc
+diff --git a/tools/generate_rccsd_native.py b/tools/generate_rccsd_native.py
+index 838eeb63d..01c271856 100644
+--- a/tools/generate_rccsd_native.py
++++ b/tools/generate_rccsd_native.py
+@@ -45,6 +45,7 @@ from generativeqc_compiler.tensor.ir import (
+ )
+ from generativeqc_compiler.tensor.optimize import prepare_for_backend
+ from generativeqc_compiler.tensor.program import Program
++from generativeqc_compiler.tensor.scaled_arithmetic import emit_scaled_bilinear
+ 
+ if typing.TYPE_CHECKING:
+     from generativeqc_compiler.tensor.types import Index, TensorSpec
+@@ -1109,11 +1110,22 @@ def cpu_header() -> str:
+ 
+ 
+ def _cuda_kernel(
+-    node: typing.Any, number: int, prefix: str, names: dict[int, str]
++    node: typing.Any,
++    number: int,
++    prefix: str,
++    names: dict[int, str],
++    *,
++    batch_dim: bool = False,
+ ) -> str:
+     size = _device_size(node.spec)
+-    arguments = [f"const double* a{i}" for i in range(len(node.inputs))]
+-    arguments += ["double* out", "std::size_t o", "std::size_t v", "int* error"]
++    arguments = [
++        f"const {'std::int64_t' if source.spec.dtype == 'int64' else 'double'}* a{i}"
++        for i, source in enumerate(node.inputs)
++    ]
++    arguments += ["double* out", "std::size_t o", "std::size_t v"]
++    if batch_dim:
++        arguments.append("std::size_t q")
++    arguments.append("int* error")
+     uses_complete_orbital = any(
+         _dim(index) == "n"
+         for spec in (node.spec, *(source.spec for source in node.inputs))
+@@ -1138,6 +1150,95 @@ def _cuda_kernel(
+         lines += [
+             f"    out[flat]=generativeqc_tensor::quotient(a0[flat],a1[flat],error,{number});"
+         ]
++    elif node.op == "multiply":
++        lines.append(
++            f"    out[flat]=generativeqc_tensor::finite(__dmul_rn(a0[flat],a1[flat]),error,{number});"
++        )
++    elif node.op == "scaled_bilinear":
++        args = ",".join(f"a{i}[flat]" for i in range(6))
++        lines.append(f"    out[flat]=triples_scaled_bilinear({args},error,{number});")
++    elif node.op in (
++        "broadcast",
++        "reduce",
++        "runtime_indexed_select",
++        "runtime_indexed_scatter_add",
++    ):
++        source = node.inputs[0]
++        axes = tuple(node.attrs["axes"])
++        coords = [f"c{axis}" for axis in range(len(node.spec.indices))]
++        if coords:
++            lines.append("    std::size_t rem=flat;")
++        for axis in reversed(range(len(coords))):
++            dim = _dim(node.spec.indices[axis])
++            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
++        if node.op == "broadcast":
++            index = _flat_coords([coords[axis] for axis in axes], source.spec)
++            lines.append(
++                f"    out[flat]=generativeqc_tensor::finite(a0[{index}],error,{number});"
++            )
++        elif node.op == "reduce":
++            remaining = iter(coords)
++            source_coords = [
++                f"r{axis}" if axis in axes else next(remaining)
++                for axis in range(len(source.spec.indices))
++            ]
++            lines.append("    double sum=0.0;")
++            # Match the source-major CPU accumulation order for each output.
++            for axis in sorted(axes):
++                lines.append(
++                    f"    for(std::size_t r{axis}=0;r{axis}<{_dim(source.spec.indices[axis])};++r{axis}){{"
++                )
++            index = _flat_coords(source_coords, source.spec)
++            lines.append(f"    sum=__dadd_rn(sum,a0[{index}]);")
++            lines += ["    }"] * len(axes)
++            lines.append(
++                f"    out[flat]=generativeqc_tensor::finite(sum,error,{number});"
++            )
++        elif node.op == "runtime_indexed_select":
++            remaining = iter(coords[1:])
++            source_coords = []
++            lines.append("    bool valid=true;")
++            for axis, index in enumerate(source.spec.indices):
++                if axis in axes:
++                    map_index = axes.index(axis) + 1
++                    lines += [
++                        f"    const auto m{axis}=a{map_index}[c0];",
++                        f"    valid=valid && m{axis}>=0 && static_cast<std::size_t>(m{axis})<{_dim(index)};",
++                    ]
++                    source_coords.append(f"static_cast<std::size_t>(m{axis})")
++                else:
++                    source_coords.append(next(remaining))
++            index = _flat_coords(source_coords, source.spec)
++            lines += [
++                f"    if(!valid){{atomicCAS(error,0,{number + 1});out[flat]=0.0;continue;}}",
++                f"    out[flat]=generativeqc_tensor::finite(a0[{index}],error,{number});",
++            ]
++        else:
++            # One writer per destination, reducing matching lanes in source order.
++            # This deliberately avoids atomic FP adds and their nondeterminism.
++            source_coords = [
++                "lane",
++                *[coord for axis, coord in enumerate(coords) if axis not in axes],
++            ]
++            index = _flat_coords(source_coords, source.spec)
++            lines += [
++                "    double sum=0.0;",
++                "    for(std::size_t lane=0;lane<q;++lane){",
++                "      bool valid=true,match=true;",
++            ]
++            for map_index, axis in enumerate(axes, 1):
++                dim = _dim(node.spec.indices[axis])
++                lines += [
++                    f"      const auto m{axis}=a{map_index}[lane];",
++                    f"      valid=valid && m{axis}>=0 && static_cast<std::size_t>(m{axis})<{dim};",
++                    f"      match=match && static_cast<std::size_t>(m{axis})==c{axis};",
++                ]
++            lines += [
++                f"      if(!valid){{atomicCAS(error,0,{number + 1});continue;}}",
++                f"      if(match) sum=__dadd_rn(sum,a0[{index}]);",
++                "    }",
++                f"    out[flat]=generativeqc_tensor::finite(sum,error,{number});",
++            ]
+     elif node.op == "einsum":
+         labels = node.attrs["labels"]
+         output = tuple(node.attrs["output"])
+@@ -1262,6 +1363,8 @@ def _cuda_program(
+     *,
+     input_overrides: dict[str, str] | None = None,
+     arena_field: str | None = None,
++    state_type: str = "CudaState",
++    batch_dim: bool = False,
+ ) -> str:
+     names = _prepare_program(program)
+     arena_plan = _arena_plan(program)
+@@ -1269,7 +1372,9 @@ def _cuda_program(
+     kernels = []
+     for number, node in enumerate(_execution_nodes(program)):
+         if node.op != "input":
+-            kernels.append(_cuda_kernel(node, number, prefix, names))
++            kernels.append(
++                _cuda_kernel(node, number, prefix, names, batch_dim=batch_dim)
++            )
+     uses_complete_orbital = any(
+         _dim(index) == "n"
+         for node in _execution_nodes(program)
+@@ -1277,7 +1382,7 @@ def _cuda_program(
+         for index in node.spec.indices
+     )
+     lines = kernels + [
+-        f"static {output_type} run_{prefix}(CudaState& s){{",
++        f"static {output_type} run_{prefix}({state_type}& s){{",
+         "  auto* arena=s."
+         + (
+             arena_field
+@@ -1291,6 +1396,7 @@ def _cuda_program(
+         )
+         + ";",
+         "  const auto o=s.o,v=s.v;",
++        *(["  const auto q=s.q;"] if batch_dim else []),
+         *(["  const std::size_t n=checked_add(o,v);"] if uses_complete_orbital else []),
+         "  std::size_t cursor=0;",
+         "  auto allocate=[&](std::size_t count)->double*{double* p=arena+cursor;cursor=checked_add(cursor,count);return p;};",
+@@ -1308,12 +1414,22 @@ def _cuda_program(
+                 if input_name in input_overrides
+                 else _input_access(input_name, cuda=True)
+             )
+-            lines.append(f"  const double* {names[number]}={access};")
++            ctype = "std::int64_t" if node.spec.dtype == "int64" else "double"
++            lines.append(f"  const {ctype}* {names[number]}={access};")
+             continue
+         lines.append(f"  double* {names[number]}=slot{arena_plan.node_slots[number]};")
+         sources = [names[x._emit_index] for x in node.inputs]
+         count = _size(node.spec)
+-        launch_args = ",".join([*sources, names[number], "s.o", "s.v", "s.error"])
++        launch_args = ",".join(
++            [
++                *sources,
++                names[number],
++                "s.o",
++                "s.v",
++                *(["s.q"] if batch_dim else []),
++                "s.error",
++            ]
++        )
+         lines += [
+             f"  {prefix}_node_{number}<<<generativeqc_tensor::blocks(static_cast<generativeqc_tensor::I>({count}),256),256,0,s.stream>>>({launch_args});",
+         ]
+@@ -1360,6 +1476,8 @@ def _cuda_program(
+         returned = [outputs["eri"]]
+     elif output_type == "DeviceOrbitalJvpOutput":
+         returned = [outputs["d_fov"]]
++    elif output_type == "TriplesResponseOutputs":
++        returned = [outputs[f"bar_{name}"] for name in TRIPLES_RESPONSE_INPUTS]
+     else:
+         raise ValueError(f"unsupported RCCSD generated CUDA output type {output_type}")
+     lines.append("  return {" + ",".join(returned) + "};")
+@@ -1583,10 +1701,61 @@ def cuda_source() -> str:
+     )
+ 
+ 
++def triples_response_cuda_source() -> str:
++    """Emit only the paged triples VJP, sharing the CPU arena/identity contract.
++
++    Keep this translation unit separate from the large CCSD response unit. The
++    backend plans must agree before borrowing its generated admission function.
++    """
++    primal = build_runtime_tile_triples_program(*REPRESENTATIVE, capacity=6)
++    vjp = transpose_program(
++        primal,
++        ("triples_energy",),
++        inputs=TRIPLES_RESPONSE_INPUTS,
++        max_elements=100_000_000,
++    ).program
++    cpu = _prepare_production(vjp, "cpu")
++    program = _prepare_production(vjp, "cuda")
++    if cpu.logical_hash != program.logical_hash or _arena_plan(cpu) != _arena_plan(
++        program
++    ):
++        raise ValueError("triples CPU/CUDA response arena or identity diverged")
++    return "\n".join(
++        [
++            "// Generated from the runtime-indexed standard-(T) TensorIR VJP.",
++            '#include "cc/triples_response_cuda.cuh"',
++            '#include "tensor/cuda_runtime.cuh"',
++            "namespace generativeqc::cc::generated {",
++            "using generativeqc_tensor::finite;",
++            emit_scaled_bilinear("triples_"),
++            _cuda_program(
++                program,
++                "triples_response",
++                "TriplesResponseOutputs",
++                input_overrides={
++                    node.attrs["name"]: f"s.inputs.{node.attrs['name']}"
++                    for node in program.live_nodes
++                    if node.op == "input"
++                },
++                arena_field="arena",
++                state_type="TriplesResponseCudaState",
++                batch_dim=True,
++            ),
++            "TriplesResponseOutputs run_triples_response_cuda(TriplesResponseCudaState& s){return run_triples_response(s);}",
++            "std::size_t triples_response_cuda_kernels_per_page(){return "
++            + str(sum(node.op != "input" for node in _execution_nodes(program)))
++            + ";}",
++            "}",
++            "",
++        ]
++    )
++
++
+ def main() -> None:
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--cpu-header", type=Path)
+     parser.add_argument("--cuda-source", type=Path)
++    parser.add_argument("--triples-cuda-source", type=Path)
+     args = parser.parse_args()
+     if args.cpu_header:
+         args.cpu_header.parent.mkdir(parents=True, exist_ok=True)
+@@ -1594,8 +1763,13 @@ def main() -> None:
+     if args.cuda_source:
+         args.cuda_source.parent.mkdir(parents=True, exist_ok=True)
+         args.cuda_source.write_text(cuda_source(), encoding="utf-8")
+-    if not args.cpu_header and not args.cuda_source:
+-        parser.error("select --cpu-header and/or --cuda-source")
++    if args.triples_cuda_source:
++        args.triples_cuda_source.parent.mkdir(parents=True, exist_ok=True)
++        args.triples_cuda_source.write_text(
++            triples_response_cuda_source(), encoding="utf-8"
++        )
++    if not args.cpu_header and not args.cuda_source and not args.triples_cuda_source:
++        parser.error("select --cpu-header, --cuda-source and/or --triples-cuda-source")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/docs/cuda_ownership/files/src/cc/triples_response_cuda.cu.json b/docs/cuda_ownership/files/src/cc/triples_response_cuda.cu.json
+new file mode 100644
+index 000000000..33914495b
+--- /dev/null
++++ b/docs/cuda_ownership/files/src/cc/triples_response_cuda.cu.json
+@@ -0,0 +1,7 @@
++{
++  "path": "src/cc/triples_response_cuda.cu",
++  "reason": "Native bounded standard-(T) response storage, triangular page controls, symmetry projection and transfer ownership; scientific cotangents are emitted from the shared TensorIR VJP.",
++  "regions": [],
++  "role": "runtime",
++  "subsystem": "runtime"
++}
+diff --git a/docs/cuda_ownership/files/src/cc/triples_response_cuda.cuh.json b/docs/cuda_ownership/files/src/cc/triples_response_cuda.cuh.json
+new file mode 100644
+index 000000000..08043cb48
+--- /dev/null
++++ b/docs/cuda_ownership/files/src/cc/triples_response_cuda.cuh.json
+@@ -0,0 +1,7 @@
++{
++  "path": "src/cc/triples_response_cuda.cuh",
++  "reason": "Borrowed runtime-shaped device views and generated triples-response evaluator interface.",
++  "regions": [],
++  "role": "runtime",
++  "subsystem": "runtime"
++}
+diff --git a/src/cc/triples_response_cuda.cu b/src/cc/triples_response_cuda.cu
+new file mode 100644
+index 000000000..07485da93
+--- /dev/null
++++ b/src/cc/triples_response_cuda.cu
+@@ -0,0 +1,198 @@
++#include <algorithm>
++#include <array>
++#include <cmath>
++#include <cstdint>
++#include <stdexcept>
++
++#include "cc/triples_response_cuda.cuh"
++#include "cc/triples_response_internal.hpp"
++#include "tensor/cuda_runtime.cuh"
++
++namespace generativeqc::cc {
++namespace {
++using generativeqc_tensor::cuda_check;
++
++struct DeviceScope {
++  int previous{-1};
++  explicit DeviceScope(int device) {
++    if (device < 0) throw std::invalid_argument("invalid triples response CUDA device");
++    cuda_check(cudaGetDevice(&previous));
++    cuda_check(cudaSetDevice(device));
++  }
++  ~DeviceScope() {
++    if (previous >= 0) (void)cudaSetDevice(previous);
++  }
++};
++
++/** Destroy before any borrowed host transfer buffer, including during unwinding.
++ * Each completed page already fences its error flag; the destructor also drains
++ * partial submissions when a later allocation, launch or transfer fails.
++ */
++struct DeviceStorage {
++  DeviceScope scope;
++  cudaStream_t stream{};
++  unsigned char* base{};
++  DeviceStorage(int device, std::size_t bytes) : scope(device) {
++    cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
++    try {
++      cuda_check(cudaMalloc(reinterpret_cast<void**>(&base), bytes));
++    } catch (...) {
++      (void)cudaStreamDestroy(stream);
++      throw;
++    }
++  }
++  ~DeviceStorage() {
++    (void)cudaStreamSynchronize(stream);
++    (void)cudaFree(base);
++    (void)cudaStreamDestroy(stream);
++  }
++  DeviceStorage(const DeviceStorage&) = delete;
++  DeviceStorage& operator=(const DeviceStorage&) = delete;
++};
++
++__global__ void accumulate_projected(double* target, const double* source, std::size_t count,
++                                     std::size_t symmetric_side, int* error) {
++  for (std::size_t flat = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; flat < count;
++       flat += std::size_t(blockDim.x) * gridDim.x) {
++    double value = source[flat];
++    if (symmetric_side) {
++      const auto matrix = symmetric_side * symmetric_side;
++      const auto offset = flat % matrix;
++      const auto mate =
++          flat - offset + (offset % symmetric_side) * symmetric_side + offset / symmetric_side;
++      value = __dmul_rn(0.5, __dadd_rn(value, source[mate]));
++    }
++    target[flat] = generativeqc_tensor::finite(__dadd_rn(target[flat], value), error, 10000);
++  }
++}
++}  // namespace
++
++TriplesResponseResult triples_response_cuda(const Problem& p, const SolverResult& cc,
++                                            const std::vector<double>& eps_o,
++                                            const std::vector<double>& eps_v, int device,
++                                            const TriplesResponseOptions& options) {
++  const auto denominator = detail::validate_triples_response(p, cc, eps_o, eps_v, options);
++  auto layout = detail::triples_response_layout(p.nocc, p.nvir, options.batch_capacity, true);
++  while (layout.numeric_bytes() > options.max_bytes && layout.q > 1)
++    layout = detail::triples_response_layout(p.nocc, p.nvir, layout.q - 1, true);
++  if (layout.numeric_bytes() > options.max_bytes)
++    throw std::length_error("RCCSD(T) CUDA response exceeds the complete numeric memory budget");
++
++  TriplesResponseResult result;
++  result.minimum_absolute_denominator = denominator;
++  result.arena_bytes = layout.arena * sizeof(double);
++  result.numeric_capacity_bytes = layout.numeric_bytes();
++  result.device_capacity_bytes = layout.device_bytes;
++  const std::array<std::vector<double>*, 8> outputs{&result.ovvv,  &result.ovoo, &result.ovov,
++                                                    &result.fov,   &result.t1,   &result.t2,
++                                                    &result.eps_o, &result.eps_v};
++  const std::array<const std::vector<double>*, 8> inputs{&p.ovvv, &p.ovoo, &p.ovov, &p.fov,
++                                                         &cc.t1,  &cc.t2,  &eps_o,  &eps_v};
++  for (std::size_t i = 0; i < outputs.size(); ++i) outputs[i]->resize(layout.sizes[i]);
++  const auto q = layout.q;
++  std::vector<std::int64_t> a_map(q), b_map(q), c_map(q);
++  std::vector<double> active(q), weights(q, 1.0);
++  const double seed = 1.0;
++  int error = 0;
++  {
++    DeviceStorage storage(device, layout.device_bytes);
++    generated::TriplesResponseCudaState state{};
++    state.o = p.nocc;
++    state.v = p.nvir;
++    state.q = q;
++    state.stream = storage.stream;
++    std::size_t cursor = 0;
++    auto reserve = [&](std::size_t bytes) {
++      const auto next = generated::checked_add(cursor, bytes);
++      if (next > layout.device_bytes) throw std::logic_error("triples CUDA layout overflow");
++      auto* address = storage.base + cursor;
++      cursor = next;
++      return address;
++    };
++    auto upload = [&](const void* dst, const void* src, std::size_t bytes) {
++      cuda_check(cudaMemcpyAsync(const_cast<void*>(dst), src, bytes, cudaMemcpyHostToDevice,
++                                 storage.stream));
++      result.host_to_device_bytes = generated::checked_add(result.host_to_device_bytes, bytes);
++    };
++    auto download = [&](void* dst, const void* src, std::size_t bytes) {
++      cuda_check(cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, storage.stream));
++      result.device_to_host_bytes = generated::checked_add(result.device_to_host_bytes, bytes);
++    };
++    const std::array<const double**, 8> fields{
++        &state.inputs.ovvv, &state.inputs.ovoo, &state.inputs.ovov,  &state.inputs.fov,
++        &state.inputs.t1,   &state.inputs.t2,   &state.inputs.eps_o, &state.inputs.eps_v};
++    for (std::size_t i = 0; i < fields.size(); ++i) {
++      const auto size = layout.sizes[i] * sizeof(double);
++      *fields[i] = reinterpret_cast<double*>(reserve(size));
++      upload(*fields[i], inputs[i]->data(), size);
++    }
++    std::array<double*, 8> accumulated{};
++    for (std::size_t i = 0; i < accumulated.size(); ++i) {
++      const auto size = layout.sizes[i] * sizeof(double);
++      accumulated[i] = reinterpret_cast<double*>(reserve(size));
++      cuda_check(cudaMemsetAsync(accumulated[i], 0, size, storage.stream));
++    }
++    state.arena = reinterpret_cast<double*>(reserve(result.arena_bytes));
++    state.inputs.a_map = reinterpret_cast<std::int64_t*>(reserve(q * sizeof(std::int64_t)));
++    state.inputs.b_map = reinterpret_cast<std::int64_t*>(reserve(q * sizeof(std::int64_t)));
++    state.inputs.c_map = reinterpret_cast<std::int64_t*>(reserve(q * sizeof(std::int64_t)));
++    state.inputs.active = reinterpret_cast<double*>(reserve(q * sizeof(double)));
++    state.inputs.degeneracy = reinterpret_cast<double*>(reserve(q * sizeof(double)));
++    state.inputs.bar_triples_energy = reinterpret_cast<double*>(reserve(sizeof(double)));
++    state.error = reinterpret_cast<int*>(reserve(sizeof(int)));
++    upload(state.inputs.bar_triples_energy, &seed, sizeof(seed));
++
++    auto run_page = [&](std::size_t count) {
++      if (!count) return;
++      for (std::size_t lane = 0; lane < q; ++lane) {
++        active[lane] = lane < count ? 1.0 : 0.0;
++        if (lane >= count) weights[lane] = 1.0;
++      }
++      upload(state.inputs.a_map, a_map.data(), q * sizeof(std::int64_t));
++      upload(state.inputs.b_map, b_map.data(), q * sizeof(std::int64_t));
++      upload(state.inputs.c_map, c_map.data(), q * sizeof(std::int64_t));
++      upload(state.inputs.active, active.data(), q * sizeof(double));
++      upload(state.inputs.degeneracy, weights.data(), q * sizeof(double));
++      const auto response = generated::run_triples_response_cuda(state);
++      const std::array<const double*, 8> values{response.ovvv,  response.ovoo, response.ovov,
++                                                response.fov,   response.t1,   response.t2,
++                                                response.eps_o, response.eps_v};
++      const std::array<std::size_t, 8> symmetry{p.nvir, p.nocc, p.nocc * p.nvir, 0, 0, 0, 0, 0};
++      for (std::size_t i = 0; i < values.size(); ++i)
++        accumulate_projected<<<generativeqc_tensor::blocks(layout.sizes[i], 256), 256, 0,
++                               storage.stream>>>(accumulated[i], values[i], layout.sizes[i],
++                                                 symmetry[i], state.error);
++      cuda_check(cudaGetLastError());
++      download(&error, state.error, sizeof(error));
++      cuda_check(cudaStreamSynchronize(storage.stream));
++      if (error)
++        throw std::runtime_error("RCCSD(T) CUDA response failed at node " + std::to_string(error));
++      ++result.pages;
++      result.kernel_launches = generated::checked_add(
++          result.kernel_launches, generated::triples_response_cuda_kernels_per_page() + 8);
++    };
++    std::size_t lane = 0;
++    for (std::size_t a = 0; a < p.nvir; ++a)
++      for (std::size_t b = 0; b <= a; ++b)
++        for (std::size_t c = 0; c <= b; ++c) {
++          a_map[lane] = static_cast<std::int64_t>(a);
++          b_map[lane] = static_cast<std::int64_t>(b);
++          c_map[lane] = static_cast<std::int64_t>(c);
++          weights[lane] = a == c ? 6.0 : (a == b || b == c ? 2.0 : 1.0);
++          if (++lane == q) {
++            run_page(lane);
++            lane = 0;
++          }
++        }
++    run_page(lane);
++    for (std::size_t i = 0; i < outputs.size(); ++i)
++      download(outputs[i]->data(), accumulated[i], layout.sizes[i] * sizeof(double));
++    cuda_check(cudaStreamSynchronize(storage.stream));
++  }
++  // Release device scratch before diagnostic strings can extend the phase peak.
++  result.program_hash = generated::triples_response_program_hash;
++  result.reason =
++      "native CUDA runtime-indexed standard-(T) response with resident projected cotangents";
++  return result;
++}
++}  // namespace generativeqc::cc
+diff --git a/src/cc/triples_response_cuda.cuh b/src/cc/triples_response_cuda.cuh
+new file mode 100644
+index 000000000..c64b3aacc
+--- /dev/null
++++ b/src/cc/triples_response_cuda.cuh
+@@ -0,0 +1,25 @@
++#pragma once
++
++#include <cuda_runtime.h>
++
++#include "generated_rccsd_cpu.hpp"
++
++namespace generativeqc::cc::generated {
++
++/** Borrowed device views for one runtime-indexed triples-response page.
++ * The owner validates dimensions, sizes the arena with the shared generated
++ * planner, and fences the stream before reusing controls or releasing storage.
++ * Returned pointers borrow arena slots until the next page is submitted.
++ */
++struct TriplesResponseCudaState {
++  std::size_t o{}, v{}, q{};
++  TriplesResponseInputs inputs;
++  double* arena{};
++  int* error{};
++  cudaStream_t stream{};
++};
++
++TriplesResponseOutputs run_triples_response_cuda(TriplesResponseCudaState& state);
++std::size_t triples_response_cuda_kernels_per_page();
++
++}  // namespace generativeqc::cc::generated
+diff --git a/src/cc/triples_response_internal.hpp b/src/cc/triples_response_internal.hpp
+new file mode 100644
+index 000000000..9130f32c9
+--- /dev/null
++++ b/src/cc/triples_response_internal.hpp
+@@ -0,0 +1,26 @@
++#pragma once
++
++#include <array>
++
++#include "cc/triples_response.hpp"
++
++namespace generativeqc::cc::detail {
++
++/** Shared input gates; both backends must accept the same scientific domain. */
++double validate_triples_response(const Problem&, const SolverResult&, const std::vector<double>&,
++                                 const std::vector<double>&, const TriplesResponseOptions&);
++
++struct TriplesResponseLayout {
++  std::array<std::size_t, 8> sizes{};
++  std::size_t outputs{}, arena{}, q{}, host_bytes{}, device_bytes{};
++  std::size_t numeric_bytes() const { return host_bytes + device_bytes; }
++};
++
++/** Charge all owned numeric storage, including both sides of CUDA transfers.
++ * Borrowed problem, amplitudes and orbital energies belong to the caller's
++ * retained phase. The device allocation has one final 256-byte alignment pad.
++ */
++TriplesResponseLayout triples_response_layout(std::size_t o, std::size_t v,
++                                              std::size_t batch_capacity, bool cuda);
++
++}  // namespace generativeqc::cc::detail
+diff --git a/tests/native/test_triples_response_cuda.cu b/tests/native/test_triples_response_cuda.cu
+new file mode 100644
+index 000000000..e4cfe1b91
+--- /dev/null
++++ b/tests/native/test_triples_response_cuda.cu
+@@ -0,0 +1,185 @@
++#include <array>
++#include <cmath>
++#include <iostream>
++#include <limits>
++#include <stdexcept>
++#include <vector>
++
++#include "cc/triples_response_cuda.cuh"
++#include "cc/triples_response_internal.hpp"
++
++namespace {
++using namespace generativeqc::cc;
++struct Fixture {
++  std::size_t o, v;
++  std::array<std::vector<double>, 8> inputs, expected;
++};
++#include "../reference_data/cc/triples_response_cuda.hpp"
++
++void require(bool condition, const char* message) {
++  if (!condition) throw std::runtime_error(message);
++}
++void check(cudaError_t code) { require(code == cudaSuccess, cudaGetErrorString(code)); }
++
++void compare(const TriplesResponseResult& result, const Fixture& f) {
++  const std::array<const std::vector<double>*, 8> actual{&result.ovvv,  &result.ovoo, &result.ovov,
++                                                         &result.fov,   &result.t1,   &result.t2,
++                                                         &result.eps_o, &result.eps_v};
++  for (std::size_t k = 0; k < actual.size(); ++k) {
++    require(actual[k]->size() == f.expected[k].size(), "response shape");
++    for (std::size_t i = 0; i < actual[k]->size(); ++i)
++      require(std::isfinite((*actual[k])[i]) && std::abs((*actual[k])[i] - f.expected[k][i]) <=
++                                                    8e-11 * (1.0 + std::abs(f.expected[k][i])),
++              "full VJP oracle mismatch");
++  }
++}
++
++template <class Error, class F>
++void throws(F&& action) {
++  bool rejected = false;
++  try {
++    action();
++  } catch (const Error&) {
++    rejected = true;
++  }
++  require(rejected, "expected rejection");
++}
++
++void owner_case(const Fixture& f) {
++  const auto o = f.o, v = f.v, ov = o * v;
++  Problem p;
++  p.nocc = o;
++  p.nvir = v;
++  p.reference_energy = 0.0;
++  p.foo.resize(o * o);
++  p.fvv.resize(v * v);
++  p.ovvv = f.inputs[0];
++  p.ovoo = f.inputs[1];
++  p.ovov = f.inputs[2];
++  p.fov = f.inputs[3];
++  p.ovvo.resize(ov * ov);
++  p.oovv.resize(ov * ov);
++  p.oooo.resize(o * o * o * o);
++  p.vvvv.resize(v * v * v * v);
++  p.d1.assign(ov, -1.0);
++  p.d2.assign(ov * ov, -2.0);
++  p.initial_t1.resize(ov);
++  p.initial_t2.resize(ov * ov);
++  SolverResult cc;
++  cc.status = SolveStatus::Converged;
++  cc.t1 = f.inputs[4];
++  cc.t2 = f.inputs[5];
++  auto eo = f.inputs[6], ev = f.inputs[7];
++  TriplesResponseOptions options;
++  for (auto q : {1u, 2u, 3u, 16u}) {
++    options.batch_capacity = q;
++    const auto layout = detail::triples_response_layout(o, v, q, true);
++    options.max_bytes = layout.numeric_bytes();
++    const auto result = triples_response_cuda(p, cc, eo, ev, 0, options);
++    compare(result, f);
++    require(result.numeric_capacity_bytes == options.max_bytes, "exact budget accounting");
++    require(result.device_capacity_bytes == layout.device_bytes, "device accounting");
++    require(result.pages == (v * (v + 1) * (v + 2) / 6 + layout.q - 1) / layout.q,
++            "triangular page count");
++    require(result.host_to_device_bytes == layout.outputs * 8 + 8 + result.pages * layout.q * 40,
++            "resident input upload count");
++    require(result.device_to_host_bytes == layout.outputs * 8 + result.pages * sizeof(int),
++            "one final cotangent download");
++    require(std::string(result.program_hash) == generated::triples_response_program_hash,
++            "shared program identity");
++  }
++  // Reduce capacity to fit the complete budget; reject before allocation if even
++  // one lane cannot fit. This also covers a padded, non-divisible final page.
++  options.batch_capacity = 16;
++  options.max_bytes = detail::triples_response_layout(o, v, 2, true).numeric_bytes();
++  compare(triples_response_cuda(p, cc, eo, ev, 0, options), f);
++  options.max_bytes = detail::triples_response_layout(o, v, 1, true).numeric_bytes() - 1;
++  throws<std::length_error>([&] { triples_response_cuda(p, cc, eo, ev, 0, options); });
++  options.max_bytes = 64ULL << 20;
++  throws<std::invalid_argument>([&] { triples_response_cuda(p, cc, eo, ev, -1, options); });
++  cc.t1[0] = std::numeric_limits<double>::quiet_NaN();
++  throws<std::invalid_argument>([&] { triples_response_cuda(p, cc, eo, ev, 0, options); });
++  cc.t1 = f.inputs[4];
++  ev[0] = eo.back();
++  throws<std::invalid_argument>([&] { triples_response_cuda(p, cc, eo, ev, 0, options); });
++}
++
++/** Direct generated-page test exercises arbitrary maps and non-unit seeds,
++ * independently of the triangular owner. Invalid maps must set the error flag
++ * without performing an out-of-range read, including on inactive lanes.
++ */
++void page_case() {
++  generated::TriplesResponseCudaState state{};
++  state.o = 2;
++  state.v = 3;
++  state.q = 5;
++  std::vector<void*> allocations;
++  auto copy = [&](const void* input, std::size_t bytes) {
++    void* pointer{};
++    check(cudaMalloc(&pointer, bytes));
++    allocations.push_back(pointer);
++    if (input) check(cudaMemcpy(pointer, input, bytes, cudaMemcpyHostToDevice));
++    return pointer;
++  };
++  try {
++    std::array<const double**, 8> fields{
++        &state.inputs.ovvv, &state.inputs.ovoo, &state.inputs.ovov,  &state.inputs.fov,
++        &state.inputs.t1,   &state.inputs.t2,   &state.inputs.eps_o, &state.inputs.eps_v};
++    for (std::size_t i = 0; i < fields.size(); ++i)
++      *fields[i] = static_cast<double*>(
++          copy(page_fixture.inputs[i].data(), page_fixture.inputs[i].size() * 8));
++    state.inputs.a_map = static_cast<std::int64_t*>(copy(page_a_map.data(), 40));
++    state.inputs.b_map = static_cast<std::int64_t*>(copy(page_b_map.data(), 40));
++    state.inputs.c_map = static_cast<std::int64_t*>(copy(page_c_map.data(), 40));
++    state.inputs.active = static_cast<double*>(copy(page_active.data(), 40));
++    state.inputs.degeneracy = static_cast<double*>(copy(page_degeneracy.data(), 40));
++    state.inputs.bar_triples_energy = static_cast<double*>(copy(&page_seed, 8));
++    state.error = static_cast<int*>(copy(nullptr, sizeof(int)));
++    state.arena = static_cast<double*>(
++        copy(nullptr, generated::triples_response_arena_elements(2, 3, 5) * 8));
++    auto out = generated::run_triples_response_cuda(state);
++    int error{};
++    check(cudaMemcpy(&error, state.error, sizeof(error), cudaMemcpyDeviceToHost));
++    require(error == 0, "generated page error");
++    const std::array<const double*, 8> device{out.ovvv, out.ovoo, out.ovov,  out.fov,
++                                              out.t1,   out.t2,   out.eps_o, out.eps_v};
++    TriplesResponseResult result;
++    const std::array<std::vector<double>*, 8> host{&result.ovvv,  &result.ovoo, &result.ovov,
++                                                   &result.fov,   &result.t1,   &result.t2,
++                                                   &result.eps_o, &result.eps_v};
++    for (std::size_t i = 0; i < host.size(); ++i) {
++      host[i]->resize(page_fixture.expected[i].size());
++      check(cudaMemcpy(host[i]->data(), device[i], host[i]->size() * 8, cudaMemcpyDeviceToHost));
++    }
++    compare(result, page_fixture);
++    for (auto invalid : {std::int64_t(-1), std::int64_t(3)}) {
++      auto maps = page_a_map;
++      maps.back() = invalid;
++      check(cudaMemcpy(const_cast<std::int64_t*>(state.inputs.a_map), maps.data(), 40,
++                       cudaMemcpyHostToDevice));
++      (void)generated::run_triples_response_cuda(state);
++      check(cudaMemcpy(&error, state.error, sizeof(error), cudaMemcpyDeviceToHost));
++      require(error != 0, "invalid map escaped error gate");
++    }
++  } catch (...) {
++    (void)cudaDeviceSynchronize();
++    for (auto pointer : allocations) (void)cudaFree(pointer);
++    throw;
++  }
++  for (auto pointer : allocations) check(cudaFree(pointer));
++}
++}  // namespace
++
++int main() {
++  int devices{};
++  if (cudaGetDeviceCount(&devices) != cudaSuccess || !devices) return 77;
++  try {
++    for (const auto& fixture : fixtures) owner_case(fixture);
++    page_case();
++    std::cout << "native CUDA triples response: full VJP, indexed page and budget gates passed\n";
++    return 0;
++  } catch (const std::exception& error) {
++    std::cerr << error.what() << '\n';
++    return 1;
++  }
++}
+diff --git a/tests/reference_data/cc/triples_response_cuda.hpp b/tests/reference_data/cc/triples_response_cuda.hpp
+new file mode 100644
+index 000000000..b34a3e7ba
+--- /dev/null
++++ b/tests/reference_data/cc/triples_response_cuda.hpp
+@@ -0,0 +1,390 @@
++// Frozen independent full-six-index VJP oracles (seeds 2101,2102,2103).
++// Reproduce with tests/python/test_rccsdt_native_triples_response_owner.py::_case.
++// Project ovvv/ovoo last-two symmetry and ovov composite-pair symmetry.
++// The native runtime-indexed generator is not used to produce these outputs.
++static const std::array<Fixture, 3> fixtures{
++    {{1,
++      2,
++      {{{0x1.47ec5ebc06b3fp+0, 0x1.e023cf8fe57c5p-1, -0x1.2e6ca167218cep-4, 0x1.29262002e922ap-3,
++         0x1.9064aa99d8de6p-1, 0x1.0d95c1f8628b9p+0, 0x1.2ac57102013ecp+0, 0x1.a9aad96968ec7p-1},
++        {-0x1.1b91cc637d90ep-1, 0x1.5909dd069f10ap-3},
++        {0x1.852c018543113p-2, -0x1.26a8489c76d6bp-2, 0x1.2d4db328a9023p-2, 0x1.5f3ecf73361c0p+0},
++        {-0x1.e056dc777fbe7p-2, 0x1.6fba327960525p-2},
++        {-0x1.0045491693754p+0, -0x1.ac2e814b166f1p+0},
++        {-0x1.64d390e159f05p+0, 0x1.8c264282da302p+0, 0x1.8c264282da302p+0, 0x1.b66ab37584b08p-1},
++        {-0x1.3333333333333p+0},
++        {0x1.0000000000000p-1, 0x1.199999999999ap+0}}},
++      {{{-0x1.9a9cde3f8e157p-47, 0x1.c7dcf7d4b1aa3p-48, 0x1.c7dcf7d4b1aa3p-48, 0x0.0p+0,
++         -0x1.8c264282da302p-50, 0x1.bc67f2ff6d116p-49, 0x1.bc67f2ff6d116p-49,
++         -0x1.4904681d810a0p-52},
++        {0x1.9a9cde3f8e157p-47, 0x1.de675c8a3a72ap-50},
++        {-0x1.204df23965e3fp-49, 0x1.ac2e814b166f1p-52, 0x1.ac2e814b166f1p-52,
++         -0x1.03765f86f5784p-52},
++        {-0x1.ff08afdae65a8p-49, -0x1.0d58efaadaaf0p-53},
++        {-0x1.08ac1d3080c48p-51, 0x1.c38aca62a6e98p-51},
++        {0x1.b756edad77667p-47, -0x1.1645789e6e4a3p-49, 0x1.64a8b5e245dadp-49,
++         0x1.b7f496e3b5687p-50},
++        {-0x1.6efe7d821e9cdp-48},
++        {0x1.d952fe4beaed2p-48, -0x1.a952032731416p-50}}}},
++     {2,
++      3,
++      {{{-0x1.d38b36ade2a36p-3, 0x1.64f475caeb765p-2,  -0x1.48e7dcd9995dep-5, -0x1.8107eb1b22a18p-1,
++         -0x1.2238671673cd4p-1, 0x1.78c9fce2614b7p-2,  0x1.409018b4a9ac3p+0,  -0x1.8b670d6633c58p+0,
++         -0x1.5d1b97cfba939p-1, -0x1.cd5fa8eb3898ep-1, -0x1.3db774d5d7eecp+0, -0x1.31112031d0d7ap+0,
++         -0x1.22646cdec6d7dp-1, -0x1.a7f9b288fdba0p-2, 0x1.4099fd72e462ap+1,  0x1.2b5cf8367db37p-2,
++         0x1.5111702af7f86p-1,  0x1.b61e3898a2d04p-1,  0x1.50d3bbced3045p-2,  0x1.590b3b061015cp-5,
++         -0x1.546ed5eef86d6p-2, 0x1.1c42b085ef2f3p-1,  0x1.aea46aae49521p-5,  -0x1.63e095404a800p-4,
++         0x1.6005b833e928cp-1,  0x1.16541fd661b20p+0,  -0x1.e63977c91513ep-1, 0x1.2b68f462d6583p+1,
++         0x1.f85464e9dc570p-2,  0x1.4bed82bbebb58p+0,  0x1.d107e616cf817p-1,  0x1.4ce056840fcf1p+0,
++         -0x1.fb755a2c93117p-1, -0x1.b368414ad4efep-1, -0x1.75770008be373p-1, 0x1.4c5bf60dfd7f6p-3,
++         -0x1.f6b28acf2c7bap+0, -0x1.4a3949fa3eba9p-5, -0x1.2cb4ff81e3ef1p+0, 0x1.45e9ad89d921dp-2,
++         0x1.0faaa8656dfcap-1,  -0x1.1e48e2e36c1afp-1, -0x1.4dc2c76bd6c5cp-6, -0x1.3d09096c7ba59p-1,
++         -0x1.8927a9646e64dp-1, 0x1.63ba29249f391p-1,  -0x1.1ce925846a4c0p+0, -0x1.f76bacf41ee5cp-1,
++         0x1.df06532b1592ep-1,  0x1.20e2b7279ea82p+0,  0x1.ccbd07581c06cp-5,  -0x1.af015f91b4bb8p-1,
++         0x1.72aaf60a783e6p+0,  -0x1.5a2a0002c9ad2p-7},
++        {0x1.9dc84768cb204p-3,  0x1.6f4b9ef56b49ap-1,  0x1.43621585cb4e9p-3,
++         0x1.ef5010e4788afp-1,  -0x1.4fbfb32034a22p-1, -0x1.b38b38530bd21p-1,
++         0x1.10580e3bd9091p+0,  0x1.870174e645bf4p-1,  -0x1.35eeb83e87b98p-1,
++         0x1.0bd678e8d0379p+0,  0x1.f6508ad7d00d1p+0,  0x1.d2e42d441bb90p-3,
++         0x1.77df34026acd2p-2,  -0x1.dccd3b758babbp-1, 0x1.499c0a9a8f222p-1,
++         0x1.2d1a2d826e00bp-3,  0x1.9d344d5c05c52p+0,  -0x1.abefcbb743db1p-2,
++         -0x1.e14035b8e644fp-3, -0x1.7fda12a940fd4p-1, -0x1.c739209144b30p-5,
++         0x1.686ae4af80945p-13, 0x1.32080da3d482ep+0,  -0x1.c8630173de1c3p-2},
++        {0x1.0ef1982f4dfbfp-1,  0x1.493fd6542d9bbp-2,  0x1.3dac9f0c35ee6p+0,  -0x1.f2f7cecd948ffp-2,
++         -0x1.677233844577bp-3, 0x1.c720acc7e0952p-1,  -0x1.5f66996500323p-3, -0x1.14e0ec84d86a3p+0,
++         -0x1.47379c35a067ep-5, -0x1.98f42ffedad5bp-2, -0x1.b3ea94e86bb9fp-1, 0x1.111d2067d9834p+0,
++         -0x1.8115b22ea5d0dp-1, 0x1.5039b7a3efcbfp-3,  -0x1.3a1f358c4e138p-1, -0x1.24b48a9292bcep-1,
++         -0x1.35a71e8465255p-1, 0x1.2f7c176a3a7b9p-1,  0x1.ddbcb7ef393d9p-1,  0x1.2291e94ad5d30p-2,
++         -0x1.dbaf34781251dp+0, 0x1.efcfedf07b3a2p-2,  0x1.f55793b399718p-3,  0x1.f6f7b3de2f758p-3,
++         0x1.4d868339efd93p+0,  -0x1.651cfbe87d74ap-2, -0x1.0d52ae4c6fff2p-1, -0x1.239086c5beeddp+1,
++         0x1.6f4efebd4e141p-5,  -0x1.ae39e293a0eb4p-2, 0x1.9d6f5652cfd38p-1,  0x1.4f6181c4f88e5p-2,
++         -0x1.bb1a3f3303a90p-5, 0x1.6b2caf58ccceap+0,  0x1.5f99eef7952dbp+0,  0x1.bc1e81de719ddp-1},
++        {0x1.1ebd6ce22e162p-9, 0x1.104e7e31fbbd4p+0, -0x1.5e943c0952735p-1, 0x1.95c66fc5540bbp+0,
++         0x1.213bc758b2e64p-3, -0x1.15c8d5c4e24ccp+0},
++        {-0x1.15692e9a55d52p+0, -0x1.bdc00a95ad07ep-4, -0x1.7f28a0274430ap-1, 0x1.399bfde574a84p+0,
++         -0x1.313362faadcabp-1, -0x1.a8bccb60302c6p-2},
++        {-0x1.a31804d420c83p-3, -0x1.53f7bea7982e0p-1, 0x1.88c1663650b2bp+0,
++         -0x1.53f7bea7982e0p-1, 0x1.185b303eeb43cp+0,  -0x1.0171a86619eb1p-1,
++         0x1.88c1663650b2bp+0,  -0x1.0171a86619eb1p-1, 0x1.6107c9f009602p-3,
++         0x1.de1b0112fc424p-3,  0x1.7cf79e52382c8p-1,  0x1.a07b5bcc38dacp-1,
++         -0x1.4bec8e1b6757ap-6, -0x1.80a9154583c05p-2, 0x1.b2d0054f595adp-2,
++         -0x1.200665b54cf07p-1, -0x1.37cdc21a8bce1p-2, -0x1.ea229c1ee3f12p-3,
++         0x1.de1b0112fc424p-3,  -0x1.4bec8e1b6757ap-6, -0x1.200665b54cf07p-1,
++         0x1.7cf79e52382c8p-1,  -0x1.80a9154583c05p-2, -0x1.37cdc21a8bce1p-2,
++         0x1.a07b5bcc38dacp-1,  0x1.b2d0054f595adp-2,  -0x1.ea229c1ee3f12p-3,
++         0x1.a1c4f34ddda85p-2,  0x1.318f2b4958bcep-1,  -0x1.315679c1102e7p-2,
++         0x1.318f2b4958bcep-1,  0x1.ba25b65f8b84fp+0,  0x1.854d687f4ee1ap-1,
++         -0x1.315679c1102e7p-2, 0x1.854d687f4ee1ap-1,  -0x1.6a82e15142222p-3},
++        {-0x1.3333333333333p+0, -0x1.999999999999ap-1},
++        {0x1.0000000000000p-1, 0x1.999999999999ap-1, 0x1.199999999999ap+0}}},
++      {{{0x1.0b74ccced2383p+5,  -0x1.51aaca8c66eecp+1, 0x1.af48bbecb0be8p+0,  -0x1.51aaca8c66eecp+1,
++         0x1.d098e98e3a140p+4,  0x1.7a7dcb5c3ee3fp+4,  0x1.af48bbecb0be8p+0,  0x1.7a7dcb5c3ee3fp+4,
++         0x1.be972dde1d134p+4,  -0x1.788a00faf7821p+3, -0x1.b1784f6aae2ebp+3, -0x1.c927bc4cf1120p+0,
++         -0x1.b1784f6aae2ebp+3, -0x1.6d6c8d0d730f2p+2, -0x1.4e6b4b4ff42c4p+2, -0x1.c927bc4cf1120p+0,
++         -0x1.4e6b4b4ff42c4p+2, -0x1.df2b7e376dda0p+2, 0x1.b5015951e12b4p+2,  -0x1.6dbe7f12bdba0p+2,
++         -0x1.33547ba1c26f0p+2, -0x1.6dbe7f12bdba0p+2, -0x1.fc606255b9848p-1, 0x1.af14540365d60p+2,
++         -0x1.33547ba1c26f0p+2, 0x1.af14540365d60p+2,  0x1.7e095986e2a33p+2,  -0x1.07ea2809fc63dp+5,
++         -0x1.167acd98919b2p+2, -0x1.30443ad22f72ep+1, -0x1.167acd98919b2p+2, 0x1.57a3e7bda752ap+2,
++         -0x1.e2d2900474cf0p-1, -0x1.30443ad22f72ep+1, -0x1.e2d2900474cf0p-1, -0x1.1cf0b54285feap+5,
++         0x1.cf2d9289b751ap+4,  -0x1.7165741ccc8d0p-1, 0x1.51bd05a7a1569p+1,  -0x1.7165741ccc8d0p-1,
++         0x1.51d647b828ee6p+3,  0x1.3fac0e9d92445p+3,  0x1.51bd05a7a1569p+1,  0x1.3fac0e9d92445p+3,
++         0x1.3fc43f76ea186p+4,  0x1.3eaadc0e1fe98p+2,  -0x1.3af2c02af5d88p+4, 0x1.35f7e025c4297p+4,
++         -0x1.3af2c02af5d88p+4, 0x1.02e8cd6c3ed10p+1,  -0x1.e62c49bfd18e2p+0, 0x1.35f7e025c4297p+4,
++         -0x1.e62c49bfd18e2p+0, -0x1.f9a26dedda3d4p+1},
++        {-0x1.9d4e763aa2f46p+4, -0x1.85a7c8f6df006p+1, -0x1.85a7c8f6df006p+1, -0x1.0232ceb3d628ep+6,
++         0x1.87ae23d87a038p+3,  0x1.a598432762b21p+2,  0x1.a598432762b21p+2,  0x1.9727e2c4edf35p+3,
++         -0x1.38f729f76c7b9p+2, -0x1.78e57d00f33e4p+0, -0x1.78e57d00f33e4p+0, -0x1.ba877c96a0224p+2,
++         0x1.7fb2a09ee2ed5p+5,  0x1.0cdb19b8436fbp+3,  0x1.0cdb19b8436fbp+3,  0x1.e8cefed7aa2b2p+3,
++         -0x1.3c1cd1dc36bf3p+5, -0x1.ab80bae1fcd5ap+1, -0x1.ab80bae1fcd5ap+1, -0x1.3fa3522448631p+4,
++         -0x1.7fc01f0fab398p+2, -0x1.816af2c19d3c8p-4, -0x1.816af2c19d3c8p-4, 0x1.78e42684b20c8p+1},
++        {-0x1.9ef447bb3e090p+1, -0x1.b9063c43ac133p-2, -0x1.069d93490b8bcp+2, 0x1.5c078121936c5p+1,
++         -0x1.b73d4524ca842p+2, -0x1.ce449ec6bd354p+2, -0x1.b9063c43ac133p-2, 0x1.367a4d35c222cp-2,
++         0x1.9da417f27c992p-5,  0x1.88f9f7fbb6361p+1,  -0x1.69ceea98c0bf7p+1, 0x1.74c6485f980b2p+1,
++         -0x1.069d93490b8bcp+2, 0x1.9da417f27c992p-5,  -0x1.8cf347f4a7880p-2, 0x1.9f1739adea70fp+2,
++         -0x1.086fed44d5fccp+2, 0x1.05792ac2c5fb8p-5,  0x1.5c078121936c5p+1,  0x1.88f9f7fbb6361p+1,
++         0x1.9f1739adea70fp+2,  -0x1.11443b184ea1ep+1, 0x1.8d5c455904858p+0,  0x1.176e213208222p+0,
++         -0x1.b73d4524ca842p+2, -0x1.69ceea98c0bf7p+1, -0x1.086fed44d5fccp+2, 0x1.8d5c455904858p+0,
++         -0x1.805ea4954c964p+1, -0x1.64a533628c986p+1, -0x1.ce449ec6bd354p+2, 0x1.74c6485f980b2p+1,
++         0x1.05792ac2c5fb8p-5,  0x1.176e213208222p+0,  -0x1.64a533628c986p+1, 0x1.8912e8ff27ffap+0},
++        {0x1.3cb7ff4255427p+4, -0x1.6651bf552098cp+2, -0x1.fcf55280552a0p-6, -0x1.5d03a25da0111p+3,
++         0x1.cd7d2142b269dp+3, -0x1.823f54edf470ap+1},
++        {0x1.52f6b82354b9cp+3, -0x1.5b7b6206e94a2p+2, 0x1.478342a17c0d0p+2, -0x1.d819a61ba4e94p+2,
++         0x1.bf818cc56bc7cp+3, -0x1.f9d108634bb74p+1},
++        {0x1.535fc26cbd4c0p-8,  0x1.b8121e8225b63p+3,  -0x1.bbebf44307d34p+5,
++         -0x1.f85ed08b247d1p+4, -0x1.5dd8c544f5b1ap+4, -0x1.08fd044cfb3c6p+3,
++         -0x1.6a0a4a477f230p+5, 0x1.0223b40c318f7p+4,  0x1.c113714a2b166p+1,
++         -0x1.da3cf90a2e5f2p+5, -0x1.2839a66525c81p+4, -0x1.c54fc0fb811e8p+5,
++         0x1.dbb179d862ff4p+5,  -0x1.98fa7bb70cd14p+3, -0x1.01a8fd1620429p+3,
++         0x1.86f3188cf4d3ap+5,  -0x1.472000afb0d40p-1, -0x1.f0786c37244e8p+4,
++         0x1.27926fe6f6f5fp+5,  -0x1.d73d3355c86e6p+4, 0x1.68cf3e6502f5ap+4,
++         -0x1.71856d9f18a70p+5, 0x1.9fd7fcdd05998p+3,  0x1.fde17779c9696p+2,
++         -0x1.71ad0d927450bp+5, -0x1.cb19a8ea1ff8ep+3, 0x1.ec4c7f46f4874p+4,
++         0x1.4ded509deb070p+3,  -0x1.1647b3253866bp+2, -0x1.a039cb85993f5p+3,
++         0x1.1ceb1c8433753p+4,  -0x1.3a025f58bded9p+4, -0x1.9c11b002c5944p+5,
++         0x1.ab4b582f4a6fbp+5,  -0x1.48d6203e997d0p+5, -0x1.1d9f11cd26453p+4},
++        {-0x1.24990a37dd663p+6, -0x1.0f4da6b79e682p+6},
++        {0x1.1cf116e66fc0fp+6, 0x1.d90b993454982p+4, 0x1.41656777edcebp+5}}}},
++     {3,
++      2,
++      {{{-0x1.bdce972727914p-1, -0x1.c9b1355cb9f03p-1, -0x1.63c7300af3dccp+0, 0x1.4a366071b12ddp+1,
++         0x1.8d01aaa148947p+1,  0x1.9c6d10f076f5ep+0,  0x1.2af8e330d6145p-1,  0x1.d55fa6815721dp-4,
++         -0x1.d82a2402af7b2p-2, -0x1.b85118a5d199fp-1, 0x1.c4f6874a8512dp-1,  -0x1.cc70789b1455dp+0,
++         0x1.3255379664c6ap-3,  -0x1.34860bd3bcbadp+1, -0x1.760843cc3d17dp+0, -0x1.7b8259a9114fep-1,
++         -0x1.58b4a67f2a8e7p-1, 0x1.898163b125884p-1,  -0x1.34ed0f1b039f7p-1, -0x1.a97a649dd70d9p-2,
++         -0x1.b5a39a28ee60bp+0, 0x1.426712a9f573ap-2,  -0x1.c02e722a299bcp-2, 0x1.0596b6de22e1fp+1},
++        {0x1.8fe9254450d73p+0,  0x1.da0477d4200edp-2,  -0x1.4aa710f0f52a7p-2, -0x1.200432640a272p-1,
++         -0x1.06ee178fd7daap+0, -0x1.ad91d652e09a2p-7, 0x1.497cb9f9a6084p-1,  0x1.73ae98d973025p-1,
++         -0x1.5ccdfaf6c047dp-1, -0x1.60ac584af668bp-2, 0x1.0162002456733p+0,  -0x1.452b1274db023p-1,
++         0x1.4e60d4a3a685bp-2,  -0x1.13602a00d3bbap+1, -0x1.5784b169acdecp+0, 0x1.a1e9c6b1d9f6ap-3,
++         -0x1.6262e53c26204p+0, -0x1.2cb2e25f85455p+0, 0x1.5bd48808ee0d8p-2,  -0x1.819dbf79201d6p+1,
++         0x1.be2b86350bb0ap-2,  0x1.55ed2d5f1fa12p-1,  -0x1.31e663a0c6e8ep+0, -0x1.628215f91e3a8p-4,
++         0x1.393e285801379p-2,  -0x1.0e6560504c032p-3, -0x1.1aa50bc760817p-3, 0x1.b06950de20963p-3,
++         0x1.1561ffce0d54ap+0,  -0x1.49975be18e2a3p+0, 0x1.48bc943e35cccp-2,  -0x1.751ef96daffd1p+0,
++         0x1.cc256e7e2dfc4p+0,  0x1.dc4d4b003ec94p-3,  0x1.39216609fc17dp+1,  -0x1.4d77fdc5b992ap+0,
++         -0x1.c4d568c7ec93ap-2, -0x1.6273dcc42fe6fp-1, 0x1.23cb85c47e61ap+0,  0x1.c47cdbd96d868p-1,
++         -0x1.760b4c486a12fp-1, -0x1.5f60e162cb5f9p-1, 0x1.fa895b1270654p-3,  0x1.525fa10083565p-2,
++         -0x1.265aaa4a2d29fp+0, 0x1.bb48ab2bd6d2bp-3,  0x1.fce757feb21bfp+0,  -0x1.88e4bfcd0f390p+0,
++         0x1.7b6fa29301354p-3,  0x1.c1802403720edp-8,  0x1.2a2db72d26222p-2,  -0x1.8b6a67f0e6740p-2,
++         0x1.df4216c213103p+0,  0x1.4c114d4c9c285p+0},
++        {-0x1.272eff2923280p-1, 0x1.9af68feeaf9dcp-1,  -0x1.733b23da437abp+0, 0x1.680eb88600c6ap+0,
++         -0x1.36aacf09c916ap-2, -0x1.a926058d9d294p-4, -0x1.1951c8e811906p-3, -0x1.1f2d085fe0a00p+1,
++         0x1.4913f567d0047p+0,  0x1.3d1075754d611p-1,  0x1.9e1379982324ep-1,  -0x1.af3e4b556951fp-1,
++         0x1.2e5f46fcc616cp-1,  -0x1.75dd484b6c05cp+1, -0x1.a1bede4f0a096p+0, -0x1.588c0af852f33p+0,
++         0x1.24ac41c28bc1fp+0,  -0x1.431bb80728cb6p+1, -0x1.095fa0e796245p-1, 0x1.2dee4eb6123a8p+0,
++         -0x1.39cc47d2ce4bcp-1, 0x1.f6a5bf322b36dp-1,  0x1.6dd767e0c0e5cp-3,  0x1.4ab96d4d6a8f0p-1,
++         0x1.5998b833a6af3p-1,  0x1.c1f8625a8db8dp+0,  0x1.f3db2b3f0db26p+0,  -0x1.20b899eb044d7p-1,
++         -0x1.4bf5e4dfe649bp+0, 0x1.10ac3ea6c38cap-3,  -0x1.c0a6c051d7a8ap-1, 0x1.d6c3fd69e53c1p+0,
++         -0x1.67a58f10c2599p-1, -0x1.f03495ff7f3ffp-4, 0x1.5efe60f9ce2aep+0,  0x1.a3ff4665d9b8bp-3},
++        {-0x1.198072ee753b5p-3, -0x1.ac4b5929b63ccp-1, 0x1.31f46b41e6751p+1, -0x1.4debed649effdp-1,
++         -0x1.e4715e641f432p-2, -0x1.1aee2cf3ef7afp+0},
++        {0x1.0b7aa5a27f405p-2, 0x1.3f12edc972fc0p-3, 0x1.1f38b637b8381p-10, -0x1.007fd4d14fbe9p+0,
++         0x1.5c178071e495dp-4, -0x1.00c15e0ab55c5p+0},
++        {-0x1.33ff67378fb65p-1, 0x1.a9b2de271ea8fp-3,  0x1.a9b2de271ea8fp-3,  -0x1.73ee28a702fc5p-1,
++         -0x1.6249e053d4bdep+0, -0x1.df3e84fd31300p-9, 0x1.e5efc2e6d5dc0p-5,  0x1.a47e105500547p-3,
++         -0x1.c43068c14ae52p-2, -0x1.81714f4306a5cp-2, 0x1.649165923e0a6p-1,  -0x1.d582ad7a48a7ap-2,
++         -0x1.6249e053d4bdep+0, 0x1.e5efc2e6d5dc0p-5,  -0x1.df3e84fd31300p-9, 0x1.a47e105500547p-3,
++         0x1.0ab4f88b3364fp-2,  0x1.fd068cbedd70ep-1,  0x1.fd068cbedd70ep-1,  -0x1.38319a245a2f5p+0,
++         0x1.ab87b2e61d3d8p-6,  0x1.7bb391f4ad8eep-1,  0x1.9b3b2f76bbc78p-3,  0x1.f53dd46658fa8p-2,
++         -0x1.c43068c14ae52p-2, 0x1.649165923e0a6p-1,  -0x1.81714f4306a5cp-2, -0x1.d582ad7a48a7ap-2,
++         0x1.ab87b2e61d3d8p-6,  0x1.9b3b2f76bbc78p-3,  0x1.7bb391f4ad8eep-1,  0x1.f53dd46658fa8p-2,
++         -0x1.1dac67515bed3p-1, 0x1.e96ca1b0cf104p-3,  0x1.e96ca1b0cf104p-3,  0x1.37138cdbab22dp-1},
++        {-0x1.3333333333333p+0, -0x1.0000000000000p+0, -0x1.999999999999ap-1},
++        {0x1.0000000000000p-1, 0x1.199999999999ap+0}}},
++      {{{0x1.70b3a1890337ep+2,  0x1.0e492ebb36896p+4,  0x1.0e492ebb36896p+4,  -0x1.18d6fb0b94d4ap+4,
++         -0x1.1a7897859f35ep+6, 0x1.355144a7d5f10p+3,  0x1.355144a7d5f10p+3,  -0x1.8bfc2488a02a1p+4,
++         0x1.6fe12190e4457p+3,  -0x1.2ccf033c27342p+2, -0x1.2ccf033c27342p+2, 0x1.0718956e608ebp+4,
++         -0x1.536ae76397035p+2, -0x1.e65a85117ab66p+2, -0x1.e65a85117ab66p+2, -0x1.0dd92dca631c5p+1,
++         0x1.9f8413781b6fap+3,  -0x1.0bbea8160a606p+4, -0x1.0bbea8160a606p+4, 0x1.adfc977521004p+3,
++         0x1.e5cf062db5caap+5,  -0x1.4bdeaba2602a3p+2, -0x1.4bdeaba2602a3p+2, 0x1.7ec8673c54e2cp+2},
++        {-0x1.412b26887c92cp+3, 0x1.4afa7e5b08da4p+2,  0x1.1d50381c5cd38p-2,  0x1.4afa7e5b08da4p+2,
++         0x1.23e08b86bbab3p+4,  -0x1.cd51b9390f6ccp+1, 0x1.1d50381c5cd38p-2,  -0x1.cd51b9390f6ccp+1,
++         0x1.caf8d336b5272p+1,  0x1.000adda466bb5p+5,  -0x1.fcee12f490668p+1, 0x1.d887268c3e88fp+3,
++         -0x1.fcee12f490668p+1, 0x1.2272207aa50d8p+5,  0x1.efbc6a8671750p+3,  0x1.d887268c3e88fp+3,
++         0x1.efbc6a8671750p+3,  0x1.b0e4866105700p+4,  -0x1.1271ec826853bp+4, -0x1.0eb4a059d7b28p-1,
++         0x1.3d8acb834d073p+2,  -0x1.0eb4a059d7b28p-1, 0x1.039d292f9ecc1p+2,  0x1.5be2ccb3d60f2p-1,
++         0x1.3d8acb834d073p+2,  0x1.5be2ccb3d60f2p-1,  -0x1.dafd0800a421bp+3, -0x1.6198764a3dc4cp+2,
++         -0x1.73429917e078ap+4, 0x1.0727ec07bc6d0p-2,  -0x1.73429917e078ap+4, 0x1.6d8547c5f5c9ap+2,
++         0x1.47f41c991fc10p+3,  0x1.0727ec07bc6d0p-2,  0x1.47f41c991fc10p+3,  0x1.ce6aaccd108cap+2,
++         -0x1.8d4fca9289808p+4, -0x1.db3f00db9ce85p+2, -0x1.3a0e45c521f3fp+3, -0x1.db3f00db9ce85p+2,
++         0x1.7594b9e7e6418p+2,  -0x1.58d341626f2dfp+2, -0x1.3a0e45c521f3fp+3, -0x1.58d341626f2dfp+2,
++         -0x1.db56e578391f8p+2, -0x1.3824eb79a3453p+5, -0x1.58e2f41486a88p+3, -0x1.c92b1fbadb728p+2,
++         -0x1.58e2f41486a88p+3, -0x1.1b495f231f04cp+4, -0x1.3cc0c03655bc8p+2, -0x1.c92b1fbadb728p+2,
++         -0x1.3cc0c03655bc8p+2, -0x1.3f79e028367dap+3},
++        {0x1.38c30d37e05cfp+3,  -0x1.e7e193dc146bbp+0, 0x1.961c097130bf6p+1,
++         -0x1.9bf65169db08cp+2, 0x1.c443f27a035e2p-2,  -0x1.e79d6c124ca10p+0,
++         -0x1.e7e193dc146bbp+0, -0x1.47ead996c038fp-2, 0x1.21bc4243ee734p+2,
++         0x1.48c0414a84d22p-4,  -0x1.a228886c40804p-2, 0x1.06ac1fca2bf8dp-1,
++         0x1.961c097130bf6p+1,  0x1.21bc4243ee734p+2,  -0x1.42ee2587e99fbp+0,
++         0x1.a17fc18a0b0f3p-2,  0x1.a6dd1e8e005b7p+0,  -0x1.8cd8c9e33ce36p+1,
++         -0x1.9bf65169db08cp+2, 0x1.48c0414a84d22p-4,  0x1.a17fc18a0b0f3p-2,
++         0x1.07ef07baa4e92p+0,  0x1.5f645e920dcbep-1,  0x1.30aab30e198dcp-2,
++         0x1.c443f27a035e2p-2,  -0x1.a228886c40804p-2, 0x1.a6dd1e8e005b7p+0,
++         0x1.5f645e920dcbep-1,  -0x1.27c24bd076a25p+0, 0x1.a0bce1698f4cbp-1,
++         -0x1.e79d6c124ca10p+0, 0x1.06ac1fca2bf8dp-1,  -0x1.8cd8c9e33ce36p+1,
++         0x1.30aab30e198dcp-2,  0x1.a0bce1698f4cbp-1,  -0x1.24167ec4013b8p-3},
++        {-0x1.10aa9d02f0210p+1, -0x1.835fbe121e1d5p+4, 0x1.3d16fe108ab17p+3, -0x1.7ba31ad1d6870p+1,
++         0x1.3ede724ab42efp+2, 0x1.16620d32b9f7ep+4},
++        {0x1.c2a315ac200ccp+3, 0x1.fefcb6a3136d2p+1, 0x1.b9089c7da4783p+2, 0x1.20fa22481fb46p+2,
++         0x1.42c9936615264p+4, 0x1.e958a7914672ap+0},
++        {0x1.17ac4522ca880p+5,  0x1.036929dc67284p+5,  -0x1.6cc81050cdd11p+5,
++         0x1.ec369191e9c02p+0,  0x1.a6ca1d6010c25p+5,  -0x1.01abc0f4b888ap+5,
++         0x1.c2b3c0530f0a9p+3,  0x1.3fe1c4b5c1e40p+1,  0x1.c3f8a285017f2p+5,
++         -0x1.b30b7140b81c2p+2, -0x1.2f0c59753f5e0p+6, 0x1.b4d9ebecb3f40p-1,
++         0x1.57954333d1a6bp+7,  0x1.d3b1269d4aec2p+3,  0x1.0c62bbaa9eac0p+6,
++         -0x1.6dd019d0126a3p+3, -0x1.29583095986c1p+4, -0x1.62f1a135dc97fp+4,
++         -0x1.500db1b108ff7p+5, 0x1.6d3b4ec1498e9p+4,  0x1.d60efeb8c1f72p+5,
++         -0x1.3338bdf21771ap+6, 0x1.21073809b62eep+6,  -0x1.100ddf892859ep+4,
++         -0x1.9934ba433719ep+3, 0x1.e682572800644p+4,  0x1.71cec57cb5f2bp+4,
++         0x1.06b1e34dcd08ep+6,  0x1.34ea190e63ce6p+3,  0x1.ea26e84b67a5ep+4,
++         -0x1.51bb54874ece0p+6, 0x1.29e5b3139c9e9p+5,  0x1.59577965f4ef1p+6,
++         -0x1.93a27f647765cp+3, -0x1.a09cf2ea095abp+3, -0x1.d6dd85ced67a0p+2},
++        {-0x1.6da81e9481b5bp+6, -0x1.80e982ff5350fp+5, -0x1.6290c6f65b82dp+5},
++        {0x1.9e2c0d03093f8p+6, 0x1.4139368c4fe02p+6}}}}}};
++// Runtime TensorIR page oracle, seed 2201, o=2, v=3, q=5.
++static const Fixture page_fixture{
++    2,
++    3,
++    {{{-0x1.6e7d4b666a2a8p+0, 0x1.fa4dd7e36445ap-4,  -0x1.832c5043efc88p+0, 0x1.8f79fac1d88f2p-3,
++       -0x1.78a8e6847434fp-1, 0x1.51111ffaeed55p-1,  0x1.1ddb94e615d7ap-2,  0x1.77a8c6f0cf199p-3,
++       0x1.24127095326f8p+0,  0x1.261779d0a1615p+1,  -0x1.f161b530afcd4p-1, 0x1.4f24549510ba5p-5,
++       0x1.000f4c09324d7p-2,  -0x1.ce94956f5e4e2p+0, 0x1.da0d5ee7ce586p-3,  0x1.964e7522bdf12p-4,
++       0x1.c4267010a61b0p+0,  0x1.2a74c0c3d1e7ap+0,  0x1.7b686bf832863p-1,  -0x1.1fc5deebeb572p+0,
++       -0x1.c8ec1d76ce242p-5, -0x1.2d6786cf395eep+1, 0x1.9429fc65cd8cap-3,  0x1.43c1578338f87p+0,
++       -0x1.5fdcb1513b24ap-2, 0x1.4933f035d9134p-1,  -0x1.f991d72f42acbp-3, -0x1.44bc57b4de124p+0,
++       0x1.ee24fa86db70cp-1,  0x1.3c80c4e22163fp-3,  -0x1.5740c2232a57dp-2, 0x1.6423ea88c6d7dp-5,
++       -0x1.fc44cf56131b0p-1, -0x1.b2180b362e5e1p-1, 0x1.1db618012c6a9p-4,  -0x1.bbd60d93c650fp-2,
++       -0x1.624c848fd2d01p+0, -0x1.3ecbfc12179d5p+0, -0x1.217c33eb53f85p-1, 0x1.0647fdfa76078p-3,
++       -0x1.0c349c1d8196ap+0, -0x1.397840c0b51ddp-2, 0x1.0035cfb5c2838p-1,  0x1.2b7904486d999p-1,
++       0x1.68bb1ea4d2a08p-3,  -0x1.e16d10e758af1p-2, 0x1.6eb8b1e1ac436p-4,  0x1.7108f4ed9f64bp+0,
++       0x1.92e65c8810265p-3,  -0x1.1da4dcd3d10c9p-2, 0x1.440ffb27a2090p-3,  -0x1.65475b2c0464bp+0,
++       -0x1.0994a82437960p-1, 0x1.3b7b59e52bbc8p-4},
++      {-0x1.ae2ab7634cf23p+0, -0x1.4cb924dd78a3ep-3, -0x1.8bb6221a7762cp-1, -0x1.62b80576fc1cep-1,
++       -0x1.20217479d4b59p+0, -0x1.a0615cb5607cdp-1, 0x1.32778eb493887p-1,  0x1.878dcaeada19fp-2,
++       0x1.97a968cb99665p-5,  0x1.151471ead0b1cp-1,  -0x1.092c465165e64p-1, -0x1.8c9142daab55dp-8,
++       0x1.b99a851a57c1fp-1,  -0x1.7e863a6212b66p-1, 0x1.9ef4d40837f38p-1,  -0x1.1919b38fdee74p-1,
++       -0x1.13efc0775b2ecp+1, -0x1.6f3b64cef564dp-1, 0x1.cfca7749c8efap-2,  0x1.a7475bd489976p-3,
++       -0x1.c6d430acc2ca7p+0, -0x1.3308914ab459dp-1, 0x1.07c3f86b63460p-1,  -0x1.ad3f51de8996fp+0},
++      {0x1.38701a3fbbd24p-4,  -0x1.febcc37738e5ap-3, 0x1.3e5b75349003bp-1,  0x1.8ba0884d8f2a1p-1,
++       -0x1.5c4c38535099dp+0, 0x1.0a1e1e81db02cp-2,  0x1.58d18f1e7dcffp+0,  -0x1.04eaa1216b21cp+0,
++       0x1.b7b38d2e6d442p-1,  -0x1.30159597ec472p+1, 0x1.39c4e93cc9049p-1,  0x1.1432e0db0e92fp+0,
++       0x1.1bf4aa3d238dfp+1,  -0x1.5260a198a0e9ap-2, -0x1.0500412f37c17p-2, 0x1.e99546f4c55bcp-3,
++       -0x1.9de6cd60f433dp-1, -0x1.ec2c07aedb22ap-2, 0x1.875c8338e9972p+0,  0x1.0d3d2cc9f49c0p+0,
++       -0x1.d3348e99a712dp-5, 0x1.e851e7cb9ffc2p-1,  -0x1.9d4e1f2747a8dp-1, -0x1.68f627a93d743p-9,
++       0x1.f78a302f6ae5cp-1,  -0x1.1b1090ed79f8ap+1, 0x1.8d380ffb26717p-2,  -0x1.bb4bc79676399p-1,
++       0x1.b3293f8458c4fp+0,  -0x1.fd1835b313c77p-2, -0x1.82b722c5c92d8p-5, 0x1.c35aa9f3d1d73p-5,
++       -0x1.dae877f13db9cp-6, -0x1.e8e003736fe74p+0, -0x1.8d5d2bbe3fe8cp+0, -0x1.d45873ad66e96p-1},
++      {-0x1.8b5e6d32bdc6ap-5, -0x1.2e434993b4729p+0, 0x1.91ff49b76626dp-3, -0x1.5370d62c10974p-2,
++       -0x1.50a5294488f64p-1, 0x1.b42feee754f96p+0},
++      {-0x1.0101a00de6bdfp-5, -0x1.b6a6260928285p-2, -0x1.67d6ef51600f7p-5, -0x1.ad13e9a40c6abp+0,
++       0x1.4a17d67dc4a57p-1, -0x1.cae2c706ae831p-2},
++      {-0x1.0d1d4070f610fp+0, 0x1.9ab9333edd964p-1,  -0x1.c14b0a1131786p-1, 0x1.9ab9333edd964p-1,
++       0x1.0d9b1a9aacc1dp+0,  -0x1.959dd47173ea0p-2, -0x1.c14b0a1131786p-1, -0x1.959dd47173ea0p-2,
++       -0x1.0125c3648f5abp-2, -0x1.377afda0bf36ap-1, 0x1.ea133cc89a1e5p-3,  0x1.f2d27fa1eec4cp-1,
++       -0x1.8fbfebd33b3eap-1, 0x1.48c6e231a6bc8p-3,  0x1.24c3c838053dbp-1,  -0x1.5cacf38f7a394p+0,
++       0x1.656885c008054p-1,  -0x1.40f99512096e2p-2, -0x1.377afda0bf36ap-1, -0x1.8fbfebd33b3eap-1,
++       -0x1.5cacf38f7a394p+0, 0x1.ea133cc89a1e5p-3,  0x1.48c6e231a6bc8p-3,  0x1.656885c008054p-1,
++       0x1.f2d27fa1eec4cp-1,  0x1.24c3c838053dbp-1,  -0x1.40f99512096e2p-2, 0x1.2adf00a6cf11fp-2,
++       -0x1.91242ff1fdadap-1, 0x1.36f17020767a4p-2,  -0x1.91242ff1fdadap-1, 0x1.e1be02afc42acp-2,
++       -0x1.b3194b83e37f5p-2, 0x1.36f17020767a4p-2,  -0x1.b3194b83e37f5p-2, -0x1.bb460fa6db1dfp-3},
++      {-0x1.3333333333333p+0, -0x1.0000000000000p-1},
++      {0x1.999999999999ap-2, 0x1.cccccccccccccp-1, 0x1.6666666666666p+0}}},
++    {{{-0x1.bf63ddb575760p+3,
++       -0x1.439ebe9ae3c94p+2,
++       0x1.474271783a7aap+3,
++       -0x1.7f5756230529cp-1,
++       -0x1.073f8750bc243p+4,
++       -0x1.7f5e29244ba64p+1,
++       -0x1.1fbe96e5bd506p+3,
++       -0x1.d4db359eda1dfp+4,
++       -0x1.3c6cc3b00b48fp+1,
++       -0x1.f735d4e019460p+4,
++       0x0.0p+0,
++       0x1.9799127785c3ap-1,
++       -0x1.928b530a9929cp+1,
++       0x0.0p+0,
++       -0x1.d3d5a1348e1d7p+2,
++       -0x1.3a5cd6217c238p+2,
++       0x0.0p+0,
++       -0x1.3639e416aba46p+4,
++       -0x1.c8535995c1cfcp+2,
++       0x1.6a0fa31f8870ap+0,
++       -0x1.fd5140731152ap+0,
++       0x1.331b7816a6245p+1,
++       -0x1.0e51fd460ca7cp+3,
++       -0x1.68646309be9d4p-2,
++       0x1.162aed74aa4d6p+2,
++       -0x1.e81a1742ac7c8p+2,
++       -0x1.514283d95dff2p+0,
++       0x1.68782e90dca83p+3,
++       -0x1.113e073e7b5dap+4,
++       0x1.48609de6ea7a6p+2,
++       0x1.46d53ddf1b324p+3,
++       0x1.58217d9721cfbp+3,
++       0x1.0f352690f9e80p+3,
++       -0x1.3088667ff3084p+2,
++       -0x1.47d9fd925ea16p+2,
++       -0x1.056b0f9bad88ep-1,
++       0x1.5ffd05fe9ee95p+3,
++       0x0.0p+0,
++       0x1.514edaafc59e2p+1,
++       -0x1.2429ba870b0eap+4,
++       0x0.0p+0,
++       -0x1.439ce71ccd5d0p-2,
++       0x1.10043b5f7f168p+4,
++       0x0.0p+0,
++       -0x1.b3e22dabf7cf5p+2,
++       -0x1.2ba92a91b1fefp+3,
++       0x1.34ed1fbbbd7d0p+3,
++       0x1.0af96b6dbff92p+0,
++       -0x1.34bdf3a27ffc2p+3,
++       -0x1.3e96465604f58p+3,
++       0x1.cded7f8823ae8p+0,
++       0x1.d498bfeff222ap+0,
++       0x1.326839f18384ep+0,
++       -0x1.2ed1bc452f680p-1},
++      {0x1.0a7e83eee0f20p+4,  -0x1.5f93573f7e0bap+3, 0x1.5bff59908c819p+3,  0x1.04008ab297565p+4,
++       0x1.9618d35b78f43p+4,  -0x1.104f91fb6b0f4p+1, 0x1.08d48fa1d7b0dp+3,  0x1.9756e59b4bf62p+4,
++       0x1.b8eda98de340dp+2,  0x1.8d945f10f6c36p+2,  -0x1.9aa78f99ab25ep+2, 0x1.402d25c527af3p+3,
++       -0x1.f98bd01cf24e7p+3, -0x1.f02f307fed284p+1, 0x1.7bb260881dd88p+1,  -0x1.6d6e5622a2a1ep+2,
++       -0x1.796666c5919b9p+3, -0x1.96553bc829c56p+3, 0x1.59ad530962890p-2,  0x1.e6b4ef39dd33cp+2,
++       0x1.1b7f886ab819ep+4,  -0x1.0fa62529b94c9p+3, 0x1.bd0fbe59f8b87p+0,  0x1.18b5ef5a66dd0p+1},
++      {-0x1.5fbfdfa5ca0cap+1,
++       -0x1.433083e3e3630p+1,
++       0x1.1db367beeb2fap-2,
++       -0x1.6caba09f95608p-1,
++       -0x1.000635f19f7c0p-8,
++       0x1.af1e18bf99f38p-2,
++       -0x1.433083e3e362dp+1,
++       0x0.0p+0,
++       -0x1.af070879e2245p+1,
++       0x1.a094065fed386p-1,
++       0x0.0p+0,
++       -0x1.4bb3f2399977ep-2,
++       0x1.1db367beeb2ffp-2,
++       -0x1.af070879e2244p+1,
++       -0x1.03753fe3c50c2p-1,
++       -0x1.6640804f3dfc4p-2,
++       -0x1.25fd37788e126p+0,
++       -0x1.d31a8e8711c93p-3,
++       -0x1.6caba09f95607p-1,
++       0x1.a094065fed383p-1,
++       -0x1.6640804f3dfc1p-2,
++       0x1.1119ab37bd26dp-2,
++       -0x1.53f71f2b6ff58p-5,
++       -0x1.36db456676b38p-4,
++       -0x1.000635f19f7e0p-8,
++       0x0.0p+0,
++       -0x1.25fd37788e127p+0,
++       -0x1.53f71f2b6ff63p-5,
++       0x0.0p+0,
++       0x1.0889d6deb8879p-5,
++       0x1.af1e18bf99f3cp-2,
++       -0x1.4bb3f23999779p-2,
++       -0x1.d31a8e8711c94p-3,
++       -0x1.36db456676b3cp-4,
++       0x1.0889d6deb8830p-5,
++       -0x1.45175fae4ebd8p-4},
++      {-0x1.ca3318a897da2p+2, -0x1.96314dcea5dc1p+3, -0x1.1de7af082a06ap+2, 0x1.0f92290171a4ap+2,
++       -0x1.f7338a8a21f20p-4, -0x1.2bd82efd411aap+2},
++      {-0x1.5c9ae7f8110fdp+1, 0x1.b9df6980bfa4ap+1, -0x1.769b270b1f46bp+1, 0x1.f97db89cb305ap+1,
++       0x1.cee33663c9e52p+0, -0x1.006f7ef6cacccp+1},
++      {-0x1.6a87c0a83bae1p+3, -0x1.eec786687d3dbp+3, -0x1.cb941bd93790fp+2, -0x1.80f0ed372fca6p+5,
++       -0x1.874699f39a0b0p+3, -0x1.39d3e6869ce2ap+2, 0x1.111071ba98279p+4,  -0x1.3c5de7c7b0e13p+3,
++       -0x1.fca4d72cea1c8p+2, 0x1.116e9f623d938p+5,  -0x1.6dd184b3235fap+4, -0x1.9a0c7e176a0f8p+4,
++       0x1.17831ffe429f2p+5,  -0x1.36f60e7224ea0p+4, -0x1.cc9e95f1198e8p+4, 0x1.d85d8ff9843a2p+4,
++       -0x1.1910aab75b8eep+1, 0x1.7a2f2c6698c78p+1,  -0x1.85d24a3591e34p+3, 0x1.03b556094c785p+3,
++       0x1.6d89e0db08faap+3,  0x1.1abf28d7a1b1ap+3,  -0x1.be639b5c0110fp+3, 0x1.c2f3f9cf40ceap+2,
++       -0x1.e8f8ab7f1b912p+2, 0x1.c0c4d762ac0bdp+2,  -0x1.384c7305fb670p+2, 0x1.28e37b469e06ep+0,
++       -0x1.3d1afa77bbf28p+2, -0x1.ddf6bb312ac90p+2, 0x1.057deacacfdadp+1,  -0x1.d20219f664932p+2,
++       -0x1.ff6bfc9518c5bp+2, 0x1.4d5cf67a8fb1ap+3,  0x1.0ae1e07757800p+2,  0x1.5242bc352e68dp-1},
++      {-0x1.2fda0198fe85fp+5, -0x1.5d9ee9ca9538fp+4},
++      {0x1.998fa41a104c0p+4, 0x1.3f1ba45430c19p+4, 0x1.c94f491ca26e6p+3}}}};
++static const std::vector<std::int64_t> page_a_map{0, 1, 2, 0, 1};
++static const std::vector<std::int64_t> page_b_map{1, 0, 2, 1, 0};
++static const std::vector<std::int64_t> page_c_map{0, 2, 1, 0, 2};
++static const std::vector<double> page_active{0x1.0000000000000p+0, 0x1.0000000000000p+0,
++                                             0x1.0000000000000p+0, 0x1.0000000000000p+0, 0x0.0p+0};
++static const std::vector<double> page_degeneracy{0x1.0000000000000p+0, 0x1.8000000000000p+0,
++                                                 0x1.0000000000000p+1, 0x1.4000000000000p+1,
++                                                 0x1.8000000000000p+1};
++static const double page_seed = 0x1.75c28f5c28f5cp-1;

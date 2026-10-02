@@ -45,6 +45,7 @@ from generativeqc_compiler.tensor.ir import (
 )
 from generativeqc_compiler.tensor.optimize import prepare_for_backend
 from generativeqc_compiler.tensor.program import Program
+from generativeqc_compiler.tensor.scaled_arithmetic import emit_scaled_bilinear
 
 if typing.TYPE_CHECKING:
     from generativeqc_compiler.tensor.types import Index, TensorSpec
@@ -1109,11 +1110,22 @@ def cpu_header() -> str:
 
 
 def _cuda_kernel(
-    node: typing.Any, number: int, prefix: str, names: dict[int, str]
+    node: typing.Any,
+    number: int,
+    prefix: str,
+    names: dict[int, str],
+    *,
+    batch_dim: bool = False,
 ) -> str:
     size = _device_size(node.spec)
-    arguments = [f"const double* a{i}" for i in range(len(node.inputs))]
-    arguments += ["double* out", "std::size_t o", "std::size_t v", "int* error"]
+    arguments = [
+        f"const {'std::int64_t' if source.spec.dtype == 'int64' else 'double'}* a{i}"
+        for i, source in enumerate(node.inputs)
+    ]
+    arguments += ["double* out", "std::size_t o", "std::size_t v"]
+    if batch_dim:
+        arguments.append("std::size_t q")
+    arguments.append("int* error")
     uses_complete_orbital = any(
         _dim(index) == "n"
         for spec in (node.spec, *(source.spec for source in node.inputs))
@@ -1138,6 +1150,95 @@ def _cuda_kernel(
         lines += [
             f"    out[flat]=generativeqc_tensor::quotient(a0[flat],a1[flat],error,{number});"
         ]
+    elif node.op == "multiply":
+        lines.append(
+            f"    out[flat]=generativeqc_tensor::finite(__dmul_rn(a0[flat],a1[flat]),error,{number});"
+        )
+    elif node.op == "scaled_bilinear":
+        args = ",".join(f"a{i}[flat]" for i in range(6))
+        lines.append(f"    out[flat]=triples_scaled_bilinear({args},error,{number});")
+    elif node.op in (
+        "broadcast",
+        "reduce",
+        "runtime_indexed_select",
+        "runtime_indexed_scatter_add",
+    ):
+        source = node.inputs[0]
+        axes = tuple(node.attrs["axes"])
+        coords = [f"c{axis}" for axis in range(len(node.spec.indices))]
+        if coords:
+            lines.append("    std::size_t rem=flat;")
+        for axis in reversed(range(len(coords))):
+            dim = _dim(node.spec.indices[axis])
+            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
+        if node.op == "broadcast":
+            index = _flat_coords([coords[axis] for axis in axes], source.spec)
+            lines.append(
+                f"    out[flat]=generativeqc_tensor::finite(a0[{index}],error,{number});"
+            )
+        elif node.op == "reduce":
+            remaining = iter(coords)
+            source_coords = [
+                f"r{axis}" if axis in axes else next(remaining)
+                for axis in range(len(source.spec.indices))
+            ]
+            lines.append("    double sum=0.0;")
+            # Match the source-major CPU accumulation order for each output.
+            for axis in sorted(axes):
+                lines.append(
+                    f"    for(std::size_t r{axis}=0;r{axis}<{_dim(source.spec.indices[axis])};++r{axis}){{"
+                )
+            index = _flat_coords(source_coords, source.spec)
+            lines.append(f"    sum=__dadd_rn(sum,a0[{index}]);")
+            lines += ["    }"] * len(axes)
+            lines.append(
+                f"    out[flat]=generativeqc_tensor::finite(sum,error,{number});"
+            )
+        elif node.op == "runtime_indexed_select":
+            remaining = iter(coords[1:])
+            source_coords = []
+            lines.append("    bool valid=true;")
+            for axis, index in enumerate(source.spec.indices):
+                if axis in axes:
+                    map_index = axes.index(axis) + 1
+                    lines += [
+                        f"    const auto m{axis}=a{map_index}[c0];",
+                        f"    valid=valid && m{axis}>=0 && static_cast<std::size_t>(m{axis})<{_dim(index)};",
+                    ]
+                    source_coords.append(f"static_cast<std::size_t>(m{axis})")
+                else:
+                    source_coords.append(next(remaining))
+            index = _flat_coords(source_coords, source.spec)
+            lines += [
+                f"    if(!valid){{atomicCAS(error,0,{number + 1});out[flat]=0.0;continue;}}",
+                f"    out[flat]=generativeqc_tensor::finite(a0[{index}],error,{number});",
+            ]
+        else:
+            # One writer per destination, reducing matching lanes in source order.
+            # This deliberately avoids atomic FP adds and their nondeterminism.
+            source_coords = [
+                "lane",
+                *[coord for axis, coord in enumerate(coords) if axis not in axes],
+            ]
+            index = _flat_coords(source_coords, source.spec)
+            lines += [
+                "    double sum=0.0;",
+                "    for(std::size_t lane=0;lane<q;++lane){",
+                "      bool valid=true,match=true;",
+            ]
+            for map_index, axis in enumerate(axes, 1):
+                dim = _dim(node.spec.indices[axis])
+                lines += [
+                    f"      const auto m{axis}=a{map_index}[lane];",
+                    f"      valid=valid && m{axis}>=0 && static_cast<std::size_t>(m{axis})<{dim};",
+                    f"      match=match && static_cast<std::size_t>(m{axis})==c{axis};",
+                ]
+            lines += [
+                f"      if(!valid){{atomicCAS(error,0,{number + 1});continue;}}",
+                f"      if(match) sum=__dadd_rn(sum,a0[{index}]);",
+                "    }",
+                f"    out[flat]=generativeqc_tensor::finite(sum,error,{number});",
+            ]
     elif node.op == "einsum":
         labels = node.attrs["labels"]
         output = tuple(node.attrs["output"])
@@ -1262,6 +1363,8 @@ def _cuda_program(
     *,
     input_overrides: dict[str, str] | None = None,
     arena_field: str | None = None,
+    state_type: str = "CudaState",
+    batch_dim: bool = False,
 ) -> str:
     names = _prepare_program(program)
     arena_plan = _arena_plan(program)
@@ -1269,7 +1372,9 @@ def _cuda_program(
     kernels = []
     for number, node in enumerate(_execution_nodes(program)):
         if node.op != "input":
-            kernels.append(_cuda_kernel(node, number, prefix, names))
+            kernels.append(
+                _cuda_kernel(node, number, prefix, names, batch_dim=batch_dim)
+            )
     uses_complete_orbital = any(
         _dim(index) == "n"
         for node in _execution_nodes(program)
@@ -1277,7 +1382,7 @@ def _cuda_program(
         for index in node.spec.indices
     )
     lines = kernels + [
-        f"static {output_type} run_{prefix}(CudaState& s){{",
+        f"static {output_type} run_{prefix}({state_type}& s){{",
         "  auto* arena=s."
         + (
             arena_field
@@ -1291,6 +1396,7 @@ def _cuda_program(
         )
         + ";",
         "  const auto o=s.o,v=s.v;",
+        *(["  const auto q=s.q;"] if batch_dim else []),
         *(["  const std::size_t n=checked_add(o,v);"] if uses_complete_orbital else []),
         "  std::size_t cursor=0;",
         "  auto allocate=[&](std::size_t count)->double*{double* p=arena+cursor;cursor=checked_add(cursor,count);return p;};",
@@ -1308,12 +1414,22 @@ def _cuda_program(
                 if input_name in input_overrides
                 else _input_access(input_name, cuda=True)
             )
-            lines.append(f"  const double* {names[number]}={access};")
+            ctype = "std::int64_t" if node.spec.dtype == "int64" else "double"
+            lines.append(f"  const {ctype}* {names[number]}={access};")
             continue
         lines.append(f"  double* {names[number]}=slot{arena_plan.node_slots[number]};")
         sources = [names[x._emit_index] for x in node.inputs]
         count = _size(node.spec)
-        launch_args = ",".join([*sources, names[number], "s.o", "s.v", "s.error"])
+        launch_args = ",".join(
+            [
+                *sources,
+                names[number],
+                "s.o",
+                "s.v",
+                *(["s.q"] if batch_dim else []),
+                "s.error",
+            ]
+        )
         lines += [
             f"  {prefix}_node_{number}<<<generativeqc_tensor::blocks(static_cast<generativeqc_tensor::I>({count}),256),256,0,s.stream>>>({launch_args});",
         ]
@@ -1360,6 +1476,8 @@ def _cuda_program(
         returned = [outputs["eri"]]
     elif output_type == "DeviceOrbitalJvpOutput":
         returned = [outputs["d_fov"]]
+    elif output_type == "TriplesResponseOutputs":
+        returned = [outputs[f"bar_{name}"] for name in TRIPLES_RESPONSE_INPUTS]
     else:
         raise ValueError(f"unsupported RCCSD generated CUDA output type {output_type}")
     lines.append("  return {" + ",".join(returned) + "};")
@@ -1583,10 +1701,61 @@ def cuda_source() -> str:
     )
 
 
+def triples_response_cuda_source() -> str:
+    """Emit only the paged triples VJP, sharing the CPU arena/identity contract.
+
+    Keep this translation unit separate from the large CCSD response unit. The
+    backend plans must agree before borrowing its generated admission function.
+    """
+    primal = build_runtime_tile_triples_program(*REPRESENTATIVE, capacity=6)
+    vjp = transpose_program(
+        primal,
+        ("triples_energy",),
+        inputs=TRIPLES_RESPONSE_INPUTS,
+        max_elements=100_000_000,
+    ).program
+    cpu = _prepare_production(vjp, "cpu")
+    program = _prepare_production(vjp, "cuda")
+    if cpu.logical_hash != program.logical_hash or _arena_plan(cpu) != _arena_plan(
+        program
+    ):
+        raise ValueError("triples CPU/CUDA response arena or identity diverged")
+    return "\n".join(
+        [
+            "// Generated from the runtime-indexed standard-(T) TensorIR VJP.",
+            '#include "cc/triples_response_cuda.cuh"',
+            '#include "tensor/cuda_runtime.cuh"',
+            "namespace generativeqc::cc::generated {",
+            "using generativeqc_tensor::finite;",
+            emit_scaled_bilinear("triples_"),
+            _cuda_program(
+                program,
+                "triples_response",
+                "TriplesResponseOutputs",
+                input_overrides={
+                    node.attrs["name"]: f"s.inputs.{node.attrs['name']}"
+                    for node in program.live_nodes
+                    if node.op == "input"
+                },
+                arena_field="arena",
+                state_type="TriplesResponseCudaState",
+                batch_dim=True,
+            ),
+            "TriplesResponseOutputs run_triples_response_cuda(TriplesResponseCudaState& s){return run_triples_response(s);}",
+            "std::size_t triples_response_cuda_kernels_per_page(){return "
+            + str(sum(node.op != "input" for node in _execution_nodes(program)))
+            + ";}",
+            "}",
+            "",
+        ]
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cpu-header", type=Path)
     parser.add_argument("--cuda-source", type=Path)
+    parser.add_argument("--triples-cuda-source", type=Path)
     args = parser.parse_args()
     if args.cpu_header:
         args.cpu_header.parent.mkdir(parents=True, exist_ok=True)
@@ -1594,8 +1763,13 @@ def main() -> None:
     if args.cuda_source:
         args.cuda_source.parent.mkdir(parents=True, exist_ok=True)
         args.cuda_source.write_text(cuda_source(), encoding="utf-8")
-    if not args.cpu_header and not args.cuda_source:
-        parser.error("select --cpu-header and/or --cuda-source")
+    if args.triples_cuda_source:
+        args.triples_cuda_source.parent.mkdir(parents=True, exist_ok=True)
+        args.triples_cuda_source.write_text(
+            triples_response_cuda_source(), encoding="utf-8"
+        )
+    if not args.cpu_header and not args.cuda_source and not args.triples_cuda_source:
+        parser.error("select --cpu-header, --cuda-source and/or --triples-cuda-source")
 
 
 if __name__ == "__main__":

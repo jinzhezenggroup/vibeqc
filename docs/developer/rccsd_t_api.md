@@ -18,7 +18,8 @@ composition's `energy` and `forces`; `"ccsd(t)"` is an alias.
 the public native registry exposes qualified conventional small-system
 `RCCSD(T)` energy and analytic forces on CPU and CUDA through
 `GENERATIVEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`. Homogeneous prepared
-batches follow the selected backend capability. The CUDA force route executes the generated corrected-Lambda RHS/J^T actions and
+batches follow the selected backend capability. The CUDA force route executes the
+runtime-indexed standard-(T) VJP, generated corrected-Lambda RHS/J^T actions and
 fixed-orbital parameter VJPs on CUDA, then routes Hamiltonian/Fock pullbacks and
 the orbital JVP through one reusable CUDA response owner. Lambda GMRES and the
 physical Z-vector Krylov control flow remain host-owned. The final conventional
@@ -204,10 +205,20 @@ DF/frozen-core/open-shell:   no
 CUDA force publication never substitutes RCCSD/HF derivatives. The force owner
 builds the complete CCSD(T) relaxed response before publication. Generated
 corrected-Lambda RHS/J^T actions and fixed-orbital parameter VJPs execute on one
-shared CUDA state. Generated Hamiltonian/orbital actions also execute on CUDA;
-packed Lambda/Z GMRES control, triples response and the MO-to-AO weight pullback
-remain on host. The final
+shared CUDA state. The standard-(T) response uses a separate bounded CUDA owner
+with resident physical inputs and eight accumulated cotangent blocks. It pages
+triangular virtual triples through the same TensorIR VJP and symbolic arena as
+CPU, projects integral-source symmetries on device, and downloads the completed
+blocks once. Admission includes host outputs/controls and device inputs,
+accumulators, controls and scratch. Smaller budgets reduce page capacity;
+insufficient capacity or CUDA failure is explicit, with no CPU fallback.
+Generated Hamiltonian/orbital actions also execute on CUDA; packed Lambda/Z
+GMRES control and the MO-to-AO weight pullback remain on host. The final
 conventional nuclear derivative is executed by the CUDA consumer.
+
+`GENERATIVEQC_DF_PROGRESS_TRACE` records the triples backend, numeric/device
+capacity, transfer bytes, pages and actual kernel-launch count alongside its
+completed phase time. The public device peak includes this serialized owner.
 
 The internal #746 CPU force chain now executes its generated Lambda, parameter-
 response, `(T)` VJP, raw-Hamiltonian, canonicalization and AO back-transform

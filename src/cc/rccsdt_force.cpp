@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "cc/triples_response.hpp"
+#include "cc/triples_response_internal.hpp"
 #include "generated_rccsd_cpu.hpp"
 #include "posthf/capacity.hpp"
 #include "posthf/mp2_derivative.hpp"
@@ -428,14 +429,11 @@ static RccsdtForcePlan plan_relaxed_rccsd_force_cpu(const core::System& system,
           ? bytes(sum({checked_mul(o, checked_mul(v, square(v))), checked_mul(ov, square(o)),
                        checked_mul(2, square(ov)), checked_mul(2, ov), n}))
           : 0;
-  const auto pages = include_triples
-                         ? std::min<std::size_t>(TriplesResponseOptions{}.batch_capacity,
-                                                 checked_mul(v, checked_mul(v + 1, v + 2)) / 6)
-                         : 0;
   plan.triples_phase_bytes =
-      include_triples ? sum({plan.retained_input_bytes, bytes(n), triples_retained,
-                             bytes(generated::triples_response_arena_elements(o, v, pages)),
-                             checked_mul(pages, 3 * sizeof(std::int64_t) + 2 * sizeof(double))})
+      include_triples ? sum({plan.retained_input_bytes, bytes(n),
+                             detail::triples_response_layout(
+                                 o, v, TriplesResponseOptions{}.batch_capacity, cuda_transform)
+                                 .numeric_bytes()})
                       : 0;
   LambdaOptions lambda_options;
   lambda_options.max_bytes = max_bytes;
@@ -627,10 +625,17 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
   if (include_triples) {
     TriplesResponseOptions triples_options;
     triples_options.denominator_threshold = denominator_threshold;
-    triples_options.max_bytes = max_bytes;
-    triples.emplace(
-        triples_response_cpu(problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
-                             std::vector<double>(eps_v.begin(), eps_v.end()), triples_options));
+    triples_options.max_bytes = max_bytes - resources.retained_input_bytes - bytes(n);
+#if GENERATIVEQC_HAS_CUDA
+    if (cuda_derivative)
+      triples.emplace(triples_response_cuda(
+          problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
+          std::vector<double>(eps_v.begin(), eps_v.end()), device_id, triples_options));
+    else
+#endif
+      triples.emplace(
+          triples_response_cpu(problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
+                               std::vector<double>(eps_v.begin(), eps_v.end()), triples_options));
   }
 
   LambdaOptions lambda_options;
@@ -882,7 +887,10 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
       std::chrono::duration<double>(Clock::now() - derivative_started).count();
 #if GENERATIVEQC_HAS_CUDA
   if (cuda_response) {
-    result.response_owned_device_bytes = cuda_response->owned_device_bytes();
+    // These owners execute serially; the public device high-water mark must
+    // include triples scratch even when it exceeds the later response arena.
+    result.response_owned_device_bytes =
+        std::max(cuda_response->owned_device_bytes(), triples ? triples->device_capacity_bytes : 0);
     result.response_h2d_bytes = cuda_response->h2d_bytes();
     result.response_d2h_bytes = cuda_response->d2h_bytes();
     result.response_synchronizations = cuda_response->synchronizations();
@@ -902,7 +910,13 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
     Scope::number("ao_functions", n);
     Scope::number("include_triples", include_triples);
     Scope::number("cuda_response_actions", result.cuda_response_actions);
-    Scope::label("triples_response_backend", include_triples ? "cpu" : "absent");
+    Scope::label("triples_response_backend",
+                 include_triples ? (cuda_derivative ? "cuda" : "cpu") : "absent");
+    Scope::number("triples_response_capacity_bytes", triples ? triples->numeric_capacity_bytes : 0);
+    Scope::number("triples_response_device_bytes", triples ? triples->device_capacity_bytes : 0);
+    Scope::number("triples_response_h2d_bytes", triples ? triples->host_to_device_bytes : 0);
+    Scope::number("triples_response_d2h_bytes", triples ? triples->device_to_host_bytes : 0);
+    Scope::number("triples_response_kernel_launches", triples ? triples->kernel_launches : 0);
     Scope::number("triples_response_ns", nanoseconds(result.triples_seconds));
     Scope::number("lambda_parameter_ns", nanoseconds(result.lambda_parameter_seconds));
     Scope::number("raw_hamiltonian_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(

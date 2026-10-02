@@ -78,6 +78,9 @@ struct RccsdtForceResult {
   // Together with complete endpoint time these locate work amplification at
   // larger dimensions without treating a single faster phase as a speedup.
   double triples_seconds{}, lambda_parameter_seconds{}, orbital_seconds{}, derivative_seconds{};
+  // Peak device capacity across the serialized triples and orbital owners.
+  // Transfer and synchronization counters below describe the orbital owner;
+  // triples transfers have their own completed-phase ledger fields.
   std::size_t response_owned_device_bytes{};
   std::size_t response_h2d_bytes{};
   std::size_t response_d2h_bytes{};
@@ -127,7 +130,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
 
 /** Publish the qualified conventional RCCSD(T) force through a CUDA derivative consumer.
  *
- * Generated Lambda actions plus Hamiltonian/Fock/orbital TensorIR execute on
+ * Generated triples/Lambda actions plus Hamiltonian/Fock/orbital TensorIR execute on
  * CUDA in the promoted response path, while the physical Z/GMRES control flow
  * remains host-owned. device_id selects the CUDA response/derivative device;
  * derivative_stage_budget bounds each generated one-/two-electron derivative

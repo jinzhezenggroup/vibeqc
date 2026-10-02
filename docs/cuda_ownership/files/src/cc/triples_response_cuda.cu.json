@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/triples_response_cuda.cu",
+  "reason": "Native bounded standard-(T) response storage, triangular page controls, symmetry projection and transfer ownership; scientific cotangents are emitted from the shared TensorIR VJP.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

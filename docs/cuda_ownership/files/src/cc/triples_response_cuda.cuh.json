@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/triples_response_cuda.cuh",
+  "reason": "Borrowed runtime-shaped device views and generated triples-response evaluator interface.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

@@ -155,7 +155,7 @@ reader. Slots are shared only by identical symbolic products of runtime extents,
 and returned output pointers stay live until the graph returns. CUDA execution
 and capture preserve these lifetimes through the owner's ordered stream. The
 generated admission functions reserve the same slots as execution. This also
-applies to Lambda, Hamiltonian and CPU triples-response scratch. Slot reuse alone
+applies to Lambda, Hamiltonian and CPU/CUDA triples-response scratch. Slot reuse alone
 does not change contractions or arithmetic work. See the
 [arena lifetime decision](../../.agents/notes/implemented/performance/2026-10-02-cc-runtime-arena-reuse.md)
 for invariants and qualification evidence.

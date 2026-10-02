@@ -1,5 +1,3 @@
-#include "cc/triples_response.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -8,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "cc/triples_response_internal.hpp"
 #include "generated_rccsd_cpu.hpp"
 
 namespace generativeqc::cc {
@@ -72,10 +71,10 @@ void add_last_two_symmetric_block(std::vector<double>& target, const double* sou
 
 }  // namespace
 
-TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult& cc,
-                                           const std::vector<double>& eps_o,
-                                           const std::vector<double>& eps_v,
-                                           const TriplesResponseOptions& options) {
+double detail::validate_triples_response(const Problem& p, const SolverResult& cc,
+                                         const std::vector<double>& eps_o,
+                                         const std::vector<double>& eps_v,
+                                         const TriplesResponseOptions& options) {
   validate_problem(p);
   if (!cc.converged())
     throw std::invalid_argument("RCCSD(T) response requires converged RCCSD amplitudes");
@@ -105,6 +104,52 @@ TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult&
     throw std::invalid_argument("nonfinite RCCSD(T) denominator range");
   if (minimum_denominator <= options.denominator_threshold)
     throw std::invalid_argument("near-zero RCCSD(T) denominator");
+
+  return minimum_denominator;
+}
+detail::TriplesResponseLayout detail::triples_response_layout(std::size_t o, std::size_t v,
+                                                              std::size_t batch_capacity,
+                                                              bool cuda) {
+  if (!o || !v || !batch_capacity)
+    throw std::invalid_argument("invalid triples response dimensions");
+  const std::array<std::size_t, 8> output_sizes{checked_mul(checked_mul(o, v), checked_mul(v, v)),
+                                                checked_mul(checked_mul(o, v), checked_mul(o, o)),
+                                                checked_mul(checked_mul(o, v), checked_mul(o, v)),
+                                                checked_mul(o, v),
+                                                checked_mul(o, v),
+                                                checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                                o,
+                                                v};
+  std::size_t output_elements = 0;
+  for (const auto size : output_sizes) output_elements = checked_add(output_elements, size);
+  const std::size_t total_triples = checked_mul(v, checked_mul(v + 1, v + 2)) / 6;
+  TriplesResponseLayout result;
+  result.sizes = output_sizes;
+  result.outputs = output_elements;
+  result.q = std::min(batch_capacity, total_triples);
+  result.arena = generated::triples_response_arena_elements(o, v, result.q);
+  const auto controls = checked_mul(result.q, 3 * sizeof(std::int64_t) + 2 * sizeof(double));
+  result.host_bytes = checked_add(bytes(output_elements), controls);
+  if (cuda) {
+    // Resident scientific inputs and accumulated cotangents each have the same
+    // eight shapes. The energy seed and asynchronous error flag are also owned.
+    const auto elements = checked_add(checked_mul(2, output_elements), result.arena);
+    const auto raw =
+        checked_add(bytes(elements), checked_add(controls, sizeof(double) + sizeof(int)));
+    result.device_bytes = checked_mul(checked_add(raw, 255) / 256, 256);
+    (void)checked_add(result.host_bytes, result.device_bytes);
+  } else {
+    result.host_bytes = checked_add(result.host_bytes, bytes(result.arena));
+  }
+  return result;
+}
+
+TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult& cc,
+                                           const std::vector<double>& eps_o,
+                                           const std::vector<double>& eps_v,
+                                           const TriplesResponseOptions& options) {
+  const double minimum_denominator =
+      detail::validate_triples_response(p, cc, eps_o, eps_v, options);
 
   TriplesResponseResult result;
   result.minimum_absolute_denominator = minimum_denominator;

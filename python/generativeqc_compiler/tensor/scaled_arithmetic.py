@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import typing
 
-import numpy as np
-
 from .cuda_dtype import scalar_type
 
 
 def _product(left: typing.Any, right: typing.Any) -> typing.Any:
     """Dekker product/residual on normalized FP32/FP64 mantissas."""
+    import numpy as np
+
     precision = np.finfo(left.dtype).nmant + 1
     splitter = left.dtype.type((1 << ((precision + 1) // 2)) + 1)
     product = left * right
@@ -44,6 +44,10 @@ def scaled_bilinear_value(
     caller's existing finite-value/error boundary. Final subnormals/underflow
     follow the dtype's ordinary round-to-nearest semantics.
     """
+    # Native source emission shares this module but must remain usable by the
+    # stdlib-only CMake generator interpreter. NumPy belongs to evaluation.
+    import numpy as np
+
     if np.any(e == 0) or np.any(f == 0):
         raise ValueError("tensor division by zero (scaled_bilinear)")
     (ma, ea), (mb, eb), (mc, ec), (md, ed), (me, ee), (mf, ef) = (

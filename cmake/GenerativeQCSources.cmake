@@ -103,6 +103,7 @@ function(generativeqc_add_posthf_cc_sources target)
     target_sources(${target} PRIVATE
       src/cc/cuda_solver.cu
       src/cc/lambda_response_cuda.cu
+      src/cc/triples_response_cuda.cu
       src/posthf/df_bridge.cu
       src/posthf/cuda_transform.cu
       src/posthf/ri_mp2_cuda.cu)

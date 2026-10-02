@@ -204,6 +204,11 @@
       "owner": "CCSD(T) derivative batching qualification",
       "reason": "Losslessly factored complete outputs from 112 independently checked energy/force calls, including all 96 paired samples, qualification, memcheck and profiling. Unrounded force arrays and every public diagnostic remain available; shared metadata and column names are stored once instead of repeated. Raw traces and profiler databases remain ignored. No storage cap is raised.",
       "review_document": ".agents/notes/implemented/performance/2026-10-03-bounded-eri-derivative-batches.md"
+    },
+    "cc-triples-response-cuda-20261003": {
+      "owner": "CCSD(T) native CUDA response qualification",
+      "reason": "All 112 complete-call energies, forces and public diagnostics retained without rounding; shared defaults and field-name columns are factored with exact reconstruction checks. Exact large-sample hash and bytes are reviewed below; raw journals and profiler databases remain ignored.",
+      "review_document": ".agents/notes/implemented/performance/2026-10-03-native-cuda-triples-response.md"
     }
   },
   "files": [
@@ -966,6 +971,14 @@
       "path": "benchmarks/results/cc-derivative-batches-20261003/records.json",
       "role": "complete-endpoint-repeat-samples",
       "sha256": "9fa9efceeb6758d9c150e01532b4fb4548745546a147901bbda01aec5b2ad5e2"
+    },
+    {
+      "bytes": 152952,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cc-triples-response-cuda-20261003",
+      "path": "benchmarks/results/cc-triples-response-cuda-20261003/records.json",
+      "role": "complete-endpoint-repeat-samples",
+      "sha256": "0d1d562b6676d2d81be44abff0566aa9d5aff60f624a77a94cf43b5b9cf0e520"
     }
   ],
   "schema": "generativeqc.legacy-large-evidence-review.v1",
