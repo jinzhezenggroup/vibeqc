@@ -22,6 +22,62 @@ __device__ __forceinline__ bool direct_ao_quartet_survives_schwarz(
   return !(quartet_bound < screening_tolerance);
 }
 
+/** Experimental AO refinement of the existing independent force-product gate.
+ * Preserve both density orientations and same-spin exchange products. In
+ * particular, neither J/K cancellation nor opposite-spin exchange can justify
+ * dropping a derivative. Nonfinite input must reach the numerical-failure path.
+ * This is an additional screening approximation, not an ERI-derivative bound;
+ * callers must keep the qualified unscreened-AO fallback available.
+ */
+template <bool Unrestricted>
+__device__ __forceinline__ bool direct_ao_force_survives_density_products(
+    double quartet_bound, double screening_tolerance, std::size_t dimension,
+    std::size_t physical_offset, std::size_t spin_offset, const double* density, std::size_t first,
+    std::size_t second, std::size_t third, std::size_t fourth) {
+  if (!isfinite(quartet_bound)) return true;
+  const std::size_t pair_first[6] = {first, third, first, second, first, second};
+  const std::size_t pair_second[6] = {second, fourth, third, fourth, fourth, third};
+  ShellPairDensityBounds pairs[6];
+  const std::size_t matrix_size = dimension * dimension;
+#pragma unroll
+  for (unsigned pair = 0; pair < 6; ++pair) {
+    const auto forward = matrix_index(pair_first[pair], pair_second[pair], dimension);
+    const auto reverse = matrix_index(pair_second[pair], pair_first[pair], dimension);
+    if constexpr (Unrestricted) {
+      const double alpha_forward = density[spin_offset + forward];
+      const double alpha_reverse = density[spin_offset + reverse];
+      const double beta_forward = density[spin_offset + matrix_size + forward];
+      const double beta_reverse = density[spin_offset + matrix_size + reverse];
+      if (!isfinite(alpha_forward) || !isfinite(alpha_reverse) || !isfinite(beta_forward) ||
+          !isfinite(beta_reverse))
+        return true;
+      const double total_forward = alpha_forward + beta_forward;
+      const double total_reverse = alpha_reverse + beta_reverse;
+      if (!isfinite(total_forward) || !isfinite(total_reverse)) return true;
+      pairs[pair] = {fmax(fabs(total_forward), fabs(total_reverse)),
+                     fmax(fabs(alpha_forward), fabs(alpha_reverse)),
+                     fmax(fabs(beta_forward), fabs(beta_reverse))};
+    } else {
+      const double forward_value = density[physical_offset + forward];
+      const double reverse_value = density[physical_offset + reverse];
+      if (!isfinite(forward_value) || !isfinite(reverse_value)) return true;
+      const double magnitude = fmax(fabs(forward_value), fabs(reverse_value));
+      pairs[pair] = {magnitude, magnitude, 0.0};
+    }
+  }
+  const double tolerance = fmin(screening_tolerance, kForceDensityProductScreeningTolerance);
+  if (!(quartet_bound * pairs[0].coulomb * pairs[1].coulomb < tolerance)) return true;
+  if (!(quartet_bound * pairs[2].exchange_alpha * pairs[3].exchange_alpha < tolerance) ||
+      !(quartet_bound * pairs[4].exchange_alpha * pairs[5].exchange_alpha < tolerance))
+    return true;
+  if constexpr (Unrestricted) {
+    if (!(quartet_bound * pairs[2].exchange_beta * pairs[3].exchange_beta < tolerance) ||
+        !(quartet_bound * pairs[4].exchange_beta * pairs[5].exchange_beta < tolerance))
+      return true;
+  }
+  return false;
+}
+
 /** Apply the shell-level Schwarz and density gate for one direct consumer. */
 template <bool Unrestricted, DirectScreeningPurpose Purpose>
 __device__ __forceinline__ bool direct_shell_quartet_survives_screening(

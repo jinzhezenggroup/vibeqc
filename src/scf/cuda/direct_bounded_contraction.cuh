@@ -59,12 +59,14 @@ __device__ inline __noinline__ void contract_bounded_direct_force_subtile_scaled
     DeviceBatch batch, unsigned angular_order, const std::uint32_t* queue_count,
     const ActiveShellQuartetTile* task, double screening_tolerance, const double* schwarz_bounds,
     const double* density, const std::uint8_t* active, double* forces, double coulomb_coefficient,
-    double exchange_coefficient, std::size_t subtile, unsigned lane) {
+    double exchange_coefficient, std::size_t subtile, unsigned lane, bool refine_ao_density = false,
+    unsigned long long* ao_work_count = nullptr) {
 #define GENERATIVEQC_BOUNDED_FORCE_CASE(order)                                                  \
   case order:                                                                                   \
     contract_two_electron_force_quartet_subtile_scaled<Unrestricted, order, SeparateSources>(   \
         batch, queue_count, task, screening_tolerance, schwarz_bounds, density, active, forces, \
-        0U, coulomb_coefficient, exchange_coefficient, subtile, lane);                          \
+        0U, coulomb_coefficient, exchange_coefficient, subtile, lane, refine_ao_density,        \
+        ao_work_count);                                                                         \
     break
   // Total order 0/1 is consumed by the generated ssss/psss exact-shell
   // tasks before generic bounded dispatch. Do not reinstantiate retired math.

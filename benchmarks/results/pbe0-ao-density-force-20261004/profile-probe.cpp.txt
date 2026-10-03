@@ -1,0 +1,252 @@
+#include <cuda_runtime_api.h>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "molecule/basis.hpp"
+#include "scf/cuda/direct_bounded_fallback.hpp"
+#include "scf/cuda/direct_constants.hpp"
+#include "scf/cuda/direct_jk_plan.hpp"
+
+namespace {
+void require(bool condition, const std::string& detail) {
+  if (!condition) throw std::runtime_error(detail);
+}
+void check(cudaError_t status) {
+  require(status == cudaSuccess, cudaGetErrorString(status));
+}
+
+void values(const std::vector<double>& data) {
+  std::cout << '[';
+  for (std::size_t index = 0; index < data.size(); ++index) {
+    if (index) std::cout << ',';
+    std::cout << data[index];
+  }
+  std::cout << ']';
+}
+}
+
+/** Replay the production kernel and isolate classes using its existing mask.
+ * This executable never substitutes timing for a complete energy/force point.
+ * Shell/AO/primitive ledger entries are admitted capacities, not executed roots.
+ */
+int main() try {
+  using namespace generativeqc;
+  using namespace scf::cuda_execution;
+  std::size_t atom_count = 0, shell_count = 0;
+  require(bool(std::cin >> atom_count >> shell_count), "missing input header");
+  core::System system;
+  system.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
+  system.atoms.resize(atom_count);
+  for (auto& atom : system.atoms) {
+    require(bool(std::cin >> atom.atomic_number >> atom.position[0] >> atom.position[1] >> atom.position[2]), "missing atom");
+    system.electron_count += atom.atomic_number;
+  }
+  system.shells.resize(shell_count);
+  for (auto& shell : system.shells) {
+    std::size_t primitives = 0;
+    require(bool(std::cin >> shell.atom_index >> shell.angular_momentum >> primitives), "missing shell");
+    shell.primitives.resize(primitives);
+    for (auto& primitive : shell.primitives) {
+      require(bool(std::cin >> primitive.exponent >> primitive.coefficient), "missing primitive");
+    }
+  }
+  std::string detail;
+  require(molecule::validate_and_normalize(system, detail) == GENERATIVEQC_STATUS_SUCCESS, detail);
+  scf::CudaDirectJkPlan* raw = nullptr;
+  scf::CudaDirectJkDiagnostic diagnostic;
+  const auto status = scf::create_cuda_direct_jk_plan(
+      0, {system}, 1, 1e-12, 1024ULL * 1024U * 1024U, &raw, diagnostic, detail);
+  require(status == GENERATIVEQC_STATUS_SUCCESS, detail);
+  std::unique_ptr<scf::CudaDirectJkPlan, decltype(&scf::destroy_cuda_direct_jk_plan)> plan(raw, scf::destroy_cuda_direct_jk_plan);
+  require(bool(plan->generated_exchange), "missing prepared exchange owner");
+  auto& exchange = *plan->generated_exchange;
+  auto& shared = *exchange.shared;
+  std::vector<double> density(diagnostic.nbf * diagnostic.nbf);
+  for (auto& value : density) {
+    require(bool(std::cin >> value) && std::isfinite(value), "invalid density");
+  }
+  check(cudaMemcpy(plan->density, density.data(), density.size() * sizeof(double), cudaMemcpyHostToDevice));
+  const char* expected = std::getenv("EXPECTED_SOURCE_IDENTITY");
+  require(expected && std::string(generativeqc_get_source_identity()) == expected, "library identity differs");
+  require(std::getenv("SLURM_JOB_ID") && std::getenv("CUDA_VISIBLE_DEVICES"), "Slurm provenance missing");
+  std::cout << std::setprecision(17);
+  std::cout << "{\"kind\":\"identity\",\"source_identity\":\"" << expected
+            << "\",\"job\":\"" << std::getenv("SLURM_JOB_ID")
+            << "\",\"devices\":\"" << std::getenv("CUDA_VISIBLE_DEVICES")
+            << "\",\"atoms\":" << atom_count << ",\"nao\":" << diagnostic.nbf
+            << ",\"device_bytes\":" << diagnostic.device_bytes
+            << ",\"worker_blocks\":" << shared.worker_blocks << "}\n" << std::flush;
+  std::vector<double> reference;
+  check(execute_generated_full_range_energy_derivatives(exchange, false, plan->density, nullptr, 1.0, -0.125, reference));
+  constexpr std::size_t classes = scf::detail::kDirectQuartetShellClassCount;
+  constexpr std::uint64_t all_classes = (1ULL << classes) - 1ULL;
+  const auto bytes = reference.size() * sizeof(double);
+  DeviceShellClassProfileEntry* profile = nullptr;
+  check(cudaMalloc(&profile, classes * sizeof(*profile)));
+  check(cudaMemsetAsync(profile, 0, classes * sizeof(*profile), shared.stream));
+  cudaEvent_t start, stop;
+  check(cudaEventCreate(&start));
+  check(cudaEventCreate(&stop));
+
+  auto replay = [&](std::uint64_t mask, DeviceShellClassProfileEntry* ledger,
+                    const std::string& label, unsigned long long* ao_work = nullptr) {
+    check(cudaMemsetAsync(exchange.force, 0, bytes, shared.stream));
+    check(cudaMemsetAsync(exchange.force_cursor, 0, sizeof(unsigned long long), shared.stream));
+    check(cudaEventRecord(start, shared.stream));
+    launch_bounded_direct_shell_quartet_kernel_scaled(
+        false, DirectScreeningPurpose::Force, shared.worker_blocks, kBoundedDirectThreads,
+        0, shared.stream, shared.batch, shared.screening, shared.shell_bounds,
+        exchange.shell_pair_density_bounds, exchange.bounded_pair_order,
+        exchange.shell_pair_block_bounds, exchange.system_density_bounds, nullptr, mask,
+        exchange.heads, shared.schwarz, exchange.direct_spin, shared.active, exchange.force,
+        exchange.force_cursor, ledger, 1.0, -0.125, true, ao_work);
+    check(cudaGetLastError());
+    check(cudaEventRecord(stop, shared.stream));
+    check(cudaEventSynchronize(stop));
+    float milliseconds = 0;
+    check(cudaEventElapsedTime(&milliseconds, start, stop));
+    std::vector<double> derivatives(reference.size());
+    check(cudaMemcpy(derivatives.data(), exchange.force, bytes, cudaMemcpyDeviceToHost));
+    for (auto& value : derivatives) {
+      value = -value;
+      require(std::isfinite(value), "nonfinite derivative");
+    }
+    unsigned long long cursor = 0;
+    check(cudaMemcpy(&cursor, exchange.force_cursor, sizeof(cursor), cudaMemcpyDeviceToHost));
+    std::cout << "{\"kind\":\"replay\",\"label\":\"" << label
+              << "\",\"gpu_seconds\":" << milliseconds / 1000.0
+              << ",\"instrumented\":" << (ao_work != nullptr ? "true" : "false")
+              << ",\"cursor\":" << cursor << ",\"derivatives\":";
+    values(derivatives);
+    std::cout << "}\n" << std::flush;
+    return derivatives;
+  };
+
+  if (std::getenv("PBE0_SCREEN_ONLY")) {
+    for (unsigned repeat = 0; repeat < 3; ++repeat) {
+      const auto result = replay(all_classes, nullptr, "screen-only-" + std::to_string(repeat));
+      require(std::all_of(result.begin(), result.end(), [](double value) { return value == 0.0; }),
+              "masked scanner produced a derivative");
+    }
+    check(cudaFree(profile));
+    check(cudaEventDestroy(start));
+    check(cudaEventDestroy(stop));
+    return 0;
+  }
+  if (std::getenv("PBE0_AO_WORK_CENSUS")) {
+    constexpr unsigned stages = static_cast<unsigned>(DirectForceAoWorkStage::Count);
+    const std::array<const char*, stages> names = {
+        "decoded", "schwarz_rejected", "density_rejected", "zero_weight_rejected",
+        "admitted", "explicit_gradient_evaluations", "dual3_gradient_evaluations"};
+    std::array<unsigned long long, classes * stages> observed{};
+    unsigned long long* ao_work = nullptr;
+    check(cudaMalloc(&ao_work, sizeof(observed)));
+    for (unsigned enabled = 0; enabled < 2; ++enabled) {
+      setenv("GENERATIVEQC_BOUNDED_FORCE_AO_DENSITY", enabled ? "1" : "0", 1);
+      check(cudaMemsetAsync(ao_work, 0, sizeof(observed), shared.stream));
+      check(cudaMemsetAsync(profile, 0, classes * sizeof(*profile), shared.stream));
+      const auto result = replay(0, profile, "work-" + std::to_string(enabled), ao_work);
+      double error = 0.0;
+      for (std::size_t index = 0; index < result.size(); ++index)
+        error = std::max(error, std::abs(result[index] - reference[index]));
+      require(error <= 1e-9, "observed producer differs from unscreened-AO derivative");
+      check(cudaMemcpy(observed.data(), ao_work, sizeof(observed), cudaMemcpyDeviceToHost));
+      std::array<DeviceShellClassProfileEntry, classes> capacities{};
+      check(cudaMemcpy(capacities.data(), profile, sizeof(capacities), cudaMemcpyDeviceToHost));
+      for (unsigned shell_class = 0; shell_class < classes; ++shell_class) {
+        const unsigned order = scf::detail::direct_quartet_shell_class_angular_order(shell_class);
+        if (order < 4) {
+          for (unsigned stage = 0; stage < stages; ++stage)
+            require(observed[shell_class * stages + stage] == 0, "observer includes weighted shell roots");
+          continue;
+        }
+        const auto* values = observed.data() + shell_class * stages;
+        require(values[0] == capacities[shell_class].ao_quartets, "decoded AO count differs from shell capacity");
+        require(values[0] == values[1] + values[2] + values[3] + values[4], "AO gates do not conserve work");
+        if (order <= 6) {
+          require(values[5] == values[4] && values[6] == 0, "explicit-gradient calls differ from admission");
+        } else {
+          require(values[5] == 0 && values[6] <= 3 * values[4], "unique-center Dual3 call bound violated");
+        }
+        if (!values[0]) continue;
+        std::cout << "{\"kind\":\"actual-generic-force-work\",\"enabled\":" << enabled
+                  << ",\"class\":" << shell_class << ",\"angular_order\":" << order
+                  << ",\"observer_bytes\":" << sizeof(observed)
+                  << ",\"shell_quartets\":" << capacities[shell_class].shell_quartets
+                  << ",\"primitive_quartets_capacity\":" << capacities[shell_class].primitive_quartets;
+        for (unsigned stage = 0; stage < stages; ++stage)
+          std::cout << ",\"" << names[stage] << "\":" << values[stage];
+        std::cout << "}\n";
+      }
+      std::cout << std::flush;
+    }
+    check(cudaFree(ao_work));
+    check(cudaFree(profile));
+    check(cudaEventDestroy(start));
+    check(cudaEventDestroy(stop));
+    return 0;
+  }
+  if (std::getenv("PBE0_AO_DENSITY_INTERLEAVED")) {
+    for (unsigned repeat = 0; repeat < 3; ++repeat) {
+      for (unsigned slot = 0; slot < 2; ++slot) {
+        const unsigned enabled = (repeat + slot) % 2;
+        setenv("GENERATIVEQC_BOUNDED_FORCE_AO_DENSITY", enabled ? "1" : "0", 1);
+        const auto result = replay(0, nullptr, "density-" + std::to_string(enabled) +
+            "-repeat-" + std::to_string(repeat));
+        double error = 0.0;
+        for (std::size_t index = 0; index < result.size(); ++index)
+          error = std::max(error, std::abs(result[index] - reference[index]));
+        require(error <= 1e-9, "AO refinement differs from unscreened-AO derivative");
+      }
+    }
+    check(cudaFree(profile));
+    check(cudaEventDestroy(start));
+    check(cudaEventDestroy(stop));
+    return 0;
+  }
+  replay(0, profile, "all-profiled");
+  std::array<DeviceShellClassProfileEntry, classes> counters{};
+  check(cudaMemcpy(counters.data(), profile, sizeof(counters), cudaMemcpyDeviceToHost));
+  for (std::size_t shell_class = 0; shell_class < classes; ++shell_class) {
+    const auto& counter = counters[shell_class];
+    std::cout << "{\"kind\":\"admitted-capacity\",\"class\":" << shell_class
+              << ",\"angular_order\":" << scf::detail::direct_quartet_shell_class_angular_order(shell_class)
+              << ",\"shell_quartets\":" << counter.shell_quartets
+              << ",\"ao_quartets\":" << counter.ao_quartets
+              << ",\"primitive_quartets_capacity\":" << counter.primitive_quartets << "}\n";
+  }
+  double maximum_error = 0.0;
+  for (unsigned repeat = 0; repeat < 3; ++repeat) {
+    const auto result = replay(0, nullptr, "all-clean-" + std::to_string(repeat));
+    for (std::size_t index = 0; index < result.size(); ++index) {
+      maximum_error = std::max(maximum_error, std::abs(result[index] - reference[index]));
+    }
+  }
+  std::vector<double> sum(reference.size(), 0.0);
+  for (std::size_t shell_class = 0; shell_class < classes; ++shell_class) {
+    if (counters[shell_class].shell_quartets == 0) continue;
+    const auto result = replay(all_classes ^ (1ULL << shell_class), nullptr, "class-" + std::to_string(shell_class));
+    for (std::size_t index = 0; index < result.size(); ++index) sum[index] += result[index];
+  }
+  for (std::size_t index = 0; index < sum.size(); ++index) {
+    maximum_error = std::max(maximum_error, std::abs(sum[index] - reference[index]));
+  }
+  std::cout << "{\"kind\":\"reconstruction\",\"maximum_error\":" << maximum_error << "}\n";
+  require(maximum_error <= 1e-9, "class sum differs from production traversal");
+  check(cudaFree(profile));
+  check(cudaEventDestroy(start));
+  check(cudaEventDestroy(stop));
+  return 0;
+} catch (const std::exception& error) {
+  std::cerr << error.what() << '\n';
+  return 1;
+}

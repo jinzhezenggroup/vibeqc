@@ -80,6 +80,22 @@ struct DeviceShellClassProfileEntry {
 
 static_assert(sizeof(DeviceShellClassProfileEntry) == sizeof(CudaRhfShellClassProfileEntry));
 
+/** Observer-only work stages in the generic full-range force consumer.
+ * Explicit gradients return all four center derivatives; Dual3 evaluations
+ * return one unique-center derivative. Neither count is a primitive/root or
+ * FLOP count, and low-order weighted shell roots are outside this observer.
+ */
+enum class DirectForceAoWorkStage : unsigned {
+  Decoded,
+  SchwarzRejected,
+  DensityRejected,
+  ZeroWeightRejected,
+  Admitted,
+  ExplicitGradientEvaluations,
+  Dual3GradientEvaluations,
+  Count,
+};
+
 /** Raw spin-resolved density magnitudes for one direct-AO shell block. */
 struct ShellPairDensityBounds {
   double coulomb;

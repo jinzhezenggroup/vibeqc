@@ -19,12 +19,42 @@ from benchmarks.readme_omol25 import (
     SCHEMA,
     check_record,
     main,
+    native_fock_observation,
     protocol,
     require_force_endpoint,
     source_hashes,
 )
 from benchmarks.readme_wb97mv import reference_vv10_domain
 from tools.render_omol25_benchmarks import collect, figure, validate
+
+
+@pytest.mark.parametrize("converged", (False, True))
+@pytest.mark.parametrize("count", (0, 17))
+def test_native_fock_observation_uses_ks_counter(converged: bool, count: int) -> None:
+    """The KS measurement takes precedence even on failure or a zero-build path."""
+    item = SimpleNamespace(
+        ks_diagnostic=SimpleNamespace(fock_builds=count),
+        fock_builds=91,
+        iterations=5,
+        converged=converged,
+    )
+    assert native_fock_observation(item) == {
+        "fock_builds": count,
+        "fock_builds_source": "ks_diagnostic.fock_builds",
+    }
+
+
+@pytest.mark.parametrize("diagnostic", (None, SimpleNamespace(fock_builds=None)))
+@pytest.mark.parametrize("count", (None, 0, 13))
+def test_native_fock_observation_preserves_legacy_or_missing_counts(
+    diagnostic: SimpleNamespace | None, count: int | None
+) -> None:
+    """An absent counter stays unavailable, never zero or the iteration count."""
+    item = SimpleNamespace(ks_diagnostic=diagnostic, fock_builds=count, iterations=5)
+    assert native_fock_observation(item) == {
+        "fock_builds": count,
+        "fock_builds_source": "fock_builds" if count is not None else None,
+    }
 
 
 def sample(phase: str, geometry: int, repeat: int = 0) -> dict:
@@ -422,6 +452,7 @@ def test_native_failure_is_journaled_without_a_force_work_record(failure: str) -
         "save": saved.append,
         "check_record": check_record,
         "normalize_force_work": normalize_force_work,
+        "native_fock_observation": native_fock_observation,
         "force_work": None,
         "phase": "cold",
         "geometry_index": 0,
@@ -439,6 +470,7 @@ def test_native_failure_is_journaled_without_a_force_work_record(failure: str) -
             fock_builds=101,
             energy_change=0.1,
             density_rms=0.2,
+            physical_residual_rms=0.3,
             warm_start_used=False,
             warm_start_fallback=False,
         ),

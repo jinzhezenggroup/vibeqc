@@ -1,0 +1,43 @@
+"""Reuse the complete README protocol for an explicitly labeled H2CO holdout.
+
+Only the benchmark registry and protocol label are adapted. The internal
+water-4 registry key is required by the frozen runner; no retained scientific
+record describes this molecule as water. Production execution is unchanged.
+"""
+
+import importlib.util
+import json
+import sys
+from dataclasses import replace
+from pathlib import Path
+
+from benchmarks import readme_omol25 as endpoint
+
+original_cases = endpoint.scaling_cases
+original_protocol = endpoint.protocol
+case = replace(
+    original_cases()['water-3'],
+    description='formaldehyde non-water PBE0/def2-SVP holdout',
+    atoms=((6, (0.0, 0.0, 0.0)), (8, (0.0, 0.0, 2.28)),
+           (1, (1.75, 0.0, -1.05)), (1, (-1.75, 0.0, -1.05))),
+    expected_ao_count=38,
+)
+
+
+def protocol(*args, **kwargs):
+    """Keep every shared gate, movement and work definition; correct the label."""
+    scientific = original_protocol(*args, **kwargs)
+    assert scientific['atoms'] == 4 and scientific['aos'] == 38
+    scientific['case'] = 'formaldehyde-4'
+    return scientific
+
+
+endpoint.SIZES = (4,)
+endpoint.scaling_cases = lambda: {'water-4': case}
+endpoint.protocol = protocol
+spec = importlib.util.spec_from_file_location('campaign', Path(__file__).with_name('run-endpoint.py'))
+campaign = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(campaign)
+campaign.run()
+output = Path(sys.argv[sys.argv.index('--output') + 1])
+assert json.loads(output.read_text())['protocol']['case'] == 'formaldehyde-4'

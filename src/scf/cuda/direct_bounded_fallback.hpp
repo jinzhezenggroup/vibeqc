@@ -22,7 +22,12 @@ enum class DirectRangeOperator : std::uint32_t {
 /** Force-output fallback; purpose selects screening semantics, not the scientific output. */
 /** Method-neutral force variant. Coefficients multiply the Coulomb and exchange
  * density contractions without changing topology, screening, or recurrence.
- * separate_sources requires two total_atoms*3 output channels, [J', K']. */
+ * separate_sources requires two total_atoms*3 output channels, [J', K'].
+ * ao_work_count optionally observes actual generic full-range AO/gradient work.
+ * It borrows zeroed device storage with kDirectQuartetShellClassCount rows and
+ * DirectForceAoWorkStage::Count columns through stream completion. This separate
+ * census neither extends the public shell-capacity ledger nor counts primitive
+ * evaluations. Profiling atomics must be excluded from clean timing. */
 void launch_bounded_direct_shell_quartet_kernel_scaled(
     bool unrestricted, DirectScreeningPurpose purpose, dim3 grid, dim3 block,
     std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch, double screening_tolerance,
@@ -32,7 +37,8 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
     std::uint64_t enabled_mask, const std::uint32_t* bounded_generated_overflow,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* output,
     unsigned long long* global_cursor, DeviceShellClassProfileEntry* profile,
-    double coulomb_coefficient, double exchange_coefficient, bool separate_sources = false);
+    double coulomb_coefficient, double exchange_coefficient, bool separate_sources = false,
+    unsigned long long* ao_work_count = nullptr);
 
 /** Range-separated exchange derivative on the same bounded shell scheduler.
  * Full-range Schwarz bounds remain a conservative gate for SR/LR operators. */

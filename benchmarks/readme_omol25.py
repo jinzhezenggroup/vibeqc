@@ -200,6 +200,25 @@ def require_force_endpoint(capabilities: dict[str, Any]) -> None:
         )
 
 
+def native_fock_observation(item: Any) -> dict[str, Any]:
+    """Read the solver's counter, including failed solves, without using iterations.
+
+    KS publishes its physical-build count in its own diagnostic; the legacy
+    top-level batch getter may be unavailable. Keep the origin explicit and
+    preserve missing measurements as null rather than inferring work.
+    """
+    diagnostic = getattr(item, "ks_diagnostic", None)
+    count = getattr(diagnostic, "fock_builds", None)
+    source = "ks_diagnostic.fock_builds"
+    if count is None:
+        count = getattr(item, "fock_builds", None)
+        source = "fock_builds"
+    return {
+        "fock_builds": count,
+        "fock_builds_source": source if count is not None else None,
+    }
+
+
 def reference_xc_backend(engine: Any, *, spin: int = 0) -> dict[str, Any]:
     """Read the same cached XCfun flags used by GPU4PySCF after the timer.
 
@@ -524,9 +543,10 @@ def main(benchmark: EndpointSpec = OMOL25) -> None:
                         "status": item.status,
                         "detail": item.status_message,
                         "iterations": item.iterations,
-                        "fock_builds": item.fock_builds,
+                        **native_fock_observation(item),
                         "energy_change": item.energy_change,
                         "density_rms": item.density_rms,
+                        "physical_residual_rms": item.physical_residual_rms,
                         "warm_start_used": item.warm_start_used,
                         "warm_start_fallback": item.warm_start_fallback,
                         "seconds": seconds,

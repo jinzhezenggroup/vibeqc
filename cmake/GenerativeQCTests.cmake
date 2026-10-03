@@ -27,6 +27,10 @@ macro(generativeqc_add_native_tests)
     generativeqc_native_test(generativeqc_incremental_direct_jk_cuda_tests
                        tests/native/test_incremental_direct_jk_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    generativeqc_native_test(generativeqc_force_ao_density_cuda_tests
+                       tests/native/test_direct_force_ao_density.cu
+                       LIBRARIES CUDA::cudart SKIP_77)
+    set_target_properties(generativeqc_force_ao_density_cuda_tests PROPERTIES CUDA_STANDARD 20)
     generativeqc_native_test(generativeqc_mean_field_setup_cuda_tests tests/native/test_mean_field_setup_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
     generativeqc_native_test(generativeqc_cuda_quadrature_tests tests/native/test_cuda_quadrature.cpp

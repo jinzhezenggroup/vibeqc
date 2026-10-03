@@ -1,0 +1,59 @@
+"""Observe exact binary identity and actual reference XC routing without tuning."""
+
+import ctypes
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from generativeqc.autotune import source_identity
+from benchmarks.readme_pbe0 import main
+
+
+def run():
+    assert os.environ.get("SLURM_JOB_ID")
+    output = Path(sys.argv[sys.argv.index("--output") + 1])
+    engine = sys.argv[1]
+    backend_calls = []
+    receipt = {
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        "source_identity": source_identity(Path.cwd()),
+        "job": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "arguments": sys.argv[1:],
+        "requested_indexed_schedule": os.environ["GENERATIVEQC_BOUNDED_SCHWARZ_SCHEDULE"],
+        "requested_ao_density_refinement": os.environ["GENERATIVEQC_BOUNDED_FORCE_AO_DENSITY"],
+        "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "reference_xc_objects": backend_calls,
+        "missing_semantic_counters": {
+            "candidate_quartets": None, "early_rejections": None,
+            "admitted_force_tasks_by_class": None, "executed_force_roots": None,
+        },
+    }
+    if engine == "native":
+        library_path = Path(os.environ["GENERATIVEQC_LIBRARY"])
+        library = ctypes.CDLL(str(library_path))
+        library.generativeqc_get_source_identity.restype = ctypes.c_char_p
+        assert library.generativeqc_get_source_identity().decode() == receipt["source_identity"]
+        receipt["library_sha256"] = hashlib.sha256(library_path.read_bytes()).hexdigest()
+    else:
+        from gpu4pyscf.dft import libxc
+        original = libxc.XCfun.__init__
+
+        def observed(self, xc, spin):
+            original(self, xc, spin)
+            backend_calls.append({"xc": str(xc), "spin": str(spin), "on_gpu": bool(self.on_gpu)})
+
+        libxc.XCfun.__init__ = observed
+    try:
+        main()
+    finally:
+        if engine == "reference":
+            libxc.XCfun.__init__ = original
+        output.with_suffix(".campaign.json").write_text(json.dumps(receipt, indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    run()

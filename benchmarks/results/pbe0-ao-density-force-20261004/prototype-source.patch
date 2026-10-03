@@ -1,0 +1,211 @@
+diff --git a/src/scf/cuda/direct_bounded_contraction.cuh b/src/scf/cuda/direct_bounded_contraction.cuh
+index 40abde79..b4eb3277 100644
+--- a/src/scf/cuda/direct_bounded_contraction.cuh
++++ b/src/scf/cuda/direct_bounded_contraction.cuh
+@@ -59,12 +59,13 @@ __device__ inline __noinline__ void contract_bounded_direct_force_subtile_scaled
+     DeviceBatch batch, unsigned angular_order, const std::uint32_t* queue_count,
+     const ActiveShellQuartetTile* task, double screening_tolerance, const double* schwarz_bounds,
+     const double* density, const std::uint8_t* active, double* forces, double coulomb_coefficient,
+-    double exchange_coefficient, std::size_t subtile, unsigned lane) {
++    double exchange_coefficient, std::size_t subtile, unsigned lane,
++    bool refine_ao_density = false) {
+ #define GENERATIVEQC_BOUNDED_FORCE_CASE(order)                                                  \
+   case order:                                                                                   \
+     contract_two_electron_force_quartet_subtile_scaled<Unrestricted, order, SeparateSources>(   \
+         batch, queue_count, task, screening_tolerance, schwarz_bounds, density, active, forces, \
+-        0U, coulomb_coefficient, exchange_coefficient, subtile, lane);                          \
++        0U, coulomb_coefficient, exchange_coefficient, subtile, lane, refine_ao_density);       \
+     break
+   // Total order 0/1 is consumed by the generated ssss/psss exact-shell
+   // tasks before generic bounded dispatch. Do not reinstantiate retired math.
+diff --git a/src/scf/cuda/direct_bounded_fallback.cu b/src/scf/cuda/direct_bounded_fallback.cu
+index 25554f53..737d48f0 100644
+--- a/src/scf/cuda/direct_bounded_fallback.cu
++++ b/src/scf/cuda/direct_bounded_fallback.cu
+@@ -5,6 +5,7 @@
+ #include <cmath>
+ #include <cstddef>
+ #include <cstdint>
++#include <cstdlib>
+ #include <type_traits>
+ 
+ #include "generated_derivative_cuda_shell_aot.cuh"
+@@ -46,7 +47,8 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
+     const double* density, const std::uint8_t* active, double* output,
+     unsigned long long* global_cursor, DeviceShellClassProfileEntry* profile,
+     double coulomb_coefficient, double exchange_coefficient, DirectRangeOperator radial_operator,
+-    double omega, double secondary_exchange_coefficient, bool coulomb_only, bool exchange_only) {
++    double omega, double secondary_exchange_coefficient, bool coulomb_only, bool exchange_only,
++    bool refine_ao_density = false) {
+   __shared__ ActiveShellQuartetTile queue[detail::kBoundedDirectQueueCapacity];
+   __shared__ std::uint32_t queue_count;
+   __shared__ unsigned long long block_quartet;
+@@ -264,12 +266,12 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
+                 contract_bounded_direct_force_subtile_scaled<Unrestricted>(
+                     batch, angular_order, &queue_count, queue + slot, screening_tolerance,
+                     schwarz_bounds, density, active, output, coulomb_coefficient,
+-                    exchange_coefficient, subtile, lane);
++                    exchange_coefficient, subtile, lane, refine_ao_density);
+               } else if (radial_operator == DirectRangeOperator::FullSources) {
+                 contract_bounded_direct_force_subtile_scaled<Unrestricted, true>(
+                     batch, angular_order, &queue_count, queue + slot, screening_tolerance,
+                     schwarz_bounds, density, active, output, coulomb_coefficient,
+-                    exchange_coefficient, subtile, lane);
++                    exchange_coefficient, subtile, lane, refine_ao_density);
+               } else if (radial_operator == DirectRangeOperator::RshSources) {
+                 contract_bounded_direct_rsh_force_subtile<Unrestricted>(
+                     batch, angular_order, &queue_count, queue + slot, screening_tolerance,
+@@ -334,6 +336,11 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
+     double coulomb_coefficient, double exchange_coefficient, bool separate_sources) {
+   const auto radial_operator =
+       separate_sources ? DirectRangeOperator::FullSources : DirectRangeOperator::Full;
++  // Diagnostic opt-in only; default, range operators and low-order shell roots
++  // retain their qualified admission policy until complete endpoint gates pass.
++  const char* refinement = std::getenv("GENERATIVEQC_BOUNDED_FORCE_AO_DENSITY");
++  const bool refine_ao_density = purpose == DirectScreeningPurpose::Force && refinement &&
++                                 refinement[0] == '1' && refinement[1] == '\0';
+   if (unrestricted == true) {
+     if (purpose == DirectScreeningPurpose::Fock) {
+       bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, true>
+@@ -342,7 +349,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
+               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
+               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
+               density, active, output, global_cursor, profile, coulomb_coefficient,
+-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
++              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, refine_ao_density);
+     } else {
+       bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Force, true>
+           <<<grid, block, shared_bytes, stream>>>(
+@@ -350,7 +357,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
+               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
+               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
+               density, active, output, global_cursor, profile, coulomb_coefficient,
+-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
++              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, refine_ao_density);
+     }
+   } else {
+     if (purpose == DirectScreeningPurpose::Fock) {
+@@ -360,7 +367,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
+               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
+               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
+               density, active, output, global_cursor, profile, coulomb_coefficient,
+-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
++              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, refine_ao_density);
+     } else {
+       bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Force, true>
+           <<<grid, block, shared_bytes, stream>>>(
+@@ -368,7 +375,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
+               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
+               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
+               density, active, output, global_cursor, profile, coulomb_coefficient,
+-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
++              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, refine_ao_density);
+     }
+   }
+ }
+diff --git a/src/scf/cuda/direct_force_quartet.cuh b/src/scf/cuda/direct_force_quartet.cuh
+index 79e4ce3e..137c37c2 100644
+--- a/src/scf/cuda/direct_force_quartet.cuh
++++ b/src/scf/cuda/direct_force_quartet.cuh
+@@ -17,6 +17,7 @@
+ #include "scf/cuda/direct_gradient_types.cuh"
+ #include "scf/cuda/direct_metadata.hpp"
+ #include "scf/cuda/direct_queue_index.cuh"
++#include "scf/cuda/direct_screening.cuh"
+ #include "scf/cuda/matrix_index.cuh"
+ #include "scf/cuda/packed_basis.hpp"
+ 
+@@ -31,7 +32,8 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scal
+     const ActiveShellQuartetTile* active_shell_quartet_tiles, double screening_tolerance,
+     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces,
+     std::uint64_t generated_shell_class_mask, double coulomb_coefficient,
+-    double exchange_coefficient, std::size_t active_subtile, unsigned ao_quartet_lane) {
++    double exchange_coefficient, std::size_t active_subtile, unsigned ao_quartet_lane,
++    bool refine_ao_density = false) {
+   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+   static_assert(AngularOrder >= 2U, "order-0/1 Direct force uses generated exact shell tasks");
+   static_assert(AngularOrder != 3U,
+@@ -95,11 +97,14 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scal
+     std::size_t l = 0;
+     decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin, i, j);
+     decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin, k, l);
+-    if (schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
+-            schwarz_bounds[physical_offset + matrix_index(k, l, n)] <
+-        screening_tolerance) {
++    const double quartet_bound = schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
++                                 schwarz_bounds[physical_offset + matrix_index(k, l, n)];
++    if (quartet_bound < screening_tolerance) {
+       return;
+     }
++    if (refine_ao_density && !direct_ao_force_survives_density_products<Unrestricted>(
++            quartet_bound, screening_tolerance, n, physical_offset, spin_offset, density,
++            i, j, k, l)) return;
+ 
+     // Full-range J/K share one derivative; keep their independently observable
+     // components separate instead of repeating the invariant ERI recurrence.
+diff --git a/src/scf/cuda/direct_screening.cuh b/src/scf/cuda/direct_screening.cuh
+index 7dfa4e3e..ac611cbb 100644
+--- a/src/scf/cuda/direct_screening.cuh
++++ b/src/scf/cuda/direct_screening.cuh
+@@ -22,6 +22,61 @@ __device__ __forceinline__ bool direct_ao_quartet_survives_schwarz(
+   return !(quartet_bound < screening_tolerance);
+ }
+ 
++/** Experimental AO refinement of the existing independent force-product gate.
++ * Preserve both density orientations and same-spin exchange products. In
++ * particular, neither J/K cancellation nor opposite-spin exchange can justify
++ * dropping a derivative. Nonfinite input must reach the numerical-failure path.
++ * This is an additional screening approximation, not an ERI-derivative bound;
++ * callers must keep the qualified unscreened-AO fallback available.
++ */
++template <bool Unrestricted>
++__device__ __forceinline__ bool direct_ao_force_survives_density_products(
++    double quartet_bound, double screening_tolerance, std::size_t dimension,
++    std::size_t physical_offset, std::size_t spin_offset, const double* density,
++    std::size_t first, std::size_t second, std::size_t third, std::size_t fourth) {
++  if (!isfinite(quartet_bound)) return true;
++  const std::size_t pair_first[6] = {first, third, first, second, first, second};
++  const std::size_t pair_second[6] = {second, fourth, third, fourth, fourth, third};
++  ShellPairDensityBounds pairs[6];
++  const std::size_t matrix_size = dimension * dimension;
++#pragma unroll
++  for (unsigned pair = 0; pair < 6; ++pair) {
++    const auto forward = matrix_index(pair_first[pair], pair_second[pair], dimension);
++    const auto reverse = matrix_index(pair_second[pair], pair_first[pair], dimension);
++    if constexpr (Unrestricted) {
++      const double alpha_forward = density[spin_offset + forward];
++      const double alpha_reverse = density[spin_offset + reverse];
++      const double beta_forward = density[spin_offset + matrix_size + forward];
++      const double beta_reverse = density[spin_offset + matrix_size + reverse];
++      if (!isfinite(alpha_forward) || !isfinite(alpha_reverse) || !isfinite(beta_forward) ||
++          !isfinite(beta_reverse)) return true;
++      const double total_forward = alpha_forward + beta_forward;
++      const double total_reverse = alpha_reverse + beta_reverse;
++      if (!isfinite(total_forward) || !isfinite(total_reverse)) return true;
++      pairs[pair] = {fmax(fabs(total_forward), fabs(total_reverse)),
++                     fmax(fabs(alpha_forward), fabs(alpha_reverse)),
++                     fmax(fabs(beta_forward), fabs(beta_reverse))};
++    } else {
++      const double forward_value = density[physical_offset + forward];
++      const double reverse_value = density[physical_offset + reverse];
++      if (!isfinite(forward_value) || !isfinite(reverse_value)) return true;
++      const double magnitude = fmax(fabs(forward_value), fabs(reverse_value));
++      pairs[pair] = {magnitude, magnitude, 0.0};
++    }
++  }
++  const double tolerance = fmin(screening_tolerance, kForceDensityProductScreeningTolerance);
++  if (!(quartet_bound * pairs[0].coulomb * pairs[1].coulomb < tolerance)) return true;
++  if (!(quartet_bound * pairs[2].exchange_alpha * pairs[3].exchange_alpha < tolerance) ||
++      !(quartet_bound * pairs[4].exchange_alpha * pairs[5].exchange_alpha < tolerance))
++    return true;
++  if constexpr (Unrestricted) {
++    if (!(quartet_bound * pairs[2].exchange_beta * pairs[3].exchange_beta < tolerance) ||
++        !(quartet_bound * pairs[4].exchange_beta * pairs[5].exchange_beta < tolerance))
++      return true;
++  }
++  return false;
++}
++
+ /** Apply the shell-level Schwarz and density gate for one direct consumer. */
+ template <bool Unrestricted, DirectScreeningPurpose Purpose>
+ __device__ __forceinline__ bool direct_shell_quartet_survives_screening(

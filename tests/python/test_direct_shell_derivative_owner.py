@@ -67,7 +67,11 @@ def test_full_range_derivative_shares_one_queue_and_download() -> None:
         "contract_bounded_direct_force_subtile_scaled<Unrestricted, true>" in dispatcher
     )
     contraction = _source("src/scf/cuda/direct_force_quartet.cuh")
-    assert "if (coefficient == 0.0 && exchange_weight == 0.0) return;" in contraction
+    zero_weight_branch = contraction.split(
+        "if (coefficient == 0.0 && exchange_weight == 0.0) {", 1
+    )[1].split("}", 1)[0]
+    assert "return;" in zero_weight_branch
+    assert "contracted_eri" not in zero_weight_branch
     assert "SeparateSources ? 2U : 1U" in contraction
 
 

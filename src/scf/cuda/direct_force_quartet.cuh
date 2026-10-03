@@ -17,6 +17,7 @@
 #include "scf/cuda/direct_gradient_types.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_queue_index.cuh"
+#include "scf/cuda/direct_screening.cuh"
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/packed_basis.hpp"
 
@@ -25,13 +26,27 @@
 
 namespace generativeqc::scf::cuda_execution {
 
+/** Count actual producer visits without imposing a warp/class uniformity assumption.
+ * The caller owns class-major storage and its stream-ordered lifetime. Null is
+ * the normal execution path; instrumented timing must not replace clean timing.
+ */
+__device__ __forceinline__ void observe_direct_force_ao_work(unsigned long long* work_count,
+                                                             unsigned shell_class,
+                                                             DirectForceAoWorkStage stage) {
+  if (work_count != nullptr && shell_class < detail::kDirectQuartetShellClassCount) {
+    constexpr unsigned stages = static_cast<unsigned>(DirectForceAoWorkStage::Count);
+    atomicAdd(work_count + shell_class * stages + static_cast<unsigned>(stage), 1ULL);
+  }
+}
+
 template <bool Unrestricted, unsigned AngularOrder, bool SeparateSources = false>
 __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scaled(
     DeviceBatch batch, const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles, double screening_tolerance,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces,
     std::uint64_t generated_shell_class_mask, double coulomb_coefficient,
-    double exchange_coefficient, std::size_t active_subtile, unsigned ao_quartet_lane) {
+    double exchange_coefficient, std::size_t active_subtile, unsigned ao_quartet_lane,
+    bool refine_ao_density = false, unsigned long long* ao_work_count = nullptr) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   static_assert(AngularOrder >= 2U, "order-0/1 Direct force uses generated exact shell tasks");
   static_assert(AngularOrder != 3U,
@@ -95,9 +110,19 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scal
     std::size_t l = 0;
     decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin, i, j);
     decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin, k, l);
-    if (schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
-            schwarz_bounds[physical_offset + matrix_index(k, l, n)] <
-        screening_tolerance) {
+    observe_direct_force_ao_work(ao_work_count, shell_class, DirectForceAoWorkStage::Decoded);
+    const double quartet_bound = schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
+                                 schwarz_bounds[physical_offset + matrix_index(k, l, n)];
+    if (quartet_bound < screening_tolerance) {
+      observe_direct_force_ao_work(ao_work_count, shell_class,
+                                   DirectForceAoWorkStage::SchwarzRejected);
+      return;
+    }
+    if (refine_ao_density && !direct_ao_force_survives_density_products<Unrestricted>(
+                                 quartet_bound, screening_tolerance, n, physical_offset,
+                                 spin_offset, density, i, j, k, l)) {
+      observe_direct_force_ao_work(ao_work_count, shell_class,
+                                   DirectForceAoWorkStage::DensityRejected);
       return;
     }
 
@@ -111,7 +136,12 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scal
       exchange_weight = direct_force_density_coefficient_scaled<Unrestricted>(
           n, physical_offset, spin_offset, density, i, j, k, l, 0.0, exchange_coefficient);
     }
-    if (coefficient == 0.0 && exchange_weight == 0.0) return;
+    if (coefficient == 0.0 && exchange_weight == 0.0) {
+      observe_direct_force_ao_work(ao_work_count, shell_class,
+                                   DirectForceAoWorkStage::ZeroWeightRejected);
+      return;
+    }
+    observe_direct_force_ao_work(ao_work_count, shell_class, DirectForceAoWorkStage::Admitted);
     const double source_coefficients[2] = {coefficient, exchange_weight};
     constexpr unsigned source_count = SeparateSources ? 2U : 1U;
     const std::size_t source_stride = static_cast<std::size_t>(batch.total_atoms) * 3U;
@@ -126,6 +156,8 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scal
         direct_force_unique_center_atoms(center_atoms, unique_center_atoms);
     double explicit_unique_gradient[4][3]{};
     if constexpr (AngularOrder == 2U || (AngularOrder >= 4U && AngularOrder <= 6U)) {
+      observe_direct_force_ao_work(ao_work_count, shell_class,
+                                   DirectForceAoWorkStage::ExplicitGradientEvaluations);
       CartesianQuartetGradient explicit_gradient{};
       if constexpr (AngularOrder == 2) {
         explicit_gradient = contracted_eri_cartesian_source_order2_generated_gradient(
@@ -168,6 +200,8 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_scal
         derivative_y = explicit_unique_gradient[center][1];
         derivative_z = explicit_unique_gradient[center][2];
       } else {
+        observe_direct_force_ao_work(ao_work_count, shell_class,
+                                     DirectForceAoWorkStage::Dual3GradientEvaluations);
         const Dual3 derivative =
             dispatch_contracted_eri_cartesian_source_shell_class<AngularOrder, Dual3>(
                 shell_class, batch, system, static_cast<std::int32_t>(i),
