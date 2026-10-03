@@ -180,8 +180,12 @@ def _geometry_loop(scope: dict[str, typing.Any]) -> None:
 @pytest.mark.parametrize("resident", [False, True])
 @pytest.mark.parametrize("profile", [False, True])
 @pytest.mark.parametrize("fail_at_drain", [None, 2])
+@pytest.mark.parametrize("selected", [None, (), (1, 4)])
 def test_actual_geometry_loop_preserves_offsets_and_stops_at_failed_window(
-    resident: bool, profile: bool, fail_at_drain: int | None
+    resident: bool,
+    profile: bool,
+    fail_at_drain: int | None,
+    selected: tuple[int, ...] | None,
 ) -> None:
     points, tile = 1003, 64
     plan = plan_stationary_cuda_grid_work(
@@ -201,6 +205,14 @@ def test_actual_geometry_loop_preserves_offsets_and_stops_at_failed_window(
     lease = SimpleNamespace(points=10000, weights=20000, atomic_weights=30000)
     seen, events = [], []
     active = False
+    mask = None if selected is None else np.asarray(selected, dtype=np.uintp)
+    selections = []
+
+    def select(owner: typing.Any, domain: str, begin: int, count: int) -> np.ndarray:
+        assert not active and domain == "order-two-grid"
+        assert owner is scope["ao"]
+        selections.append((begin, count))
+        return mask
 
     @contextmanager
     def task(*args: typing.Any, **kwargs: typing.Any) -> typing.Iterator[typing.Any]:
@@ -238,6 +250,7 @@ def test_actual_geometry_loop_preserves_offsets_and_stops_at_failed_window(
     ) -> None:
         assert active and functional == 1 and points_per_atom == 17
         assert view[0] == lease.points + 24 * begin
+        assert view[2] is mask
         assert weighted == lease.weights + 8 * begin
         assert atomic == lease.atomic_weights + 8 * begin
         if profile:
@@ -263,6 +276,11 @@ def test_actual_geometry_loop_preserves_offsets_and_stops_at_failed_window(
         "state": SimpleNamespace(_source=SimpleNamespace(atomic_weights=weights)),
         "resident_grid": lease if resident else None,
         "ao": SimpleNamespace(feature_task=task, feature_task_device_points=task),
+        "ao_maps": (
+            None
+            if selected is None
+            else SimpleNamespace(domain="order-two-grid", select=select)
+        ),
         "sources": SimpleNamespace(
             geometry=geometry,
             geometry_molecular_resident_weights=resident_geometry,
@@ -287,6 +305,7 @@ def test_actual_geometry_loop_preserves_offsets_and_stops_at_failed_window(
     ]
     assert events[-1] == "drain"
     assert events.count("drain") == (fail_at_drain or plan.chunk_count)
+    assert selections == (seen if resident and selected is not None else [])
 
 
 def _resource_preflight(basis: typing.Any, host_budget: int = 256 << 20) -> dict:
@@ -338,6 +357,9 @@ def _resource_preflight(basis: typing.Any, host_budget: int = 256 << 20) -> dict
         "needs_first": True,
         "max_device_bytes": 512 << 20,
         "max_host_bytes": host_budget,
+        "prepared": None,
+        "resident_ao_cutoff": None,
+        "resident_ao_cache_bytes": 16 << 20,
         "ecp": False,
         "plan": SimpleNamespace(spin_blocks=1),
         "source_names": tuple(range(8)),

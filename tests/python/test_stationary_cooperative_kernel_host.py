@@ -16,14 +16,39 @@ from test_stationary_geometry_kernel_host import PREFIX
 
 
 @pytest.mark.parametrize(
-    ("atoms", "aos"),
-    [(12, 2), (33, 2), (96, 2), (128, 2), (12, 96), (12, 1024), (96, 768), (128, 1024)],
+    ("atoms", "aos", "layout"),
+    [
+        (atoms, aos, "unordered")
+        for atoms, aos in (
+            (12, 2),
+            (33, 2),
+            (96, 2),
+            (128, 2),
+            (12, 96),
+            (12, 1024),
+            (96, 768),
+            (128, 1024),
+        )
+    ]
+    + [
+        (12, 96, "grouped"),
+        (96, 768, "grouped"),
+        (128, 1024, "grouped"),
+        (12, 96, "holes"),
+        (12, 96, "single"),
+        (12, 96, "within_atom"),
+        (12, 96, "subset"),
+        (12, 1024, "grouped"),
+        (12, 0, "grouped"),
+    ],
 )
 def test_emitted_cooperative_kernel_routes_tails_and_sticky_failure(
     tmp_path: Path,
     atoms: int,
     aos: int,
+    layout: str,
 ) -> None:
+    """Execute actual generated schedules and count reduction owner-label reads."""
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler unavailable")
@@ -33,6 +58,9 @@ def test_emitted_cooperative_kernel_routes_tails_and_sticky_failure(
         r"""
 #include <atomic>
 #include <barrier>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
 #include <thread>
 struct Dimension { size_t x{}; };
 thread_local Dimension threadIdx, blockIdx;
@@ -41,6 +69,19 @@ thread_local std::barrier<>* active_barrier;
 #define __syncthreads() active_barrier->arrive_and_wait()
 #define __shared__ static
 double* geometry_pair_storage;
+int atomicAnd(int* pointer, int value) {
+  return std::atomic_ref(*pointer).fetch_and(value);
+}
+std::atomic<size_t> owner_probes{0};
+size_t owner_capacity=0;
+int64_t checked_owner(const int64_t* owners, size_t index) {
+  if(index>=owner_capacity) std::abort();
+  return owners[index];
+}
+int64_t read_owner(const int64_t* owners, size_t index) {
+  ++owner_probes;
+  return checked_owner(owners,index);
+}
 """,
     )
     prefix = prefix.replace(
@@ -65,6 +106,20 @@ double* geometry_pair_storage;
     kernels = _STATIONARY_SCIENTIFIC_KERNELS[begin:end].replace(
         "  extern __shared__ double geometry_pair_storage[];", ""
     )
+    reduction_begin = kernels.index("      const bool ordered_ao_owners =")
+    reduction_end = kernels.index("      if (threadIdx.x == 0)", reduction_begin)
+    kernels = (
+        kernels[:reduction_begin]
+        + kernels[reduction_begin:reduction_end].replace(
+            "ao_atoms[global_ao]", "read_owner(ao_atoms, global_ao)"
+        )
+        + kernels[reduction_end:]
+    )
+    kernels = kernels.replace(
+        "ao_atoms[global_ao]", "checked_owner(ao_atoms, global_ao)"
+    ).replace(
+        "ao_atoms[previous_global_ao]", "checked_owner(ao_atoms, previous_global_ao)"
+    )
     source = tmp_path / "kernel.cpp"
     source.write_text(
         prefix
@@ -75,6 +130,9 @@ double* geometry_pair_storage;
         + r"""
 int main() {
   constexpr size_t na=ATOMS,n=AOS,np=(na>32?5:17),pairs=na*(na-1)/2;
+  const std::string layout="LAYOUT";
+  const size_t full_aos=layout=="subset"?2*n+3:n;
+  owner_capacity=full_aos;
   constexpr size_t state_count=na<=32?pairs:4*(2*na-5)/2;
   double centers[3*na];
   for(size_t a=0;a<na;++a) {
@@ -83,11 +141,17 @@ int main() {
   std::vector<generativeqc_grid_adjoint::CenterPair> geometry(pairs);
   if(!generativeqc_grid_adjoint::prepare_center_geometry(centers,na,1e-12,geometry.data(),
                                                          local_norm,local_ratio_geometry)) return 1;
-  std::vector<int64_t> ao_atoms(n);
+  std::vector<int64_t> ao_atoms(full_aos);
   std::vector<size_t> active_ids(n);
+  for(size_t ao_index=0;ao_index<full_aos;++ao_index) {
+    ao_atoms[ao_index]=layout=="unordered"?(ao_index*7)%na:ao_index*na/full_aos;
+    if(layout=="single") ao_atoms[ao_index]=na/2;
+    if(layout=="holes") ao_atoms[ao_index]=2*(ao_index*(na/2)/full_aos);
+  }
   for(size_t ao_index=0;ao_index<n;++ao_index) {
-    ao_atoms[ao_index]=(ao_index*7)%na;
-    active_ids[ao_index]=n-1-ao_index;
+    active_ids[ao_index]=layout=="unordered"?n-1-ao_index:ao_index;
+    if(layout=="subset") active_ids[ao_index]=2*ao_index+1;
+    if(layout=="within_atom") active_ids[ao_index]=(ao_index/8)*8+7-ao_index%8;
   }
   for(bool cached:{false,true}) for(bool implicit:{false,true}) for(bool external:{false,true})
   for(size_t capacity:{size_t(1),size_t(7)}) for(size_t points:{size_t(0),size_t(1),np}) {
@@ -108,7 +172,7 @@ int main() {
     }
     const auto* center_pairs=cached?geometry.data():nullptr;
     int error=0,producer_error=0;
-    generativeqc::dft::GridTaskView view{points,n,n,features.data(),ao.data(),xyz.data(),
+    generativeqc::dft::GridTaskView view{points,n,full_aos,features.data(),ao.data(),xyz.data(),
                                        implicit?active_ids.data():nullptr,&producer_error};
     auto invoke=[&](bool cooperative,size_t lane,size_t rank) {
       blockIdx.x=cooperative?lane:lane/32; threadIdx.x=cooperative?rank:lane%32;
@@ -140,10 +204,29 @@ int main() {
       }
     };
     ao_evaluations=0;
+    owner_probes=0;
     execute();
     const auto actual=reduce();
     if(error) return 2;
     if(ao_evaluations!=2*n*points) return 7;
+    const bool cooperative_ao=(sizeof(StationaryPointValue)+7)/8+3*n<=8*state_count;
+    bool ordered=true;
+    for(size_t ao_index=1;ao_index<n;++ao_index)
+      ordered=ordered && ao_atoms[implicit?active_ids[ao_index-1]:ao_index-1]
+                           <=ao_atoms[implicit?active_ids[ao_index]:ao_index];
+    if(!cooperative_ao && owner_probes!=0) return 9;
+    if(cooperative_ao && !ordered && owner_probes!=points*na*n) return 10;
+    if(cooperative_ao && ordered) {
+      size_t search_depth=0;
+      for(size_t remaining=n;remaining;remaining/=2) ++search_depth;
+      if(owner_probes>points*(na*search_depth+n+na)) return 11;
+      if(n>=96 && points && owner_probes>=points*na*n) return 12;
+      if(n==0 && owner_probes!=0) return 13;
+    }
+    if(cached && implicit && external && capacity==7 && points==np)
+      std::printf("owner-work atoms=%zu active=%zu points=%zu layout=%s cooperative=%d "
+                  "ordered=%d measured=%zu dense-scan=%zu\n",na,n,points,layout.c_str(),
+                  int(cooperative_ao),int(ordered),owner_probes.load(),points*na*n);
     for(size_t coordinate=0;coordinate<6*na;++coordinate)
       if(expected[coordinate]!=actual[coordinate]) return 8;
     for(size_t k=0;k<9*na;++k) if(std::abs(expected[k]-actual[k])>2e-11) return 3;
@@ -151,28 +234,36 @@ int main() {
        scratch.back()!=987654 || storage.front()!=987654 || storage.back()!=987654) return 4;
     if(!points) continue;
     // Invalid input late in a worker never publishes any partial output.
-    for(int invalid=0;invalid<6;++invalid) {
+    for(int invalid=0;invalid<8;++invalid) {
       const auto old_xyz=xyz,old_raw=raw,old_seeds=seeds;
       const auto old_atoms=ao_atoms;
+      const auto old_ids=active_ids;
+      if(!n && (invalid==3 || invalid==5 || invalid==6 || invalid==7)) continue;
       if(invalid==0) std::copy(centers,centers+3,xyz.end()-3);
       if(invalid==1) raw.back()=std::numeric_limits<double>::quiet_NaN();
       if(invalid==2) producer_error=1;
       if(invalid==3) view.nao=1;
       if(invalid==4) { if(!external) continue; seeds[5*(np+7)+points+1]=std::numeric_limits<double>::infinity(); }
-      if(invalid==5) ao_atoms.back()=-1;
+      if(invalid==5) ao_atoms[implicit?active_ids.back():n-1]=-1;
+      if(invalid==6) { active_ids.back()=full_aos; view.ao_ids=active_ids.data(); }
+      if(invalid==7) { active_ids[n-2]=full_aos; view.ao_ids=active_ids.data(); }
       error=0; execute();
       const auto failed=reduce();
       if(!error) return 5;
       for(double value:failed) if(value!=0) return 6;
-      xyz=old_xyz; raw=old_raw; seeds=old_seeds; producer_error=0; view.nao=n;
+      xyz=old_xyz; raw=old_raw; seeds=old_seeds; producer_error=0; view.nao=full_aos;
       ao_atoms=old_atoms;
+      active_ids=old_ids;
+      view.ao_ids=implicit?active_ids.data():nullptr;
       // Rebind potentially replaced vector storage before the next replay.
       view.points=xyz.data();
     }
   }
   return 0;
 }
-""".replace("ATOMS", str(atoms)).replace("AOS", str(aos))
+""".replace("ATOMS", str(atoms))
+        .replace("AOS", str(aos))
+        .replace("LAYOUT", layout)
     )
     binary = tmp_path / "kernel"
     process = subprocess.run(
@@ -196,6 +287,7 @@ int main() {
         [str(binary)], capture_output=True, text=True, timeout=60, check=False
     )
     assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)
+    print(result.stdout, end="")
 
 
 def test_emitted_team_vote_completes_reads_before_the_next_failure(

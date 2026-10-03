@@ -556,7 +556,9 @@ __global__ void geometry_cooperative_kernel(generativeqc::dft::GridTaskView view
     const int64_t owner = owners ? owners[p]
         : (points_per_atom ? int64_t((owner_offset + p) / points_per_atom) : int64_t{-1});
     if (threadIdx.x == 0) {
-      control.collective_valid = 1;
+      // Bit zero is the sticky validity vote; bit one admits ordered AO owners.
+      // Clearing either bit cannot undo another thread's invalid-input vote.
+      control.collective_valid = 3;
       control.valid = owner >= 0 && owner < int64_t(na) && isfinite(weights[p]) && isfinite(raw[p]);
       if (control.valid) {
         if (cooperative_ao)
@@ -575,9 +577,23 @@ __global__ void geometry_cooperative_kernel(generativeqc::dft::GridTaskView view
     if (cooperative_ao) {
       for (size_t ao_index = threadIdx.x; ao_index < view.nactive; ao_index += blockDim.x) {
         const size_t global_ao = view.ao_ids ? view.ao_ids[ao_index] : ao_index;
-        if (global_ao >= view.nao || ao_atoms[global_ao] < 0 || ao_atoms[global_ao] >= int64_t(na)) {
+        if (global_ao >= view.nao) {
           atomicExch(&control.collective_valid, 0);
           continue;
+        }
+        const int64_t atom = ao_atoms[global_ao];
+        if (atom < 0 || atom >= int64_t(na)) {
+          atomicExch(&control.collective_valid, 0);
+          continue;
+        }
+        if (ao_index) {
+          const size_t previous_global_ao = view.ao_ids ? view.ao_ids[ao_index - 1] : ao_index - 1;
+          if (previous_global_ao >= view.nao) {
+            atomicExch(&control.collective_valid, 0);
+            continue;
+          }
+          if (ao_atoms[previous_global_ao] > atom)
+            atomicAnd(&control.collective_valid, 1);
         }
         geometry_ao_gradient(view, work, p, ao_index, weights[p], *point_value,
                              ao_gradient + 3 * ao_index);
@@ -587,15 +603,29 @@ __global__ void geometry_cooperative_kernel(generativeqc::dft::GridTaskView view
         if (threadIdx.x == 0) atomicExch(error, 1);
         return;
       }
-      // Each atom has one writer. Both reductions retain the original AO
-      // order, including arbitrary active-AO maps and noncontiguous atoms.
-      for (size_t atom = threadIdx.x; atom < na; atom += blockDim.x)
-        for (size_t ao_index = 0; ao_index < view.nactive; ++ao_index) {
+      // Monotone owner labels admit one contiguous range per atom, even when
+      // AO IDs are permuted within that atom. Other maps keep the full scan.
+      // Each atom still has one writer and its original AO summation order.
+      const bool ordered_ao_owners = (control.collective_valid & 2) != 0;
+      for (size_t atom = threadIdx.x; atom < na; atom += blockDim.x) {
+        size_t ao_begin = 0;
+        if (ordered_ao_owners) {
+          size_t ao_end = view.nactive;
+          while (ao_begin < ao_end) {
+            const size_t middle = ao_begin + (ao_end - ao_begin) / 2;
+            const size_t global_ao = view.ao_ids ? view.ao_ids[middle] : middle;
+            if (ao_atoms[global_ao] < int64_t(atom)) ao_begin = middle + 1;
+            else ao_end = middle;
+          }
+        }
+        for (size_t ao_index = ao_begin; ao_index < view.nactive; ++ao_index) {
           const size_t global_ao = view.ao_ids ? view.ao_ids[ao_index] : ao_index;
           if (ao_atoms[global_ao] == int64_t(atom))
             for (size_t axis = 0; axis < 3; ++axis)
               grad[3 * atom + axis] -= ao_gradient[3 * ao_index + axis];
+          else if (ordered_ao_owners) break;
         }
+      }
       if (threadIdx.x == 0)
         for (size_t ao_index = 0; ao_index < view.nactive; ++ao_index)
           for (size_t axis = 0; axis < 3; ++axis)

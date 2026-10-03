@@ -1,0 +1,26 @@
+{
+  "scope": "Integrated master86/shared-cache/standalone-claim-repair source; device correctness only, not a relabeling of the earlier endpoint timings.",
+  "source_identity": "46852852006dc81b164796e994bc335c4f336da3f03e38ba76bec3c3e0269111",
+  "library_sha256": "c2f7c6e192a83ff09816af2e0834c3a22fb0190009e7592a9f2e5c3025b04254",
+  "job": "5572",
+  "host": "node1",
+  "cuda_visible_devices": "0",
+  "partition": "main",
+  "gres": "gpu:5090:1",
+  "time_limit": "00:20:00",
+  "host_gpu_caller_tests_passed": 89,
+  "memcheck_tests_passed": 34,
+  "memcheck_errors": 0,
+  "claim_tests_passed": 4,
+  "claim_modes": [
+    "host invariant",
+    "plain",
+    "synccheck",
+    "racecheck"
+  ],
+  "log": "current-qualification.log.gz",
+  "log_sha256": "128f581e858e9013bb784b5a03a00eefa1b29af0bb0eb359c8c2a1dcef3f5e59",
+  "stored_sha256": "1404830bf57018f58d464cd845266602b44fda878be8d1b8910c34a0bb59a0ad",
+  "stored_bytes": 4795,
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\ncd /data/jzzeng/qc-pbe0-resident-ao-pr-20261003\nsource /home/jzzeng/codes/qc-pbe0-generated-sources-20261003/.artifacts/gpu-environment.sh\n: \"${SLURM_JOB_ID:?requires finite Slurm}\"\nexport GENERATIVEQC_LIBRARY=\"$PWD/.artifacts/candidate/libgenerativeqc.so\"\nexport GENERATIVEQC_GRID_CUDA_TEST=1\nexport GENERATIVEQC_CLAIM_CUDA_TEST=1\nexport CCACHE_BASEDIR=\"$PWD\"\nexport TMPDIR=\"$PWD/.artifacts/test-tmp\"\nmkdir -p \"$TMPDIR\"\nprintf 'job=%s host=%s devices=%s\\n' \"$SLURM_JOB_ID\" \"$(hostname)\" \"$CUDA_VISIBLE_DEVICES\"\nnvidia-smi -q\nccache --version\nccache --show-stats\ntrap 'ccache --show-stats' EXIT\nsha256sum -c .artifacts/candidate/library.sha256\n\"$python\" - <<'PY'\nimport ctypes\nfrom pathlib import Path\nfrom generativeqc.autotune import source_identity\nroot = Path.cwd()\nlibrary = ctypes.CDLL(str(root / '.artifacts/candidate/libgenerativeqc.so'))\nlibrary.generativeqc_get_source_identity.restype = ctypes.c_char_p\ncompiled = library.generativeqc_get_source_identity().decode()\nassert compiled == source_identity(root) == (root / '.artifacts/source-identity.txt').read_text().strip()\nprint('SOURCE IDENTITY PASS', compiled)\nPY\n\"$python\" -m pytest -q --tb=short tests/python/test_resident_ao_selection.py tests/python/test_resident_ao_map_cache.py tests/python/test_stationary_resident_ao_maps.py\ncompute-sanitizer --tool memcheck --error-exitcode 91 \\\n  \"$python\" -m pytest -q --tb=short tests/python/test_resident_ao_selection.py\n\n\"$python\" -m pytest -q --tb=short tests/python/test_bounded_force_claim_cuda.py\n"
+}

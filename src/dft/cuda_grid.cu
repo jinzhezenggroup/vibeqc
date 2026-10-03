@@ -100,6 +100,41 @@ __global__ void split_restricted_density(const double* total, size_t count, doub
   }
 }
 
+// Compare every configured spatial jet on the actual immutable point tile.
+// Adjacent lanes read adjacent AO columns; four warps split 128 point rows.
+// Integer OR is deterministic and each block publishes at most once per AO.
+// This bounds omitted sampled jets individually, not energy or force error.
+__global__ void active_ao_columns(const double* ao, size_t npoint, size_t nao, size_t jets,
+                                  double cutoff, unsigned* selected, int* error) {
+  constexpr unsigned width = 32, warps = 4, point_tile = 128;
+  const unsigned lane = threadIdx.x % width, warp = threadIdx.x / width;
+  const size_t column = size_t(blockIdx.x) * width + lane;
+  __shared__ unsigned flags[warps][width];
+  unsigned keep = 0;
+  if (column < nao) {
+    for (size_t first = size_t(blockIdx.y) * point_tile; first < npoint;
+         first += size_t(gridDim.y) * point_tile) {
+      for (size_t point = first + warp; point < npoint && point < first + point_tile;
+           point += warps) {
+        for (size_t jet = 0; jet < jets; ++jet) {
+          const double value = ao[(jet * npoint + point) * nao + column];
+          if (!isfinite(value)) {
+            atomicExch(error, 1);
+            keep = 1;  // A bad value may never be hidden by a zero mask.
+          }
+          keep |= fabs(value) > cutoff;
+        }
+      }
+    }
+  }
+  flags[warp][lane] = keep;
+  __syncthreads();
+  if (warp == 0 && column < nao) {
+    for (unsigned w = 1; w < warps; ++w) keep |= flags[w][lane];
+    if (keep) atomicOr(selected + column, keep);
+  }
+}
+
 void require_device_pointer(const void* pointer, int device) {
   if (!pointer) throw std::invalid_argument("null CUDA grid device pointer");
   cudaPointerAttributes attributes{};
@@ -616,6 +651,51 @@ int grid_cuda_run_selected_device_deferred_v1(void* pointer, const double* point
                                               char* error, size_t size) {
   return grid_cuda_run_selected_impl(pointer, points, npoint, features, ao_ids, active,
                                      feature_output, jet_output, 1, 1, error, size);
+}
+
+// Explicit, synchronous discovery for a caller-owned fixed-geometry mask.
+// Borrow the existing identity-map storage only after invalidating its task
+// generation. No density contraction, grid-coordinate copy, or new device
+// allocation is needed. The next grid run uploads its own selected map.
+int grid_cuda_select_ao_device_v1(void* pointer, const double* points, size_t npoint, double cutoff,
+                                  unsigned* selected, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !selected || !npoint || !std::isfinite(cutoff) || cutoff <= 0)
+      throw std::invalid_argument("invalid resident AO selection input");
+    auto& p = *static_cast<GridPlan*>(pointer);
+    auto& ctx = p.context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    if (!p.local || p.active_capacity != p.nao || npoint > p.capacity)
+      throw std::invalid_argument("AO selection requires a full-capacity local grid plan");
+    require_device_pointer(points, ctx.device);
+    p.view_ready = p.features_ready = p.density_jets_ready = false;
+    p.current_points = nullptr;
+    ++p.generation;
+    static_assert(sizeof(size_t) >= sizeof(unsigned));
+    auto* flags = reinterpret_cast<unsigned*>(p.ao_ids);
+    ctx.section(false, ctx.metrics.input_ms, [&] {
+      cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
+      cuda_check(cudaMemsetAsync(flags, 0, p.nao * sizeof(unsigned), ctx.stream));
+    });
+    ctx.section(false, ctx.metrics.kernel_ms, [&] {
+      scheduled_ao(ctx.stream, p.basis, p.natom, p.nprimitive, p.nao, points, npoint, p.jets, p.ao,
+                   ctx.error, nullptr);
+      cuda_check(cudaGetLastError());
+      const auto point_blocks = std::min(size_t{65535}, (npoint + 127) / 128);
+      active_ao_columns<<<dim3((p.nao + 31) / 32, point_blocks), 128, 0, ctx.stream>>>(
+          p.ao, npoint, p.nao, p.jets, cutoff, flags, ctx.error);
+      cuda_check(cudaGetLastError());
+    });
+    int failure = 0;
+    ctx.section(true, ctx.metrics.output_ms, [&] {
+      cuda_check(cudaMemcpyAsync(selected, flags, p.nao * sizeof(unsigned), cudaMemcpyDeviceToHost,
+                                 ctx.stream));
+      cuda_check(
+          cudaMemcpyAsync(&failure, ctx.error, sizeof(int), cudaMemcpyDeviceToHost, ctx.stream));
+    });
+    if (failure) throw std::runtime_error("nonfinite resident AO selection output");
+  });
 }
 int grid_cuda_run_v1(void* pointer, const double* points, size_t npoint, int features,
                      double* feature_output, double* jet_output, char* error, size_t size) {

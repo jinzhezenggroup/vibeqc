@@ -1,5 +1,10 @@
 {
   "families": {
+    "pbe0-resident-active-ao-20261003": {
+      "owner": "PBE0 resident force qualification",
+      "reason": "Exact complete dense/local/zero-budget endpoint records, independent reference arrays, all force-work dictionaries and frozen source/build/qualification receipts. No native library or generated build tree; every observation remains under the unchanged aggregate cap.",
+      "review_document": "benchmarks/results/pbe0-resident-active-ao-20261003/README.md"
+    },
     "cg01": {
       "owner": "cg01",
       "reason": "Reviewed retained large evidence for CG01 protocol evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
@@ -202,6 +207,22 @@
     }
   },
   "files": [
+    {
+      "path": "benchmarks/results/pbe0-resident-active-ao-20261003/current-campaign.json.xz",
+      "family": "pbe0-resident-active-ao-20261003",
+      "bytes": 157020,
+      "sha256": "92453d0645c70a3c626810798e92519829992ed4c3f810b141b61d5a8175fb48",
+      "classification": "required-compact-accepted-evidence",
+      "role": "156 new matching integrated-source endpoints, including the fresh zero-budget control, all forces/references/work/budgets and exact build/qualification receipts. Original frozen campaign is retained separately and unchanged."
+    },
+    {
+      "path": "benchmarks/results/pbe0-resident-active-ao-20261003/campaign.json.xz",
+      "family": "pbe0-resident-active-ao-20261003",
+      "bytes": 169460,
+      "sha256": "6f33e025e89655ab8ee6c60c74bdcea4688bd9a0320ddba0197aafe25f832639",
+      "classification": "required-compact-accepted-evidence",
+      "role": "156 complete native endpoints including zero-budget control, all numerical/work/budget gates, independent reference arrays, frozen source reconstruction and native qualification; no relabeling after later master integration."
+    },
     {
       "bytes": 145857,
       "classification": "required-compact-accepted-evidence",

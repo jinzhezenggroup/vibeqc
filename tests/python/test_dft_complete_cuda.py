@@ -1087,6 +1087,7 @@ def test_cuda_geometry_lane_budget_tail_and_changed_geometry_replay(
     spin: str,
     atom_count: int,
     tmp_path: Path,
+    active_layout: str = "identity",
 ) -> None:
     """Compare actual multi-block point work with the bounded 32-lane fallback.
 
@@ -1145,6 +1146,15 @@ __device__ bool first_derivative(unsigned, const double*, const double*, double*
     with ExitStack() as stack:
         basis = stack.enter_context(NativeAO(atoms))
         moved_basis = stack.enter_context(NativeAO(changed))
+        active_ids = np.arange(basis.nao)
+        if active_layout == "reversed":
+            active_ids = np.ascontiguousarray(active_ids[::-1])
+        elif active_layout == "subset":
+            active_ids = np.ascontiguousarray(active_ids[1::2])
+        elif active_layout == "empty":
+            active_ids = active_ids[:0]
+        else:
+            assert active_layout == "identity"
         density = np.repeat(
             np.eye(basis.nao)[None, :, :] * 0.2, plan.spin_blocks, axis=0
         )
@@ -1248,7 +1258,7 @@ __device__ bool first_derivative(unsigned, const double*, const double*, double*
                 ):
                     with grid.feature_task(
                         points[begin:end],
-                        np.arange(basis.nao),
+                        active_ids,
                         ("rho",)
                         if functional == 0
                         else ("rho", "gradient")
@@ -1307,4 +1317,40 @@ def test_cuda_large_tiled_becke_bounded_geometry_probe(
     """67 points qualify the large schedule without launching a full benchmark."""
     test_cuda_geometry_lane_budget_tail_and_changed_geometry_replay(
         compiler, "PBE0", 1, "unpolarized", atom_count, tmp_path
+    )
+
+
+@pytest.mark.parametrize(
+    "active_layout", ["reversed", "subset", "empty", "owner-reversed"]
+)
+def test_cuda_ordered_ao_owner_ranges(
+    compiler: typing.Any, active_layout: str, tmp_path: Path
+) -> None:
+    """Qualify owner routing and the public refusal of unsorted AO IDs.
+
+    The synthetic reversed-owner case compares native scalar/cooperative
+    routing, not physical forces. Independent complete oracles remain separate.
+    """
+    if active_layout == "reversed":
+        with pytest.raises(ValueError, match="active AO IDs must be sorted unique"):
+            test_cuda_geometry_lane_budget_tail_and_changed_geometry_replay(
+                compiler, "PBE0", 1, "unpolarized", 96, tmp_path, active_layout
+            )
+        return
+    if active_layout == "owner-reversed":
+        from generativeqc import _stationary_cuda as runtime
+
+        original_owners = runtime._native_ao_atoms
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                runtime,
+                "_native_ao_atoms",
+                lambda basis: np.ascontiguousarray(original_owners(basis)[::-1]),
+            )
+            test_cuda_geometry_lane_budget_tail_and_changed_geometry_replay(
+                compiler, "PBE0", 1, "unpolarized", 96, tmp_path
+            )
+        return
+    test_cuda_geometry_lane_budget_tail_and_changed_geometry_replay(
+        compiler, "PBE0", 1, "unpolarized", 96, tmp_path, active_layout
     )

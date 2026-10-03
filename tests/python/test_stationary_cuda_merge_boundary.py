@@ -212,7 +212,9 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     monkeypatch.setattr(
         runtime,
         "plan_tiles",
-        lambda *_a, **_k: SimpleNamespace(peak_bytes=1024, host_bytes=256),
+        lambda *_args, **kwargs: SimpleNamespace(
+            peak_bytes=1024, host_bytes=256, order=kwargs["order"]
+        ),
     )
     tensor_plan = SimpleNamespace(peak_bytes=128, host_bytes=64)
     monkeypatch.setattr(runtime, "plan_cuda", lambda *_a, **_k: tensor_plan)

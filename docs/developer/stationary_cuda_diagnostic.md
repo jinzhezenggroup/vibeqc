@@ -234,6 +234,43 @@ preserves shared-science choices, measured evidence and remaining qualification.
 The [s/p/d shard decision](../../.agents/notes/implemented/architecture/2026-09-22-stationary-cuda-spd-derivative-shards.md)
 records the multicomponent lowering, compiler boundary and resource caps.
 
+## Experimental resident AO maps
+
+The ordinary CUDA force diagnostic accepts an explicit `resident_ao_cutoff`
+and `resident_ao_cache_bytes` (16 MiB requested by default). The cutoff defaults
+to `None`, preserving the full-AO path. An enabled cutoff retains an AO when
+any configured AO jet on the resident point tile exceeds it. GGA force maps
+therefore include second derivatives; SCF first-derivative maps are not reused.
+This sampled-jet threshold is not an energy or force error bound and requires
+independent complete-endpoint qualification for the intended use.
+
+The shared `ResidentAoMapCache` supplies immutable maps. The ordinary consumer
+passes them to the resident feature lease, where native density-subblock gather
+and AO derivative/atom mappings follow the selected indices. Empty maps still
+consume the complete point tile and its geometry work; no grid points or
+partition pairs are pruned. Full-capacity AO/source arenas remain charged.
+
+Cache storage and discovery staging fit within the remaining additional-host
+allowance after the dense fallback and all concurrent owners. Tight budgets
+or a missing selection capability retain dense tiles; a missing resident-grid
+lease retains the existing host-grid route. Neither condition changes the
+cutoff or silently introduces CPU screening. Scientific/device failures are
+not treated as capability misses.
+
+Prepared replay rechecks the current native snapshot and binds maps to the
+geometry, point ordering, resident pointer, device, tile, derivative order and
+grid center/basis generations. Changed geometry, failed-execution refresh and
+closure drop old masks before allocating replacements. Changed density alone
+does not invalidate AO-only maps. Cutoff and admitted cache allowance are part
+of the prepared schedule identity.
+
+`result.work["resident_ao_selection"]` reports the selected policy, unchanged
+full-AO capacity, admitted host reserve, and shared cache discovery/replay and
+point-weighted AO work counts. Discovery belongs to the complete endpoint;
+its work is reported separately from subsequent local-density contractions.
+This experimental force-only option does not enable SCF AO screening or imply
+a default performance promotion.
+
 ## Strict compilation environment
 
 The stationary CUDA compiler rejects nonempty `NVCC_PREPEND_FLAGS` and

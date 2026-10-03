@@ -2,6 +2,11 @@
   "benchmark_results_max_bytes": 67108864,
   "change_review_max_bytes": 2097152,
   "exceptions": {
+    "benchmarks/results/pbe0-resident-active-ao-20261003/current-qualification.log.gz": {
+      "owner": "PBE0 resident force qualification",
+      "reason": "Exact 4795-byte device qualification receipt for the integrated source, kept separate from older endpoint measurements: binds compiled/source identity, finite Slurm allocation, 89 caller/GPU tests, 34 zero-error memcheck tests and four claim synchronization/race tests. No build tree or binary; all aggregate and per-file caps remain unchanged.",
+      "sha256": "1404830bf57018f58d464cd845266602b44fda878be8d1b8910c34a0bb59a0ad"
+    },
     "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/00-configure.log.gz": {
       "owner": "issue206-direct-force-state/integration-e4f2f67",
       "reason": "Hash-bound provenance for this previously blocked production acceptance: records the complete Release/default-AOT build, frozen-source completion marker and exact-base rebuild, distinguishing these measured binaries from earlier incomplete/dev/stale builds. Compact gzip only; excludes compiler objects and binaries.",
