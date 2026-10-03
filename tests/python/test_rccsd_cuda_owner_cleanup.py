@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from _cc_owner_test_support import compile_owner
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -22,7 +23,12 @@ def test_cuda_owner_unwinds_every_setup_failure(tmp_path: Path) -> None:
     # Extract the live production members/constructor/destructor, not a copied
     # model. Kernel methods are irrelevant to constructor unwind and excluded.
     owner = source[
-        source.index("struct Layout {") : source.index("  template <class Output>")
+        source.index("struct Layout {") : source.index("  void virtual_corrections()")
+    ]
+    owner += source[
+        source.index("  void cleanup() noexcept {") : source.index(
+            "  template <class Output>"
+        )
     ]
     support = (ROOT / "src/cc/cuda_solver_support.cuh").read_text()
     state = support[
@@ -33,14 +39,7 @@ def test_cuda_owner_unwinds_every_setup_failure(tmp_path: Path) -> None:
     cpp = tmp_path / "owner.cpp"
     cpp.write_text(PREFIX + state + GENERATED + helpers + owner + "};\n" + MAIN)
     exe = tmp_path / "owner"
-    compiled = subprocess.run(
-        [compiler, "-std=c++20", "-I" + str(ROOT / "src"), str(cpp), "-o", str(exe)],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert compiled.returncode == 0, compiled.stdout + compiled.stderr
+    compile_owner(compiler, tmp_path, [cpp], exe)
     result = subprocess.run(
         [str(exe)], capture_output=True, text=True, timeout=10, check=False
     )
@@ -95,6 +94,22 @@ std::size_t checked_add(std::size_t a, std::size_t b) {
 }
 std::size_t iteration_arena_elements(std::size_t, std::size_t) { return 16; }
 std::size_t replay_arena_elements(std::size_t, std::size_t) { return 16; }
+namespace dfcore {
+struct CudaState : generated::CudaState {
+  const double *df_virtual_singles{}, *df_virtual_doubles{};
+};
+using generated::iteration_arena_elements;
+using generated::replay_arena_elements;
+}
+namespace df {
+struct CudaState {
+  std::size_t o{}, v{};
+  cudaStream_t stream{};
+  int* error{};
+  double* response_arena{};
+};
+std::size_t virtual_cuda_arena_elements(std::size_t, std::size_t) { return 16; }
+}
 }
 std::size_t problem_host_bytes(const Problem&) { return 128; }
 """
@@ -107,6 +122,8 @@ int main() {
                  &p.initial_t1, &p.initial_t2}) v->push_back(1.0);
   // Compile the production owner once, then exercise disabled, one-slot and
   // ordinary DIIS. Event creation participates in the same failure sequence.
+  for (const unsigned naux : {0U, 2U}) {
+  p.naux = naux; p.df_bov.assign(naux, 0.1); p.df_bvv.assign(naux, 0.1);
   for (const unsigned history : {0U, 1U, 6U}) {
     generativeqc::cc::SolverOptions options;
     options.diis_size = history;
@@ -140,6 +157,7 @@ int main() {
     if (calls || streams || events || allocations || device != 7) return 7;
     std::cout << "DIIS " << history << ": setup failures and retries checked: "
               << constructor_calls << '\n';
+  }
   }
 }
 """

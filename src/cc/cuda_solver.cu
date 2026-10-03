@@ -16,6 +16,9 @@
 
 #include "cc/cuda_solver_support.cuh"
 #include "cc/cuda_state.cuh"
+#include "generated_df_ccsd_core_cpu.hpp"
+#include "generated_df_ccsd_core_cuda.cuh"
+#include "generated_df_ccsd_cuda.cuh"
 #include "generated_rccsd_cpu.hpp"
 #include "tensor/cuda_error.hpp"
 #include "tensor/cuda_runtime.cuh"
@@ -75,11 +78,20 @@ __global__ void gram_kernel(const double* errors, std::size_t elements, int hist
   }
 }
 
+// A Q slice is consumed before its borrowed action arena is reused. Preserve
+// the first arithmetic failure across every slice and the subsequent core.
+__global__ void accumulate_df(const double* values, std::size_t count, double* sum, int* error) {
+  for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
+       i += std::size_t(blockDim.x) * gridDim.x)
+    sum[i] = generativeqc_tensor::finite(__dadd_rn(sum[i], values[i]), error, 0);
+}
+
 struct Layout {
   std::array<std::size_t, 14> inputs{};
   std::size_t iteration{}, replay{}, last_t1{}, last_t2{}, vectors{}, errors{};
   std::size_t gram{}, system{}, coefficients{}, r1_partials{}, r2_partials{}, scalars{};
   std::size_t status{}, generated_error{}, arithmetic{}, total{};
+  std::size_t df_bov{}, df_bvv{}, df_arena{}, df_sum{};
 };
 
 std::size_t reserve(Layout& layout, std::size_t& cursor, std::size_t bytes) {
@@ -96,7 +108,10 @@ struct Owner {
   cudaEvent_t trial_begin{}, trial_end{};
   unsigned char* base{};
   Layout layout;
-  generated::CudaState state;
+  generated::dfcore::CudaState state;
+  generated::df::CudaState df_state;
+  double *df_bov{}, *df_bvv{}, *df_sum{};
+  std::size_t naux{};
   double *last_t1{}, *last_t2{}, *vectors{}, *errors{}, *gram{}, *system{}, *coefficients{};
   double *r1_partials{}, *r2_partials{}, *scalars{};
   int *status{}, *arithmetic{};
@@ -110,6 +125,7 @@ struct Owner {
         n1(checked_mul(p.nocc, p.nvir)),
         n2(checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir))),
         elements(checked_add(n1, n2)) {
+    naux = p.naux;
     const std::array<const std::vector<double>*, 14> host = {
         &p.foo,  &p.fov,  &p.fvv,  &p.ovov, &p.ovvo, &p.oovv,       &p.ovvv,
         &p.ovoo, &p.oooo, &p.vvvv, &p.d1,   &p.d2,   &p.initial_t1, &p.initial_t2};
@@ -118,10 +134,22 @@ struct Owner {
       layout.inputs[i] = reserve(layout, cursor, checked_mul(host[i]->size(), sizeof(double)));
     layout.iteration =
         reserve(layout, cursor,
-                checked_mul(generated::iteration_arena_elements(p.nocc, p.nvir), sizeof(double)));
+                checked_mul(naux ? generated::dfcore::iteration_arena_elements(p.nocc, p.nvir)
+                                 : generated::iteration_arena_elements(p.nocc, p.nvir),
+                            sizeof(double)));
     layout.replay =
         reserve(layout, cursor,
-                checked_mul(generated::replay_arena_elements(p.nocc, p.nvir), sizeof(double)));
+                checked_mul(naux ? generated::dfcore::replay_arena_elements(p.nocc, p.nvir)
+                                 : generated::replay_arena_elements(p.nocc, p.nvir),
+                            sizeof(double)));
+    if (naux) {
+      layout.df_bov = reserve(layout, cursor, checked_mul(p.df_bov.size(), sizeof(double)));
+      layout.df_bvv = reserve(layout, cursor, checked_mul(p.df_bvv.size(), sizeof(double)));
+      layout.df_arena = reserve(
+          layout, cursor,
+          checked_mul(generated::df::virtual_cuda_arena_elements(p.nocc, p.nvir), sizeof(double)));
+      layout.df_sum = reserve(layout, cursor, checked_mul(elements, sizeof(double)));
+    }
     layout.last_t1 = reserve(layout, cursor, checked_mul(n1, sizeof(double)));
     layout.last_t2 = reserve(layout, cursor, checked_mul(n2, sizeof(double)));
     layout.vectors = reserve(layout, cursor,
@@ -179,6 +207,23 @@ struct Owner {
       state.iteration_arena = reinterpret_cast<double*>(base + layout.iteration);
       state.replay_arena = reinterpret_cast<double*>(base + layout.replay);
       state.error = reinterpret_cast<int*>(base + layout.generated_error);
+      if (naux) {
+        df_bov = reinterpret_cast<double*>(base + layout.df_bov);
+        df_bvv = reinterpret_cast<double*>(base + layout.df_bvv);
+        df_sum = reinterpret_cast<double*>(base + layout.df_sum);
+        cuda_check(cudaMemcpyAsync(df_bov, p.df_bov.data(), p.df_bov.size() * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream));
+        cuda_check(cudaMemcpyAsync(df_bvv, p.df_bvv.data(), p.df_bvv.size() * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream));
+        diagnostic.setup_h2d_bytes += (p.df_bov.size() + p.df_bvv.size()) * sizeof(double);
+        state.df_virtual_singles = df_sum;
+        state.df_virtual_doubles = df_sum + n1;
+        df_state.o = p.nocc;
+        df_state.v = p.nvir;
+        df_state.stream = stream;
+        df_state.error = state.error;
+        df_state.response_arena = reinterpret_cast<double*>(base + layout.df_arena);
+      }
       last_t1 = reinterpret_cast<double*>(base + layout.last_t1);
       last_t2 = reinterpret_cast<double*>(base + layout.last_t2);
       vectors = reinterpret_cast<double*>(base + layout.vectors);
@@ -206,6 +251,38 @@ struct Owner {
   }
 
   ~Owner() { cleanup(); }
+
+  void virtual_corrections() {
+    cuda_check(cudaMemsetAsync(state.error, 0, sizeof(int), stream));
+    cuda_check(cudaMemsetAsync(df_sum, 0, elements * sizeof(double), stream));
+    df_state.t1 = state.t1;
+    df_state.t2 = state.t2;
+    for (std::size_t q = 0; q < naux; ++q) {
+      df_state.bov = df_bov + q * n1;
+      df_state.bvv = df_bvv + q * state.v * state.v;
+      const auto out = generated::df::run_virtual_accumulate_cuda(df_state);
+      accumulate_df<<<generativeqc_tensor::blocks(static_cast<generativeqc_tensor::I>(n1), 256),
+                      256, 0, stream>>>(out.singles, n1, df_sum, state.error);
+      accumulate_df<<<generativeqc_tensor::blocks(static_cast<generativeqc_tensor::I>(n2), 256),
+                      256, 0, stream>>>(out.doubles, n2, df_sum + n1, state.error);
+      ++diagnostic.df_auxiliary_slices;
+      diagnostic.df_virtual_operations += generated::df::virtual_cuda_operation_count;
+      diagnostic.df_accumulation_calls += 2;
+    }
+    cuda_check(cudaGetLastError());
+  }
+
+  generated::DeviceIterationOutputs iteration() {
+    if (!naux) return generated::run_iteration_cuda(state);
+    virtual_corrections();
+    return generated::dfcore::run_iteration_cuda(state);
+  }
+
+  generated::DeviceReplayOutputs replay() {
+    if (!naux) return generated::run_replay_cuda(state);
+    virtual_corrections();
+    return generated::dfcore::run_replay_cuda(state);
+  }
 
   void cleanup() noexcept {
     if (stream) cudaStreamSynchronize(stream);
@@ -374,7 +451,7 @@ bool run_diis(Owner& s, const SolverOptions& options,
 }  // namespace
 
 SolverResult solve_cuda(const Problem& p, const SolverOptions& options, int device) {
-  validate_problem(p);
+  validate_problem(p, true);
   validate_options(options);
   Owner owner(p, options, device);
   SolverResult result;
@@ -395,7 +472,7 @@ SolverResult solve_cuda(const Problem& p, const SolverOptions& options, int devi
         output = carried_output;
         has_carried_output = false;
       } else {
-        output = generated::run_iteration_cuda(owner.state);
+        output = owner.iteration();
         ++owner.diagnostic.iteration_graph_calls;
       }
       const auto status = owner.read_status(output);
@@ -413,7 +490,7 @@ SolverResult solve_cuda(const Problem& p, const SolverOptions& options, int devi
       if (std::isfinite(previous) && delta <= options.energy_tolerance &&
           std::max(status[1], status[2]) <= options.residual_tolerance) {
         const auto replay_started = std::chrono::steady_clock::now();
-        const auto replay = generated::run_replay_cuda(owner.state);
+        const auto replay = owner.replay();
         const auto replay_status = owner.read_status(replay);
         owner.diagnostic.replay_seconds +=
             std::chrono::duration<double>(std::chrono::steady_clock::now() - replay_started)
@@ -438,7 +515,7 @@ SolverResult solve_cuda(const Problem& p, const SolverOptions& options, int devi
       if (options.diis_size) {
         const auto trial_diis_started = std::chrono::steady_clock::now();
         cuda_check(cudaEventRecord(owner.trial_begin, owner.stream));
-        const auto trial = generated::run_iteration_cuda(owner.state);
+        const auto trial = owner.iteration();
         cuda_check(cudaEventRecord(owner.trial_end, owner.stream));
         ++owner.diagnostic.iteration_graph_calls;
         const bool diis_modified_state = run_diis(owner, options, trial);

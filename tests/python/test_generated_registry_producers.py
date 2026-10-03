@@ -32,6 +32,8 @@ endfunction()
 # Observe declarations only; this probe deliberately has no runtime target.
 function(target_include_directories)
 endfunction()
+function(target_sources)
+endfunction()
 include("${SOURCE_ROOT}/cmake/GenerativeQCGeneratedSources.cmake")
 generativeqc_register_host_generated_sources(generativeqc)
 generativeqc_register_cuda_generated_sources(generativeqc)

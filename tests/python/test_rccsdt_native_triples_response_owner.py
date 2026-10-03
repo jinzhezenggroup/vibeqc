@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from _cc_owner_test_support import compile_owner, write_df_cpu_headers
 
 from tools.generativeqc_cc.triples_response import full_triples_vjp
 
@@ -153,24 +154,12 @@ def test_native_triples_response_owner_matches_full_vjp(tmp_path: Path) -> None:
         + 'if(!rc) std::cout<<"native triples response owner parity passed\\n";return rc;}\n'
     )
     executable = tmp_path / "owner"
-    subprocess.run(
-        [
-            compiler,
-            "-std=c++20",
-            "-O0",
-            "-DGENERATIVEQC_HAS_CUDA=0",
-            "-I" + str(root / "src"),
-            "-I" + str(tmp_path),
-            str(root / "src/cc/solver.cpp"),
-            str(root / "src/cc/triples_response.cpp"),
-            str(source),
-            "-o",
-            str(executable),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=120,
+    write_df_cpu_headers(tmp_path)
+    compile_owner(
+        compiler,
+        tmp_path,
+        [root / "src/cc/solver.cpp", root / "src/cc/triples_response.cpp", source],
+        executable,
     )
     result = subprocess.run(
         [str(executable)],

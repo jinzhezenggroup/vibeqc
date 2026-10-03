@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from _cc_owner_test_support import compile_owner, write_df_cpu_headers
 
 
 def test_cpu_solver_reserves_all_known_live_numeric_buffers(tmp_path: Path) -> None:
@@ -31,24 +32,8 @@ def test_cpu_solver_reserves_all_known_live_numeric_buffers(tmp_path: Path) -> N
     source = tmp_path / "capacity.cpp"
     source.write_text(CPP)
     executable = tmp_path / "capacity"
-    subprocess.run(
-        [
-            compiler,
-            "-std=c++20",
-            "-O0",
-            "-DGENERATIVEQC_HAS_CUDA=0",
-            "-I" + str(root / "src"),
-            "-I" + str(tmp_path),
-            str(root / "src/cc/solver.cpp"),
-            str(source),
-            "-o",
-            str(executable),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=90,
-    )
+    write_df_cpu_headers(tmp_path)
+    compile_owner(compiler, tmp_path, [root / "src/cc/solver.cpp", source], executable)
     result = subprocess.run(
         [str(executable)], capture_output=True, text=True, check=False, timeout=10
     )

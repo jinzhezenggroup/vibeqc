@@ -1,0 +1,186 @@
+{
+  "attachments": [
+    {
+      "kind": "numerical-qualification",
+      "path": "records.json.gz",
+      "sha256": "9dbb9172da0750bc182978636a875134915fe20dac8bb83891fc4e316fe7b5bd"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "summary.json",
+      "sha256": "2c03db6095738184a6ed04a73b332fdcf682f39cbcfddfc18ba9b565daa9e0f7"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "sanitizer.json.gz",
+      "sha256": "85a74e60fbbd0e90663adfc737d60cf7d7b47b85ada98b29047c3c97902b4857"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "qualification.json.gz",
+      "sha256": "e45ba3e3702beb5aac50fd107944ea9046ea38199f4f2e7a22628b324959b4b0"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "large-ethane230.json.gz",
+      "sha256": "361bb113dbeef36e8f01591c48dec0c8f00137a81cbdf558e58fc871319fc5e6"
+    }
+  ],
+  "backend_selected": "cuda",
+  "block_errors": {
+    "cpu_oracle_energy": {
+      "atol": 3e-10,
+      "max_absolute_error": 3.690242555975942e-13,
+      "max_scaled_error": 0.0012300808519919808,
+      "passed": true,
+      "rms_error": 2.0361573947840025e-13,
+      "rtol": 0,
+      "shape": [
+        6
+      ]
+    },
+    "cpu_t1": {
+      "atol": 2e-11,
+      "max_absolute_error": 2.3767744499955668e-16,
+      "max_scaled_error": 1.1883872249977834e-05,
+      "passed": true,
+      "rms_error": 7.055198104321973e-17,
+      "rtol": 0,
+      "shape": [
+        44
+      ]
+    },
+    "cpu_t2": {
+      "atol": 2e-11,
+      "max_absolute_error": 6.765421556309548e-17,
+      "max_scaled_error": 3.382710778154774e-06,
+      "passed": true,
+      "rms_error": 7.25457539789884e-18,
+      "rtol": 0,
+      "shape": [
+        574
+      ]
+    },
+    "cuda_ethane230_oracle_energy": {
+      "atol": 3e-09,
+      "max_absolute_error": 1.4473977572038166e-12,
+      "max_scaled_error": 0.00048246591906793884,
+      "passed": true,
+      "rms_error": 1.4473977572038166e-12,
+      "rtol": 0,
+      "shape": [
+        1
+      ]
+    },
+    "cuda_oracle_energy": {
+      "atol": 3e-10,
+      "max_absolute_error": 3.690242555975942e-13,
+      "max_scaled_error": 0.0012300808519919808,
+      "passed": true,
+      "rms_error": 2.036173437970004e-13,
+      "rtol": 0,
+      "shape": [
+        6
+      ]
+    },
+    "cuda_t1": {
+      "atol": 2e-11,
+      "max_absolute_error": 2.3769099752671274e-16,
+      "max_scaled_error": 1.1884549876335637e-05,
+      "passed": true,
+      "rms_error": 6.857308866367834e-17,
+      "rtol": 0,
+      "shape": [
+        44
+      ]
+    },
+    "cuda_t2": {
+      "atol": 2e-11,
+      "max_absolute_error": 6.505213034913027e-17,
+      "max_scaled_error": 3.2526065174565133e-06,
+      "passed": true,
+      "rms_error": 7.505131736953988e-18,
+      "rtol": 0,
+      "shape": [
+        574
+      ]
+    }
+  },
+  "compilation": {
+    "reason": "not measured",
+    "seconds": null
+  },
+  "device": {
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "host": "node3"
+  },
+  "hardware": {
+    "reason": null,
+    "slurm_job_id": "12120",
+    "status": "pass"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "d1edc3c24a767d1b91cde3f22cb1e3c75e12c06774d9005c088cfc6d84830b0f",
+    "ir": "c4e06dd64d5c93db001925d81b2a58c16ab4ce3e687b035129549da63c6ee494",
+    "schedule": "d339dc4a263395db919c0c30390c197628a83b00f4ddbf7fcbfbe7e7dce8f930",
+    "source": "d246b2463d2b6a14a716cf47d87099dc48f72e2211e651b8783a85764c532e7f"
+  },
+  "inputs_hash": "64759237c4143fed3541eeaedecce3e79ca25ec1c6111955792a12776c6aac8c",
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "Complete solver admission is checked at exact and one-byte-short limits. Numeric capacity is an admitted bound, not a measured full molecular endpoint peak."
+  },
+  "performance": {
+    "reason": "No endpoint speedup claim; records retain supplied-Hamiltonian solver work and elapsed time only.",
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "2ccb2a437bb1e850acc858c660082f468b895cfa",
+  "schema": "generativeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "diis": "existing native RCCSD owner",
+    "factor_layout": "Q-major symmetric spatial-MO factors",
+    "fast_compile": false
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": "Complete internal solves are qualified; native molecular source, standard (T), and force composition are absent.",
+      "status": "not-run"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "No new public Calculator registration or force cap change.",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "Native CPU/CUDA DF RCCSD supplied-Hamiltonian solver",
+  "tier": "gpu-numerical",
+  "timings": [],
+  "toolchain": {
+    "architecture": "sm_120",
+    "ccache": true,
+    "cuda": "12.9.86",
+    "cxx_standard": "c++20",
+    "optimization": "-O2"
+  }
+}

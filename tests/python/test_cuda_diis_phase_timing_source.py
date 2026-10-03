@@ -10,7 +10,7 @@ def test_trial_events_are_resolved_after_the_existing_diis_drain() -> None:
     block = SOURCE.split("if (options.diis_size) {")[-1]
     operations = (
         "cudaEventRecord(owner.trial_begin, owner.stream)",
-        "generated::run_iteration_cuda(owner.state)",
+        "owner.iteration()",
         "cudaEventRecord(owner.trial_end, owner.stream)",
         "run_diis(owner, options, trial)",
         "cudaEventElapsedTime(&trial_ms, owner.trial_begin, owner.trial_end)",

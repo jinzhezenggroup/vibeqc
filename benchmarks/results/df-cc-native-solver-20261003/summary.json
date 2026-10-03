@@ -1,0 +1,77 @@
+{
+  "binaries": {
+    "cpu": "68ab6fe0a5b45f139398e69ab81d2c35f1dfb2804074b6ab47f7a995a4892c83",
+    "cuda": "c351254ea868d0aa29762ca4ccc59861ecfab1e112497ae98009d9aee3a8bcb8"
+  },
+  "cases": 12,
+  "gates": {
+    "dense_amplitudes_absolute": 2e-11,
+    "dense_energy_absolute": 2e-12,
+    "oracle_energy_absolute": 3e-10,
+    "physical_residual_maximum": 1e-10
+  },
+  "hardware": {
+    "cuda_visible_devices": "0",
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "host": "node3",
+    "slurm_job_id": "12120"
+  },
+  "large_supplied_hamiltonian_qualification": {
+    "absolute_errors": {
+      "energy": 1.4473977572038166e-12,
+      "t1_max": 8.19218729311566e-11,
+      "t2_max": 5.602699727769167e-12
+    },
+    "amplitude_sha256": "1074b25e0db738db448c80883212babef3a9a0a5e2b82d600a08b014163a6582",
+    "binary_sha256": "c351254ea868d0aa29762ca4ccc59861ecfab1e112497ae98009d9aee3a8bcb8",
+    "case": "ethane230",
+    "factor_roundoff": {
+      "canonical_bmo_change": 5.955858803319108e-10,
+      "packed_ao_source_asymmetry": 3.268496584496461e-12,
+      "stored_bmo_asymmetry": 5.133386246761707e-10
+    },
+    "gates": {
+      "energy": 3e-09,
+      "residual": 1e-10,
+      "t1_max": 1e-08,
+      "t2_max": 1e-08
+    },
+    "input_sha256": "17e13222cff2b304f6321a80a6004f05a56fbb8182e46e255ae4952b98239635",
+    "result_sha256": "1747afad082eb8c08dc0edabfa97735dd555e03bb832e394bec7e8bea9da3033",
+    "slurm_job_id": "2156",
+    "status": {
+      "accumulations": 38064.0,
+      "amplitude_d2h": 31664880.0,
+      "capacity": 2730069584.0,
+      "device_bytes": 2339939072.0,
+      "energy": -0.44469476610196296,
+      "h2d": 358465632.0,
+      "iterations": 20.0,
+      "iterations_called": 38.0,
+      "q_calls": 19032.0,
+      "q_operations": 1027728.0,
+      "r1": 4.052430266354712e-12,
+      "r2": 1.5784908102833839e-12,
+      "replays_called": 1.0,
+      "scalar_d2h": 884.0,
+      "seconds": 688.284329257,
+      "status": 0.0
+    }
+  },
+  "limits": "The 230-AO CCSD solve uses independently supplied validation integrals. Native molecular source, standard (T), full forces, and endpoint performance remain unqualified.",
+  "sanitizer": {
+    "complete_small_solves": 2,
+    "errors": 0,
+    "filters": null,
+    "slurm_job_id": "12120"
+  },
+  "scope": "Native supplied-Hamiltonian RCCSD solver only; no native molecular DF CCSD(T) source/triples/force or performance qualification",
+  "tests": {
+    "cuda_deselected": 29,
+    "cuda_passed": 25,
+    "cuda_skipped": 5,
+    "evidence_passed": 61,
+    "host_passed": 43,
+    "host_skipped": 30
+  }
+}

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from _cc_owner_test_support import compile_owner, write_df_cpu_headers
 
 
 def test_native_lambda_owner_fresh_replay_and_budget(tmp_path: Path) -> None:
@@ -30,25 +31,17 @@ def test_native_lambda_owner_fresh_replay_and_budget(tmp_path: Path) -> None:
     source = tmp_path / "lambda_owner.cpp"
     source.write_text(CPP)
     executable = tmp_path / "lambda_owner"
-    subprocess.run(
+    write_df_cpu_headers(tmp_path)
+    compile_owner(
+        compiler,
+        tmp_path,
         [
-            compiler,
-            "-std=c++20",
-            "-O0",
-            "-DGENERATIVEQC_HAS_CUDA=0",
-            "-I" + str(root / "src"),
-            "-I" + str(tmp_path),
-            str(root / "src/cc/solver.cpp"),
-            str(root / "src/cc/lambda_response.cpp"),
-            str(root / "src/response/native_gmres.cpp"),
-            str(source),
-            "-o",
-            str(executable),
+            root / "src/cc/solver.cpp",
+            root / "src/cc/lambda_response.cpp",
+            root / "src/response/native_gmres.cpp",
+            source,
         ],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=120,
+        executable,
     )
     result = subprocess.run(
         [str(executable)], capture_output=True, text=True, check=False, timeout=30

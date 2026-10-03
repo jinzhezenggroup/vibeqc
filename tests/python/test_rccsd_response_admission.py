@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from _cc_owner_test_support import compile_owner, write_df_cpu_headers
 
 CPP = r"""
 #include "cc/lambda_response.hpp"
@@ -82,25 +83,18 @@ def test_response_budget_precedes_numeric_allocation(tmp_path: Path) -> None:
     source = tmp_path / "admission.cpp"
     source.write_text(CPP)
     binary = tmp_path / "admission"
-    subprocess.run(
+    write_df_cpu_headers(tmp_path)
+    compile_owner(
+        compiler,
+        tmp_path,
         [
-            compiler,
-            "-std=c++20",
-            "-O0",
-            "-DGENERATIVEQC_HAS_CUDA=0",
-            "-I" + str(root / "src"),
-            "-I" + str(tmp_path),
-            str(root / "src/cc/solver.cpp"),
-            str(root / "src/cc/lambda_response.cpp"),
-            str(root / "src/cc/triples_response.cpp"),
-            str(root / "src/response/native_gmres.cpp"),
-            str(source),
-            "-o",
-            str(binary),
+            root / "src/cc/solver.cpp",
+            root / "src/cc/lambda_response.cpp",
+            root / "src/cc/triples_response.cpp",
+            root / "src/response/native_gmres.cpp",
+            source,
         ],
-        check=True,
-        capture_output=True,
-        timeout=120,
+        binary,
     )
     result = subprocess.run(
         [str(binary)], check=False, capture_output=True, text=True, timeout=30

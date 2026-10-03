@@ -103,13 +103,21 @@ TRIPLES_RESPONSE_INPUTS = (
 )
 
 
-def iteration_program(nocc: int, nvir: int) -> Program:
+def iteration_program(
+    nocc: int, nvir: int, *, external_virtual_correction: bool = False
+) -> Program:
     """Generated physical R plus the undamped Jacobi trial.
 
     Damping is a runtime solver control applied outside this TensorIR so one
     AOT program serves every legal damping value without changing R itself.
     """
-    physical = build_ccsd_program(nocc, nvir, form="shared", diagnostics=False)
+    physical = build_ccsd_program(
+        nocc,
+        nvir,
+        form="shared",
+        diagnostics=False,
+        external_virtual_correction=external_virtual_correction,
+    )
     inputs = {n.attrs["name"]: n for n in physical.live_nodes if n.op == "input"}
     outputs = dict(physical.outputs)
     for index, residual in enumerate(("singles_residual", "doubles_residual"), 1):
@@ -1375,6 +1383,7 @@ def _cuda_program(
     state_type: str = "CudaState",
     batch_dim: bool = False,
     output_fields: tuple[str, ...] | None = None,
+    reset_error: bool = True,
 ) -> str:
     names = _prepare_program(program)
     arena_plan = _arena_plan(program)
@@ -1414,7 +1423,13 @@ def _cuda_program(
             f"  double* slot{slot}=allocate({size});"
             for slot, size in enumerate(arena_plan.sizes)
         ],
-        "  generativeqc_tensor::cuda_check(cudaMemsetAsync(s.error,0,sizeof(int),s.stream));",
+        *(
+            [
+                "  generativeqc_tensor::cuda_check(cudaMemsetAsync(s.error,0,sizeof(int),s.stream));"
+            ]
+            if reset_error
+            else []
+        ),
     ]
     for number, node in enumerate(_execution_nodes(program)):
         if node.op == "input":

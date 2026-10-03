@@ -39,7 +39,7 @@ int main() {
     std::vector<double> output(ov + second_size);
 #if defined(DF_PROBE_CUDA)
     using generativeqc_tensor::cuda_check;
-    if (shortfall) throw std::invalid_argument("CUDA harness only accepts a full arena");
+    if (shortfall == 1) throw std::invalid_argument("CUDA harness only accepts a full arena");
     const std::array<std::size_t, 4> cuda_sizes{
         dfcc::virtual_cuda_arena_elements(o, v), dfcc::amplitude_jvp_cuda_arena_elements(o, v),
         dfcc::amplitude_vjp_cuda_arena_elements(o, v), dfcc::factor_vjp_cuda_arena_elements(o, v)};
@@ -81,6 +81,21 @@ int main() {
     state.v = v;
     state.response_arena = allocation + 1;
     state.error = static_cast<int*>(device.allocate(sizeof(int)));
+    if (shortfall == 2) {
+      // Composition must preserve an earlier failure even when this complete
+      // finite action succeeds. The standalone entry still clears by contract.
+      int seeded = 173;
+      cuda_check(cudaMemcpy(state.error, &seeded, sizeof(int), cudaMemcpyHostToDevice));
+      dfcc::run_virtual_accumulate_cuda(state);
+      int observed{};
+      cuda_check(cudaMemcpy(&observed, state.error, sizeof(int), cudaMemcpyDeviceToHost));
+      if (observed != seeded) throw std::runtime_error("DF composition erased an earlier error");
+      dfcc::run_virtual_cuda(state);
+      cuda_check(cudaMemcpy(&observed, state.error, sizeof(int), cudaMemcpyDeviceToHost));
+      if (observed) throw std::runtime_error("standalone DF action did not reset its error");
+      std::cout << "sticky " << seeded << '\n';
+      return 0;
+    }
     if (action == 0) {
       auto result = dfcc::run_virtual_cuda(state);
       first = result.singles;

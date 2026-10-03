@@ -29,6 +29,12 @@ struct Problem {
   std::size_t reference_retained_bytes{};
   std::size_t provider_peak_bytes{};
   std::size_t provider_host_bytes{};
+  // Correlation-only DF virtual representation. For naux > 0 these row-major
+  // Q-major factors replace ovvv/vvvv, which must be empty. The retained small
+  // blocks must come from the same fitted Hamiltonian; Fock/reference energy
+  // retain the explicitly selected reference contract (conventional RHF here).
+  std::size_t naux{};
+  std::vector<double> df_bov, df_bvv;
 };
 
 enum class SolveStatus { Converged, NotConverged, NumericalFailure };
@@ -52,6 +58,10 @@ struct SolverDiagnostic {
   std::size_t diis_gram_calls{};
   std::size_t diis_coefficient_calls{};
   std::size_t diis_combine_calls{};
+  // Complete auxiliary work, including trial evaluations and independent replay.
+  std::size_t df_auxiliary_slices{};
+  std::size_t df_virtual_operations{};
+  std::size_t df_accumulation_calls{};
   double tensor_seconds{};
   double iteration_seconds{};
   double replay_seconds{};
@@ -69,8 +79,10 @@ struct SolverResult {
   [[nodiscard]] bool converged() const noexcept { return status == SolveStatus::Converged; }
 };
 
-// Shared CPU/CUDA admission; rejects malformed data before any execution owner.
-void validate_problem(const Problem& problem);
+// Shared admission defaults to the conventional representation. Only an owner
+// that implements the full DF Q sum may opt in; Lambda/triples/force consumers
+// must reject DF until their own factorized paths are implemented.
+void validate_problem(const Problem& problem, bool allow_df_virtual = false);
 void validate_options(const SolverOptions& options);
 std::size_t problem_host_bytes(const Problem& problem);
 SolverResult solve_cpu(const Problem& problem, const SolverOptions& options);

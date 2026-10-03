@@ -461,6 +461,27 @@ macro(generativeqc_register_host_generated_sources target)
     DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cpu-header "${GENERATIVEQC_RCCSD_CPU_HEADER}")
 
+  # The two DF families share the existing RCCSD emitter. Their CPU queries
+  # also own exact admission sizes for CUDA; generate once for both backends.
+  foreach(_df_family IN ITEMS native core)
+    if(_df_family STREQUAL "native")
+      set(_df_prefix "generated_df_ccsd")
+    else()
+      set(_df_prefix "generated_df_ccsd_core")
+    endif()
+    generativeqc_register_generated_sources(
+      NAME generativeqc_df_ccsd_${_df_family}_codegen
+      TARGET ${target}
+      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_ccsd_${_df_family}.py"
+      OUTPUTS
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/${_df_prefix}_cpu.hpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/${_df_prefix}_cuda.cuh"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/${_df_prefix}_cuda.cu"
+      DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+      ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  endforeach()
+
   set(GENERATIVEQC_TRIPLES_FOCK_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_triples_fock_response_cpu.hpp")
   generativeqc_register_generated_sources(
@@ -512,6 +533,9 @@ macro(generativeqc_register_host_generated_sources target)
 endmacro()
 
 macro(generativeqc_register_cuda_generated_sources target)
+  target_sources(${target} PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_ccsd_cuda.cu"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_ccsd_core_cuda.cu")
   set(GENERATIVEQC_MEAN_FIELD_SETUP_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_mean_field_setup.cuh")
   generativeqc_register_generated_sources(

@@ -155,6 +155,38 @@ for 230-AO ethane and 264-AO benzene, with explicit symmetric metric whitening,
 conventional RHF, same-Hamiltonian DF correlation, and physical residual replay.
 Its retained states are validation artifacts, not production inputs.
 
+## Internal native RCCSD solver
+
+`cc::Problem::naux`, `df_bov` and `df_bvv` select an explicit factorized
+virtual representation. `ovvv` and `vvvv` must be empty; retained smaller
+blocks must describe the same fitted Hamiltonian. The native CPU/CUDA solver
+reuses the conventional DIIS and physical convergence policy. It accumulates
+all Q slices for every current/trial/replay amplitude state, then executes
+the generated retained core from `tools/generate_df_ccsd_core.py`.
+
+Complete solver admission includes resident factors, accumulated corrections,
+both core arenas, one-slice scratch, DIIS and retained/final host arrays. CUDA
+uploads factors once; borrowed action outputs are consumed on the same stream
+before scratch reuse. A sticky arithmetic flag spans all Q slices and the
+core. Diagnostics report auxiliary slices, virtual operations and accumulation
+calls across the entire solve, including convergence replay.
+
+Conventional admission rejects the DF representation unless an owner explicitly
+opts in. Existing Lambda, triples and force consumers remain conventional.
+This internal supplied-Hamiltonian solver does not register a native source or
+public DF Calculator endpoint. Its qualification is
+`tests/python/test_df_cc_native_solver.py`. The supplied-Hamiltonian solver is
+also checked for 230-AO ethane using `benchmarks/df_ccsd_native_solver_probe.py`:
+energy must agree within 3e-9 Eh, every amplitude within 1e-8, and expanded
+physical residuals must be below 1e-10. That adapter reconstructs the same packed
+AO factors consumed by the independent oracle before the symmetric MO transform;
+stored full MO factors are not substituted for the oracle's packed source.
+Complete hundreds-AO native CCSD(T) energy and forces still require the remaining
+source/response owners.
+
+See the [native solver decision](../../.agents/notes/implemented/architecture/2026-10-03-df-cc-native-solver.md)
+for ownership and auxiliary-work rationale.
+
 ## Validation rules
 
 Implementation tolerances and DF fitting error are separate quantities.

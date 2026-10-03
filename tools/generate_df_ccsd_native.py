@@ -142,6 +142,8 @@ def cuda_header() -> str:
                 f"{output_type} run_{name}_cuda(CudaState& state);"
                 for name, (output_type, _) in OUTPUTS.items()
             ],
+            "// Composition entry: caller clears error once before all Q slices.",
+            "VirtualOutputs run_virtual_accumulate_cuda(CudaState& state);",
             "}  // namespace generativeqc::cc::generated::df",
             "",
         ]
@@ -164,8 +166,17 @@ def cuda_source() -> str:
                 output_type,
                 input_overrides={key: f"s.{key}" for key in INPUTS},
                 output_fields=fields,
+                reset_error=name != "virtual",
             )
         )
+        if name == "virtual":
+            lines.append(
+                "VirtualOutputs run_virtual_accumulate_cuda(CudaState& state) { return run_df_virtual(state); }"
+            )
+            lines.append(
+                "VirtualOutputs run_virtual_cuda(CudaState& state) { generativeqc_tensor::cuda_check(cudaMemsetAsync(state.error,0,sizeof(int),state.stream)); return run_df_virtual(state); }"
+            )
+            continue
         lines.append(
             f"{output_type} run_{name}_cuda(CudaState& state) {{ return run_df_{name}(state); }}"
         )

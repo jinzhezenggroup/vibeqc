@@ -6,6 +6,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "generated_df_ccsd_core_cpu.hpp"
 #include "generated_rccsd_cpu.hpp"
 #include "solver/diis.hpp"
 #include "solver/iteration_control.hpp"
@@ -49,7 +50,9 @@ double max_abs(const double* p, std::size_t n) {
 
 }  // namespace
 
-void validate_problem(const Problem& p) {
+void validate_problem(const Problem& p, bool allow_df_virtual) {
+  if (p.naux && !allow_df_virtual)
+    throw std::invalid_argument("DF virtual inputs require a factorized execution owner");
   if (!p.nocc || !p.nvir)
     throw std::invalid_argument("RCCSD requires occupied and virtual orbitals");
   const auto o = p.nocc, v = p.nvir;
@@ -66,10 +69,24 @@ void validate_problem(const Problem& p) {
   expect(p.ovov, oovv, "ovov");
   expect(p.ovvo, oovv, "ovvo");
   expect(p.oovv, oovv, "oovv");
-  expect(p.ovvv, checked_mul(o, checked_mul(vv, v)), "ovvv");
+  if (p.naux) {
+    expect(p.ovvv, 0, "ovvv must be empty for DF");
+    expect(p.vvvv, 0, "vvvv must be empty for DF");
+    expect(p.df_bov, checked_mul(p.naux, ov), "df_bov");
+    expect(p.df_bvv, checked_mul(p.naux, vv), "df_bvv");
+    for (std::size_t q = 0; q < p.naux; ++q)
+      for (std::size_t a = 0; a < v; ++a)
+        for (std::size_t b = 0; b < a; ++b)
+          if (std::abs(p.df_bvv[q * vv + a * v + b] - p.df_bvv[q * vv + b * v + a]) > 1e-10)
+            throw std::invalid_argument("DF B_vv must preserve symmetric spatial-MO pairs");
+  } else {
+    expect(p.df_bov, 0, "df_bov requires naux");
+    expect(p.df_bvv, 0, "df_bvv requires naux");
+    expect(p.ovvv, checked_mul(o, checked_mul(vv, v)), "ovvv");
+    expect(p.vvvv, checked_mul(vv, vv), "vvvv");
+  }
   expect(p.ovoo, checked_mul(ov, oo), "ovoo");
   expect(p.oooo, checked_mul(oo, oo), "oooo");
-  expect(p.vvvv, checked_mul(vv, vv), "vvvv");
   expect(p.d1, ov, "d1");
   expect(p.d2, oovv, "d2");
   expect(p.initial_t1, ov, "initial_t1");
@@ -92,24 +109,31 @@ void validate_options(const SolverOptions& o) {
 
 std::size_t problem_host_bytes(const Problem& p) {
   std::size_t result = 0;
-  const std::vector<double>* values[] = {&p.foo,  &p.fov,  &p.fvv,        &p.ovov,      &p.ovvo,
-                                         &p.oovv, &p.ovvv, &p.ovoo,       &p.oooo,      &p.vvvv,
-                                         &p.d1,   &p.d2,   &p.initial_t1, &p.initial_t2};
+  const std::vector<double>* values[] = {
+      &p.foo,  &p.fov,  &p.fvv, &p.ovov, &p.ovvo,       &p.oovv,       &p.ovvv,   &p.ovoo,
+      &p.oooo, &p.vvvv, &p.d1,  &p.d2,   &p.initial_t1, &p.initial_t2, &p.df_bov, &p.df_bvv};
   for (const auto* value : values) result = checked_add(result, bytes(value->capacity()));
   return result;
 }
 
 SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
-  validate_problem(p);
+  validate_problem(p, true);
   validate_options(options);
   const auto n1 = checked_mul(p.nocc, p.nvir);
   const auto n2 = checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir));
   const auto elements = checked_add(n1, n2);
-  const auto iteration_elements = generated::iteration_arena_elements(p.nocc, p.nvir);
-  const auto replay_elements = generated::replay_arena_elements(p.nocc, p.nvir);
+  const auto iteration_elements = p.naux
+                                      ? generated::dfcore::iteration_arena_elements(p.nocc, p.nvir)
+                                      : generated::iteration_arena_elements(p.nocc, p.nvir);
+  const auto replay_elements = p.naux ? generated::dfcore::replay_arena_elements(p.nocc, p.nvir)
+                                      : generated::replay_arena_elements(p.nocc, p.nvir);
+  const auto virtual_elements =
+      p.naux ? generated::df::virtual_cpu_arena_elements(p.nocc, p.nvir) : 0;
   std::size_t capacity = checked_add(p.reference_retained_bytes, problem_host_bytes(p));
   capacity = checked_add(capacity, bytes(iteration_elements));
   capacity = checked_add(capacity, bytes(replay_elements));
+  capacity = checked_add(capacity, bytes(virtual_elements));
+  if (p.naux) capacity = checked_add(capacity, bytes(elements));
   // Current, trial, error and a copied history vector coexist before trimming.
   // DIIS additionally retains Gram/original augmented arrays while solve_linear
   // owns its by-value matrix/RHS copies. These are numeric storage, not overhead.
@@ -124,6 +148,7 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
     throw std::length_error("RCCSD CPU solve exceeds correlation memory budget");
 
   std::vector<double> iteration_arena(iteration_elements), replay_arena(replay_elements);
+  std::vector<double> virtual_arena(virtual_elements), virtual_sum(p.naux ? elements : 0);
   std::vector<double> current;
   current.reserve(elements);
   current.insert(current.end(), p.initial_t1.begin(), p.initial_t1.end());
@@ -135,6 +160,58 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
   result.reason = "maximum RCCSD iterations reached";
   const auto solve_started = std::chrono::steady_clock::now();
 
+  // The same accumulation owner serves current/trial/replay amplitudes. Never
+  // reuse a correction after DIIS changes T, or count only a single Q slice.
+  auto df_inputs = [&](const generated::Inputs& in) {
+    std::fill(virtual_sum.begin(), virtual_sum.end(), 0.0);
+    generated::df::Inputs factors{};
+    factors.t1 = in.t1;
+    factors.t2 = in.t2;
+    for (std::size_t q = 0; q < p.naux; ++q) {
+      factors.bov = p.df_bov.data() + q * n1;
+      factors.bvv = p.df_bvv.data() + q * p.nvir * p.nvir;
+      const auto out = generated::df::run_virtual_cpu(p.nocc, p.nvir, factors, virtual_arena.data(),
+                                                      virtual_arena.size());
+      for (std::size_t k = 0; k < n1; ++k) virtual_sum[k] += out.singles[k];
+      for (std::size_t k = 0; k < n2; ++k) virtual_sum[n1 + k] += out.doubles[k];
+      ++result.diagnostic.df_auxiliary_slices;
+      result.diagnostic.df_virtual_operations += generated::df::virtual_cpu_operation_count;
+      result.diagnostic.df_accumulation_calls += 2;
+    }
+    return generated::dfcore::Inputs{in.foo,
+                                     in.fov,
+                                     in.fvv,
+                                     in.ovov,
+                                     in.ovvo,
+                                     in.oovv,
+                                     in.ovoo,
+                                     in.oooo,
+                                     in.d1,
+                                     in.d2,
+                                     in.t1,
+                                     in.t2,
+                                     virtual_sum.data(),
+                                     virtual_sum.data() + n1};
+  };
+  auto run_iteration = [&](const generated::Inputs& in) -> generated::IterationOutputs {
+    if (!p.naux)
+      return generated::run_iteration_cpu(p.nocc, p.nvir, in, iteration_arena.data(),
+                                          iteration_arena.size());
+    const auto core = df_inputs(in);
+    const auto out = generated::dfcore::run_iteration_cpu(
+        p.nocc, p.nvir, core, iteration_arena.data(), iteration_arena.size());
+    return {out.energy, out.r1, out.r2, out.next_t1, out.next_t2};
+  };
+  auto run_replay = [&](const generated::Inputs& in) -> generated::ReplayOutputs {
+    if (!p.naux)
+      return generated::run_replay_cpu(p.nocc, p.nvir, in, replay_arena.data(),
+                                       replay_arena.size());
+    const auto core = df_inputs(in);
+    const auto out = generated::dfcore::run_replay_cpu(p.nocc, p.nvir, core, replay_arena.data(),
+                                                       replay_arena.size());
+    return {out.energy, out.r1, out.r2};
+  };
+
   const unsigned iteration_budget = options.max_iterations == std::numeric_limits<unsigned>::max()
                                         ? options.max_iterations
                                         : options.max_iterations + 1;
@@ -143,8 +220,7 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
     try {
       auto in = inputs(p, current.data(), current.data() + n1);
       const auto iteration_started = std::chrono::steady_clock::now();
-      const auto out = generated::run_iteration_cpu(p.nocc, p.nvir, in, iteration_arena.data(),
-                                                    iteration_arena.size());
+      const auto out = run_iteration(in);
       result.diagnostic.iteration_seconds +=
           std::chrono::duration<double>(std::chrono::steady_clock::now() - iteration_started)
               .count();
@@ -161,8 +237,7 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
       if (std::isfinite(previous) && delta <= options.energy_tolerance &&
           std::max(r1, r2) <= options.residual_tolerance) {
         const auto replay_started = std::chrono::steady_clock::now();
-        const auto replay =
-            generated::run_replay_cpu(p.nocc, p.nvir, in, replay_arena.data(), replay_arena.size());
+        const auto replay = run_replay(in);
         result.diagnostic.replay_seconds +=
             std::chrono::duration<double>(std::chrono::steady_clock::now() - replay_started)
                 .count();
@@ -190,8 +265,7 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
       ++result.diagnostic.update_calls;
       auto trial_in = inputs(p, trial.data(), trial.data() + n1);
       const auto trial_started = std::chrono::steady_clock::now();
-      const auto trial_out = generated::run_iteration_cpu(
-          p.nocc, p.nvir, trial_in, iteration_arena.data(), iteration_arena.size());
+      const auto trial_out = run_iteration(trial_in);
       result.diagnostic.iteration_seconds +=
           std::chrono::duration<double>(std::chrono::steady_clock::now() - trial_started).count();
       ++result.diagnostic.iteration_graph_calls;

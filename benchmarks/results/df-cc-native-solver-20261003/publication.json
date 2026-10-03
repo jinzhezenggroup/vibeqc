@@ -1,0 +1,74 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All twelve retained small native solves pass dense/oracle gates, work/admission checks and memcheck. The 230-AO supplied-Hamiltonian CCSD solve additionally converges from MP2 and passes independent energy/full-amplitude gates. Native molecular DF CCSD(T) source/triples/forces remain unqualified.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 5232,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "a10ba7af714271645af5022ab95cf4634ea06de32ad4dca442888b06203f3030"
+    },
+    {
+      "bytes": 2144,
+      "path": "large-ethane230.json.gz",
+      "role": "summary",
+      "sha256": "361bb113dbeef36e8f01591c48dec0c8f00137a81cbdf558e58fc871319fc5e6"
+    },
+    {
+      "bytes": 3766,
+      "path": "qualification.json.gz",
+      "role": "summary",
+      "sha256": "e45ba3e3702beb5aac50fd107944ea9046ea38199f4f2e7a22628b324959b4b0"
+    },
+    {
+      "bytes": 4358,
+      "path": "qualification.patch.gz",
+      "role": "source-patch",
+      "sha256": "ca4aeb2be310be2b61cd4d857460381385b7093360d44511f90ccc4b22aaad08"
+    },
+    {
+      "bytes": 19267,
+      "path": "records.json.gz",
+      "role": "samples",
+      "sha256": "9dbb9172da0750bc182978636a875134915fe20dac8bb83891fc4e316fe7b5bd"
+    },
+    {
+      "bytes": 5565,
+      "path": "sanitizer.json.gz",
+      "role": "summary",
+      "sha256": "85a74e60fbbd0e90663adfc737d60cf7d7b47b85ada98b29047c3c97902b4857"
+    },
+    {
+      "bytes": 15346,
+      "path": "source.patch.gz",
+      "role": "source-patch",
+      "sha256": "1a8839ed7c7bfe6c1a17a13bc436ca386bd0af757e012bd469ea90a7385d8cce"
+    },
+    {
+      "bytes": 2612,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "2c03db6095738184a6ed04a73b332fdcf682f39cbcfddfc18ba9b565daa9e0f7"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/python/test_df_cc_native_solver.py",
+      "tests/python/test_df_cc_native_codegen.py"
+    ],
+    "instructions": "Apply gzip -dc source.patch.gz | git apply to the exact parent. Set PYTHONPATH=python:., CUDA12.9.86 on PATH and checkout-root CCACHE_BASEDIR; use ccache for the separate objects. Run CUDA tests only with GENERATIVEQC_DF_CC_CUDA_TEST=1 inside finite Slurm main gpu:5090:1 allocation, preserving CUDA_VISIBLE_DEVICES. qualification.json.gz contains exact record-generation source and complete test logs; point its final host/GPU binary paths to the pytest outputs. sanitizer.json.gz includes complete unfiltered logs and base64-encoded binary stdin. The probe input header is seven uint64 values followed by FP64 arrays as documented in tests; no reference library is imported by a native solver. Molecular exact-pair factorizations are solver oracles, not DF fitting accuracy claims. Apply qualification.patch.gz after source.patch.gz for the later large-case reproducer and documentation; measured native code is unchanged. Recreate the pinned independent ethane230 state with df_ccsdt_large_oracle.py. Use OPENBLAS_NUM_THREADS=1 with df_ccsd_native_solver_probe.py --state <state.npz> --reference <reference.json> --input <input.bin> --summary <input.json>; pipe that binary input to the native solver probe under finite Slurm main gpu:pro6000:1 on n2, then invoke the adapter with --result <stdout.txt> to check all amplitudes and physical residuals. large-ethane230.json.gz retains input/output/amplitude hashes, exact timings/work and source roundoff policy; it excludes source preparation, (T), and forces."
+  },
+  "schema": "generativeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": true,
+    "revision": "2ccb2a437bb1e850acc858c660082f468b895cfa"
+  }
+}
