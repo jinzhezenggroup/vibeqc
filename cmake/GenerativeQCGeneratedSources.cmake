@@ -1050,6 +1050,22 @@ macro(generativeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/src/cc/triples_cuda.hpp"
     ARGS --output "${GENERATIVEQC_RCCSDT_CUDA_SOURCE}")
 
+  set(GENERATIVEQC_DF_OCCUPIED_TRIPLES_SOURCES
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_occupied_triples.hpp"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_occupied_triples_cuda.cuh"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_occupied_triples_cuda.cu")
+  generativeqc_register_generated_sources(
+    NAME generativeqc_df_occupied_triples_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_occupied_triples.py"
+    OUTPUTS ${GENERATIVEQC_DF_OCCUPIED_TRIPLES_SOURCES}
+    DEPENDS
+      ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/tensor/scalar_cpp.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/tensor/cuda_gemm.py"
+    ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
   set(GENERATIVEQC_MP2_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/mp2")
   set(GENERATIVEQC_MP2_GENERATED_SOURCES

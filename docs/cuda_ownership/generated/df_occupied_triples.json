@@ -1,0 +1,10 @@
+{
+  "name": "df_occupied_triples",
+  "outputs": [
+    "generated/generated_df_occupied_triples.hpp",
+    "generated/generated_df_occupied_triples_cuda.cuh",
+    "generated/generated_df_occupied_triples_cuda.cu"
+  ],
+  "owner": "python/generativeqc_compiler/cc/occupied_triples.py",
+  "scope": "Native FP64 DF (T) energy from the audited triples inventory: occupied-triangle grouping with all occupied permutations, bounded DF panels, GEMM moments and a fused full-virtual-domain epilogue. Runtime ownership is in src/cc/df_triples_cuda.cu; response and public DF descriptors remain separate admission domains."
+}

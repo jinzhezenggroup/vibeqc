@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/df_triples_cuda.cu",
+  "reason": "Owns bounded DF triples input staging, panel lifetime/cache, cuBLAS callbacks, generic deterministic reduction and publication. The compiler owns panel/moment GEMMs and the fused permutation/denominator epilogue.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
