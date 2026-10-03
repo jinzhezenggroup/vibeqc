@@ -1,0 +1,10 @@
+{
+  "name": "df_lambda",
+  "outputs": [
+    "generated/generated_df_lambda.hpp",
+    "generated/generated_df_lambda_cuda.cuh",
+    "generated/generated_df_lambda_cuda.cu"
+  ],
+  "owner": "python/generativeqc_compiler/cc/df_lambda.py",
+  "scope": "Shared/expanded retained DF RCCSD amplitude transpose and parameter VJPs from TensorIR AD, composed with every auxiliary virtual response by src/cc/df_lambda_cuda.cu. Molecular orbital/source/nuclear response and triples corrections are separate consumers."
+}

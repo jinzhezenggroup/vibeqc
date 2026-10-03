@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "cc/cuda_solver_support.cuh"
+#include "cc/df_lambda.hpp"
 #include "generated_rccsd_cpu.hpp"
 #include "response/solve.hpp"
 #include "tensor/cuda_error.hpp"
@@ -170,6 +171,12 @@ class CudaLambdaActions {
     layout_.initialize();
     layout_.validate_dense(cc.t1, cc.t2);
 
+    if (p.naux) {
+      df_ = std::make_unique<detail::DFLambdaActions>(p, cc, options, device, with_source,
+                                                      with_parameters);
+      return;
+    }
+
     const std::array<const std::vector<double>*, 14> host = {
         &p.foo,  &p.fov,  &p.fvv,  &p.ovov, &p.ovvo, &p.oovv, &p.ovvv,
         &p.ovoo, &p.oooo, &p.vvvv, &p.d1,   &p.d2,   &cc.t1,  &cc.t2};
@@ -247,13 +254,39 @@ class CudaLambdaActions {
   CudaLambdaActions& operator=(const CudaLambdaActions&) = delete;
 
   const AmplitudeLayout& layout() const { return layout_; }
-  std::size_t owned_device_bytes() const { return device_layout_.total; }
-  std::size_t numeric_capacity_bytes() const { return numeric_capacity_bytes_; }
-  std::size_t h2d_bytes() const { return h2d_bytes_; }
-  std::size_t d2h_bytes() const { return d2h_bytes_; }
-  std::size_t synchronizations() const { return synchronizations_; }
+  std::size_t owned_device_bytes() const {
+    return df_ ? df_->diagnostic().owned_device_bytes : device_layout_.total;
+  }
+  std::size_t numeric_capacity_bytes() const {
+    return df_ ? df_->diagnostic().numeric_capacity_bytes : numeric_capacity_bytes_;
+  }
+  std::size_t h2d_bytes() const { return df_ ? df_->diagnostic().h2d_bytes : h2d_bytes_; }
+  std::size_t d2h_bytes() const { return df_ ? df_->diagnostic().d2h_bytes : d2h_bytes_; }
+  std::size_t synchronizations() const {
+    return df_ ? df_->diagnostic().synchronizations : synchronizations_;
+  }
+
+  void df_diagnostic(LambdaDiagnostic& target) const {
+    if (!df_) return;
+    const auto& d = df_->diagnostic();
+    target.df_auxiliary_slices = d.df_auxiliary_slices;
+    target.df_contraction_terms = d.df_contraction_terms;
+    target.df_generated_kernels = d.df_generated_kernels;
+    target.shared_program_hash = d.shared_program_hash;
+    target.independent_program_hash = d.independent_program_hash;
+  }
+  void df_factors(CudaFixedOrbitalResponseResult& result) {
+    if (!df_) return;
+    auto factors = df_->virtual_factors();
+    result.df_bov = std::move(factors.first);
+    result.df_bvv = std::move(factors.second);
+  }
 
   void fresh_replay(double& energy, std::vector<double>& r1, std::vector<double>& r2) {
+    if (df_) {
+      df_->replay(energy, r1, r2);
+      return;
+    }
     const auto output = generated::run_replay_cuda(state_);
     r1.resize(layout_.n1);
     r2.resize(layout_.n2);
@@ -275,6 +308,10 @@ class CudaLambdaActions {
   }
 
   void rhs(bool independent, std::vector<double>& one, std::vector<double>& two) {
+    if (df_) {
+      df_->rhs(independent, one, two);
+      return;
+    }
     const double seed = -1.0;
     HostTransferFence transfers(stream_);
     cuda_check(cudaMemcpyAsync(state_.bar_correlation_energy, &seed, sizeof(double),
@@ -288,6 +325,10 @@ class CudaLambdaActions {
 
   void transpose(bool independent, std::span<const double> one, std::span<const double> two,
                  std::vector<double>& out_one, std::vector<double>& out_two) {
+    if (df_) {
+      df_->transpose(independent, one, two, out_one, out_two);
+      return;
+    }
     if (one.size() != layout_.n1 || two.size() != layout_.n2)
       throw std::invalid_argument("RCCSD CUDA Lambda transpose seed shape mismatch");
     HostTransferFence transfers(stream_);
@@ -303,6 +344,10 @@ class CudaLambdaActions {
   }
 
   void set_parameter_seeds(std::span<const double> lambda1, std::span<const double> lambda2) {
+    if (df_) {
+      df_->seeds(lambda1, lambda2);
+      return;
+    }
     if (lambda1.size() != layout_.n1 || lambda2.size() != layout_.n2)
       throw std::invalid_argument("RCCSD CUDA parameter-response seed shape mismatch");
     const double energy_seed = 1.0;
@@ -325,7 +370,8 @@ class CudaLambdaActions {
 
   using ParameterRunner = generated::DeviceParameterOutput (*)(generated::CudaState&);
 
-  std::vector<double> parameter(ParameterRunner run, std::size_t count) {
+  std::vector<double> parameter(std::string_view name, ParameterRunner run, std::size_t count) {
+    if (df_) return df_->parameter(name, count);
     const auto output = run(state_);
     std::vector<double> values(count);
     int error = 0;
@@ -380,6 +426,7 @@ class CudaLambdaActions {
   cudaStream_t stream_{};
   unsigned char* base_{};
   generated::CudaState state_{};
+  std::unique_ptr<detail::DFLambdaActions> df_;
   std::size_t numeric_capacity_bytes_{};
   std::size_t h2d_bytes_{};
   std::size_t d2h_bytes_{};
@@ -398,7 +445,7 @@ double max_abs(std::span<const double> values) {
 LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<const double> t1_source,
                         std::span<const double> t2_source, int device, const LambdaOptions& options,
                         CudaFixedOrbitalResponseResult* fixed_orbital) {
-  validate_problem(p);
+  validate_problem(p, true);
   validate_lambda_options(options);
   if (!cc.converged())
     throw std::invalid_argument("RCCSD CUDA Lambda requires a converged CC result");
@@ -507,27 +554,30 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
   if (fixed_orbital) {
     owner.set_parameter_seeds(result.lambda1, result.lambda2);
     fixed_orbital->foo =
-        owner.parameter(generated::run_parameter_foo_cuda, checked_mul(p.nocc, p.nocc));
+        owner.parameter("foo", generated::run_parameter_foo_cuda, checked_mul(p.nocc, p.nocc));
     fixed_orbital->fov =
-        owner.parameter(generated::run_parameter_fov_cuda, checked_mul(p.nocc, p.nvir));
+        owner.parameter("fov", generated::run_parameter_fov_cuda, checked_mul(p.nocc, p.nvir));
     fixed_orbital->fvv =
-        owner.parameter(generated::run_parameter_fvv_cuda, checked_mul(p.nvir, p.nvir));
+        owner.parameter("fvv", generated::run_parameter_fvv_cuda, checked_mul(p.nvir, p.nvir));
     const auto oovv = checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir));
-    fixed_orbital->ovov = owner.parameter(generated::run_parameter_ovov_cuda, oovv);
-    fixed_orbital->ovvo = owner.parameter(generated::run_parameter_ovvo_cuda, oovv);
-    fixed_orbital->oovv = owner.parameter(generated::run_parameter_oovv_cuda, oovv);
-    fixed_orbital->ovvv =
-        owner.parameter(generated::run_parameter_ovvv_cuda,
-                        checked_mul(p.nocc, checked_mul(p.nvir, checked_mul(p.nvir, p.nvir))));
+    fixed_orbital->ovov = owner.parameter("ovov", generated::run_parameter_ovov_cuda, oovv);
+    fixed_orbital->ovvo = owner.parameter("ovvo", generated::run_parameter_ovvo_cuda, oovv);
+    fixed_orbital->oovv = owner.parameter("oovv", generated::run_parameter_oovv_cuda, oovv);
+    if (!p.naux)
+      fixed_orbital->ovvv =
+          owner.parameter("ovvv", generated::run_parameter_ovvv_cuda,
+                          checked_mul(p.nocc, checked_mul(p.nvir, checked_mul(p.nvir, p.nvir))));
     fixed_orbital->ovoo =
-        owner.parameter(generated::run_parameter_ovoo_cuda,
+        owner.parameter("ovoo", generated::run_parameter_ovoo_cuda,
                         checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->oooo =
-        owner.parameter(generated::run_parameter_oooo_cuda,
+        owner.parameter("oooo", generated::run_parameter_oooo_cuda,
                         checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nocc, p.nocc)));
-    fixed_orbital->vvvv =
-        owner.parameter(generated::run_parameter_vvvv_cuda,
-                        checked_mul(checked_mul(p.nvir, p.nvir), checked_mul(p.nvir, p.nvir)));
+    if (!p.naux)
+      fixed_orbital->vvvv =
+          owner.parameter("vvvv", generated::run_parameter_vvvv_cuda,
+                          checked_mul(checked_mul(p.nvir, p.nvir), checked_mul(p.nvir, p.nvir)));
+    owner.df_factors(*fixed_orbital);
   }
   result.diagnostic.numeric_capacity_bytes = owner.numeric_capacity_bytes();
   result.diagnostic.owned_device_bytes = owner.owned_device_bytes();
@@ -538,6 +588,7 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
   result.diagnostic.shared_program_hash = generated::lambda_transpose_program_hash;
   result.diagnostic.independent_program_hash =
       generated::lambda_independent_transpose_selected_program_hash(p.nocc, p.nvir);
+  owner.df_diagnostic(result.diagnostic);
   return result;
 }
 

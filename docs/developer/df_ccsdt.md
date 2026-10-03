@@ -188,8 +188,10 @@ the entire solve, including convergence replay. Summand counts exclude
 elementwise operations and are not hardware FLOPs or timing predictions.
 
 Conventional admission rejects the DF representation unless an owner explicitly
-opts in. Existing molecular Lambda, triples and force consumers remain conventional;
-the separate internal DF triples energy owner is described below.
+opts in. Native CUDA Lambda accepts the factorized representation as described
+in [DF response composition](df_ccsdt_gradient.md); molecular triples and force
+consumers remain conventional. The separate internal DF triples energy owner
+is described below.
 This internal supplied-Hamiltonian solver does not register a public DF
 Calculator endpoint. Its qualification is
 `tests/python/test_df_cc_native_solver.py`. The supplied-Hamiltonian solver is

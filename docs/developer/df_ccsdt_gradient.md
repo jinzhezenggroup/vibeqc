@@ -14,7 +14,7 @@ correlation two-electron interaction is density fitted.
 E_DF-CCSD(T)
   |
   +-- converged T1/T2 -------------------------- #157
-  +-- CCSD Lambda / residual response --------- #158 future A2
+  +-- CCSD Lambda / residual response --------- native fixed-orbital A2
   +-- standard-(T) + corrected Lambda --------- #158 future A3
   +-- orbital / overlap response -------------- reuse #155 machinery
   |
@@ -75,15 +75,44 @@ production pullback itself never reconstructs `g_DF`.
 
 ## Remaining #158 work
 
-The virtual part of slice A2 now has compiler-owned amplitude and factor
-actions in `generativeqc_compiler.cc.df_equations`, with generated native
-CPU/CUDA evaluators. It derives the `ovvv/vvvv` contribution from the audited
-conventional inventory and differentiates the bounded factorized program.
-It supplies neither a complete Lambda solve nor a force result.
+Native CUDA Lambda now accepts the explicit factorized `cc::Problem`
+representation. `cc/df_lambda.py` derives retained-core energy RHS, amplitude
+transpose actions and all eight retained Fock/integral parameter VJPs from the
+shared RCCSD residual. Separate expanded-core actions provide the final audit.
+The owner composes every Q slice of the existing `cc/df_equations.py` amplitude
+VJP with each core transpose, including the independent replay. It never
+reconstructs `ovvv/vvvv` or a dense amplitude Jacobian.
 
-Slice A2 must compose those actions with cotangents for all retained smaller
-four-index blocks and the full fixed-amplitude energy/residual map. Slice A3
-must add the standard-(T) numerator,
+`solve_lambda_parameter_response_cuda` also returns Q-major `df_bov/df_bvv`
+cotangents for the **virtual residual contribution**. The eight retained-block
+cotangents are returned separately; their Gram-product pullbacks must be added
+before these factor weights describe the complete correlation Hamiltonian.
+`ovvv/vvvv` response vectors stay empty. Optional explicit T1/T2 energy sources
+use the same corrected-Lambda interface as conventional calculations; this API
+does not generate the DF triples sources itself.
+
+The same host GMRES, packed pair-symmetry coordinates, diagonal preconditioner,
+fresh CC replay and independent Lambda acceptance gates are retained. Native
+scientific actions execute on CUDA. One staged input state and one reusable
+scratch arena cover all actions; stream order consumes each borrowed output
+before reuse. The sticky arithmetic flag spans the complete core-plus-Q action.
+The DF numeric bound includes both host Krylov/publication storage and the
+device arena, together with borrowed reference/CC state. Diagnostics report
+complete auxiliary visits, generated kernels, contraction summands and transfers.
+Composed operator hashes include both retained-core and virtual derivative
+identities. This is still a fixed-orbital response phase, not a nuclear force.
+
+`tests/python/test_df_cc_lambda.py` verifies the retained-plus-Q action against
+the complete integral equations, native Lambda/parameters against conventional
+CUDA on the same Gram Hamiltonian, physical factor energy finite differences
+after fresh CC convergence, an independent two-electron determinant energy
+derivative, and exact-budget/one-byte-short publication behavior.
+Set `GENERATIVEQC_DF_LAMBDA_CUDA_TEST=1` and `GENERATIVEQC_LIBRARY` in a finite
+Slurm allocation for native tests. See the
+[decision note](../../.agents/notes/implemented/numerics/2026-10-03-native-df-lambda.md).
+
+Slice A2 still needs the retained Gram/source pullback and molecular composition.
+Slice A3 must add the standard-(T) numerator,
 denominator, direct-triples, and corrected-Lambda response on the same DF
 Hamiltonian.
 

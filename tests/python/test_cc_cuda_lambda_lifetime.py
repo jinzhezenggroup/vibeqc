@@ -79,6 +79,8 @@ struct TrackingVector : std::vector<double> {
   TrackingVector()=default;
   TrackingVector(const TrackingVector&)=default;
   TrackingVector(TrackingVector&&)=default;
+  TrackingVector& operator=(const TrackingVector&)=default;
+  TrackingVector& operator=(TrackingVector&&)=default;
   ~TrackingVector() {
     for(const auto& copy:queued)
       if(copy.kind==cudaMemcpyDeviceToHost && copy.dst==data() && size())
@@ -87,12 +89,34 @@ struct TrackingVector : std::vector<double> {
 };
 
 struct Problem {
-  std::size_t nocc=1,nvir=1;
+  std::size_t nocc=1,nvir=1,naux=0;
   TrackingVector foo{1.0},fov{1.0},fvv{1.0},ovov{1.0},ovvo{1.0},oovv{1.0},
     ovvv{1.0},ovoo{1.0},oooo{1.0},vvvv{1.0},d1{1.0},d2{1.0};
 };
 struct SolverResult { TrackingVector t1{1.0},t2{1.0}; };
 struct LambdaOptions { std::size_t max_bytes=1U<<20; };
+struct LambdaDiagnostic {
+  std::size_t owned_device_bytes{},numeric_capacity_bytes{},h2d_bytes{},d2h_bytes{},synchronizations{};
+  std::size_t df_auxiliary_slices{},df_contraction_terms{},df_generated_kernels{};
+  const char *shared_program_hash{},*independent_program_hash{};
+};
+struct CudaFixedOrbitalResponseResult { TrackingVector df_bov,df_bvv; };
+// This harness isolates conventional transfer failures. A DF request must not
+// accidentally enter its synthetic backend; the real DF owner has CUDA tests.
+namespace detail {
+struct DFLambdaActions {
+  DFLambdaActions(const Problem&,const SolverResult&,const LambdaOptions&,int,bool,bool) {
+    throw std::logic_error("DF owner outside conventional lifetime harness");
+  }
+  const LambdaDiagnostic& diagnostic() const { static LambdaDiagnostic d;return d; }
+  void replay(double&,TrackingVector&,TrackingVector&) { throw std::logic_error("DF action"); }
+  void rhs(bool,TrackingVector&,TrackingVector&) { throw std::logic_error("DF action"); }
+  void transpose(bool,std::span<const double>,std::span<const double>,TrackingVector&,TrackingVector&) { throw std::logic_error("DF action"); }
+  void seeds(std::span<const double>,std::span<const double>) { throw std::logic_error("DF action"); }
+  TrackingVector parameter(std::string_view,std::size_t) { throw std::logic_error("DF action"); }
+  std::pair<TrackingVector,TrackingVector> virtual_factors() { throw std::logic_error("DF action"); }
+};
+}
 std::size_t lambda_cpu_numeric_capacity(const Problem&,const SolverResult&,
                                        const LambdaOptions&,bool) {return 1024;}
 """
@@ -116,7 +140,7 @@ int main(int argc,char** argv) {
       } else if(op=="seeds") {
         owner.set_parameter_seeds(cc.t1,cc.t2);
       } else if(op=="parameter") {
-        (void)owner.parameter(generated::parameter_stub,1);
+        (void)owner.parameter("stub",generated::parameter_stub,1);
       } else if(op=="rhs" || op=="independent-rhs") {
         owner.rhs(op=="independent-rhs",one,two);
       } else {

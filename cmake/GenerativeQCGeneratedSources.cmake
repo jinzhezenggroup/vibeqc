@@ -1066,6 +1066,18 @@ macro(generativeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/tensor/cuda_gemm.py"
     ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
+  generativeqc_register_generated_sources(
+    NAME generativeqc_df_lambda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_lambda.py"
+    OUTPUTS
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_lambda.hpp"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_lambda_cuda.cuh"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_lambda_cuda.cu"
+    DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+    ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
   set(GENERATIVEQC_MP2_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/mp2")
   set(GENERATIVEQC_MP2_GENERATED_SOURCES
