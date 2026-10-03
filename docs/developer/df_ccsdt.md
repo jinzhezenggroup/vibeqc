@@ -189,8 +189,8 @@ elementwise operations and are not hardware FLOPs or timing predictions.
 
 Conventional admission rejects the DF representation unless an owner explicitly
 opts in. Existing Lambda, triples and force consumers remain conventional.
-This internal supplied-Hamiltonian solver does not register a native source or
-public DF Calculator endpoint. Its qualification is
+This internal supplied-Hamiltonian solver does not register a public DF
+Calculator endpoint. Its qualification is
 `tests/python/test_df_cc_native_solver.py`. The supplied-Hamiltonian solver is
 also checked for 230-AO ethane using `benchmarks/df_ccsd_native_solver_probe.py`:
 energy must agree within 3e-9 Eh, every amplitude within 1e-8, and expanded
@@ -199,6 +199,52 @@ AO factors consumed by the independent oracle before the symmetric MO transform;
 stored full MO factors are not substituted for the oracle's packed source.
 Complete hundreds-AO native CCSD(T) energy and forces still require the remaining
 source/response owners.
+
+## Internal native CUDA molecular source
+
+`cc::build_df_source_cuda` builds correlation-only DF integrals from normalized
+orbital/auxiliary systems and a conventional physical RHF reference. The
+internal `run_rccsd_native_state` entry accepts an optional correlation auxiliary
+system to compose native CUDA RHF, this source, and the native DF CCSD solver.
+Public descriptors still reject DF; native DF triples, Lambda and forces are
+not registered by this entry.
+The current CUDA source accepts orbital and auxiliary shells through f. Its
+shared capability check runs before RHF; g-shell RI auxiliary bases require a
+separately qualified source extension.
+
+The source reuses the generated CUDA three-center/metric evaluator and the
+shared cuSOLVER symmetric inverse-root owner, with an explicit relative cutoff.
+The internal molecular composition fixes that cutoff at `1e-10`. Each complete
+AO row is generated once. The compiler-owned `method/df_mo_source.py` traversal
+performs two orbital projections and metric whitening, with
+`2 N^3 Q + N^2 Q^2` contraction summands and `N + 2` GEMMs. The source generates
+`N^2 Q` raw values; it does not regenerate them for each auxiliary consumer.
+
+`cc/df_source.py` defines independent `oo/ov/vo/vv` factor selection and the
+five retained Gram products. `tools/generate_df_cc_source.py` emits the packing
+actions, block BLAS traversal, equation hashes and phase capacity queries.
+Selection does not assume MO-pair symmetry. Only `B_ov`, `B_vv` and the five
+retained integral blocks cross the explicit host-input solver boundary; all
+integral generation, whitening, MO transformation and block contraction use
+CUDA. No CPU numerical retry is provided.
+
+One stream and one raw row buffer preserve source lifetime through each
+projection. Transform temporaries are released before packing; the full MO
+factor tensor is released before block scratch is allocated. Failure drains
+work before owners are destroyed and publishes no partial result. Admission
+includes the caller/reference, source setup, metric owner, transform/packing
+arenas and host outputs. The existing source factory reports setup capacity
+after construction, so that phase is checked and released before downstream
+allocation/publication. Device capacity includes the shared owner's lazy SCF
+reservations: it is a conservative bound, not a measured physical peak.
+
+`tests/python/test_df_cc_molecular_source.py` is enabled with
+`GENERATIVEQC_DF_CC_SOURCE_CUDA_TEST=1` inside a finite Slurm GPU allocation.
+It checks factors/blocks against committed independent raw integrals, including
+duplicated auxiliary shells and truncated metric rank, and exercises exact
+budget admission and transactional failure. Its two-electron molecular CCSD
+case uses an independent determinant-space energy oracle. This small-source
+qualification does not establish a complete hundreds-AO CCSD(T)/force endpoint.
 
 See the [native solver decision](../../.agents/notes/implemented/architecture/2026-10-03-df-cc-native-solver.md)
 for ownership and auxiliary-work rationale.

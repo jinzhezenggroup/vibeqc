@@ -9,6 +9,7 @@
 
 #include "molecule/basis_geometry_identity.hpp"
 #include "runtime/resource_cuda.cuh"
+#include "scf/cuda/df_source_domain.hpp"
 #include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/metadata_upload.hpp"
 #include "scf/cuda/packed_basis.hpp"
@@ -59,7 +60,6 @@ struct CudaDensityFittingIntegralSourceImpl {
 };
 
 /** Reject unsupported physical shells before packing either source or exported tensors. */
-bool cuda_df_shell_domain(const core::System& system, const char* role, std::string& detail);
 
 /** Build a source transactionally and return its current metric; ownership transfers only on
  * success. */

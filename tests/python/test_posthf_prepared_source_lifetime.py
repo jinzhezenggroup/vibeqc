@@ -61,7 +61,8 @@ struct Problem { std::size_t reference_retained_bytes=100, provider_peak_bytes{}
 struct State { Problem problem; };
 struct Execution { int device_id() const { return 0; } };
 Problem build_problem(const integrals::ElectronInteractionSource& source,
-                      int,int,bool,int,int& work,int& metrics) {
+                      int,int,bool,int,int& work,int& metrics,const int* correlation_auxiliary) {
+  if (correlation_auxiliary) throw std::logic_error("conventional lifetime fixture requires no auxiliary");
   // Real providers increment work before a source read may fail. Validate only
   // this attempt's delta while retaining both attempts in endpoint diagnostics.
   const int initial_work=work, initial_metrics=metrics;
@@ -127,6 +128,7 @@ int cc_case(bool prepared,bool optional_cuda=false,int failure=0) {
   State state;
   int system=0, reference_value=0, solver_options=0, provider_work=0, provider_metrics=0;
   const auto* reference=&reference_value;
+  const int* correlation_auxiliary=nullptr;
   const bool cuda=optional_cuda || !prepared;
   source_failure=failure;
   Execution execution;

@@ -499,6 +499,22 @@ macro(generativeqc_register_host_generated_sources target)
       ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
   endforeach()
 
+  generativeqc_register_generated_sources(
+    NAME generativeqc_df_cc_source_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_cc_source.py"
+    OUTPUTS
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_cc_source_cpu.hpp"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_cc_source_cuda.cuh"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_cc_source_cuda.cu"
+    DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+    ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  if(GENERATIVEQC_ENABLE_CUDA)
+    target_sources(${target} PRIVATE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_cc_source_cuda.cu")
+  endif()
+
   set(GENERATIVEQC_TRIPLES_FOCK_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_triples_fock_response_cpu.hpp")
   generativeqc_register_generated_sources(

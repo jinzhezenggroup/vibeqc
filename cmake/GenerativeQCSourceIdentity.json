@@ -67,6 +67,7 @@
     "tools/generate_grid_kernels.py",
     "tools/generate_mp2_native.py",
     "tools/generate_df_mo_source.py",
+    "tools/generate_df_cc_source.py",
     "tools/generate_rccsd_native.py",
     "tools/generate_df_ccsd_native.py",
     "tools/generate_df_ccsd_core.py",

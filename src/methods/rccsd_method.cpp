@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "cc/df_source.hpp"
 #include "cc/rccsdt_force.hpp"
 #include "cc/solver.hpp"
 #include "generated_rccsd_cpu.hpp"
@@ -32,6 +33,7 @@
 #include "scf/mean_field.hpp"
 #if GENERATIVEQC_HAS_CUDA
 #include "generated_direct_resident_psss_schedule.cuh"
+#include "scf/cuda/df_source_domain.hpp"
 #endif
 
 namespace generativeqc::methods::detail {
@@ -149,6 +151,35 @@ std::vector<double> fock_mo(const hf::PhysicalReference& ref) {
   return result;
 }
 
+#if GENERATIVEQC_HAS_CUDA
+void attach_df_source(cc::Problem& problem, cc::DFSourceResult&& fitted, posthf::ProviderWork& work,
+                      generativeqc_tensor::Metrics& metrics) {
+  problem.naux = fitted.naux;
+  problem.df_bov = std::move(fitted.bov);
+  problem.df_bvv = std::move(fitted.bvv);
+  problem.ovov = std::move(fitted.ovov);
+  problem.ovvo = std::move(fitted.ovvo);
+  problem.oovv = std::move(fitted.oovv);
+  problem.ovoo = std::move(fitted.ovoo);
+  problem.oooo = std::move(fitted.oooo);
+  problem.provider_peak_bytes = fitted.numeric_capacity_bytes;
+  problem.provider_host_bytes = fitted.host_output_bytes;
+  metrics.owned_device_bytes =
+      std::max<std::uint64_t>(metrics.owned_device_bytes, fitted.device_capacity_bytes);
+  ++work.source_scans;
+  work.source_reads += fitted.source_rows;
+  work.source_values += fitted.source_values;
+  work.transform_fmas += fitted.transform_summands + fitted.block_summands;
+  work.transform_stages += fitted.transform_gemms + fitted.block_gemms;
+  work.mo_blocks += 5;
+  ++work.cuda_transform_calls;
+  work.h2d_bytes += fitted.coefficient_h2d_bytes;
+  work.d2h_bytes += fitted.factor_block_d2h_bytes;
+  work.provider_seconds += fitted.total_seconds;
+  work.source_seconds += fitted.source_seconds;
+}
+#endif
+
 std::size_t retained_reference_bytes(const hf::PhysicalReference& ref) {
   std::size_t result = 0;
   const std::vector<double>* arrays[] = {
@@ -162,7 +193,8 @@ std::size_t retained_reference_bytes(const hf::PhysicalReference& ref) {
 cc::Problem build_problem(const integrals::ElectronInteractionSource& source,
                           const hf::PhysicalReference& ref, const cc::SolverOptions& options,
                           bool cuda, int device, posthf::ProviderWork& provider_work,
-                          generativeqc_tensor::Metrics& provider_metrics) {
+                          generativeqc_tensor::Metrics& provider_metrics,
+                          const core::System* correlation_auxiliary = nullptr) {
   // A failed optional source may already have performed real work. Preserve
   // cumulative diagnostics, but validate the compiler schedule for this attempt.
   const auto initial_work = provider_work;
@@ -214,101 +246,129 @@ cc::Problem build_problem(const integrals::ElectronInteractionSource& source,
         }
 
   p.minimum_absolute_denominator = minimum;
-  const auto occ = range(0, o), vir = range(o, n);
-  const std::array<posthf::MOSlots, 7> requests{{
-      {occ, vir, occ, vir},
-      {occ, vir, vir, occ},
-      {occ, occ, vir, vir},
-      {occ, vir, vir, vir},
-      {occ, vir, occ, occ},
-      {occ, occ, occ, occ},
-      {vir, vir, vir, vir},
-  }};
-  const std::array<std::array<std::size_t, 4>, 7> shapes{{
-      {o, v, o, v},
-      {o, v, v, o},
-      {o, o, v, v},
-      {o, v, v, v},
-      {o, v, o, o},
-      {o, o, o, o},
-      {v, v, v, v},
-  }};
-  const std::array<std::vector<double>*, 7> targets{&p.ovov, &p.ovvo, &p.oovv, &p.ovvv,
-                                                    &p.ovoo, &p.oooo, &p.vvvv};
+  if (correlation_auxiliary) {
+#if GENERATIVEQC_HAS_CUDA
+    if (!cuda) throw std::invalid_argument("native molecular DF-CC source requires CUDA");
+    // Account for the live Fock transform, split energy spectrum and problem
+    // prefix while the DF source owns its device/host phase allocations.
+    auto caller_elements = posthf::checked_add(fmo.capacity(), n);
+    for (const auto* values : {&p.foo, &p.fov, &p.fvv, &p.d1, &p.d2})
+      caller_elements = posthf::checked_add(caller_elements, values->capacity());
+    // RawSource owns a basis copy while the caller's original system stays
+    // alive. The new source already counts the supplied copy and auxiliary.
+    const auto caller_bytes =
+        posthf::checked_add(posthf::checked_mul(caller_elements, sizeof(double)),
+                            posthf::source_capacity(source.orbital()));
+    auto fitted = cc::build_df_source_cuda(source.orbital(), *correlation_auxiliary, ref,
+                                           options.max_bytes, 1e-10, device, caller_bytes);
+    attach_df_source(p, std::move(fitted), provider_work, provider_metrics);
+    // RawSource is released before solve, but both caller systems and the
+    // split orbital spectrum remain live beside the detached RHF reference.
+    p.reference_retained_bytes = posthf::checked_add(
+        p.reference_retained_bytes,
+        posthf::checked_add(posthf::checked_mul(n, sizeof(double)),
+                            posthf::checked_add(posthf::source_capacity(source.orbital()),
+                                                posthf::source_capacity(*correlation_auxiliary))));
+#else
+    throw std::runtime_error("native molecular DF-CC source requires a CUDA build");
+#endif
+  } else {
+    const auto occ = range(0, o), vir = range(o, n);
+    const std::array<posthf::MOSlots, 7> requests{{
+        {occ, vir, occ, vir},
+        {occ, vir, vir, occ},
+        {occ, occ, vir, vir},
+        {occ, vir, vir, vir},
+        {occ, vir, occ, occ},
+        {occ, occ, occ, occ},
+        {vir, vir, vir, vir},
+    }};
+    const std::array<std::array<std::size_t, 4>, 7> shapes{{
+        {o, v, o, v},
+        {o, v, v, o},
+        {o, o, v, v},
+        {o, v, v, v},
+        {o, v, o, o},
+        {o, o, o, o},
+        {v, v, v, v},
+    }};
+    const std::array<std::vector<double>*, 7> targets{&p.ovov, &p.ovvo, &p.oovv, &p.ovvv,
+                                                      &p.ovoo, &p.oooo, &p.vvvv};
 
-  auto schedule_for = [&](const posthf::NativeBlockProvider& candidate) {
-    const auto common_bytes = candidate.batch_bytes(shapes.front(), 0, cuda);
-    std::vector<posthf::generated::SourceReuseRequest> schedule_requests;
-    schedule_requests.reserve(requests.size());
-    for (const auto& shape : shapes) {
-      const auto single_bytes = candidate.batch_bytes(shape, 1, cuda);
-      if (single_bytes < common_bytes)
-        throw std::logic_error("RCCSD provider request accounting underflow");
-      std::size_t output_elements = 1;
-      for (const auto extent : shape)
-        output_elements = posthf::checked_mul(output_elements, extent);
-      schedule_requests.push_back(
-          {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
-    }
-    return posthf::generated::ordered_source_reuse_plan(common_bytes, p.reference_retained_bytes,
-                                                        options.max_bytes, schedule_requests);
-  };
+    auto schedule_for = [&](const posthf::NativeBlockProvider& candidate) {
+      const auto common_bytes = candidate.batch_bytes(shapes.front(), 0, cuda);
+      std::vector<posthf::generated::SourceReuseRequest> schedule_requests;
+      schedule_requests.reserve(requests.size());
+      for (const auto& shape : shapes) {
+        const auto single_bytes = candidate.batch_bytes(shape, 1, cuda);
+        if (single_bytes < common_bytes)
+          throw std::logic_error("RCCSD provider request accounting underflow");
+        std::size_t output_elements = 1;
+        for (const auto extent : shape)
+          output_elements = posthf::checked_mul(output_elements, extent);
+        schedule_requests.push_back(
+            {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
+      }
+      return posthf::generated::ordered_source_reuse_plan(common_bytes, p.reference_retained_bytes,
+                                                          options.max_bytes, schedule_requests);
+    };
 
-  posthf::NativeBlockProvider widest_provider(source, ref, options.max_bytes,
-                                              std::numeric_limits<unsigned>::max(),
+    posthf::NativeBlockProvider widest_provider(source, ref, options.max_bytes,
+                                                std::numeric_limits<unsigned>::max(),
+                                                posthf::AOTileDomain::Basis);
+    const auto maximum_axis_tile = widest_provider.tile_shape()[0];
+    std::vector<posthf::generated::SourceTileCandidate> tile_candidates;
+    tile_candidates.reserve(maximum_axis_tile);
+    for (std::size_t axis_tile = 1; axis_tile <= maximum_axis_tile; ++axis_tile) {
+      try {
+        posthf::NativeBlockProvider candidate(source, ref, options.max_bytes,
+                                              static_cast<unsigned>(axis_tile),
                                               posthf::AOTileDomain::Basis);
-  const auto maximum_axis_tile = widest_provider.tile_shape()[0];
-  std::vector<posthf::generated::SourceTileCandidate> tile_candidates;
-  tile_candidates.reserve(maximum_axis_tile);
-  for (std::size_t axis_tile = 1; axis_tile <= maximum_axis_tile; ++axis_tile) {
-    try {
-      posthf::NativeBlockProvider candidate(source, ref, options.max_bytes,
-                                            static_cast<unsigned>(axis_tile),
-                                            posthf::AOTileDomain::Basis);
-      const auto candidate_reuse = schedule_for(candidate);
-      tile_candidates.push_back(
-          {candidate.tile_shape()[0], candidate_reuse.batches.size(), candidate_reuse.peak_bytes});
-    } catch (const std::length_error&) {
-      continue;
+        const auto candidate_reuse = schedule_for(candidate);
+        tile_candidates.push_back({candidate.tile_shape()[0], candidate_reuse.batches.size(),
+                                   candidate_reuse.peak_bytes});
+      } catch (const std::length_error&) {
+        continue;
+      }
     }
-  }
-  if (tile_candidates.empty())
-    throw std::length_error("RCCSD MO provider exceeds numeric memory budget");
-  const auto source_tile_plan = posthf::generated::select_source_tile(n, tile_candidates);
-  posthf::NativeBlockProvider provider(source, ref, options.max_bytes,
-                                       static_cast<unsigned>(source_tile_plan.axis_tile),
-                                       posthf::AOTileDomain::Basis);
-  const auto reuse = schedule_for(provider);
+    if (tile_candidates.empty())
+      throw std::length_error("RCCSD MO provider exceeds numeric memory budget");
+    const auto source_tile_plan = posthf::generated::select_source_tile(n, tile_candidates);
+    posthf::NativeBlockProvider provider(source, ref, options.max_bytes,
+                                         static_cast<unsigned>(source_tile_plan.axis_tile),
+                                         posthf::AOTileDomain::Basis);
+    const auto reuse = schedule_for(provider);
 
-  std::size_t retained = 0;
-  for (const auto& batch : reuse.batches) {
-    std::vector<posthf::MOSlots> batch_requests;
-    batch_requests.reserve(batch.end - batch.begin);
-    for (std::size_t request = batch.begin; request < batch.end; ++request)
-      batch_requests.push_back(requests[request]);
-    auto outputs =
-        provider.get_many(batch_requests, cuda, device, &provider_metrics, &provider_work);
-    if (outputs.size() != batch_requests.size())
-      throw std::runtime_error("RCCSD MO provider returned an invalid batch");
-    for (std::size_t local = 0; local < outputs.size(); ++local) {
-      const auto request = batch.begin + local;
-      retained =
-          posthf::checked_add(retained, posthf::checked_mul(outputs[local].size(), sizeof(double)));
-      *targets[request] = std::move(outputs[local]);
+    std::size_t retained = 0;
+    for (const auto& batch : reuse.batches) {
+      std::vector<posthf::MOSlots> batch_requests;
+      batch_requests.reserve(batch.end - batch.begin);
+      for (std::size_t request = batch.begin; request < batch.end; ++request)
+        batch_requests.push_back(requests[request]);
+      auto outputs =
+          provider.get_many(batch_requests, cuda, device, &provider_metrics, &provider_work);
+      if (outputs.size() != batch_requests.size())
+        throw std::runtime_error("RCCSD MO provider returned an invalid batch");
+      for (std::size_t local = 0; local < outputs.size(); ++local) {
+        const auto request = batch.begin + local;
+        retained = posthf::checked_add(retained,
+                                       posthf::checked_mul(outputs[local].size(), sizeof(double)));
+        *targets[request] = std::move(outputs[local]);
+      }
     }
+    const auto source_scans = provider_work.source_scans - initial_work.source_scans;
+    const auto source_reads = provider_work.source_reads - initial_work.source_reads;
+    const auto source_values = provider_work.source_values - initial_work.source_values;
+    if (source_scans != reuse.batches.size() || source_reads != source_tile_plan.source_reads)
+      throw std::logic_error("RCCSD source-reuse execution disagrees with compiler schedule");
+    const auto ao2 = posthf::checked_mul(n, n);
+    const auto ao4 = posthf::checked_mul(ao2, ao2);
+    const auto expected_source_values = posthf::checked_mul(ao4, source_scans);
+    if (source_values != expected_source_values)
+      throw std::logic_error("RCCSD AO source value count disagrees with compiler schedule");
+    p.provider_peak_bytes = reuse.peak_bytes;
+    p.provider_host_bytes = retained;
   }
-  const auto source_scans = provider_work.source_scans - initial_work.source_scans;
-  const auto source_reads = provider_work.source_reads - initial_work.source_reads;
-  const auto source_values = provider_work.source_values - initial_work.source_values;
-  if (source_scans != reuse.batches.size() || source_reads != source_tile_plan.source_reads)
-    throw std::logic_error("RCCSD source-reuse execution disagrees with compiler schedule");
-  const auto ao2 = posthf::checked_mul(n, n);
-  const auto ao4 = posthf::checked_mul(ao2, ao2);
-  const auto expected_source_values = posthf::checked_mul(ao4, source_scans);
-  if (source_values != expected_source_values)
-    throw std::logic_error("RCCSD AO source value count disagrees with compiler schedule");
-  p.provider_peak_bytes = reuse.peak_bytes;
-  p.provider_host_bytes = retained;
 
   p.initial_t1.assign(o * v, 0.0);
   p.initial_t2.resize(n2);
@@ -330,7 +390,8 @@ RccsdNativeState execute_rccsd_prepared(
     const scf::ScfOptions& reference_options, const cc::SolverOptions& solver_options,
     std::size_t reference_capacity, scf::PreparedFockPlan* prepared_exact,
     const std::vector<double>* initial_density, bool* warm_start_fallback,
-    std::unique_ptr<scf::PreparedFockPlan>* cuda_source_cache) {
+    std::unique_ptr<scf::PreparedFockPlan>* cuda_source_cache,
+    const core::System* correlation_auxiliary = nullptr) {
   const char* allocation_stage = "HF reference";
   try {
     const bool cuda = execution.cuda_requested();
@@ -380,7 +441,7 @@ RccsdNativeState execute_rccsd_prepared(
     const auto problem_started = std::chrono::steady_clock::now();
     std::size_t source_preparation_peak = 0;
 #if GENERATIVEQC_HAS_CUDA
-    if (cuda && cuda_source_cache) {
+    if (cuda && cuda_source_cache && !correlation_auxiliary) {
       std::size_t primitives = 0, s_shells = 0, p_shells = 0;
       for (const auto& shell : system.shells) {
         primitives = posthf::checked_add(primitives, shell.primitives.size());
@@ -440,7 +501,7 @@ RccsdNativeState execute_rccsd_prepared(
     }
     const auto build = [&] {
       return build_problem(*source, *reference, solver_options, cuda, execution.device_id(),
-                           provider_work, provider_metrics);
+                           provider_work, provider_metrics, correlation_auxiliary);
     };
     const auto retire_optional_source = [&] {
       if (!cuda || !cuda_source_cache || !*cuda_source_cache) return false;
@@ -496,9 +557,13 @@ RccsdNativeState execute_rccsd_prepared(
     diagnostic.reference_energy = reference->energy;
     diagnostic.reference_residual = reference->commutator_residual;
     diagnostic.minimum_absolute_denominator = state.problem.minimum_absolute_denominator;
-    diagnostic.numeric_capacity_bytes = std::max(
-        {reference_capacity, reference->numeric_capacity_bytes, source_preparation_peak,
-         state.problem.provider_peak_bytes, state.solved.diagnostic.numeric_capacity_bytes});
+    diagnostic.numeric_capacity_bytes =
+        std::max({reference_capacity,
+                  posthf::checked_add(
+                      reference->numeric_capacity_bytes,
+                      correlation_auxiliary ? posthf::source_capacity(*correlation_auxiliary) : 0),
+                  source_preparation_peak, state.problem.provider_peak_bytes,
+                  state.solved.diagnostic.numeric_capacity_bytes});
     diagnostic.mo_host_staging = cuda ? 1 : 0;
     diagnostic.correlation_owned_device_bytes = std::max<std::size_t>(
         provider_metrics.owned_device_bytes, state.solved.diagnostic.owned_device_bytes);
@@ -899,8 +964,19 @@ RccsdNativeState run_rccsd_native_state(
     const generativeqc_method_descriptor& descriptor,
     std::unique_ptr<scf::PreparedFockPlan>* prepared_exact_cache,
     const std::vector<double>* initial_density, bool* warm_start_fallback,
-    std::size_t external_reservation_bytes) {
+    std::size_t external_reservation_bytes, const core::System* correlation_auxiliary) {
   validate_descriptor(descriptor, execution);
+  if (correlation_auxiliary && !execution.cuda_requested())
+    throw MethodError(GENERATIVEQC_STATUS_NOT_IMPLEMENTED,
+                      "native molecular DF-CC source requires CUDA");
+#if GENERATIVEQC_HAS_CUDA
+  if (correlation_auxiliary) {
+    std::string detail;
+    if (!scf::cuda_execution::cuda_df_shell_domain(*correlation_auxiliary, "auxiliary", detail) ||
+        !scf::cuda_execution::cuda_df_shell_domain(system, "orbital", detail))
+      throw MethodError(GENERATIVEQC_STATUS_NOT_IMPLEMENTED, detail);
+  }
+#endif
   const auto budget = correlation_budget(descriptor);
   if (external_reservation_bytes >= budget)
     throw MethodError(GENERATIVEQC_STATUS_OUT_OF_MEMORY,
@@ -908,8 +984,16 @@ RccsdNativeState run_rccsd_native_state(
   const auto phase_budget = budget - external_reservation_bytes;
   auto solver_options = cc_options(descriptor, phase_budget);
   auto reference = reference_options(descriptor, phase_budget);
-  const auto reference_capacity = posthf::rhf_reference_capacity(
-      system, reference.diis_history, execution.backend() == GENERATIVEQC_BACKEND_CPU_REFERENCE);
+  const auto auxiliary_reference_bytes =
+      correlation_auxiliary ? posthf::source_capacity(*correlation_auxiliary) : 0;
+  if (auxiliary_reference_bytes >= phase_budget)
+    throw MethodError(GENERATIVEQC_STATUS_OUT_OF_MEMORY,
+                      "DF auxiliary basis exhausts the reference budget");
+  reference.reference_memory_budget_bytes -= auxiliary_reference_bytes;
+  const auto reference_capacity = posthf::checked_add(
+      auxiliary_reference_bytes,
+      posthf::rhf_reference_capacity(system, reference.diis_history,
+                                     execution.backend() == GENERATIVEQC_BACKEND_CPU_REFERENCE));
   if (reference_capacity > phase_budget)
     throw MethodError(GENERATIVEQC_STATUS_OUT_OF_MEMORY,
                       "RCCSD bounded RHF reference exceeds correlation memory budget");
@@ -928,9 +1012,9 @@ RccsdNativeState run_rccsd_native_state(
     }
     prepared_exact = prepared_exact_cache->get();
   }
-  auto state = execute_rccsd_prepared(execution, system, reference, solver_options,
-                                      reference_capacity, prepared_exact, initial_density,
-                                      warm_start_fallback, prepared_exact_cache);
+  auto state = execute_rccsd_prepared(
+      execution, system, reference, solver_options, reference_capacity, prepared_exact,
+      initial_density, warm_start_fallback, prepared_exact_cache, correlation_auxiliary);
   state.external_reservation_bytes = external_reservation_bytes;
   state.diagnostic.numeric_capacity_bytes =
       posthf::checked_add(state.diagnostic.numeric_capacity_bytes, external_reservation_bytes);
