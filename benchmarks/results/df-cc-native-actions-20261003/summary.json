@@ -1,0 +1,141 @@
+{
+  "binaries": {
+    "cpu": "4f25980654f93b327e27efc39e7c4741dd91bddc824d367a1ad1dd076ea1e7e1",
+    "cuda": "d6eeb3a3eb755e26d7b8590c635364014f481feacad0fee5105f7941627cf0e7"
+  },
+  "ccache_after": "Summary:\n  Hits:             59202 / 223920 (26.44 %)\n    Direct:         47196 / 225034 (20.97 %)\n    Preprocessed:   12006 / 177799 (6.75 %)\n  Misses:          164718\n    Direct:        177838\n    Preprocessed:  165793\n  Errors:             920\n  Uncacheable:       4073\nPrimary storage:\n  Hits:            118907 / 450029 (26.42 %)\n  Misses:          331122\n  Cache size (GB):  10.60 /  12.00 (88.33 %)\n  Cleanups:           556\n\nUse the -v/--verbose option for more details.\n",
+  "ccache_before": "Summary:\n  Hits:             58752 / 223446 (26.29 %)\n    Direct:         46746 / 224560 (20.82 %)\n    Preprocessed:   12006 / 177775 (6.75 %)\n  Misses:          164694\n    Direct:        177814\n    Preprocessed:  165769\n  Errors:             920\n  Uncacheable:       4058\nPrimary storage:\n  Hits:            118003 / 449081 (26.28 %)\n  Misses:          331078\n  Cache size (GB):  10.53 /  12.00 (87.73 %)\n  Cleanups:           556\n\nUse the -v/--verbose option for more details.\n",
+  "conventional_generated_parity": {
+    "generated_rccsd_cpu.hpp": {
+      "bytes": 1866588,
+      "identical": true,
+      "sha256": "62ecbc20cf5ba435047b2aa941b2b55145e8521087b7866270f76d2167997c70"
+    },
+    "generated_rccsd_cuda.cu": {
+      "bytes": 2806790,
+      "identical": true,
+      "sha256": "c0fd324db261cff627dd1ee0b6d3d6031f0cd4bf050d92308fd0c529dced752d"
+    },
+    "generated_triples_fock_response_cpu.hpp": {
+      "bytes": 62199,
+      "identical": true,
+      "sha256": "d964bc9259eb6ddc418072bb289fe7104cbe9e776e4b2ec794267d596e5ed102"
+    },
+    "generated_triples_fock_response_cuda.cu": {
+      "bytes": 105238,
+      "identical": true,
+      "sha256": "a6b823a5a5022d71a49bb0bb4264925cf254cec88469e3194693a4e0a57c8a60"
+    },
+    "generated_triples_response_cuda.cu": {
+      "bytes": 484306,
+      "identical": true,
+      "sha256": "6d0ac876f3fece300ab687b62e5e6e4dd97cab45ff9310109a8d37df93186490"
+    }
+  },
+  "generated_sources": {
+    "generated_df_ccsd_cpu.hpp": {
+      "bytes": 194480,
+      "sha256": "5f5bbb36cfb13fec1ce2485e135fe069124297c45d4cde959db3bbcb45e16989"
+    },
+    "generated_df_ccsd_cuda.cu": {
+      "bytes": 341752,
+      "sha256": "d4433ef6fe0fa921344dceb86b30ae39d43d58532f2320ce898e9ff0bc018cf5"
+    },
+    "generated_df_ccsd_cuda.cuh": {
+      "bytes": 568,
+      "sha256": "e606a79828383fc33d57717317fcda4c1c8b29447b3ce77a25a17a6bf89e9dcd"
+    }
+  },
+  "hardware": {
+    "cuda_visible_devices": "0",
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "host": "node3",
+    "numpy": "2.5.2",
+    "slurm_job_id": "12117"
+  },
+  "lossless_history_compression": {
+    "compressed_bytes": 34136,
+    "compressed_sha256": "8aee5f3d75faa215632f159f4e74696f8f892311f1a2e832435783097e729a66",
+    "exact_round_trip": true,
+    "original_bytes": 176570,
+    "original_sha256": "71453a786420030ba10789753245c96158683568c0cfa0ed92fd2b59b7ec2926",
+    "saved_bytes": 142434
+  },
+  "pre_commit": "trim trailing whitespace.......................................................Passed\nfix end of files...............................................................Passed\ncheck yaml.................................................(no files to check)Skipped\ncheck json.....................................................................Passed\ncheck for added large files....................................................Passed\ncheck for merge conflicts......................................................Passed\ncheck for broken symlinks..................................(no files to check)Skipped\ncheck toml.................................................(no files to check)Skipped\nCheck tracked evidence retention and review size...............................Passed\nCheck generated native method metadata.........................................Passed\nCheck scientific compiler dependency directions................................Passed\nCheck native high-order scalar contraction regressions.........................Passed\n- hook id: native-complexity-audit\n- duration: 2.17s\n\nnative complexity audit: 526 files, 164 high-order loop nests; fixed-extent-inner-loop=22, high-order-loop=117, high-rank-output-materialization=5, high-rank-source-contraction=20\n\nCheck native CUDA ownership inventory and source anchors.......................Passed\nCheck performance default-promotion inventory..................................Passed\nCheck shared SCF dependency directions.........................................Passed\nCheck cross-method electronic-structure boundaries.............................Passed\nruff (legacy alias)............................................................Passed\nruff format....................................................................Passed\nclang-format...................................................................Passed\n",
+  "sanitizer": {
+    "actions": 4,
+    "errors": 0,
+    "filters": null,
+    "slurm_job_id": "12117"
+  },
+  "scope": "Native one-auxiliary-slice virtual actions only; no complete native DF energy/force or performance qualification",
+  "symbolic_capacities": {
+    "benzene264": {
+      "actions": {
+        "amplitude_jvp": {
+          "arena_bytes": 1913072200,
+          "kernel_count": 133,
+          "per_slice_max_work_degree": 5
+        },
+        "amplitude_vjp": {
+          "arena_bytes": 1287795560,
+          "kernel_count": 117,
+          "per_slice_max_work_degree": 5
+        },
+        "factor_vjp": {
+          "arena_bytes": 889967976,
+          "kernel_count": 130,
+          "per_slice_max_work_degree": 5
+        },
+        "virtual": {
+          "arena_bytes": 1703717360,
+          "kernel_count": 54,
+          "per_slice_max_work_degree": 5
+        }
+      },
+      "dense_ovvv_bytes": 2410616376,
+      "dense_vvvv_bytes": 27894275208,
+      "nocc": 21,
+      "nvir": 243,
+      "t2_bytes": 208324872
+    },
+    "ethane230": {
+      "actions": {
+        "amplitude_jvp": {
+          "arena_bytes": 289078152,
+          "kernel_count": 133,
+          "per_slice_max_work_degree": 5
+        },
+        "amplitude_vjp": {
+          "arena_bytes": 193805480,
+          "kernel_count": 117,
+          "per_slice_max_work_degree": 5
+        },
+        "factor_vjp": {
+          "arena_bytes": 132529480,
+          "kernel_count": 130,
+          "per_slice_max_work_degree": 5
+        },
+        "virtual": {
+          "arena_bytes": 256615248,
+          "kernel_count": 54,
+          "per_slice_max_work_degree": 5
+        }
+      },
+      "dense_ovvv_bytes": 777157992,
+      "dense_vvvv_bytes": 19083546248,
+      "nocc": 9,
+      "nvir": 221,
+      "t2_bytes": 31648968
+    }
+  },
+  "tests": {
+    "compiler_without_numpy_or_runtime": 1,
+    "cuda_short_arena_not_claimed": 4,
+    "equations_and_scheduler": 20,
+    "evidence_retention": 88,
+    "existing_df_and_cc_schedule_regressions": 19,
+    "native_cpu": 20,
+    "native_cuda": 16
+  }
+}

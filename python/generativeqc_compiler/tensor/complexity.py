@@ -306,7 +306,9 @@ def _binary_einsum(
     return Node("einsum", (left.node, right.node), spec, tuple(attrs.items()))
 
 
-def _reassociate_node(node: Node, *, max_operands: int) -> Node:
+def _reassociate_node(
+    node: Node, *, max_operands: int, max_intermediate_axes: dict[str, int]
+) -> Node:
     if node.op != "einsum" or len(node.inputs) < 3 or len(node.inputs) > max_operands:
         return node
     labels_by_operand = tuple(tuple(labels) for labels in node.attrs["labels"])
@@ -355,6 +357,16 @@ def _reassociate_node(node: Node, *, max_operands: int) -> Node:
     for mask in masks:
         if mask in plans:
             continue
+        output_labels = retained_labels(mask)
+        # A representation contract may forbid otherwise cheap intermediates
+        # (for example, reconstructing four virtual axes from DF factors).
+        # Prune this subset, not the entire search: another binary tree may
+        # satisfy the contract. Public outputs and existing inputs are fixed.
+        if mask != full_mask and any(
+            sum(domains[label].space.kind == kind for label in output_labels) > limit
+            for kind, limit in max_intermediate_axes.items()
+        ):
+            continue
         candidates: list[_TreePlan] = []
         left_mask = (mask - 1) & mask
         while left_mask:
@@ -365,7 +377,6 @@ def _reassociate_node(node: Node, *, max_operands: int) -> Node:
                 and left_mask in plans
                 and right_mask in plans
             ):
-                output_labels = retained_labels(mask)
                 for left in plans[left_mask]:
                     for right in plans[right_mask]:
                         work_labels = tuple(dict.fromkeys(left.labels + right.labels))
@@ -402,20 +413,33 @@ def _reassociate_node(node: Node, *, max_operands: int) -> Node:
                         )
             left_mask = (left_mask - 1) & mask
         if not candidates:
-            return node
+            continue
         plans[mask] = _pareto_frontier(candidates)
 
+    if full_mask not in plans:
+        return node
     direct_degree = _monomial(domains.values()).degree
     best = min(plans[full_mask], key=_plan_key)
     return best.node if best.max_degree < direct_degree else node
 
 
-def reassociate_einsums(program: Program, *, max_operands: int = 6) -> Program:
+def reassociate_einsums(
+    program: Program,
+    *,
+    max_operands: int = 6,
+    max_intermediate_axes: typing.Mapping[str, int] | None = None,
+) -> Program:
     """Rewrite only n-ary contractions with a provably lower symbolic degree.
 
     This is explicit opt-in because the new binary tree changes floating-point
     reduction order.  The mathematical index contraction and exact rational
     coefficient are unchanged.
+
+    ``max_intermediate_axes`` optionally bounds the number of axes of each
+    index-space kind in new intermediates. It changes only scheduling, never
+    existing inputs or public output shapes. If no lower-degree allowed tree
+    exists, retain the direct contraction. This bounds representation rank,
+    not total live memory, which remains the execution planner's responsibility.
     """
 
     if not isinstance(program, Program):
@@ -426,6 +450,16 @@ def reassociate_einsums(program: Program, *, max_operands: int = 6) -> Program:
         )
     if type(max_operands) is not int or not 3 <= max_operands <= 8:
         raise ValueError("max_operands must lie in [3, 8]")
+    from .types import SPACE_KINDS
+
+    limits = dict(max_intermediate_axes or {})
+    if any(
+        kind not in SPACE_KINDS or type(limit) is not int or limit < 0
+        for kind, limit in limits.items()
+    ):
+        raise ValueError(
+            "intermediate axis limits require known kinds and nonnegative integers"
+        )
 
     replacements: dict[Node, Node] = {}
     for node in program.nodes:
@@ -434,7 +468,9 @@ def reassociate_einsums(program: Program, *, max_operands: int = 6) -> Program:
         if inputs != node.inputs:
             spec = _infer(node.op, inputs, node.attrs, node.spec)
             updated = Node(node.op, inputs, spec, node.attributes)
-        updated = _reassociate_node(updated, max_operands=max_operands)
+        updated = _reassociate_node(
+            updated, max_operands=max_operands, max_intermediate_axes=limits
+        )
         replacements[node] = updated
 
     outputs = {name: replacements[node] for name, node in program.outputs.items()}

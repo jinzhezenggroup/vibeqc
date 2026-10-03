@@ -1,0 +1,40 @@
+{
+  "scope": "Typing-only qualification fix after the frozen GPU measurement. Generated CPU/CUDA sources are byte-identical to both frozen builds; original source patch, binary hashes and measured outputs remain unchanged.",
+  "generated_parity": [
+    {
+      "path": ".artifacts/cc-hundreds-ao/final-gpu-tests/df-cc-cpu0/generated_df_ccsd_cpu.hpp",
+      "sha256": "5f5bbb36cfb13fec1ce2485e135fe069124297c45d4cde959db3bbcb45e16989",
+      "byte_identical": true
+    },
+    {
+      "path": ".artifacts/cc-hundreds-ao/final-gpu-tests/df-cc-cuda0/generated_df_ccsd_cpu.hpp",
+      "sha256": "5f5bbb36cfb13fec1ce2485e135fe069124297c45d4cde959db3bbcb45e16989",
+      "byte_identical": true
+    },
+    {
+      "path": ".artifacts/cc-hundreds-ao/final-gpu-tests/df-cc-cpu0/generated_df_ccsd_cuda.cuh",
+      "sha256": "e606a79828383fc33d57717317fcda4c1c8b29447b3ce77a25a17a6bf89e9dcd",
+      "byte_identical": true
+    },
+    {
+      "path": ".artifacts/cc-hundreds-ao/final-gpu-tests/df-cc-cuda0/generated_df_ccsd_cuda.cuh",
+      "sha256": "e606a79828383fc33d57717317fcda4c1c8b29447b3ce77a25a17a6bf89e9dcd",
+      "byte_identical": true
+    },
+    {
+      "path": ".artifacts/cc-hundreds-ao/final-gpu-tests/df-cc-cpu0/generated_df_ccsd_cuda.cu",
+      "sha256": "d4433ef6fe0fa921344dceb86b30ae39d43d58532f2320ce898e9ff0bc018cf5",
+      "byte_identical": true
+    },
+    {
+      "path": ".artifacts/cc-hundreds-ao/final-gpu-tests/df-cc-cuda0/generated_df_ccsd_cuda.cu",
+      "sha256": "d4433ef6fe0fa921344dceb86b30ae39d43d58532f2320ce898e9ff0bc018cf5",
+      "byte_identical": true
+    }
+  ],
+  "validation": {
+    "ty_0.0.82": "passed, zero errors; existing warnings retained",
+    "focused_tests": "21 passed, 40 deselected",
+    "patch_reconstruction": "Both patches apply in order to the exact base; resulting compiler source matches the final checkout."
+  }
+}

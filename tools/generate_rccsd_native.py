@@ -616,6 +616,7 @@ def _cpu_function(
     signature: str = "const Inputs& inputs",
     input_overrides: dict[str, str] | None = None,
     batch_dim: bool = False,
+    output_fields: tuple[str, ...] | None = None,
 ) -> str:
     names = _prepare_program(program)
     arena_plan = _arena_plan(program)
@@ -650,7 +651,9 @@ def _cpu_function(
                 node, number, names, storage=f"slot{arena_plan.node_slots[number]}"
             )
     outputs = {key: names[value._emit_index] for key, value in program.outputs.items()}
-    if output_type == "IterationOutputs":
+    if output_fields is not None:
+        returned = [outputs[key] for key in output_fields]
+    elif output_type == "IterationOutputs":
         returned = [
             f"*{outputs['correlation_energy']}",
             outputs["singles_residual"],
@@ -1371,6 +1374,7 @@ def _cuda_program(
     arena_field: str | None = None,
     state_type: str = "CudaState",
     batch_dim: bool = False,
+    output_fields: tuple[str, ...] | None = None,
 ) -> str:
     names = _prepare_program(program)
     arena_plan = _arena_plan(program)
@@ -1441,7 +1445,9 @@ def _cuda_program(
         ]
     lines.append("  generativeqc_tensor::cuda_check(cudaGetLastError());")
     outputs = {key: names[value._emit_index] for key, value in program.outputs.items()}
-    if output_type == "DeviceIterationOutputs":
+    if output_fields is not None:
+        returned = [outputs[key] for key in output_fields]
+    elif output_type == "DeviceIterationOutputs":
         returned = [
             outputs["correlation_energy"],
             outputs["singles_residual"],

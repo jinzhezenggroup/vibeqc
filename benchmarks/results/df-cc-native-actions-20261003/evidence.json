@@ -1,0 +1,192 @@
+{
+  "attachments": [
+    {
+      "kind": "numerical-qualification",
+      "path": "records.json.gz",
+      "sha256": "8f9670f93f981ac3a1e6508cea2ef75bfc48696b0f16239837a46f7ee073e0dd"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "summary.json",
+      "sha256": "b7f72a50a619a78f82123d6ad15752223f4e6767a26484132f7805cc38cb615f"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "sanitizer.json.gz",
+      "sha256": "95d3401257c5f983633437e225a5bb04725bb1bc992b9cc743289cdecb69f723"
+    },
+    {
+      "kind": "numerical-qualification",
+      "path": "oracles.json.gz",
+      "sha256": "8a8cca3179e2dd1d0c2b4730a87584a534bcca4fb73b510c0c4d67e5b704dc06"
+    }
+  ],
+  "backend_selected": "cuda",
+  "block_errors": {
+    "cpu_action_0": {
+      "atol": 3e-12,
+      "max_absolute_error": 8.673617379884035e-19,
+      "max_scaled_error": 2.8895440620828916e-07,
+      "passed": true,
+      "rms_error": 7.219662097946977e-20,
+      "rtol": 1e-12,
+      "shape": [
+        578
+      ]
+    },
+    "cpu_action_1": {
+      "atol": 3e-12,
+      "max_absolute_error": 4.336808689942018e-19,
+      "max_scaled_error": 1.4452303408056794e-07,
+      "passed": true,
+      "rms_error": 5.923790250333588e-20,
+      "rtol": 1e-12,
+      "shape": [
+        578
+      ]
+    },
+    "cpu_action_2": {
+      "atol": 3e-12,
+      "max_absolute_error": 4.336808689942018e-19,
+      "max_scaled_error": 1.4451925536586693e-07,
+      "passed": true,
+      "rms_error": 5.223477306990597e-20,
+      "rtol": 1e-12,
+      "shape": [
+        578
+      ]
+    },
+    "cpu_action_3": {
+      "atol": 3e-12,
+      "max_absolute_error": 8.673617379884035e-19,
+      "max_scaled_error": 2.8906131772194326e-07,
+      "passed": true,
+      "rms_error": 3.1361878772880126e-19,
+      "rtol": 1e-12,
+      "shape": [
+        99
+      ]
+    },
+    "cuda_action_0": {
+      "atol": 3e-12,
+      "max_absolute_error": 8.673617379884035e-19,
+      "max_scaled_error": 2.8895440620828916e-07,
+      "passed": true,
+      "rms_error": 7.219662097946977e-20,
+      "rtol": 1e-12,
+      "shape": [
+        578
+      ]
+    },
+    "cuda_action_1": {
+      "atol": 3e-12,
+      "max_absolute_error": 4.336808689942018e-19,
+      "max_scaled_error": 1.4452303408056794e-07,
+      "passed": true,
+      "rms_error": 5.923790250333588e-20,
+      "rtol": 1e-12,
+      "shape": [
+        578
+      ]
+    },
+    "cuda_action_2": {
+      "atol": 3e-12,
+      "max_absolute_error": 4.336808689942018e-19,
+      "max_scaled_error": 1.4451925536586693e-07,
+      "passed": true,
+      "rms_error": 5.223477306990597e-20,
+      "rtol": 1e-12,
+      "shape": [
+        578
+      ]
+    },
+    "cuda_action_3": {
+      "atol": 3e-12,
+      "max_absolute_error": 8.673617379884035e-19,
+      "max_scaled_error": 2.8906131772194326e-07,
+      "passed": true,
+      "rms_error": 3.1361878772880126e-19,
+      "rtol": 1e-12,
+      "shape": [
+        99
+      ]
+    }
+  },
+  "compilation": {
+    "reason": "not measured",
+    "seconds": null
+  },
+  "device": {
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "host": "node3"
+  },
+  "hardware": {
+    "reason": null,
+    "slurm_job_id": "12117",
+    "status": "pass"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "c4e06dd64d5c93db001925d81b2a58c16ab4ce3e687b035129549da63c6ee494",
+    "ir": "c4e06dd64d5c93db001925d81b2a58c16ab4ce3e687b035129549da63c6ee494",
+    "schedule": "82c12666162138398004589e24f27bc00f868e69bb4018633dc209f74f81464d",
+    "source": "ffbf33f5e73c6e223e3e6726985b03370897bc6262f55cc23b4bd671e38d013a"
+  },
+  "inputs_hash": "44ee0b192f4e44edcc1bc05d88a9aeb3633ace19ea4a7fa7400088c55596a383",
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "Exact generated action scratch and boundary canaries are qualified; complete input/output/staging and solver peak are outside this action-only scope."
+  },
+  "performance": {
+    "reason": "No complete native DF endpoint timing or speedup claim.",
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "603b1995515601c67f6e974f33a712178a5cdff0",
+  "schema": "generativeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "auxiliary_scope": "one Q slice",
+    "fast_compile": false,
+    "max_intermediate_virtual_axes": 2
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": "The generated virtual actions do not compose a complete native DF CCSD(T) endpoint.",
+      "status": "not-run"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "No new public method registration or default promotion.",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "Compiler-derived bounded DF RCCSD virtual residual and response actions",
+  "tier": "gpu-numerical",
+  "timings": [],
+  "toolchain": {
+    "architecture": "sm_120",
+    "ccache": true,
+    "cuda": "12.9.86",
+    "cxx_standard": "c++20",
+    "optimization": "-O2"
+  }
+}

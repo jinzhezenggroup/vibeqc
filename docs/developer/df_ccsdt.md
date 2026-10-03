@@ -117,6 +117,44 @@ Remaining Slice-C work is C2b native Calculator energy registration plus C3
 production performance/memory qualification (and later CUDA promotion); DF
 gradients remain #158.
 
+## Compiler-owned virtual residual and response actions
+
+`generativeqc_compiler.cc.df_equations` derives the omitted `ovvv/vvvv`
+contributions directly from the expanded conventional RCCSD inventory. It
+substitutes one auxiliary slice of `B_ov` and symmetric `B_vv` before planning
+binary contractions. New intermediates have at most two virtual axes, including
+occupied-rich shapes; a scheduler constraint prevents reconstructing the dense
+virtual blocks. An execution owner must accumulate every auxiliary slice once.
+
+`build_df_virtual_response_programs` also generates amplitude JVP/VJP and
+factor VJP actions using the existing dense-symmetry TensorIR AD. Amplitude
+cotangents accumulate over auxiliary slices; each factor cotangent belongs to
+its own slice. These actions cover the virtual correction, not the retained
+smaller integral blocks, complete Lambda solution, or nuclear derivative chain.
+
+`tools/generate_df_ccsd_native.py --output-dir <directory>` emits CPU/CUDA
+runtime-shape actions, exact scratch-arena queries, equation hashes and operation
+counts using the shared native CC emitter. The scratch queries exclude caller
+inputs, accumulated outputs, device staging and endpoint state; a complete owner
+must admit those as well. Generated outputs borrow the supplied scratch arena.
+This generator is an internal building block and does not register a public
+DF Calculator method or extend its qualified force domain.
+
+The one-slice virtual actions have at most fifth-degree contraction work and
+fourth-degree storage. The complete auxiliary sum adds the auxiliary population
+to the work count. DF therefore avoids the dense virtual-integral storage but
+does not, by itself, remove the usual sixth-order CCSD or seventh-order standard
+triples work. Neither source generation nor small action tests establish large
+complete-endpoint performance.
+
+The native action tests use
+`GENERATIVEQC_DF_CC_CUDA_TEST=1` for explicit real-device qualification; on the
+local scheduled GPU they must run inside the repository's required Slurm job.
+`benchmarks/df_ccsdt_large_oracle.py` supplies pinned independent PySCF references
+for 230-AO ethane and 264-AO benzene, with explicit symmetric metric whitening,
+conventional RHF, same-Hamiltonian DF correlation, and physical residual replay.
+Its retained states are validation artifacts, not production inputs.
+
 ## Validation rules
 
 Implementation tolerances and DF fitting error are separate quantities.

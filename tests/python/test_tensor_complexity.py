@@ -146,3 +146,25 @@ def test_reassociation_rejects_explicit_precision_execution() -> None:
 
     with pytest.raises(ValueError, match="precision execution"):
         reassociate_einsums(program)
+
+
+def test_intermediate_axis_limit_retains_a_direct_fallback() -> None:
+    """A forbidden pair is not permission to drop a mathematical contraction."""
+    space = IndexSpace("vir", "virtual", 3)
+    a = _matrix("a", space, "i", "k")
+    b = _matrix("b", space, "k", "l")
+    c = _matrix("c", space, "l", "j")
+    program = Program({"out": einsum("ik,kl,lj->ij", a, b, c)})
+    constrained = reassociate_einsums(program, max_intermediate_axes={"virtual": 1})
+    assert constrained.logical_hash == program.logical_hash
+    allowed = reassociate_einsums(program, max_intermediate_axes={"virtual": 2})
+    assert analyze_complexity(allowed).max_work_degree == 3
+    assert allowed.logical_hash == reassociate_einsums(program).logical_hash
+
+
+@pytest.mark.parametrize("limits", [{"invalid": 2}, {"virtual": -1}, {"virtual": True}])
+def test_intermediate_axis_limits_validate_domains(limits: dict[str, int]) -> None:
+    space = IndexSpace("vir", "virtual", 3)
+    matrix = _matrix("a", space, "i", "j")
+    with pytest.raises(ValueError, match="axis limits"):
+        reassociate_einsums(Program({"out": matrix}), max_intermediate_axes=limits)

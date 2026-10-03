@@ -1,0 +1,75 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All 32 native action comparisons pass fixed per-entry gates; independent dense/NumPy primal and finite-difference response tests, native arena tests, and four unfiltered CUDA memchecks pass. Complete large native DF endpoints remain unqualified.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 5267,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "79f0d97d32fb9b66ef8b286a8e429d8020700ac2e56c5bb39a0c2055471015e4"
+    },
+    {
+      "bytes": 3802,
+      "path": "oracles.json.gz",
+      "role": "summary",
+      "sha256": "8a8cca3179e2dd1d0c2b4730a87584a534bcca4fb73b510c0c4d67e5b704dc06"
+    },
+    {
+      "bytes": 39426,
+      "path": "records.json.gz",
+      "role": "samples",
+      "sha256": "8f9670f93f981ac3a1e6508cea2ef75bfc48696b0f16239837a46f7ee073e0dd"
+    },
+    {
+      "bytes": 55198,
+      "path": "sanitizer.json.gz",
+      "role": "summary",
+      "sha256": "95d3401257c5f983633437e225a5bb04725bb1bc992b9cc743289cdecb69f723"
+    },
+    {
+      "bytes": 17616,
+      "path": "source.patch.gz",
+      "role": "source-patch",
+      "sha256": "0e112b201ce25fdd3de471a4eeb50c2a90a5c754b295250cf1ce08a36fa2a854"
+    },
+    {
+      "bytes": 7163,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "b7f72a50a619a78f82123d6ad15752223f4e6767a26484132f7805cc38cb615f"
+    },
+    {
+      "bytes": 1076,
+      "path": "qualification.patch.gz",
+      "role": "source-patch",
+      "sha256": "aa4cd6f80683191323b21fd481f9747104230475d20f3ad8bc1b1aad73e87dd0"
+    },
+    {
+      "bytes": 1862,
+      "path": "qualification.json",
+      "role": "summary",
+      "sha256": "d081a95a5c75a1abb766577aea66ed4d2e80b44ae954e4cbe322aa663a194045"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/python/test_df_cc_virtual_equations.py",
+      "tests/python/test_df_cc_native_codegen.py",
+      "tests/python/test_tensor_complexity.py"
+    ],
+    "instructions": "Apply gzip -dc source.patch.gz | git apply to the exact parent to reproduce the measured snapshot. Then apply gzip -dc qualification.patch.gz | git apply for the final typing-only fix; qualification.json records generated-source byte parity and host checks. Use ccache with CCACHE_BASEDIR at checkout root. Set PYTHONPATH=python:., PATH to CUDA12.9.86, and GENERATIVEQC_DF_CC_CUDA_TEST=1 inside a finite Slurm main gpu:5090:1 allocation. Native fixtures compile separate cached objects then link; run all four action stdin records under unfiltered compute-sanitizer memcheck on the built CUDA probe. The action-only arena excludes caller retention/staging and is not an endpoint budget. The oracles archive retains both complete original reference JSON records and their exact measured source, including pinned PySCF2.14.0, geometry, basis, metric policy and state hashes; invoke that source with --case ethane230/benzene264 --output <ignored directory> under finite Slurm CPU jobs. Its large .npz states are reproducible validation-only artifacts, never production dependencies."
+  },
+  "schema": "generativeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": true,
+    "revision": "603b1995515601c67f6e974f33a712178a5cdff0"
+  }
+}

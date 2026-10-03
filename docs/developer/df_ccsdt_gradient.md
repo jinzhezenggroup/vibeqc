@@ -75,9 +75,15 @@ production pullback itself never reconstructs `g_DF`.
 
 ## Remaining #158 work
 
-Slice A2 must generate cotangents of the factorized #157 RCCSD residual/energy
-equations with TensorIR AD, including all retained smaller four-index blocks and
-the factorized `ovvv/vvvv` path. Slice A3 must add the standard-(T) numerator,
+The virtual part of slice A2 now has compiler-owned amplitude and factor
+actions in `generativeqc_compiler.cc.df_equations`, with generated native
+CPU/CUDA evaluators. It derives the `ovvv/vvvv` contribution from the audited
+conventional inventory and differentiates the bounded factorized program.
+It supplies neither a complete Lambda solve nor a force result.
+
+Slice A2 must compose those actions with cotangents for all retained smaller
+four-index blocks and the full fixed-amplitude energy/residual map. Slice A3
+must add the standard-(T) numerator,
 denominator, direct-triples, and corrected-Lambda response on the same DF
 Hamiltonian.
 
