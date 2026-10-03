@@ -73,14 +73,17 @@ __device__ __forceinline__ bool direct_shell_quartet_survives_screening(
   if (contribution_bound < screening_tolerance) return false;
   if constexpr (Purpose == DirectScreeningPurpose::Fock) return true;
 
-  // Screen J and each same-spin K contraction independently. Combining the
-  // exact symmetry-reduced coefficient here would exploit cancellation and
-  // can make loose-screening analytic forces disagree with finite differences.
+  // Screen only requested sources, and keep J and each same-spin K bound
+  // independent. A large unused Coulomb product must not retain a range-K
+  // derivative task whose exchange products all fall below the force gate.
+  // Combining signed source coefficients would instead exploit cancellation
+  // and can make loose-screening forces disagree with finite differences.
   const double force_screening_tolerance =
       fmin(screening_tolerance, kForceDensityProductScreeningTolerance);
-  if (quartet_bound * ab.coulomb * cd.coulomb >= force_screening_tolerance) {
+  if (!exchange_only && quartet_bound * ab.coulomb * cd.coulomb >= force_screening_tolerance) {
     return true;
   }
+  if (coulomb_only) return false;
   if constexpr (Unrestricted) {
     return quartet_bound * ac.exchange_alpha * bd.exchange_alpha >= force_screening_tolerance ||
            quartet_bound * ac.exchange_beta * bd.exchange_beta >= force_screening_tolerance ||

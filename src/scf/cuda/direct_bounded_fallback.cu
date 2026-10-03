@@ -380,20 +380,23 @@ void launch_bounded_direct_range_exchange_force_kernel(
     unsigned long long* global_cursor, DirectRangeOperator radial_operator, double omega,
     double exchange_coefficient) {
   if (radial_operator == DirectRangeOperator::Full) return;
+  // This consumer publishes only range-separated K derivatives. Select its
+  // raw-K linear bound and same-spin force-product bounds; the mixed J/K
+  // defaults would retain distant Coulomb-only shell quartets unnecessarily.
   if (unrestricted) {
     bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Force, true>
         <<<grid, block, shared_bytes, stream>>>(
             batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
             shell_pair_order, shell_pair_block_bounds, system_density_bounds, nullptr, 0U,
             bounded_generated_overflow, schwarz_bounds, density, active, output, global_cursor,
-            nullptr, 0.0, exchange_coefficient, radial_operator, omega, 0.0, false, false);
+            nullptr, 0.0, exchange_coefficient, radial_operator, omega, 0.0, false, true);
   } else {
     bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Force, true>
         <<<grid, block, shared_bytes, stream>>>(
             batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
             shell_pair_order, shell_pair_block_bounds, system_density_bounds, nullptr, 0U,
             bounded_generated_overflow, schwarz_bounds, density, active, output, global_cursor,
-            nullptr, 0.0, exchange_coefficient, radial_operator, omega, 0.0, false, false);
+            nullptr, 0.0, exchange_coefficient, radial_operator, omega, 0.0, false, true);
   }
 }
 
