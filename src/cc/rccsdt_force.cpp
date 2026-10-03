@@ -20,6 +20,7 @@
 #include "posthf/mp2_gradient.hpp"
 #include "posthf/native_provider.hpp"
 #include "posthf/raw_source.hpp"
+#include "runtime/df_progress_trace.hpp"
 #include "scf/types.hpp"
 #include "tensor/cpu_linalg.hpp"
 
@@ -889,6 +890,44 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
   }
 #endif
   result.response_operator_hash = generated::orbital_jvp_program_hash;
+  // Publish successful completed phase observations without adding GPU fences.
+  // The five outer intervals are disjoint; raw provider/read observations are
+  // nested inside raw_hamiltonian_ns. CUDA source reads only time submission.
+  runtime::df_progress::Scope trace("relaxed_cc_force_completed");
+  if (trace.enabled()) {
+    using runtime::df_progress::Scope;
+    const auto nanoseconds = [](double seconds) {
+      return static_cast<std::uint64_t>(seconds * 1e9);
+    };
+    Scope::number("ao_functions", n);
+    Scope::number("include_triples", include_triples);
+    Scope::number("cuda_response_actions", result.cuda_response_actions);
+    Scope::label("triples_response_backend", include_triples ? "cpu" : "absent");
+    Scope::number("triples_response_ns", nanoseconds(result.triples_seconds));
+    Scope::number("lambda_parameter_ns", nanoseconds(result.lambda_parameter_seconds));
+    Scope::number("raw_hamiltonian_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                            orbital_started - raw_started)
+                                            .count());
+    Scope::number("orbital_response_ns", nanoseconds(result.orbital_seconds));
+    Scope::number("derivative_ns", nanoseconds(result.derivative_seconds));
+    Scope::number("raw_provider_ns", nanoseconds(result.raw_provider_seconds));
+    Scope::number("raw_source_read_ns", nanoseconds(result.raw_source_seconds));
+    Scope::number("raw_source_reads", result.raw_source_reads);
+    Scope::number("raw_device_source_reads", result.raw_device_source_reads);
+    Scope::number("raw_source_values", result.raw_source_values);
+    Scope::number("raw_transform_fmas", result.raw_transform_fmas);
+    Scope::number("triples_response_pages", result.triples_response_pages);
+    Scope::number("lambda_iterations", result.lambda.iterations);
+    Scope::number("lambda_operator_actions", result.lambda.operator_actions);
+    Scope::number("lambda_h2d_bytes", result.lambda.h2d_bytes);
+    Scope::number("lambda_d2h_bytes", result.lambda.d2h_bytes);
+    Scope::number("lambda_synchronizations", result.lambda.synchronizations);
+    Scope::number("orbital_iterations", result.orbital_response.iterations);
+    Scope::number("response_h2d_bytes", result.response_h2d_bytes);
+    Scope::number("response_d2h_bytes", result.response_d2h_bytes);
+    Scope::number("response_synchronizations", result.response_synchronizations);
+    Scope::number("numeric_capacity_bytes", result.numeric_capacity_bytes);
+  }
   return result;
 }
 

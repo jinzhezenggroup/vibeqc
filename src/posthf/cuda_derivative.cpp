@@ -1,6 +1,7 @@
 #include "posthf/cuda_derivative.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <new>
@@ -16,7 +17,9 @@ namespace generativeqc::posthf {
 generativeqc_status contract_weighted_eri_shell_derivative_cuda(
     int device_id, const core::System& system, const std::array<std::size_t, 4>& shell_indices,
     std::span<const double> weights, std::size_t stage_budget,
-    std::array<double, 12>& center_gradient, std::string& detail) {
+    std::array<double, 12>& center_gradient, std::string& detail,
+    CudaShellDerivativeDiagnostic* diagnostic) {
+  if (diagnostic) *diagnostic = {};
 #if !GENERATIVEQC_HAS_CUDA
   (void)device_id;
   (void)system;
@@ -89,11 +92,19 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
     generativeqc_status status = GENERATIVEQC_STATUS_SUCCESS;
     auto flush = [&] {
       if (records.empty() || status != GENERATIVEQC_STATUS_SUCCESS) return;
-      scf::CudaWeightedEriDiagnostic diagnostic;
+      scf::CudaWeightedEriDiagnostic consumer_diagnostic;
+      using Clock = std::chrono::steady_clock;
+      const auto started = diagnostic ? Clock::now() : Clock::time_point{};
       status = scf::contract_cuda_weighted_eri_primitives(device_id, records.data(), records.size(),
                                                           1, consumer_budget, false, output,
-                                                          diagnostic, detail);
+                                                          consumer_diagnostic, detail);
       if (status != GENERATIVEQC_STATUS_SUCCESS) return;
+      if (diagnostic) {
+        diagnostic->primitive_records += records.size();
+        ++diagnostic->consumer_calls;
+        diagnostic->consumer_nanoseconds +=
+            std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - started).count();
+      }
       if (output.size() != 1) {
         detail = "weighted ERI shell contraction returned no result";
         status = GENERATIVEQC_STATUS_NUMERICAL_FAILURE;

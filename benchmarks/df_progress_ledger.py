@@ -24,6 +24,8 @@ def read_progress(path: Path) -> dict:
     The sink must be fresh and belong to one process. Concurrent roots are
     allowed, but their wall intervals must not be summed as endpoint time.
     Values remain ordered observations, including cumulative device readbacks.
+    A cuda_completed scope publishes already-completed CUDA measurements; its
+    own duration is journal emission, not the device execution interval.
     """
     content = Path(path).read_bytes()
     lines = content.splitlines(keepends=True)
@@ -38,7 +40,12 @@ def read_progress(path: Path) -> dict:
         index, parent = row["id"], row["parent"]
         if type(index) is not int or index < 0 or type(parent) is not int:
             raise ValueError("invalid progress scope identity")
-        if row["execution"] not in {"host", "stream", "graph_capture"}:
+        if row["execution"] not in {
+            "host",
+            "stream",
+            "graph_capture",
+            "cuda_completed",
+        }:
             raise ValueError("invalid progress execution mode")
         if type(row["time_ns"]) is not int or row["time_ns"] < 0:
             raise ValueError("invalid progress timestamp")

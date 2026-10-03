@@ -106,3 +106,38 @@ def test_killed_native_probe_retains_completed_rows(tmp_path: typing.Any) -> Non
     rows, truncated = completed_native_rows(path)
     assert rows == [{"operation": "setup", "seconds": 103}]
     assert truncated
+
+
+def test_completed_cuda_observations_keep_their_timing_boundary(tmp_path: Path) -> None:
+    """A post-execution observation must remain distinct from a stream interval."""
+    path = tmp_path / "completed.jsonl"
+    begin = {
+        "schema": "generativeqc.df_progress",
+        "version": 1,
+        "id": 0,
+        "parent": -1,
+        "time_ns": 100,
+        "elapsed_ms": 0,
+        "event": "BEGIN",
+        "status": "started",
+        "execution": "cuda_completed",
+        "name": "cuda_rhf_reference_completed",
+    }
+    value = dict(
+        begin,
+        time_ns=110,
+        event="VALUE",
+        status="observed",
+        key="reference_ns",
+        value=1000000,
+    )
+    end = dict(begin, time_ns=120, event="END", status="returned")
+    path.write_text("".join(json.dumps(row) + "\n" for row in (begin, value, end)))
+    journal = read_progress(path)
+    summary = summarize_progress(journal)
+    assert journal["complete"]
+    assert summary["observations"][0]["value"] == 1000000
+    phase = summary["phases"]["cuda_completed:cuda_rhf_reference_completed"]
+    assert phase["inclusive_ms"] == pytest.approx(20 / 1e6)
+    path.write_text(json.dumps(begin) + "\n")
+    assert not read_progress(path)["complete"]

@@ -1,0 +1,267 @@
+diff --git a/src/cc/rccsdt_force.cpp b/src/cc/rccsdt_force.cpp
+index 6a0b0a902..7d88b36b6 100644
+--- a/src/cc/rccsdt_force.cpp
++++ b/src/cc/rccsdt_force.cpp
+@@ -20,6 +20,7 @@
+ #include "posthf/mp2_gradient.hpp"
+ #include "posthf/native_provider.hpp"
+ #include "posthf/raw_source.hpp"
++#include "runtime/df_progress_trace.hpp"
+ #include "scf/types.hpp"
+ #include "tensor/cpu_linalg.hpp"
+ 
+@@ -889,6 +890,44 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
+   }
+ #endif
+   result.response_operator_hash = generated::orbital_jvp_program_hash;
++  // Publish successful completed phase observations without adding GPU fences.
++  // The five outer intervals are disjoint; raw provider/read observations are
++  // nested inside raw_hamiltonian_ns. CUDA source reads only time submission.
++  runtime::df_progress::Scope trace("relaxed_cc_force_completed");
++  if (trace.enabled()) {
++    using runtime::df_progress::Scope;
++    const auto nanoseconds = [](double seconds) {
++      return static_cast<std::uint64_t>(seconds * 1e9);
++    };
++    Scope::number("ao_functions", n);
++    Scope::number("include_triples", include_triples);
++    Scope::number("cuda_response_actions", result.cuda_response_actions);
++    Scope::label("triples_response_backend", include_triples ? "cpu" : "absent");
++    Scope::number("triples_response_ns", nanoseconds(result.triples_seconds));
++    Scope::number("lambda_parameter_ns", nanoseconds(result.lambda_parameter_seconds));
++    Scope::number("raw_hamiltonian_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(
++                                            orbital_started - raw_started)
++                                            .count());
++    Scope::number("orbital_response_ns", nanoseconds(result.orbital_seconds));
++    Scope::number("derivative_ns", nanoseconds(result.derivative_seconds));
++    Scope::number("raw_provider_ns", nanoseconds(result.raw_provider_seconds));
++    Scope::number("raw_source_read_ns", nanoseconds(result.raw_source_seconds));
++    Scope::number("raw_source_reads", result.raw_source_reads);
++    Scope::number("raw_device_source_reads", result.raw_device_source_reads);
++    Scope::number("raw_source_values", result.raw_source_values);
++    Scope::number("raw_transform_fmas", result.raw_transform_fmas);
++    Scope::number("triples_response_pages", result.triples_response_pages);
++    Scope::number("lambda_iterations", result.lambda.iterations);
++    Scope::number("lambda_operator_actions", result.lambda.operator_actions);
++    Scope::number("lambda_h2d_bytes", result.lambda.h2d_bytes);
++    Scope::number("lambda_d2h_bytes", result.lambda.d2h_bytes);
++    Scope::number("lambda_synchronizations", result.lambda.synchronizations);
++    Scope::number("orbital_iterations", result.orbital_response.iterations);
++    Scope::number("response_h2d_bytes", result.response_h2d_bytes);
++    Scope::number("response_d2h_bytes", result.response_d2h_bytes);
++    Scope::number("response_synchronizations", result.response_synchronizations);
++    Scope::number("numeric_capacity_bytes", result.numeric_capacity_bytes);
++  }
+   return result;
+ }
+ 
+diff --git a/src/posthf/cuda_derivative.cpp b/src/posthf/cuda_derivative.cpp
+index a7ceaba54..3cf7bfd2e 100644
+--- a/src/posthf/cuda_derivative.cpp
++++ b/src/posthf/cuda_derivative.cpp
+@@ -1,6 +1,7 @@
+ #include "posthf/cuda_derivative.hpp"
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <cmath>
+ #include <limits>
+ #include <new>
+@@ -16,7 +17,9 @@ namespace generativeqc::posthf {
+ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+     int device_id, const core::System& system, const std::array<std::size_t, 4>& shell_indices,
+     std::span<const double> weights, std::size_t stage_budget,
+-    std::array<double, 12>& center_gradient, std::string& detail) {
++    std::array<double, 12>& center_gradient, std::string& detail,
++    CudaShellDerivativeDiagnostic* diagnostic) {
++  if (diagnostic) *diagnostic = {};
+ #if !GENERATIVEQC_HAS_CUDA
+   (void)device_id;
+   (void)system;
+@@ -89,11 +92,19 @@ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+     generativeqc_status status = GENERATIVEQC_STATUS_SUCCESS;
+     auto flush = [&] {
+       if (records.empty() || status != GENERATIVEQC_STATUS_SUCCESS) return;
+-      scf::CudaWeightedEriDiagnostic diagnostic;
++      scf::CudaWeightedEriDiagnostic consumer_diagnostic;
++      using Clock = std::chrono::steady_clock;
++      const auto started = diagnostic ? Clock::now() : Clock::time_point{};
+       status = scf::contract_cuda_weighted_eri_primitives(device_id, records.data(), records.size(),
+                                                           1, consumer_budget, false, output,
+-                                                          diagnostic, detail);
++                                                          consumer_diagnostic, detail);
+       if (status != GENERATIVEQC_STATUS_SUCCESS) return;
++      if (diagnostic) {
++        diagnostic->primitive_records += records.size();
++        ++diagnostic->consumer_calls;
++        diagnostic->consumer_nanoseconds +=
++            std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - started).count();
++      }
+       if (output.size() != 1) {
+         detail = "weighted ERI shell contraction returned no result";
+         status = GENERATIVEQC_STATUS_NUMERICAL_FAILURE;
+diff --git a/src/posthf/cuda_derivative.hpp b/src/posthf/cuda_derivative.hpp
+index 167c882cc..8913865b0 100644
+--- a/src/posthf/cuda_derivative.hpp
++++ b/src/posthf/cuda_derivative.hpp
+@@ -2,6 +2,7 @@
+ 
+ #include <array>
+ #include <cstddef>
++#include <cstdint>
+ #include <span>
+ #include <string>
+ 
+@@ -10,6 +11,16 @@
+ 
+ namespace generativeqc::posthf {
+ 
++/** Successful consumer work for one shell; timings include its existing fence.
++ * Caller record construction is excluded from consumer_nanoseconds. No extra
++ * CUDA synchronization is introduced; a null diagnostic avoids clock reads.
++ */
++struct CudaShellDerivativeDiagnostic {
++  std::size_t primitive_records{};
++  std::size_t consumer_calls{};
++  std::uint64_t consumer_nanoseconds{};
++};
++
+ /** Contract one public-AO shell-quartet cotangent with CUDA ERI derivatives.
+  *
+  * The four center derivatives remain independent; the caller owns physical-
+@@ -19,6 +30,7 @@ namespace generativeqc::posthf {
+ generativeqc_status contract_weighted_eri_shell_derivative_cuda(
+     int device_id, const core::System& system, const std::array<std::size_t, 4>& shell_indices,
+     std::span<const double> weights, std::size_t stage_budget,
+-    std::array<double, 12>& center_gradient, std::string& detail);
++    std::array<double, 12>& center_gradient, std::string& detail,
++    CudaShellDerivativeDiagnostic* diagnostic = nullptr);
+ 
+ }  // namespace generativeqc::posthf
+diff --git a/src/posthf/mp2_derivative_common.cpp b/src/posthf/mp2_derivative_common.cpp
+index 5378e6e1b..02ab54a37 100644
+--- a/src/posthf/mp2_derivative_common.cpp
++++ b/src/posthf/mp2_derivative_common.cpp
+@@ -8,6 +8,7 @@
+ #include "hf/reference.hpp"
+ #include "molecule/basis.hpp"
+ #include "posthf/capacity.hpp"
++#include "runtime/df_progress_trace.hpp"
+ #include "tensor/cpu_linalg.hpp"
+ 
+ namespace generativeqc::mp2::detail {
+@@ -141,9 +142,15 @@ std::vector<double> conventional_derivative(const core::System& system,
+       !finite(weights.one_electron) || !finite(weights.overlap) || !one_electron || !eri_shell)
+     throw std::invalid_argument("conventional derivative reference/weight mismatch");
+ 
++  runtime::df_progress::Scope trace("conventional_derivative");
++  using Clock = std::chrono::steady_clock;
++  const auto now = [&] { return trace.enabled() ? Clock::now() : Clock::time_point{}; };
++  const auto started = now();
+   const auto one_ao = pullback_matrix(reference.coefficients, weights.one_electron, n);
+   const auto overlap_ao = pullback_matrix(reference.coefficients, weights.overlap, n);
++  const auto one_started = now();
+   auto derivative = one_electron(overlap_ao, one_ao);
++  const auto two_started = now();
+   if (derivative.size() != posthf::checked_mul(system.atoms.size(), std::size_t{3}) ||
+       !finite(derivative))
+     throw std::runtime_error("conventional one-electron derivative has the wrong shape");
+@@ -151,6 +158,19 @@ std::vector<double> conventional_derivative(const core::System& system,
+   if (offsets.back() != n)
+     throw std::runtime_error("conventional derivative shell offsets disagree with the reference");
+ 
++  std::uint64_t shell_ns = 0, shell_calls = 0;
++  EriShellDerivativeContract measured_shell;
++  if (trace.enabled()) {
++    measured_shell = [&](const auto& shells, auto local) {
++      const auto shell_started = Clock::now();
++      const auto result = eri_shell(shells, local);
++      shell_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - shell_started)
++                      .count();
++      ++shell_calls;
++      return result;
++    };
++  }
++  const auto& shell_contract = trace.enabled() ? measured_shell : eri_shell;
+   for (std::size_t si = 0; si < system.shells.size(); ++si) {
+     const auto di = offsets[si + 1] - offsets[si];
+     std::vector<double> first(posthf::checked_mul(di, posthf::checked_mul(n, square(n))), 0.0);
+@@ -195,10 +215,26 @@ std::vector<double> conventional_derivative(const core::System& system,
+         }
+       }
+     }
+-    transform_remaining_shells(system, reference, offsets, si, first, eri_shell, derivative,
++    transform_remaining_shells(system, reference, offsets, si, first, shell_contract, derivative,
+                                dense_two);
+   }
+   if (!finite(derivative)) throw std::runtime_error("conventional derivative is nonfinite");
++  if (trace.enabled()) {
++    using runtime::df_progress::Scope;
++    const auto ns = [](auto interval) {
++      return std::chrono::duration_cast<std::chrono::nanoseconds>(interval).count();
++    };
++    const auto two_ns = ns(now() - two_started);
++    // Disjoint intervals. The shell callback may contain nested GPU consumer
++    // work; the remainder measures host pullback/scatter and bookkeeping.
++    Scope::number("ao_functions", n);
++    Scope::number("canonical_shells", dense_two);
++    Scope::number("rank_two_pullback_ns", ns(one_started - started));
++    Scope::number("one_electron_ns", ns(two_started - one_started));
++    Scope::number("two_electron_shell_calls", shell_calls);
++    Scope::number("two_electron_shell_ns", shell_ns);
++    Scope::number("two_electron_pullback_scatter_ns", two_ns - shell_ns);
++  }
+   return derivative;
+ }
+ 
+diff --git a/src/posthf/mp2_derivative_cuda.cpp b/src/posthf/mp2_derivative_cuda.cpp
+index 9b28d781b..3aced809f 100644
+--- a/src/posthf/mp2_derivative_cuda.cpp
++++ b/src/posthf/mp2_derivative_cuda.cpp
+@@ -6,6 +6,7 @@
+ #include "posthf/cuda_derivative.hpp"
+ #include "posthf/mp2_derivative.hpp"
+ #include "posthf/mp2_derivative_common.hpp"
++#include "runtime/df_progress_trace.hpp"
+ #include "scf/cuda/rhf_policy.hpp"
+ #include "scf/cuda_one_electron_gradient.hpp"
+ 
+@@ -58,7 +59,9 @@ std::vector<double> conventional_derivative_cuda(const core::System& system,
+ #else
+   if (device_id < 0 || !stage_budget)
+     throw std::invalid_argument("invalid CUDA conventional derivative request");
+-  return detail::conventional_derivative(
++  runtime::df_progress::Scope trace("cuda_conventional_derivative");
++  posthf::CudaShellDerivativeDiagnostic total;
++  auto derivative = detail::conventional_derivative(
+       system, reference, weights,
+       [&](std::span<const double> overlap, std::span<const double> hcore) {
+         std::vector<double> gradient;
+@@ -74,11 +77,26 @@ std::vector<double> conventional_derivative_cuda(const core::System& system,
+       [&](const std::array<std::size_t, 4>& shells, std::span<const double> local) {
+         std::array<double, 12> center{};
+         std::string detail;
++        posthf::CudaShellDerivativeDiagnostic diagnostic;
+         const auto status = posthf::contract_weighted_eri_shell_derivative_cuda(
+-            device_id, system, shells, local, stage_budget, center, detail);
++            device_id, system, shells, local, stage_budget, center, detail,
++            trace.enabled() ? &diagnostic : nullptr);
+         check_cuda_derivative(status, detail);
++        total.primitive_records += diagnostic.primitive_records;
++        total.consumer_calls += diagnostic.consumer_calls;
++        total.consumer_nanoseconds += diagnostic.consumer_nanoseconds;
+         return center;
+       });
++  if (trace.enabled()) {
++    // These completed consumer calls include record upload, primitive kernels,
++    // result download, and stream/allocation lifetime. Host record construction
++    // belongs to the enclosing shell callback, not consumer_ns.
++    using runtime::df_progress::Scope;
++    Scope::number("primitive_records", total.primitive_records);
++    Scope::number("consumer_calls", total.consumer_calls);
++    Scope::number("consumer_ns", total.consumer_nanoseconds);
++  }
++  return derivative;
+ #endif
+ }
+ 
