@@ -335,7 +335,13 @@ STATIONARY_NUCLEAR_PAIR_LOOP_CONTRACT_SHA256 = (
     "5a69bf4fd85d28b137e1ae35bce4a1d32134375bbaca9f66f60c9377a0c8f935"
 )
 STATIONARY_ENDPOINT_OWNER_CONTRACT_SHA256 = (
-    "d10b448db22bdd46fac91e189303e54a694998e87e77c6ec6395bfaa713ec3fe"
+    "0d9571918d55d9b9d66bd5d40fa8f38d595d1c20c6c58fb04c155467d9c97a81"
+)
+STATIONARY_AO_MAP_RESERVE_CONTRACT_SHA256 = (
+    "c2ba1b47e5655f75196c79384079d4ecd9c1edf9fe9aa1e97e339e96cbbaad0a"
+)
+STATIONARY_AO_MAP_CACHE_CONTRACT_SHA256 = (
+    "dcf02f08e8d0279dcb49f2093d0ac3bf023523a7519a0faf6537fc9140711c9f"
 )
 NATIVE_KS_SNAPSHOT_INIT_CONTRACT_SHA256 = (
     "522c7571c3d18db25685ffbffb55279deadde63df64ee4c8b330f04017f7b3ae"
@@ -347,7 +353,7 @@ SNAPSHOT_GRID_CACHE_CONTRACT_SHA256 = (
     "569705abf406d2ec00ec9526e84f23301448d5511fc2bf79ee9ef6993a794ca6"
 )
 STATIONARY_PUBLIC_WRAPPER_CONTRACT_SHA256 = (
-    "ded1b7e2cc0a93881cc17b4da32a3695bdbaf05421535ac3dcc4efb646da003b"
+    "56b9ca1e1cd87f51b3cf0d57fcfbb46c8fed4b32a1808fb49e53b545019958dc"
 )
 NATIVE_STATIONARY_OWNER_CONTRACT_SHA256 = (
     "47af7a99e4aadfe4386e1a798e619ff52aea3143a254c7cbffcca08ee9b1c1db"
@@ -396,7 +402,10 @@ NATIVE_STATIONARY_FINISH_SPAN_CONTRACT_SHA256 = (
     "3f12a2c23709399c56776e34f5d7cd2394a95e153f754694bb7d523772efa431"
 )
 PREPARED_AOT_SELECTION_CONTRACT_SHA256 = (
-    "1c14203191273a1b3644cbbb574484b79423674e66715b3efa9764cec26723e4"
+    "a9d5f920839f2a020b17addaddb8e00c674bf78e37f112a113751d67ef336224"
+)
+PREPARED_AO_REQUEST_CONTRACT_SHA256 = (
+    "ef5b67eebcd197e3c470f4b244252cbaae74daa2e8aeb3e58ee486f3ecaa8355"
 )
 PRIMITIVE_SUM_DEFINITION = (
     "sum((int(row[2]) * len(expansion) for row, expansion in "
@@ -1034,6 +1043,59 @@ def _source_limits(repository: Path) -> dict[str, Any]:
             "stationary CUDA native host-reserve admission order changed"
         )
     signature = inspect.signature(complete_rks_cuda_gradient_diagnostic)
+    if signature.parameters["resident_ao_cutoff"].default is not None:
+        raise RuntimeError("stationary CUDA default AO membership changed")
+    ao_reserves = [
+        node
+        for node in owner.body
+        if isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and ast.unparse(node.targets[0]) == "ao_map_reserve"
+    ]
+    ao_charges = [
+        node
+        for node in owner.body
+        if isinstance(node, ast.AugAssign)
+        and ast.unparse(node.target) == "host_bound"
+        and isinstance(node.op, ast.Add)
+        and ast.unparse(node.value) == "ao_map_reserve"
+    ]
+    cache_paths = [
+        node
+        for node in owner.body
+        if isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and ast.unparse(node.targets[0]) == "cache"
+    ]
+    expected_ao_reserve = ast.parse(
+        "_stationary_ao_map_reserve(resident_ao_cutoff, resident_ao_cache_bytes, "
+        "host_bound + (sum(value.host_bytes for value in tensor_plans.values()) "
+        "if prepared is not None else 0), max_host_bytes)",
+        mode="eval",
+    ).body
+    if (
+        len(ao_reserves) != 1
+        or ast.dump(ao_reserves[0].value) != ast.dump(expected_ao_reserve)
+        or len(ao_charges) != 1
+        or len(cache_paths) != 1
+        or not host_gates[0].lineno
+        < ao_reserves[0].lineno
+        < ao_charges[0].lineno
+        < cache_paths[0].lineno
+    ):
+        raise RuntimeError("stationary CUDA AO-map reserve admission changed")
+    for name, expected in (
+        ("_stationary_ao_map_reserve", STATIONARY_AO_MAP_RESERVE_CONTRACT_SHA256),
+        ("_stationary_resident_ao_cache", STATIONARY_AO_MAP_CACHE_CONTRACT_SHA256),
+    ):
+        helpers = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == name
+        ]
+        if len(helpers) != 1 or _source_node_sha256(source, helpers[0]) != expected:
+            raise RuntimeError(f"stationary CUDA {name} contract changed")
+        page_contract[f"{name.removeprefix('_stationary_')}_sha256"] = expected
 
     def default(name: str) -> int:
         value = signature.parameters[name].default
@@ -1049,7 +1111,9 @@ def _source_limits(repository: Path) -> dict[str, Any]:
         "native stationary host staging exceeds admitted reserve",
         "prepared native integral derivatives are unavailable within the admitted ",
     )
-    positions = [source.find(message) for message in messages]
+    endpoint_source = ast.get_source_segment(source, owner)
+    assert endpoint_source is not None
+    positions = [endpoint_source.find(message) for message in messages]
     if any(position < 0 for position in positions):
         raise RuntimeError("stationary CUDA admission messages are incomplete")
     if positions != sorted(positions):
@@ -1958,6 +2022,17 @@ def _prepared_aot_route_contract(repository: Path) -> str:
     digest = _source_node_sha256(source, methods[0])
     if digest != PREPARED_AOT_SELECTION_CONTRACT_SHA256:
         raise RuntimeError("prepared stationary AOT selection contract changed")
+    requests = [
+        node
+        for node in classes[0].body
+        if isinstance(node, ast.FunctionDef) and node.name == "_request"
+    ]
+    if (
+        len(requests) != 1
+        or _source_node_sha256(source, requests[0])
+        != PREPARED_AO_REQUEST_CONTRACT_SHA256
+    ):
+        raise RuntimeError("prepared stationary AO request contract changed")
     return digest
 
 

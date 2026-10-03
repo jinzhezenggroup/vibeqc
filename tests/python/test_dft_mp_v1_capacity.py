@@ -185,7 +185,7 @@ def test_frozen_capacity_report_uses_actual_basis_and_grid_identities() -> None:
             "dcfcbef93e798c62cc5669e93190a9b73184ffe120a8afc43730a9dbc74cb448"
         ),
         "prepared_aot_selection_sha256": (
-            "1c14203191273a1b3644cbbb574484b79423674e66715b3efa9764cec26723e4"
+            "a9d5f920839f2a020b17addaddb8e00c674bf78e37f112a113751d67ef336224"
         ),
     }
 
@@ -286,7 +286,13 @@ def test_report_exposes_exact_first_gate_and_all_losing_work() -> None:
     assert result["admission_limits"]["primitive_page_contract_sha256"] == {
         "geometry_resources_sha256": "51730953ed9a62807442f672013fcc40787ed3c0b0cca838d6c492c8b1c080b1",
         "public_wrapper_sha256": (
-            "ded1b7e2cc0a93881cc17b4da32a3695bdbaf05421535ac3dcc4efb646da003b"
+            "56b9ca1e1cd87f51b3cf0d57fcfbb46c8fed4b32a1808fb49e53b545019958dc"
+        ),
+        "ao_map_reserve_sha256": (
+            "c2ba1b47e5655f75196c79384079d4ecd9c1edf9fe9aa1e97e339e96cbbaad0a"
+        ),
+        "resident_ao_cache_sha256": (
+            "dcf02f08e8d0279dcb49f2093d0ac3bf023523a7519a0faf6537fc9140711c9f"
         ),
         "initializer_sha256": (
             "7bb03b7286a5868527104420a74f4749c8af92360f17ad12ced31051a7ae9d75"
@@ -325,7 +331,7 @@ def test_report_exposes_exact_first_gate_and_all_losing_work() -> None:
             "5a69bf4fd85d28b137e1ae35bce4a1d32134375bbaca9f66f60c9377a0c8f935"
         ),
         "endpoint_owner_sha256": (
-            "d10b448db22bdd46fac91e189303e54a694998e87e77c6ec6395bfaa713ec3fe"
+            "0d9571918d55d9b9d66bd5d40fa8f38d595d1c20c6c58fb04c155467d9c97a81"
         ),
         "native_owner_sha256": (
             "47af7a99e4aadfe4386e1a798e619ff52aea3143a254c7cbffcca08ee9b1c1db"
@@ -1458,8 +1464,11 @@ def test_memory_bounds_fail_closed_when_host_gate_moves(tmp_path: Path) -> None:
     )
     old = "if host_bound > max_host_bytes:"
     assert old in source
+    begin = source.index("def _complete_rks_cuda_gradient_diagnostic(")
     stationary_contract_tree(
-        tmp_path, source.replace(old, "if host_bound >= max_host_bytes:", 1)
+        tmp_path,
+        source[:begin]
+        + source[begin:].replace(old, "if host_bound >= max_host_bytes:", 1),
     )
 
     with pytest.raises(RuntimeError, match="additional-host predicate"):
@@ -1502,10 +1511,11 @@ def test_admission_gate_order_fails_closed_when_memory_gates_move(
         '        raise ValueError("stationary additional-host byte budget exceeded")\n'
     )
     assert device in source and host in source
-    swapped = source.replace(device, "    # swapped-memory-gate\n", 1)
+    begin = source.index("def _complete_rks_cuda_gradient_diagnostic(")
+    swapped = source[begin:].replace(device, "    # swapped-memory-gate\n", 1)
     swapped = swapped.replace(host, device, 1)
     swapped = swapped.replace("    # swapped-memory-gate\n", host, 1)
-    stationary_contract_tree(tmp_path, swapped)
+    stationary_contract_tree(tmp_path, source[:begin] + swapped)
 
     with pytest.raises(
         RuntimeError, match="native host-reserve admission order changed"
@@ -2485,6 +2495,61 @@ def test_current_endpoint_windows_native_requirement_and_reserve_fail_closed(
     stationary_contract_tree(tmp_path, source.replace(old, new, 1))
     with pytest.raises(RuntimeError, match=message):
         qualify_capacity._source_limits(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "old,new,message",
+    [
+        (
+            "min(requested_bytes, max_host_bytes - host_bound)",
+            "requested_bytes",
+            "_stationary_ao_map_reserve contract changed",
+        ),
+        (
+            "    host_bound += ao_map_reserve\n",
+            "",
+            "AO-map reserve admission changed",
+        ),
+        (
+            "        grid.geometry_generation,\n",
+            "        0,\n",
+            "_stationary_resident_ao_cache contract changed",
+        ),
+        (
+            "    state._source.check_current()\n    domain = ResidentAoMapDomain(",
+            "    domain = ResidentAoMapDomain(",
+            "_stationary_resident_ao_cache contract changed",
+        ),
+        (
+            (
+                "            sum(value.host_bytes for value in tensor_plans.values())\n"
+                "            if prepared is not None\n"
+            ),
+            "            0\n            if prepared is not None\n",
+            "AO-map reserve admission changed",
+        ),
+    ],
+)
+def test_optional_resident_ao_admission_and_lifetime_fail_closed(
+    tmp_path: Path, old: str, new: str, message: str
+) -> None:
+    """Optional maps cannot escape the original cap or stale-owner checks."""
+    source = (ROOT / "python/generativeqc/_stationary_cuda.py").read_text()
+    assert old in source
+    stationary_contract_tree(tmp_path, source.replace(old, new, 1))
+    with pytest.raises(RuntimeError, match=message):
+        qualify_capacity._source_limits(tmp_path)
+
+
+def test_prepared_request_cannot_drop_the_resident_ao_policy(tmp_path: Path) -> None:
+    source = (ROOT / "python/generativeqc/_stationary_cuda.py").read_text()
+    old = '"resident_ao_cutoff": resident_ao_cutoff,'
+    assert old in source
+    stationary_contract_tree(
+        tmp_path, source.replace(old, '"resident_ao_cutoff": None,', 1)
+    )
+    with pytest.raises(RuntimeError, match="AO request contract changed"):
+        qualify_capacity._prepared_aot_route_contract(tmp_path)
 
 
 @pytest.mark.parametrize("key", ["max_grid_points", "max_grid_pair_visits"])

@@ -55,6 +55,9 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
   const std::size_t total = static_cast<std::size_t>(batch.total_shell_pair_block_quartets);
 
   while (true) {
+    // Empty pages and screened/inactive claims bypass the candidate-loop barrier.
+    // All warps must finish reading this claim before the leader overwrites it.
+    __syncthreads();
     if (threadIdx.x == 0) {
       block_quartet = atomicAdd(global_cursor, 1ULL);
     }
