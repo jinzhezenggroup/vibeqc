@@ -278,6 +278,19 @@ occupied/virtual gap but does not divide by internal gaps. The original
 nondegenerate schedule remains available automatically; all physical
 stationarity and residual gates are unchanged.
 
+The physical orbital-response matrix retains its full symmetry and stability
+checks. Its minimum curvature uses the shared scalar cyclic Jacobi eigensolver
+with explicit convergence checking and the former absolute 1e-13 off-diagonal
+stopping cap as an opt-in scalar accuracy control, so large eigenvalues cannot
+loosen that tolerance near the
+absolute 1e-8 stability gate. Other shared-eigensolver consumers retain their
+default relative accuracy. Complete-force admission includes the
+matrix copy, working/sorted eigenvectors, eigenvalues and sorting permutation.
+The generated GMRES actions and independent dense response residual remain
+mandatory. Completed-force traces separate matrix formation and curvature
+checking; `minimum_orbital_curvature` is a full-precision decimal label because
+progress counters are integers. See the [curvature scheduling decision](../../.agents/notes/implemented/performance/2026-10-03-cc-force-curvature-eigensolver.md).
+
 The compiler generates both resolvent vectors and Fock moments. Native CPU/CUDA
 owners sweep unordered virtual-pair panels with the exact permutation weight
 and at most two pairs of bounded virtual pages. Budget admission includes

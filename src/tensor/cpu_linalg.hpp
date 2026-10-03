@@ -128,6 +128,14 @@ void cpu_trmm(char side, char uplo, char trans, char diag, std::size_t m, std::s
 int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan = {});
 [[nodiscard]] CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::size_t n,
                                                           const CpuLinalgPlan& plan = {});
+/** Opt-in absolute off-diagonal stopping cap for the explicit scalar provider.
+ * A positive cap is in the input matrix's units and can only tighten its usual
+ * relative tolerance. Zero preserves the default; nonfinite/negative caps and
+ * non-scalar plans with a positive cap are rejected. Storage is unchanged.
+ */
+[[nodiscard]] CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::size_t n,
+                                                          const CpuLinalgPlan& plan,
+                                                          double absolute_off_diagonal_tolerance);
 
 }  // namespace generativeqc::tensor
 

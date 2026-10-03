@@ -1,0 +1,65 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All100 complete force calls pass independent gates, work equivalence and complete-budget/spectral regressions pass. Paired performance measurements and their limits are retained separately.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 3577,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "cdac20d2766ac281e1b625d76e5573aa262ef454fbf7ee39c4ba42df22c10a62"
+    },
+    {
+      "bytes": 16191,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "efc98bf67b05c10286eaab58f95362d1fdd4c19eeac3b30f6135a366fbf2608b"
+    },
+    {
+      "bytes": 46609,
+      "path": "records.json.gz",
+      "role": "samples",
+      "sha256": "8dc52138daa20bde36392d02ba6fc2d9d17098ebe441b8c5bdd1c79e45dfe8a9"
+    },
+    {
+      "bytes": 12368,
+      "path": "work.json.gz",
+      "role": "summary",
+      "sha256": "50cb1ced158ff2572466fb7a3c0e3f811b84b2494331cc6cbcc914d8372ca752"
+    },
+    {
+      "bytes": 10845,
+      "path": "source.patch",
+      "role": "source-patch",
+      "sha256": "06b50b4159989df1f59cdaddb6cc36ca08d53d8d49fa79e739ded4d088b1c92a"
+    },
+    {
+      "bytes": 2682,
+      "path": "qualification-tests.patch",
+      "role": "source-patch",
+      "sha256": "10a87a8b99a3403fdb7d76a35e7f55bf6073752e41f4e0b0aeffe5c4ddf5e955"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "benchmarks/ccsdt_prepared_endpoint.py",
+      "--device",
+      "cuda",
+      "--atoms",
+      "24",
+      "--forces",
+      "--output",
+      ".artifacts/cc-curvature-reproduction.json"
+    ],
+    "instructions": "Apply source.patch to the exact parent in an isolated checkout, then qualification-tests.patch for the final expanded tests; evidence/documentation changes do not enter the binary snapshot. Build Release CUDA12.9.1 sm_120, fast_compile=false, explicit CXX/CUDA ccache launchers and checkout-root CCACHE_BASEDIR. Use finite Slurm main gpu:pro6000:1 jobs on n2, preserve CUDA_VISIBLE_DEVICES, CPU library threads=1, GENERATIVEQC_LIBRARY, PYTHONPATH=python:. and distinct GENERATIVEQC_DF_PROGRESS_TRACE per process. Compare the final #1751 parent library with the candidate in four same-allocation alternating AB/BA processes each for atoms6,12,24. Large pairs0/1 and2/3 use separate allocations/GPUs; each pair remains on one GPU. Gate every cold/warm/repeat/changed call against pinned energy3e-9, triples2e-9, force1e-6 and response1e-9. Validate all original semantic counters, and candidate matrix columns/dimension plus positive full-precision curvature label. Run the host spectral/resource tests, public CPU/CUDA CC suites, and CPU-only compilation. Gzip members retain original JSON fields without rounding."
+  },
+  "schema": "generativeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": true,
+    "revision": "9784bf36d9c3eaa13583edbebda6a09ca74cc433"
+  }
+}

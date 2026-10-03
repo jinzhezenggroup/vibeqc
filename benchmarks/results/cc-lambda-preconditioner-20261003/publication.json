@@ -7,10 +7,10 @@
   },
   "files": [
     {
-      "bytes": 2868,
+      "bytes": 2871,
       "path": "evidence.json",
       "role": "evidence",
-      "sha256": "a06296a8e2fef3cfa468300ae152c4ec1a05497b0d6f86e759ce66ba2060b134"
+      "sha256": "18e9c56396e016f80c0dbd5b0bd52407968d387c8b6d8ca73180545c4e4e32d2"
     },
     {
       "bytes": 23286,
@@ -19,10 +19,10 @@
       "sha256": "9db50ef58513931dd2152e93aa1d9e1b308a6c67122ca0aaa5603cbdf1a6fda3"
     },
     {
-      "bytes": 152851,
-      "path": "records.json",
+      "bytes": 34232,
+      "path": "records.json.gz",
       "role": "samples",
-      "sha256": "c4a3c2bd083518db31d992801e1cadc54bb685552fc6f3ad2aee8f58e39a4645"
+      "sha256": "3ad9c6883d9f7f8ff0050ca4976ef0be66cf1010d287a9f6d96210dd8bf1c5f2"
     },
     {
       "bytes": 26092,
@@ -49,7 +49,7 @@
       "--output",
       ".artifacts/cc-lambda-preconditioner-reproduction.json"
     ],
-    "instructions": "Apply source.patch to the parent revision. Configure Release CUDA 12.9 sm_120 with explicit CXX/CUDA ccache launchers, checkout-root CCACHE_BASEDIR and fast_compile=false. Build generativeqc_cc_lambda_preconditioner_tests. Use finite Slurm main allocations (gpu:5090:1 on n5; gpu:pro6000:1 on n2), preserve CUDA_VISIBLE_DEVICES. Set GENERATIVEQC_LIBRARY, PYTHONPATH=python:., CPU library threads=1 and a new GENERATIVEQC_DF_PROGRESS_TRACE path. Use NumPy, SciPy, PySCF 2.14 and threadpoolctl; ensure the Python runtime preloads CUDA 12.9 libraries matching the linked library (runtime-libraries manifest in summary). Alternate parent/candidate processes in six AB/BA pairs for --atoms 6 and 12; retain cold, warm, warm-repeat and changed calls. Run native test with and without --cuda plus test_rccsdt_public.py/test_rccsd_public.py with CUDA opt-in environment variables. Memcheck native probe and all four complete 14-AO calls. Profile four 28-AO calls with Nsight CUDA tracing to verify launches and copies."
+    "instructions": "Apply source.patch to the parent revision. Configure Release CUDA 12.9 sm_120 with explicit CXX/CUDA ccache launchers, checkout-root CCACHE_BASEDIR and fast_compile=false. Build generativeqc_cc_lambda_preconditioner_tests. Use finite Slurm main allocations (gpu:5090:1 on n5; gpu:pro6000:1 on n2), preserve CUDA_VISIBLE_DEVICES. Set GENERATIVEQC_LIBRARY, PYTHONPATH=python:., CPU library threads=1 and a new GENERATIVEQC_DF_PROGRESS_TRACE path. Use NumPy, SciPy, PySCF 2.14 and threadpoolctl; ensure the Python runtime preloads CUDA 12.9 libraries matching the linked library (runtime-libraries manifest in summary). Alternate parent/candidate processes in six AB/BA pairs for --atoms 6 and 12; retain cold, warm, warm-repeat and changed calls. Run native test with and without --cuda plus test_rccsdt_public.py/test_rccsd_public.py with CUDA opt-in environment variables. Memcheck native probe and all four complete 14-AO calls. Profile four 28-AO calls with Nsight CUDA tracing to verify launches and copies. Stored records.json.gz decompresses to the exact original UTF-8 JSON bytes."
   },
   "schema": "generativeqc.benchmark-publication.v1",
   "source": {

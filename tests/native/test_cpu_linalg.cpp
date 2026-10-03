@@ -473,6 +473,43 @@ bool check_cholesky(CpuLinalgProvider provider,
   std::array<double, 4> bad{1, 2, 2, 1};
   return generativeqc::tensor::cpu_cholesky_lower(bad.data(), 2, plan) == 2;
 }
+bool check_absolute_eigen_tolerance() {
+  const CpuLinalgPlan scalar{CpuLinalgProvider::scalar};
+  const std::vector<double> matrix{1.01e-8, 3e-10, 0.0, 3e-10, 1.01e-8, 0.0, 0.0, 0.0, 4e4};
+  const auto original = generativeqc::tensor::cpu_symmetric_eigen(matrix, 3, scalar);
+  const auto unchanged = generativeqc::tensor::cpu_symmetric_eigen(matrix, 3, scalar, 0.0);
+  const auto absolute = generativeqc::tensor::cpu_symmetric_eigen(matrix, 3, scalar, 1e-13);
+  if (original.values != unchanged.values || original.vectors != unchanged.vectors ||
+      std::abs(absolute.values.front() - 9.8e-9) > 1e-20 || !(original.values.front() > 1e-8) ||
+      !(absolute.values.front() < 1e-8))
+    return false;
+  // A positive cap is expressed before the solver's extreme-scale normalization.
+  const auto huge = generativeqc::tensor::cpu_symmetric_eigen(
+      {1.01e292, 3e290, 0.0, 3e290, 1.01e292, 0.0, 0.0, 0.0, 1e308}, 3, scalar, 1e280);
+  const auto tiny = generativeqc::tensor::cpu_symmetric_eigen({1e-300, 1e-301, 1e-301, -1e-300}, 2,
+                                                              scalar, 1e-320);
+  if (std::abs(huge.values.front() / 1e292 - 0.98) > 1e-12 ||
+      std::abs(tiny.values.front() / 1e-300 + std::hypot(1.0, 0.1)) > 2e-13)
+    return false;
+  for (double invalid :
+       {-1.0, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
+    bool rejected = false;
+    try {
+      (void)generativeqc::tensor::cpu_symmetric_eigen(matrix, 3, scalar, invalid);
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    if (!rejected) return false;
+  }
+  bool rejected = false;
+  try {
+    (void)generativeqc::tensor::cpu_symmetric_eigen(matrix, 3, CpuLinalgPlan{}, 1e-13);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  return rejected;
+}
+
 bool check_eigen(CpuLinalgProvider provider,
                  CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
                  int threads = 1) {
@@ -501,7 +538,7 @@ int main() {
       !check_syr2(CpuLinalgProvider::scalar) || !check_syrk(CpuLinalgProvider::scalar) ||
       !check_syr2k(CpuLinalgProvider::scalar) || !check_trsm(CpuLinalgProvider::scalar) ||
       !check_trmm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar) ||
-      !check_eigen(CpuLinalgProvider::scalar)) {
+      !check_eigen(CpuLinalgProvider::scalar) || !check_absolute_eigen_tolerance()) {
     std::cerr << "scalar CPU linear algebra failed\n";
     return 1;
   }

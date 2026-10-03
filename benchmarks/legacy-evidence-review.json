@@ -209,11 +209,6 @@
       "owner": "CCSD(T) native CUDA response qualification",
       "reason": "All 112 complete-call energies, forces and public diagnostics retained without rounding; shared defaults and field-name columns are factored with exact reconstruction checks. Exact large-sample hash and bytes are reviewed below; raw journals and profiler databases remain ignored.",
       "review_document": ".agents/notes/implemented/performance/2026-10-03-native-cuda-triples-response.md"
-    },
-    "cc-lambda-preconditioner-20261003": {
-      "owner": "CCSD(T) complete-endpoint qualification",
-      "reason": "Losslessly factored 112 independently gated complete endpoint calls with six alternating parent/candidate process pairs per size; exact scalar and force observations retained.",
-      "review_document": "benchmarks/results/cc-lambda-preconditioner-20261003/summary.json"
     }
   },
   "files": [
@@ -984,14 +979,6 @@
       "path": "benchmarks/results/cc-triples-response-cuda-20261003/records.json",
       "role": "complete-endpoint-repeat-samples",
       "sha256": "0d1d562b6676d2d81be44abff0566aa9d5aff60f624a77a94cf43b5b9cf0e520"
-    },
-    {
-      "bytes": 152851,
-      "classification": "required-compact-accepted-evidence",
-      "family": "cc-lambda-preconditioner-20261003",
-      "path": "benchmarks/results/cc-lambda-preconditioner-20261003/records.json",
-      "role": "complete-endpoint-repeat-samples",
-      "sha256": "c4a3c2bd083518db31d992801e1cadc54bb685552fc6f3ad2aee8f58e39a4645"
     }
   ],
   "schema": "generativeqc.legacy-large-evidence-review.v1",

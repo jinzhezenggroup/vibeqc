@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <limits>
 #include <memory>
 #include <numeric>
@@ -363,34 +364,15 @@ double max_abs(std::span<const double> values) {
 double minimum_symmetric_eigenvalue(std::vector<double> matrix, std::size_t n) {
   if (matrix.size() != square(n)) throw std::invalid_argument("RCCSD(T) response matrix shape");
   if (!n) return std::numeric_limits<double>::infinity();
-  const auto max_sweeps = checked_mul(std::size_t{100}, square(n));
-  for (std::size_t sweep = 0; sweep < max_sweeps; ++sweep) {
-    std::size_t p = 0, q = 0;
-    double largest = 0.0;
-    for (std::size_t i = 0; i < n; ++i)
-      for (std::size_t j = i + 1; j < n; ++j)
-        if (std::abs(matrix[i * n + j]) > largest) {
-          largest = std::abs(matrix[i * n + j]);
-          p = i;
-          q = j;
-        }
-    if (largest < 1e-13) break;
-    const double app = matrix[p * n + p], aqq = matrix[q * n + q], apq = matrix[p * n + q];
-    const double phi = 0.5 * std::atan2(2.0 * apq, aqq - app);
-    const double c = std::cos(phi), s = std::sin(phi);
-    for (std::size_t k = 0; k < n; ++k) {
-      if (k == p || k == q) continue;
-      const double akp = matrix[k * n + p], akq = matrix[k * n + q];
-      matrix[k * n + p] = matrix[p * n + k] = c * akp - s * akq;
-      matrix[k * n + q] = matrix[q * n + k] = s * akp + c * akq;
-    }
-    matrix[p * n + p] = c * c * app - 2.0 * s * c * apq + s * s * aqq;
-    matrix[q * n + q] = s * s * app + 2.0 * s * c * apq + c * c * aqq;
-    matrix[p * n + q] = matrix[q * n + p] = 0.0;
-  }
-  double result = matrix[0];
-  for (std::size_t i = 1; i < n; ++i) result = std::min(result, matrix[i * n + i]);
-  return result;
+  // Curvature requires the full spectrum, but repeated maximum-pivot searches
+  // cost O(n^4). Reuse the shared cyclic Jacobi owner with an explicit scalar
+  // plan: its matrix/vector storage is completely admitted below, including
+  // builds where an external LAPACK provider has opaque private workspace.
+  const tensor::CpuLinalgPlan plan{tensor::CpuLinalgProvider::scalar};
+  // Preserve the former absolute off-diagonal accuracy: a large remote
+  // eigenvalue must not hide a coupled low block near the 1e-8 stability gate.
+  auto eigen = tensor::cpu_symmetric_eigen(std::move(matrix), n, plan, 1.0e-13);
+  return eigen.values.front();
 }
 
 }  // namespace
@@ -531,7 +513,10 @@ static RccsdtForcePlan plan_relaxed_rccsd_force_cpu(const core::System& system,
       std::max({sum({core, checked_mul(2, small_response_retained), hamiltonian_small_arena}),
                 sum({core, checked_mul(2, small_response_retained), bytes(checked_mul(2, n2)),
                      control_arena}),
-                checked_add(response_base, bytes(square(ov))),  // eigenvalue-check matrix copy
+                // Scalar eigensolver: matrix copy, working and sorted eigenvectors,
+                // eigenvalues and the size_t permutation coexist at publication.
+                sum({response_base, bytes(sum({checked_mul(3, square(ov)), ov})),
+                     checked_mul(ov, sizeof(std::size_t))}),
                 checked_add(response_base, gmres.workspace_bytes),
                 sum({final_response_base, small_response_retained, hamiltonian_small_arena}),
                 sum({final_response_base, small_response_retained, eri_response_retained,
@@ -854,6 +839,7 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
   const auto dimension = checked_mul(o, v);
   std::vector<double> response_matrix(square(dimension), 0.0), basis(dimension, 0.0),
       action(dimension);
+  const auto matrix_started = Clock::now();
   for (std::size_t column = 0; column < dimension; ++column) {
     std::fill(basis.begin(), basis.end(), 0.0);
     basis[column] = 1.0;
@@ -868,7 +854,9 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
                                                response_matrix[j * dimension + i]));
   if (asymmetry > 1e-10)
     throw std::runtime_error("generated RCCSD(T) RHF response is not symmetric");
+  const auto curvature_started = Clock::now();
   const double minimum_curvature = minimum_symmetric_eigenvalue(response_matrix, dimension);
+  const auto curvature_finished = Clock::now();
   if (!(minimum_curvature > kMinimumOrbitalCurvature))
     throw std::runtime_error("RCCSD(T) RHF orbital response is unstable or near-singular");
 
@@ -981,6 +969,19 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
     Scope::number("triples_response_h2d_bytes", triples ? triples->host_to_device_bytes : 0);
     Scope::number("triples_response_d2h_bytes", triples ? triples->device_to_host_bytes : 0);
     Scope::number("triples_response_kernel_launches", triples ? triples->kernel_launches : 0);
+    Scope::number("orbital_matrix_dimension", dimension);
+    Scope::number("orbital_matrix_columns", dimension);
+    // Progress numbers are integer work counters. A full-precision label keeps
+    // the small positive curvature observable without truncating it to zero.
+    char curvature_label[64];
+    std::snprintf(curvature_label, sizeof(curvature_label), "%.17g", minimum_curvature);
+    Scope::label("minimum_orbital_curvature", curvature_label);
+    Scope::number("orbital_matrix_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                           curvature_started - matrix_started)
+                                           .count());
+    Scope::number("orbital_curvature_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                              curvature_finished - curvature_started)
+                                              .count());
     Scope::number("triples_fock_resolvent", triples_fock.has_value());
     Scope::number("triples_fock_numeric_bytes",
                   triples_fock ? triples_fock->numeric_capacity_bytes : 0);

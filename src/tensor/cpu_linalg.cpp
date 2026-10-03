@@ -361,7 +361,8 @@ int scalar_cholesky_lower(double* matrix, std::size_t n) {
   return 0;
 }
 
-CpuSymmetricEigenResult scalar_symmetric_eigen(std::vector<double> matrix, std::size_t n) {
+CpuSymmetricEigenResult scalar_symmetric_eigen(std::vector<double> matrix, std::size_t n,
+                                               double absolute_tolerance = 0.0) {
   // Jacobi angle differences and doubled off-diagonals can overflow even
   // when every input and eigenvalue is representable. Normalize only extreme
   // scales; preserve established ordinary-range arithmetic and eigenvectors.
@@ -383,7 +384,9 @@ CpuSymmetricEigenResult scalar_symmetric_eigen(std::vector<double> matrix, std::
       converged = true;
       break;
     }
-    const double tolerance = 1.0e-14 * matrix_scale;
+    double tolerance = 1.0e-14 * matrix_scale;
+    if (absolute_tolerance > 0.0)
+      tolerance = std::min(tolerance, absolute_tolerance / output_scale);
     for (std::size_t p = 0; p < n; ++p) {
       for (std::size_t q = p + 1; q < n; ++q) {
         const double apq = matrix[p * n + q];
@@ -1193,7 +1196,19 @@ int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan)
 
 CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::size_t n,
                                             const CpuLinalgPlan& plan) {
+  return cpu_symmetric_eigen(std::move(matrix), n, plan, 0.0);
+}
+
+CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::size_t n,
+                                            const CpuLinalgPlan& plan,
+                                            double absolute_off_diagonal_tolerance) {
   validate_plan(plan);
+  if (!std::isfinite(absolute_off_diagonal_tolerance) || absolute_off_diagonal_tolerance < 0.0)
+    throw std::invalid_argument(
+        "CPU symmetric eigensolver absolute tolerance must be finite and nonnegative");
+  if (absolute_off_diagonal_tolerance > 0.0 && plan.provider != CpuLinalgProvider::scalar)
+    throw std::invalid_argument(
+        "CPU symmetric eigensolver absolute tolerance requires explicit scalar provider");
   if (!n || n > std::numeric_limits<std::size_t>::max() / n || matrix.size() != n * n)
     throw std::invalid_argument("CPU symmetric eigensolver dimensions are inconsistent");
   if (!std::all_of(matrix.begin(), matrix.end(), [](double x) { return std::isfinite(x); }))
@@ -1204,7 +1219,7 @@ CpuSymmetricEigenResult cpu_symmetric_eigen(std::vector<double> matrix, std::siz
 #else
   (void)resolve_cpu_linalg_provider(plan, true);
 #endif
-  return scalar_symmetric_eigen(std::move(matrix), n);
+  return scalar_symmetric_eigen(std::move(matrix), n, absolute_off_diagonal_tolerance);
 }
 
 }  // namespace generativeqc::tensor

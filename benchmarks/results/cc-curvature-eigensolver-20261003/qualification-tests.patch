@@ -1,0 +1,60 @@
+diff --git a/tests/python/test_cc_force_curvature.py b/tests/python/test_cc_force_curvature.py
+index 7c3678e23..6904ead84 100644
+--- a/tests/python/test_cc_force_curvature.py
++++ b/tests/python/test_cc_force_curvature.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ import shutil
+ import subprocess
++import sys
+ from pathlib import Path
+ 
+ import numpy as np
+@@ -22,7 +23,7 @@ def curvature_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
+     Full molecular/budget tests independently exercise its production caller.
+     """
+     compiler = shutil.which("c++")
+-    if compiler is None:
++    if compiler is None or sys.platform == "win32":
+         pytest.skip("requires a host C++ compiler")
+     source = (ROOT / "src/cc/rccsdt_force.cpp").read_text()
+     function = source.split("double minimum_symmetric_eigenvalue", 1)[1].split(
+@@ -54,18 +55,19 @@ def curvature_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
+     return executable
+ 
+ 
++@pytest.mark.parametrize("scale", (1.0, 1e4))
+ @pytest.mark.parametrize("minimum", (-0.2, 5e-9, 2e-8, 0.3))
+ def test_force_curvature_rotated_stability_boundary(
+-    curvature_probe: Path, minimum: float
++    curvature_probe: Path, minimum: float, scale: float
+ ) -> None:
+     """Dense rotations preserve the minimum on both sides of the physical gate."""
+     rng = np.random.default_rng(1751)
+     q, _ = np.linalg.qr(rng.normal(size=(32, 32)))
+-    spectrum = np.linspace(0.4, 4.0, len(q))
++    spectrum = scale * np.linspace(0.4, 4.0, len(q))
+     spectrum[0] = minimum
+     # Include exact internal multiplicities; the stability gate concerns only
+     # the smallest curvature, never eigenvector identity within a repeated block.
+-    spectrum[8:12] = 1.5
++    spectrum[8:12] = 1.5 * scale
+     matrix = (q * spectrum) @ q.T
+     data = str(len(q)) + "\n" + " ".join(format(x, ".17g") for x in matrix.ravel())
+     result = subprocess.run(
+@@ -77,8 +79,13 @@ def test_force_curvature_rotated_stability_boundary(
+         timeout=30,
+     )
+     observed = float(result.stdout)
+-    assert observed == pytest.approx(minimum, abs=2e-12)
+-    assert (observed > 1e-8) == (minimum > 1e-8)
++    # For the ill-conditioned fixture, constructing Q diag(lambda) Q^T in
++    # FP64 perturbs its tiny minimum. Compare the actual stored matrix against
++    # independent LAPACK, and separately require the same stability decision.
++    expected = float(np.linalg.eigvalsh(matrix)[0])
++    tolerance = max(2e-12, 64 * np.finfo(float).eps * max(abs(spectrum)))
++    assert observed == pytest.approx(expected, abs=tolerance)
++    assert (observed > 1e-8) == (expected > 1e-8) == (minimum > 1e-8)
+ 
+ 
+ PREFIX = r"""

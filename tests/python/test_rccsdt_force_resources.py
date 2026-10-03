@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -109,6 +110,10 @@ def test_native_force_exact_cap_and_nested_live_allocations(
         capture_output=True,
         text=True,
         timeout=120,
+        env={
+            **os.environ,
+            "GENERATIVEQC_DF_PROGRESS_TRACE": str(tmp_path / "progress.jsonl"),
+        },
     )
     (tmp_path / "trace.json").write_text(result.stdout)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -125,6 +130,16 @@ def test_native_force_exact_cap_and_nested_live_allocations(
     )
     if case == "methane":
         assert record["full_triples_fock_response"] == 1
+    progress = [
+        json.loads(line)
+        for line in (tmp_path / "progress.jsonl").read_text().splitlines()
+    ]
+    curvatures = [
+        float(row["value"])
+        for row in progress
+        if row.get("key") == "minimum_orbital_curvature"
+    ]
+    assert curvatures and min(curvatures) > 1e-8
 
 
 CPP = r"""

@@ -1,0 +1,134 @@
+{
+  "attachments": [
+    {
+      "kind": "endpoint-review",
+      "path": "summary.json",
+      "sha256": "efc98bf67b05c10286eaab58f95362d1fdd4c19eeac3b30f6135a366fbf2608b"
+    },
+    {
+      "kind": "endpoint-review",
+      "path": "records.json.gz",
+      "sha256": "8dc52138daa20bde36392d02ba6fc2d9d17098ebe441b8c5bdd1c79e45dfe8a9"
+    },
+    {
+      "kind": "endpoint-review",
+      "path": "work.json.gz",
+      "sha256": "50cb1ced158ff2572466fb7a3c0e3f811b84b2494331cc6cbcc914d8372ca752"
+    }
+  ],
+  "backend_selected": "cuda",
+  "block_errors": {
+    "energy": {
+      "atol": 3e-09,
+      "max_absolute_error": 5.115907697472721e-12,
+      "max_scaled_error": 0.0017053025658242404,
+      "passed": true,
+      "rms_error": 1.7565996068439205e-12,
+      "rtol": 0,
+      "shape": [
+        100
+      ]
+    },
+    "forces": {
+      "atol": 1e-06,
+      "max_absolute_error": 1.1150207799084932e-07,
+      "max_scaled_error": 0.11150207799084932,
+      "passed": true,
+      "rms_error": 3.634326609898584e-08,
+      "rtol": 0,
+      "shape": [
+        4320
+      ]
+    },
+    "triples": {
+      "atol": 2e-09,
+      "max_absolute_error": 1.5158360677780536e-13,
+      "max_scaled_error": 7.579180338890268e-05,
+      "passed": true,
+      "rms_error": 9.067085361120467e-14,
+      "rtol": 0,
+      "shape": [
+        100
+      ]
+    }
+  },
+  "compilation": {
+    "reason": "not measured",
+    "seconds": null
+  },
+  "device": {
+    "n2": "RTX PRO6000 Blackwell"
+  },
+  "hardware": {
+    "reason": null,
+    "slurm": true,
+    "status": "pass"
+  },
+  "hash_reasons": {
+    "equation": "All generated CC, triples and full Fock equations are byte-identical to the parent; the private host stability eigensolver schedule changes.",
+    "ir": "Shared CPU dense-linear-algebra consumer, no new scientific IR. Exact unchanged generated-source hashes retained in summary."
+  },
+  "hashes": {
+    "equation": null,
+    "ir": null,
+    "schedule": "06b50b4159989df1f59cdaddb6cc36ca08d53d8d49fa79e739ded4d088b1c92a",
+    "source": "06b50b4159989df1f59cdaddb6cc36ca08d53d8d49fa79e739ded4d088b1c92a"
+  },
+  "inputs_hash": "d18034b772d93e6034d9f591d770d538a674aef9746da2c9500091cb731f3beb",
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "not measured"
+  },
+  "performance": {
+    "reason": "Complete paired timing and work evidence are retained; no automated compiler default-promotion envelope claimed.",
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "9784bf36d9c3eaa13583edbebda6a09ca74cc433",
+  "schema": "generativeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "budget_bytes": 8589934592,
+    "curvature_solver": "shared-scalar-cyclic-Jacobi",
+    "curvature_threshold": 1e-08
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": null,
+      "status": "pass"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "Bounded shared cyclic Jacobi stability certificate for large native CCSD(T) forces",
+  "tier": "endpoint",
+  "timings": [],
+  "toolchain": {
+    "architecture": "sm_120",
+    "build": "Release",
+    "ccache": true,
+    "cuda": "12.9.1",
+    "fast_compile": false
+  }
+}
