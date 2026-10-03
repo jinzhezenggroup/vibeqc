@@ -30,8 +30,8 @@ extern "C" int df_cc_source_probe(void* opaque, const double* coefficients, std:
     const auto result = generativeqc::cc::build_df_source_cuda(source.orbital(), source.auxiliary(),
                                                                ref, budget, 1e-10, 0);
     auto* cursor = output;
-    for (const auto* block : {&result.bov, &result.bvv, &result.ovov, &result.ovvo, &result.oovv,
-                              &result.ovoo, &result.oooo})
+    for (const auto* block : {&result.boo, &result.bov, &result.bvv, &result.ovov, &result.ovvo,
+                              &result.oovv, &result.ovoo, &result.oooo})
       cursor = std::copy(block->begin(), block->end(), cursor);
     const std::size_t c[] = {
         result.numeric_capacity_bytes, result.host_output_bytes,    result.source_rows,

@@ -155,6 +155,7 @@ std::vector<double> fock_mo(const hf::PhysicalReference& ref) {
 void attach_df_source(cc::Problem& problem, cc::DFSourceResult&& fitted, posthf::ProviderWork& work,
                       generativeqc_tensor::Metrics& metrics) {
   problem.naux = fitted.naux;
+  problem.df_boo = std::move(fitted.boo);
   problem.df_bov = std::move(fitted.bov);
   problem.df_bvv = std::move(fitted.bvv);
   problem.ovov = std::move(fitted.ovov);

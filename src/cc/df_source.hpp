@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 #include <vector>
 
 #include "core/types.hpp"
@@ -16,7 +17,7 @@ namespace generativeqc::cc {
  */
 struct DFSourceResult {
   std::size_t nocc{}, nvir{}, naux{};
-  std::vector<double> bov, bvv, ovov, ovvo, oovv, ovoo, oooo;
+  std::vector<double> boo, bov, bvv, ovov, ovvo, oovv, ovoo, oooo;
   std::size_t numeric_capacity_bytes{}, host_output_bytes{};
   // Conservative device reservation, including the shared metric owner's lazy
   // SCF allowance. This is an admission bound, not a measured allocation peak.
@@ -41,5 +42,36 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
                                     const hf::PhysicalReference& reference,
                                     std::size_t maximum_bytes, double metric_relative_threshold,
                                     int device, std::size_t caller_bytes = 0);
+
+/** Borrowed physical factors and fixed-orbital Lagrangian cotangents.
+ * All factors are Q-major. Boo/Bvv must be symmetric spatial-orbital pairs.
+ * bar_bov/bar_bvv are virtual-only contributions, composed exactly once with
+ * the five retained blocks. Arbitrary finite seeds are allowed: this map is
+ * not itself a primal/Lambda convergence certification or a nuclear force.
+ */
+struct DFFactorResponseView {
+  std::span<const double> boo, bov, bvv;
+  std::span<const double> bar_ovov, bar_ovvo, bar_oovv, bar_ovoo, bar_oooo;
+  std::span<const double> bar_bov, bar_bvv;
+};
+
+struct DFFactorResponseResult {
+  // Dense Frobenius cotangents. Bov includes both ov/vo terms: a full symmetric
+  // BMO embedding assigns half to ov and half to transposed vo.
+  std::vector<double> boo, bov, bvv;
+  std::size_t numeric_capacity_bytes{}, owned_device_bytes{}, h2d_bytes{}, d2h_bytes{};
+  std::size_t contraction_terms{}, generated_kernels{};
+};
+
+/** Compose generated retained Gram and virtual factor derivatives on CUDA.
+ * One stream owns every input/arena and drains before any host publication or
+ * exception releases a host destination. Admission counts all borrowed view
+ * values, device storage and detached outputs. caller_bytes additionally
+ * charges all other live owners and capacity beyond the supplied spans.
+ */
+DFFactorResponseResult pullback_df_factors_cuda(std::size_t nocc, std::size_t nvir,
+                                                std::size_t naux, DFFactorResponseView inputs,
+                                                std::size_t maximum_bytes, int device,
+                                                std::size_t caller_bytes = 0);
 
 }  // namespace generativeqc::cc

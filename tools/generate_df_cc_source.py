@@ -13,11 +13,14 @@ if __package__ in (None, ""):
 from generativeqc_compiler.cc.df_source import (
     BLOCK_FACTORS,
     FACTOR_NAMES,
+    PHYSICAL_FACTORS,
     block_program,
     factor_program,
+    retained_factor_vjp,
 )
 from generativeqc_compiler.tensor.cuda_gemm import gemm_contract
 
+from tools.generate_df_ccsd_hoisted import contraction_query
 from tools.generate_rccsd_native import (
     REPRESENTATIVE,
     _cpu_function,
@@ -25,6 +28,12 @@ from tools.generate_rccsd_native import (
     _label_dims,
     _required_function,
 )
+
+RESPONSE_INPUTS = (
+    *PHYSICAL_FACTORS,
+    *("bar_" + x for x in (*BLOCK_FACTORS, "bov", "bvv")),
+)
+RESPONSE_OUTPUTS = tuple("bar_" + x for x in PHYSICAL_FACTORS)
 
 
 def cpu_header() -> str:
@@ -35,6 +44,7 @@ def cpu_header() -> str:
     callers must not repair individual downloaded sectors after publication.
     """
     program = factor_program(*REPRESENTATIVE, 1, symmetric_pairs=True)
+    response = retained_factor_vjp(*REPRESENTATIVE, 1)
     lines = [
         "// Generated DF-CC source packing/blocks; do not edit.",
         "#pragma once",
@@ -98,7 +108,7 @@ def cpu_header() -> str:
         "  SourceLayout p{}; p.matrix_values=checked_mul(n,n);",
         "  p.source_values=checked_mul(p.matrix_values,q); p.row_values=checked_mul(n,q);",
         "  p.packing_values=factor_arena_elements(o,v,q);",
-        "  p.output_values=checked_mul(q,checked_add(checked_mul(o,v),checked_mul(v,v)));",
+        "  p.output_values=checked_mul(q,checked_add(checked_mul(o,o),checked_add(checked_mul(o,v),checked_mul(v,v))));",
     ]
     for name in BLOCK_FACTORS:
         lines += [
@@ -112,7 +122,27 @@ def cpu_header() -> str:
         "  return p;",
         "}",
     ]
-    lines += ["}  // namespace generativeqc::cc::generated::df_source", ""]
+    lines += [
+        "struct ResponseInputs {",
+        *(f"  const double* {name}{{}};" for name in RESPONSE_INPUTS),
+        "};",
+        "struct ResponseOutputs { const double *bar_boo{}, *bar_bov{}, *bar_bvv{}; };",
+        f'inline constexpr const char* response_equation_hash="{response.logical_hash}";',
+        f"inline constexpr std::size_t response_operations={sum(n.op != 'input' for n in response.live_nodes)};",
+        _required_function(response, "response_arena_elements", batch_dim=True),
+        contraction_query(response, "response_contraction_terms", batch_dim=True),
+        _cpu_function(
+            response,
+            "response_cpu",
+            "ResponseOutputs",
+            signature="const ResponseInputs& inputs",
+            input_overrides={x: "inputs." + x for x in RESPONSE_INPUTS},
+            batch_dim=True,
+            output_fields=RESPONSE_OUTPUTS,
+        ),
+        "}  // namespace generativeqc::cc::generated::df_source",
+        "",
+    ]
     return "\n".join(lines)
 
 
@@ -130,6 +160,13 @@ struct CudaState {
   cudaStream_t stream{};
 };
 FactorOutputs pack_cuda(CudaState& state);
+struct ResponseCudaState : ResponseInputs {
+  std::size_t o{},v{},q{};
+  double* response_arena{};
+  int* error{};
+  cudaStream_t stream{};
+};
+ResponseOutputs response_cuda(ResponseCudaState& state);
 }
 """
 
@@ -150,6 +187,16 @@ def cuda_source() -> str:
                 output_fields=FACTOR_NAMES,
             ),
             "FactorOutputs pack_cuda(CudaState& state) { return run_source_pack(state); }",
+            _cuda_program(
+                retained_factor_vjp(*REPRESENTATIVE, 1),
+                "factor_response",
+                "ResponseOutputs",
+                state_type="ResponseCudaState",
+                input_overrides={x: "s." + x for x in RESPONSE_INPUTS},
+                batch_dim=True,
+                output_fields=RESPONSE_OUTPUTS,
+            ),
+            "ResponseOutputs response_cuda(ResponseCudaState& state) { return run_factor_response(state); }",
             "}",
             "",
         ]
