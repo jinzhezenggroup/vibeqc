@@ -8,12 +8,15 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 
 #include "cc/df_source.hpp"
+#include "cc/df_source_response.hpp"
 #include "df_mo_source_generated.hpp"
 #include "generated_df_cc_source_cuda.cuh"
+#include "generated_symmetric_matrix_function.cuh"
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
 #include "runtime/cuda_resources.cuh"
@@ -61,12 +64,29 @@ std::size_t metric_setup_bound(std::size_t n, std::size_t q, std::size_t source_
   peak = checked_add(peak, checked_mul(2, scf::df_eigen_workspace_allowance(q)));
   return checked_add(peak, checked_add(source_device, checked_mul(2, source_host_peak)));
 }
+// Audit the shared spectral rule separately: the MO transform only certifies
+// bar_W, while the metric VJP can independently overflow at a small eigenvalue.
+__global__ void audit_source_response(const double* values, std::size_t count, int* error) {
+  for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
+       i += std::size_t(gridDim.x) * blockDim.x)
+    if (!isfinite(values[i])) atomicExch(error, 1);
+}
 }  // namespace
+
+// Private immutable numerical frame. Declaration order ensures coefficients
+// drain and die before the stream/source owner, including failed publication.
+class DFSourceState {
+ public:
+  std::unique_ptr<scf::CudaDensityFittingJkPlan, PlanDelete> plan;
+  runtime::OwnedCudaBuffer<double> coefficients;
+  std::size_t nocc{}, numeric_bytes{};
+  std::mutex response_mutex;
+};
 
 DFSourceResult build_df_source_cuda(const core::System& orbital, const core::System& auxiliary,
                                     const hf::PhysicalReference& ref, std::size_t budget,
-                                    double relative_threshold, int device,
-                                    std::size_t caller_bytes) {
+                                    double relative_threshold, int device, std::size_t caller_bytes,
+                                    bool retain_response_state) {
   const auto started = Clock::now();
   const auto n = ref.nbf, o = ref.nocc, q = molecule::ao_count(auxiliary);
   if (!n || !o || o >= n || !q || molecule::ao_count(orbital) != n || device < 0 || !budget ||
@@ -88,8 +108,10 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
   for (const auto* values : {&ref.overlap, &ref.hcore, &ref.fock, &ref.coefficients,
                              &ref.orbital_energies, &ref.density, &ref.weighted_density})
     external = checked_add(external, bytes(values->capacity()));
-  const auto execution_payload =
-      std::max({layout.transform_bytes, layout.packing_bytes, layout.blocks_bytes});
+  const auto retained_c_bytes = retain_response_state ? bytes(layout.matrix_values) : 0;
+  const auto packing_bytes = checked_add(layout.packing_bytes, retained_c_bytes);
+  const auto blocks_bytes = checked_add(layout.blocks_bytes, retained_c_bytes);
+  const auto execution_payload = std::max({layout.transform_bytes, packing_bytes, blocks_bytes});
   admit(checked_add(external, execution_payload), budget);
   runtime::CudaDeviceScope device_scope(device);
   DFSourceResult result;
@@ -142,6 +164,7 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
     throw std::runtime_error("native CUDA DF-CC requires the streamed metric owner");
   auto& plan = *owner;
   const auto& diag = diagnostics.front();
+  result.source_identity = plan.factor_basis_identity;
   const auto setup_peak =
       checked_add(external, checked_add(diag.peak_device_bytes, diag.peak_host_bytes));
   if (setup_peak > setup_bound)
@@ -157,8 +180,8 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
   const auto execution_peak = checked_add(fixed, execution_payload);
   admit(execution_peak, budget);
   result.numeric_capacity_bytes = std::max({source_peak, setup_bound, execution_peak});
-  const auto device_payload = std::max({layout.transform_bytes, layout.packing_bytes,
-                                        layout.blocks_bytes - result.host_output_bytes});
+  const auto device_payload =
+      std::max({layout.transform_bytes, packing_bytes, blocks_bytes - result.host_output_bytes});
   result.device_capacity_bytes =
       std::max({source_device, diag.peak_device_bytes,
                 checked_add(diag.device_resident_bytes, device_payload)});
@@ -167,6 +190,7 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
   const auto stream = plan.stream;
   // Buffers are declared after the metric owner: all stream-dependent storage
   // drains and dies before its source/BLAS/stream owner, including exceptions.
+  runtime::OwnedCudaBuffer<double> retained_coefficients;
   runtime::OwnedCudaBuffer<double> bmo(device, layout.source_values, stream);
   auto gemm = [&](char ta, char tb, std::size_t m, std::size_t columns, std::size_t k,
                   const double* a, const double* b, double* output) {
@@ -205,6 +229,7 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
               checked_add(result.transform_summands, checked_mul(checked_mul(m, columns), k));
         });
     runtime::cuda_resource_check(cudaStreamSynchronize(stream));
+    if (retain_response_state) retained_coefficients = std::move(coefficients);
   }
   result.source_values = checked_mul(result.source_rows, layout.row_values);
   if (result.source_values != work.raw_values || result.transform_gemms != work.gemms ||
@@ -256,6 +281,16 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
   if (result.factor_block_d2h_bytes != result.host_output_bytes)
     throw std::logic_error("native DF-CC publication size differs from compiler layout");
   result.block_seconds = elapsed(stage);
+  if (retain_response_state) {
+    result.retained_source_bytes = checked_add(
+        checked_add(diag.device_resident_bytes, diag.host_resident_bytes), retained_c_bytes);
+    auto state = std::make_shared<DFSourceState>();
+    state->nocc = o;
+    state->numeric_bytes = result.retained_source_bytes;
+    state->plan = std::move(owner);
+    state->coefficients = std::move(retained_coefficients);
+    result.response_state = std::move(state);
+  }
   result.total_seconds = elapsed(started);
   return result;
 }
@@ -291,6 +326,7 @@ DFFactorResponseResult pullback_df_factors_cuda(std::size_t o, std::size_t v, st
   const auto outputs = checked_add(qoo, checked_add(qov, qvv));
   const auto arena = gen::response_arena_elements(o, v, q);
   DFFactorResponseResult result;
+  result.source_identity = input.source_identity;
   result.owned_device_bytes = checked_add(bytes(checked_add(inputs, arena)), sizeof(int));
   result.numeric_capacity_bytes = checked_add(
       caller_bytes, checked_add(result.owned_device_bytes, bytes(checked_add(inputs, outputs))));
@@ -339,6 +375,111 @@ DFFactorResponseResult pullback_df_factors_cuda(std::size_t o, std::size_t v, st
       cudaMemcpyAsync(&failed, error.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()));
   runtime::cuda_resource_check(cudaStreamSynchronize(stream.get()));
   if (failed) throw std::runtime_error("nonfinite native DF factor response arithmetic");
+  return result;
+}
+DFSourceResponseDiagnostic pullback_df_source_cuda(std::shared_ptr<DFSourceState> source,
+                                                   const DFFactorResponseResult& seeds,
+                                                   const posthf::CudaDFSourceConsume& consume,
+                                                   const posthf::CudaDFSourceFinish& finish,
+                                                   std::size_t budget, std::size_t caller_bytes) {
+  if (!source || !source->plan || !seeds.source_identity || !consume || !finish || !budget)
+    throw std::invalid_argument(
+        "DF source response requires retained physical state and callbacks");
+  std::lock_guard lock(source->response_mutex);
+  auto& plan = *source->plan;
+  if (seeds.source_identity != plan.factor_basis_identity)
+    throw std::invalid_argument("DF source response source/MO-frame identity mismatch");
+  if (plan.metric_response_valid.size() != 1 || !plan.metric_response_valid[0])
+    throw std::runtime_error(
+        "DF metric rank crossing: retained/discarded subspaces are unresolved");
+  const auto n = plan.nbf, q = plan.naux, o = source->nocc, v = n - o;
+  const auto nn = checked_mul(n, n), qq = checked_mul(q, q), full = checked_mul(nn, q);
+  const std::array<std::size_t, 3> sizes{checked_mul(q, checked_mul(o, o)),
+                                         checked_mul(q, checked_mul(o, v)),
+                                         checked_mul(q, checked_mul(v, v))};
+  const std::array<const std::vector<double>*, 3> views{&seeds.boo, &seeds.bov, &seeds.bvv};
+  std::size_t seed_values = 0, host_values = 0;
+  for (std::size_t i = 0; i < views.size(); ++i) {
+    if (views[i]->size() != sizes[i] ||
+        !std::all_of(views[i]->begin(), views[i]->end(), [](double x) { return std::isfinite(x); }))
+      throw std::invalid_argument("invalid DF source response seed shape/value");
+    seed_values = checked_add(seed_values, sizes[i]);
+    host_values = checked_add(host_values, views[i]->capacity());
+  }
+  namespace gen = generated::df_source;
+  const auto arena = gen::embedding_arena_elements(o, v, q);
+  const auto spectral = checked_mul(3, qq);
+  const auto work = posthf::generated::df_mo_source_response_work(n, q);
+  const auto transform_owned =
+      checked_add(bytes(checked_add(work.scratch_values, checked_add(nn, qq))), sizeof(int));
+  const auto wrapper_owned =
+      checked_add(bytes(checked_add(seed_values, checked_add(arena, spectral))), sizeof(int));
+  DFSourceResponseDiagnostic result;
+  result.retained_source_bytes = source->numeric_bytes;
+  result.h2d_bytes = bytes(seed_values);
+  result.embedding_arena_bytes = bytes(arena);
+  result.metric_workspace_bytes = bytes(spectral);
+  result.numeric_capacity_bytes = checked_add(
+      caller_bytes,
+      checked_add(source->numeric_bytes,
+                  checked_add(bytes(host_values), checked_add(wrapper_owned, transform_owned))));
+  admit(result.numeric_capacity_bytes, budget);
+  // The inner primitive accounts its borrowed C/W/BMO. They are already inside
+  // this retained owner and embedding arena, so remove only that exact overlap.
+  const auto borrowed = bytes(checked_add(full, checked_add(nn, qq)));
+  const auto inner_external = result.numeric_capacity_bytes - transform_owned - borrowed;
+  runtime::CudaDeviceScope scope(plan.device_id);
+  const auto stream = plan.stream;
+  int failed = 0;
+  runtime::OwnedCudaBuffer<double> storage(
+      plan.device_id, checked_add(seed_values, checked_add(arena, spectral)), stream);
+  runtime::OwnedCudaBuffer<int> error(plan.device_id, 1, stream);
+  gen::EmbeddingCudaState state;
+  state.o = o;
+  state.v = v;
+  state.q = q;
+  state.response_arena = storage.get() + seed_values;
+  state.error = error.get();
+  state.stream = stream;
+  const std::array<const double**, 3> fields{&state.bar_boo, &state.bar_bov, &state.bar_bvv};
+  std::size_t cursor = 0;
+  for (std::size_t i = 0; i < views.size(); ++i) {
+    *fields[i] = storage.get() + cursor;
+    runtime::cuda_resource_check(cudaMemcpyAsync(storage.get() + cursor, views[i]->data(),
+                                                 bytes(sizes[i]), cudaMemcpyHostToDevice, stream));
+    cursor = checked_add(cursor, sizes[i]);
+  }
+  const auto embedded = gen::embed_cuda(state);
+  auto* scratch0 = state.response_arena + arena;
+  auto* scratch1 = scratch0 + qq;
+  auto* bar_metric = scratch1 + qq;
+  result.transform = posthf::pullback_df_mo_source_cuda(
+      {n, q, source->coefficients.get(), plan.inverse_square_roots, embedded.bar_bmo},
+      plan.device_id, stream, plan.blas,
+      [&](std::size_t mu, double* row, cudaStream_t source_stream) {
+        std::string detail;
+        const auto status = scf::generate_cuda_density_fitting_raw_tile(
+            plan.integral_source, 0, mu * n, n, 0, q, -1, source_stream, row, detail);
+        check_status(status, detail);
+      },
+      consume,
+      [&](const double* bar_c, const double* bar_root, cudaStream_t source_stream) {
+        tensor::launch_symmetric_inverse_sqrt_vjp(
+            q, plan.metric_eigenvectors, plan.metric_eigenvalues, plan.metric_relative_threshold,
+            bar_root, scratch0, scratch1, bar_metric, source_stream);
+        runtime::cuda_resource_check(cudaGetLastError());
+        const auto blocks = static_cast<unsigned>(std::min<std::size_t>((qq + 255) / 256, 65535));
+        audit_source_response<<<blocks, 256, 0, source_stream>>>(bar_metric, qq, error.get());
+        runtime::cuda_resource_check(cudaGetLastError());
+        finish(bar_c, bar_metric, source_stream);
+      },
+      budget, inner_external);
+  runtime::cuda_resource_check(
+      cudaMemcpyAsync(&failed, error.get(), sizeof(int), cudaMemcpyDeviceToHost, stream));
+  runtime::cuda_resource_check(cudaStreamSynchronize(stream));
+  if (failed) throw std::runtime_error("nonfinite physical DF source/metric response arithmetic");
+  if (result.transform.numeric_capacity_bytes != result.numeric_capacity_bytes)
+    throw std::logic_error("DF source response ownership accounting mismatch");
   return result;
 }
 }  // namespace generativeqc::cc

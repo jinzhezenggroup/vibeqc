@@ -135,6 +135,25 @@ def factor_program(
     )
 
 
+def factor_embedding_vjp(occupied: int, virtuals: int, auxiliaries: int) -> Program:
+    """Embed compressed physical cotangents in the full MO source coordinates.
+
+    Differentiate the actual forward pair projection and sector selection so
+    cross-sector factors receive half the compressed Bov seed on each side.
+    This also projects arbitrary Boo/Bvv seeds in the dense Frobenius metric.
+    The map is linear: it needs no primal BMO values or four-index tensors.
+    """
+    factors = factor_program(occupied, virtuals, auxiliaries, symmetric_pairs=True)
+    primal = Program({name: factors.outputs[name] for name in PHYSICAL_FACTORS})
+    result = optimize(
+        transpose_program(primal, tuple(primal.outputs), inputs=("bmo",)).program
+    )
+    return Program(
+        result.outputs,
+        provenance={**result.provenance, "native_execution_order": "dependencies"},
+    )
+
+
 def block_program(occupied: int, virtuals: int, auxiliaries: int, name: str) -> Program:
     """Define one retained four-index block from the same fitted factors."""
     if name not in BLOCK_FACTORS:
