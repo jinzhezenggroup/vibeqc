@@ -16,6 +16,9 @@ struct SolverOptions {
   double damping{};
   double level_shift{};
   std::size_t max_bytes{256ULL << 20};
+  // Internal DF scheduling control; dense/conventional paths are unaffected.
+  // Admission retains the bounded original schedule when work or storage wins.
+  bool df_auxiliary_reduction{true};
 };
 
 struct Problem {
@@ -62,6 +65,9 @@ struct SolverDiagnostic {
   std::size_t df_auxiliary_slices{};
   std::size_t df_virtual_operations{};
   std::size_t df_accumulation_calls{};
+  std::size_t df_hoisted_evaluations{};
+  std::size_t df_preparation_calls{};
+  std::size_t df_contraction_terms{};
   double tensor_seconds{};
   double iteration_seconds{};
   double replay_seconds{};

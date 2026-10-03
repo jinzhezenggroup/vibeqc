@@ -7,8 +7,8 @@
     },
     {
       "kind": "numerical-qualification",
-      "path": "summary.json",
-      "sha256": "b7f72a50a619a78f82123d6ad15752223f4e6767a26484132f7805cc38cb615f"
+      "path": "summary.json.gz",
+      "sha256": "52709437a7eab764048a9adb58f5f743f073129a06027d7b74e59d9dbc444eed"
     },
     {
       "kind": "numerical-qualification",

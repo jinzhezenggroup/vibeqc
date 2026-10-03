@@ -118,6 +118,15 @@ def iteration_program(
         diagnostics=False,
         external_virtual_correction=external_virtual_correction,
     )
+    return with_jacobi_update(physical)
+
+
+def with_jacobi_update(physical: Program) -> Program:
+    """Attach the common undamped update to an already-derived physical graph.
+
+    Factorized consumers change the residual schedule, while this shared owner
+    preserves exactly the same Jacobi and runtime-damping contract.
+    """
     inputs = {n.attrs["name"]: n for n in physical.live_nodes if n.op == "input"}
     outputs = dict(physical.outputs)
     for index, residual in enumerate(("singles_residual", "doubles_residual"), 1):

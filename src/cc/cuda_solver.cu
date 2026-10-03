@@ -16,9 +16,11 @@
 
 #include "cc/cuda_solver_support.cuh"
 #include "cc/cuda_state.cuh"
+#include "cc/df_plan.hpp"
 #include "generated_df_ccsd_core_cpu.hpp"
 #include "generated_df_ccsd_core_cuda.cuh"
 #include "generated_df_ccsd_cuda.cuh"
+#include "generated_df_ccsd_hoisted_cuda.cuh"
 #include "generated_rccsd_cpu.hpp"
 #include "tensor/cuda_error.hpp"
 #include "tensor/cuda_runtime.cuh"
@@ -91,7 +93,7 @@ struct Layout {
   std::size_t iteration{}, replay{}, last_t1{}, last_t2{}, vectors{}, errors{};
   std::size_t gram{}, system{}, coefficients{}, r1_partials{}, r2_partials{}, scalars{};
   std::size_t status{}, generated_error{}, arithmetic{}, total{};
-  std::size_t df_bov{}, df_bvv{}, df_arena{}, df_sum{};
+  std::size_t df_bov{}, df_bvv{}, df_arena{}, df_sum{}, df_prepare{};
 };
 
 std::size_t reserve(Layout& layout, std::size_t& cursor, std::size_t bytes) {
@@ -110,6 +112,8 @@ struct Owner {
   Layout layout;
   generated::dfcore::CudaState state;
   generated::df::CudaState df_state;
+  generated::dfhoist::CudaState hoisted_state;
+  DFIterationPlan plan;
   double *df_bov{}, *df_bvv{}, *df_sum{};
   std::size_t naux{};
   double *last_t1{}, *last_t2{}, *vectors{}, *errors{}, *gram{}, *system{}, *coefficients{};
@@ -126,60 +130,69 @@ struct Owner {
         n2(checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir))),
         elements(checked_add(n1, n2)) {
     naux = p.naux;
+    if (naux) plan = df_iteration_plan(p.nocc, p.nvir, naux, true, options.df_auxiliary_reduction);
     const std::array<const std::vector<double>*, 14> host = {
         &p.foo,  &p.fov,  &p.fvv,  &p.ovov, &p.ovvo, &p.oovv,       &p.ovvv,
         &p.ovoo, &p.oooo, &p.vvvv, &p.d1,   &p.d2,   &p.initial_t1, &p.initial_t2};
-    std::size_t cursor = 0;
-    for (std::size_t i = 0; i < host.size(); ++i)
-      layout.inputs[i] = reserve(layout, cursor, checked_mul(host[i]->size(), sizeof(double)));
-    layout.iteration =
-        reserve(layout, cursor,
-                checked_mul(naux ? generated::dfcore::iteration_arena_elements(p.nocc, p.nvir)
-                                 : generated::iteration_arena_elements(p.nocc, p.nvir),
-                            sizeof(double)));
-    layout.replay =
-        reserve(layout, cursor,
-                checked_mul(naux ? generated::dfcore::replay_arena_elements(p.nocc, p.nvir)
-                                 : generated::replay_arena_elements(p.nocc, p.nvir),
-                            sizeof(double)));
-    if (naux) {
-      layout.df_bov = reserve(layout, cursor, checked_mul(p.df_bov.size(), sizeof(double)));
-      layout.df_bvv = reserve(layout, cursor, checked_mul(p.df_bvv.size(), sizeof(double)));
-      layout.df_arena = reserve(
+    auto build_layout = [&]() {
+      layout = {};
+      std::size_t cursor = 0;
+      for (std::size_t i = 0; i < host.size(); ++i)
+        layout.inputs[i] = reserve(layout, cursor, checked_mul(host[i]->size(), sizeof(double)));
+      layout.iteration = reserve(
           layout, cursor,
-          checked_mul(generated::df::virtual_cuda_arena_elements(p.nocc, p.nvir), sizeof(double)));
-      layout.df_sum = reserve(layout, cursor, checked_mul(elements, sizeof(double)));
-    }
-    layout.last_t1 = reserve(layout, cursor, checked_mul(n1, sizeof(double)));
-    layout.last_t2 = reserve(layout, cursor, checked_mul(n2, sizeof(double)));
-    layout.vectors = reserve(layout, cursor,
-                             checked_mul(checked_mul(options.diis_size, elements), sizeof(double)));
-    layout.errors = reserve(layout, cursor,
-                            checked_mul(checked_mul(options.diis_size, elements), sizeof(double)));
-    layout.gram =
-        reserve(layout, cursor,
-                checked_mul(checked_mul(options.diis_size, options.diis_size), sizeof(double)));
-    layout.system = reserve(
-        layout, cursor,
-        checked_mul(checked_mul(options.diis_size + 1, options.diis_size + 1), sizeof(double)));
-    layout.coefficients =
-        reserve(layout, cursor, checked_mul(options.diis_size + 1, sizeof(double)));
-    partial1 = std::min<std::size_t>((n1 + 255) / 256, 65535);
-    partial2 = std::min<std::size_t>((n2 + 255) / 256, 65535);
-    layout.r1_partials = reserve(layout, cursor, checked_mul(partial1, sizeof(double)));
-    layout.r2_partials = reserve(layout, cursor, checked_mul(partial2, sizeof(double)));
-    layout.scalars = reserve(layout, cursor, 2 * sizeof(double));
-    // Pack the generated-tensor error beside DIIS status so separating
-    // generated and DIIS arithmetic state does not increase the aligned arena.
-    layout.status = reserve(layout, cursor, 2 * sizeof(int));
-    layout.generated_error = checked_add(layout.status, sizeof(int));
-    layout.arithmetic = reserve(layout, cursor, sizeof(int));
-    layout.total = align256(cursor);
+          checked_mul(naux ? plan.iteration : generated::iteration_arena_elements(p.nocc, p.nvir),
+                      sizeof(double)));
+      layout.replay =
+          reserve(layout, cursor,
+                  checked_mul(naux ? generated::dfcore::replay_arena_elements(p.nocc, p.nvir)
+                                   : generated::replay_arena_elements(p.nocc, p.nvir),
+                              sizeof(double)));
+      if (naux) {
+        layout.df_bov = reserve(layout, cursor, checked_mul(p.df_bov.size(), sizeof(double)));
+        layout.df_bvv = reserve(layout, cursor, checked_mul(p.df_bvv.size(), sizeof(double)));
+        layout.df_arena = reserve(layout, cursor, checked_mul(plan.auxiliary, sizeof(double)));
+        layout.df_sum = reserve(layout, cursor, checked_mul(plan.accumulation, sizeof(double)));
+        if (plan.hoisted)
+          layout.df_prepare =
+              reserve(layout, cursor, checked_mul(plan.preparation, sizeof(double)));
+      }
+      layout.last_t1 = reserve(layout, cursor, checked_mul(n1, sizeof(double)));
+      layout.last_t2 = reserve(layout, cursor, checked_mul(n2, sizeof(double)));
+      layout.vectors = reserve(
+          layout, cursor, checked_mul(checked_mul(options.diis_size, elements), sizeof(double)));
+      layout.errors = reserve(
+          layout, cursor, checked_mul(checked_mul(options.diis_size, elements), sizeof(double)));
+      layout.gram =
+          reserve(layout, cursor,
+                  checked_mul(checked_mul(options.diis_size, options.diis_size), sizeof(double)));
+      layout.system = reserve(
+          layout, cursor,
+          checked_mul(checked_mul(options.diis_size + 1, options.diis_size + 1), sizeof(double)));
+      layout.coefficients =
+          reserve(layout, cursor, checked_mul(options.diis_size + 1, sizeof(double)));
+      partial1 = std::min<std::size_t>((n1 + 255) / 256, 65535);
+      partial2 = std::min<std::size_t>((n2 + 255) / 256, 65535);
+      layout.r1_partials = reserve(layout, cursor, checked_mul(partial1, sizeof(double)));
+      layout.r2_partials = reserve(layout, cursor, checked_mul(partial2, sizeof(double)));
+      layout.scalars = reserve(layout, cursor, 2 * sizeof(double));
+      // Pack the generated-tensor error beside DIIS status so separating
+      // generated and DIIS arithmetic state does not increase the aligned arena.
+      layout.status = reserve(layout, cursor, 2 * sizeof(int));
+      layout.generated_error = checked_add(layout.status, sizeof(int));
+      layout.arithmetic = reserve(layout, cursor, sizeof(int));
+      layout.total = align256(cursor);
 
-    // Final detached host amplitudes coexist with this resident device arena.
-    const auto combined = checked_add(
-        checked_add(p.reference_retained_bytes, checked_add(problem_host_bytes(p), layout.total)),
-        checked_mul(elements, sizeof(double)));
+      // Final detached host amplitudes coexist with this resident device arena.
+      return checked_add(
+          checked_add(p.reference_retained_bytes, checked_add(problem_host_bytes(p), layout.total)),
+          checked_mul(elements, sizeof(double)));
+    };
+    auto combined = build_layout();
+    if (plan.hoisted && combined > options.max_bytes) {
+      plan = df_iteration_plan(p.nocc, p.nvir, naux, true, false);
+      combined = build_layout();
+    }
     if (combined > options.max_bytes)
       throw std::length_error("RCCSD CUDA resident state exceeds correlation memory budget");
     try {
@@ -223,6 +236,8 @@ struct Owner {
         df_state.stream = stream;
         df_state.error = state.error;
         df_state.response_arena = reinterpret_cast<double*>(base + layout.df_arena);
+        hoisted_state.prepare_arena = reinterpret_cast<double*>(base + layout.df_prepare);
+        hoisted_state.auxiliary_arena = df_state.response_arena;
       }
       last_t1 = reinterpret_cast<double*>(base + layout.last_t1);
       last_t2 = reinterpret_cast<double*>(base + layout.last_t2);
@@ -268,19 +283,69 @@ struct Owner {
       ++diagnostic.df_auxiliary_slices;
       diagnostic.df_virtual_operations += generated::df::virtual_cuda_operation_count;
       diagnostic.df_accumulation_calls += 2;
+      diagnostic.df_contraction_terms = checked_add(
+          diagnostic.df_contraction_terms,
+          generated::dfhoist::fallback_virtual_cuda_contraction_terms(state.o, state.v));
     }
     cuda_check(cudaGetLastError());
   }
 
   generated::DeviceIterationOutputs iteration() {
     if (!naux) return generated::run_iteration_cuda(state);
+    if (plan.hoisted) {
+      cuda_check(cudaMemsetAsync(state.error, 0, sizeof(int), stream));
+      cuda_check(cudaMemsetAsync(df_sum, 0, plan.accumulation * sizeof(double), stream));
+      // Copy borrowed core state; the dedicated preparation arena must survive
+      // every Q action and cannot alias its frequently overwritten scratch.
+      static_cast<generated::dfcore::CudaState&>(hoisted_state) = state;
+      hoisted_state.df_singles_residual = df_sum;
+      hoisted_state.df_D05_vv_ladder = df_sum + n1;
+      hoisted_state.df_Lvv = df_sum + elements;
+      hoisted_state.df_Wvoov = hoisted_state.df_Lvv + state.v * state.v;
+      hoisted_state.df_Wvovo = hoisted_state.df_Wvoov + n2;
+      hoisted_state.df_Xv = hoisted_state.df_Wvovo + n2;
+      hoisted_state.df_tau = generated::dfhoist::run_prepare_cuda(hoisted_state).tau;
+      ++diagnostic.df_preparation_calls;
+      for (std::size_t q = 0; q < naux; ++q) {
+        hoisted_state.bov = df_bov + q * n1;
+        hoisted_state.bvv = df_bvv + q * state.v * state.v;
+        const auto row = generated::dfhoist::run_auxiliary_cuda(hoisted_state);
+        const std::array<const double*, 6> sources{row.singles, row.ladder, row.lvv,
+                                                   row.wvoov,   row.wvovo,  row.xv};
+        const std::array<std::size_t, 6> counts{n1, n2, state.v * state.v, n2, n2, n2};
+        std::size_t offset = 0;
+        for (std::size_t field = 0; field < counts.size(); ++field) {
+          accumulate_df<<<generativeqc_tensor::blocks(
+                              static_cast<generativeqc_tensor::I>(counts[field]), 256),
+                          256, 0, stream>>>(sources[field], counts[field], df_sum + offset,
+                                            state.error);
+          offset += counts[field];
+        }
+        ++diagnostic.df_auxiliary_slices;
+        diagnostic.df_virtual_operations += generated::dfhoist::auxiliary_operation_count;
+        diagnostic.df_accumulation_calls += counts.size();
+      }
+      cuda_check(cudaGetLastError());
+      ++diagnostic.df_hoisted_evaluations;
+      diagnostic.df_contraction_terms = checked_add(
+          diagnostic.df_contraction_terms,
+          checked_add(plan.preparation_terms,
+                      checked_add(checked_mul(naux, plan.auxiliary_terms), plan.core_terms)));
+      return generated::dfhoist::run_iteration_cuda(hoisted_state);
+    }
     virtual_corrections();
+    diagnostic.df_contraction_terms =
+        checked_add(diagnostic.df_contraction_terms,
+                    generated::dfhoist::fallback_core_contraction_terms(state.o, state.v));
     return generated::dfcore::run_iteration_cuda(state);
   }
 
   generated::DeviceReplayOutputs replay() {
     if (!naux) return generated::run_replay_cuda(state);
     virtual_corrections();
+    diagnostic.df_contraction_terms =
+        checked_add(diagnostic.df_contraction_terms,
+                    generated::dfhoist::fallback_replay_contraction_terms(state.o, state.v));
     return generated::dfcore::run_replay_cuda(state);
   }
 

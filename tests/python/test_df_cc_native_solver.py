@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from tools import generate_df_ccsd_core as core
+from tools import generate_df_ccsd_hoisted as hoisted
 from tools import generate_df_ccsd_native as actions
 from tools import generate_rccsd_native as conventional
 from tools.generativeqc_cc.oracle import DeterminantOracle, dense_feeds
@@ -51,6 +52,9 @@ COLUMNS = (
     "q_operations",
     "accumulations",
     "seconds",
+    "hoisted_evaluations",
+    "preparation_calls",
+    "contraction_terms",
 )
 
 
@@ -77,6 +81,9 @@ def solver_probe(
         ("generated_df_ccsd_core_cpu.hpp", core.cpu_header),
         ("generated_df_ccsd_core_cuda.cuh", core.cuda_header),
         ("generated_df_ccsd_core_cuda.cu", core.cuda_source),
+        ("generated_df_ccsd_hoisted_cpu.hpp", hoisted.cpu_header),
+        ("generated_df_ccsd_hoisted_cuda.cuh", hoisted.cuda_header),
+        ("generated_df_ccsd_hoisted_cuda.cu", hoisted.cuda_source),
     ):
         (directory / name).write_text(producer())
     sources = [ROOT / "src/cc/solver.cpp", ROOT / "tests/native/df_cc_solver_probe.cpp"]
@@ -89,6 +96,7 @@ def solver_probe(
                     "generated_rccsd_cuda.cu",
                     "generated_df_ccsd_cuda.cu",
                     "generated_df_ccsd_core_cuda.cu",
+                    "generated_df_ccsd_hoisted_cuda.cu",
                 )
             ],
         ]
@@ -159,10 +167,13 @@ def _stream(
     df: bool = True,
     budget: int = 1 << 30,
     diis: int = 6,
+    hoist: bool = True,
 ) -> bytes:
     o, v = arrays["t1"].shape
     q = len(arrays["bov"]) if df else 0
-    header = np.array([o, v, q, budget, 100, diis, int(cuda)], dtype=np.uint64)
+    header = np.array(
+        [o, v, q, budget, 100, diis, int(cuda) | (0 if hoist else 4)], dtype=np.uint64
+    )
     omitted = ("ovvv", "vvvv") if df else ("bov", "bvv")
     return header.tobytes() + b"".join(
         np.asarray(arrays[name], dtype=np.float64).tobytes()
@@ -183,7 +194,10 @@ def _run(
         timeout=120,
     )
     lines = process.stdout.decode().splitlines()
-    status = dict(zip(COLUMNS, map(float, lines[0].split()), strict=True))
+    status = {
+        key: float(value) if key in ("energy", "r1", "r2", "seconds") else int(value)
+        for key, value in zip(COLUMNS, lines[0].split(), strict=True)
+    }
     values = np.fromstring(lines[1], sep=" ")
     o, v = arrays["t1"].shape
     return status, values[: o * v].reshape(o, v), values[o * v :].reshape(o, o, v, v)
@@ -207,7 +221,11 @@ def test_solver_matches_dense_and_independent_determinants(
     )
     calls = actual["iterations_called"] + actual["replays_called"]
     assert actual["q_calls"] == q * calls
-    assert actual["accumulations"] == 2 * q * calls
+    assert (
+        actual["accumulations"] == 2 * q * calls + 4 * q * actual["hoisted_evaluations"]
+    )
+    assert actual["preparation_calls"] == actual["hoisted_evaluations"]
+    assert actual["hoisted_evaluations"] <= actual["iterations_called"]
     assert actual["q_operations"] > actual["q_calls"]
     assert dense["q_calls"] == dense["q_operations"] == dense["accumulations"] == 0
     if solver_probe[1]:
@@ -223,6 +241,7 @@ def test_exact_memory_admission_and_symmetric_factor_gate(
 ) -> None:
     _, _, arrays = _case()
     actual, _, _ = _run(solver_probe, arrays)
+    fallback, _, _ = _run(solver_probe, arrays, hoist=False)
     conventional_admission = bytearray(_stream(arrays, solver_probe[1]))
     conventional_admission[6 * 8 : 7 * 8] = np.uint64(2).tobytes()
     process = subprocess.run(
@@ -234,9 +253,16 @@ def test_exact_memory_admission_and_symmetric_factor_gate(
     )
     assert process.returncode and b"factorized execution owner" in process.stderr
     _run(solver_probe, arrays, budget=int(actual["capacity"]))
+    bounded, _, _ = _run(solver_probe, arrays, budget=int(fallback["capacity"]))
+    assert actual["capacity"] > fallback["capacity"]
+    assert actual["hoisted_evaluations"] > 0 and bounded["hoisted_evaluations"] == 0
     process = subprocess.run(
         [str(solver_probe[0])],
-        input=_stream(arrays, solver_probe[1], budget=int(actual["capacity"]) - 1),
+        input=_stream(
+            arrays,
+            solver_probe[1],
+            budget=int(min(actual["capacity"], fallback["capacity"])) - 1,
+        ),
         check=False,
         capture_output=True,
         timeout=30,
@@ -251,6 +277,41 @@ def test_exact_memory_admission_and_symmetric_factor_gate(
         timeout=30,
     )
     assert process.returncode and b"symmetric" in process.stderr
+
+
+@pytest.mark.parametrize("o,v,q", [(2, 3, 4), (4, 1, 1), (2, 6, 1)])
+def test_hoisted_solver_matches_forced_bounded_fallback(
+    solver_probe: tuple[Path, bool], o: int, v: int, q: int
+) -> None:
+    """Charge complete solves, including the unchanged expanded replay.
+
+    Low-Q and occupied-rich cases protect scheduling outside the large
+    virtual-rich workload, without interpreting work counts as wall time.
+    """
+    _, _, arrays = _case(o, v, q)
+    fast, t1, t2 = _run(solver_probe, arrays)
+    old, old_t1, old_t2 = _run(solver_probe, arrays, hoist=False)
+    assert fast["status"] == old["status"] == 0
+    assert fast["replays_called"] == old["replays_called"] == 1
+    assert fast["hoisted_evaluations"] == fast["iterations_called"] > 0
+    assert old["hoisted_evaluations"] == old["preparation_calls"] == 0
+    assert 0 < fast["contraction_terms"] < old["contraction_terms"]
+    np.testing.assert_allclose(fast["energy"], old["energy"], atol=2e-12, rtol=0)
+    np.testing.assert_allclose(t1, old_t1, atol=2e-11, rtol=0)
+    np.testing.assert_allclose(t2, old_t2, atol=2e-11, rtol=0)
+
+
+@pytest.mark.parametrize("field", ["t1", "oooo"])
+def test_prepare_and_core_overflow_remain_sticky(
+    solver_probe: tuple[Path, bool], field: str
+) -> None:
+    """Finite inputs overflow in prepare/core, with ordinary later Q slices."""
+    _, _, arrays = _case()
+    arrays[field].fill(1e200 if field == "t1" else 1e308)
+    if field == "oooo":
+        arrays["t2"].fill(8.0)
+    status, _, _ = _run(solver_probe, arrays)
+    assert status["status"] == 2
 
 
 def test_early_auxiliary_overflow_survives_later_slices(

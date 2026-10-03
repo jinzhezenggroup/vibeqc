@@ -114,7 +114,25 @@ def prepare(state: Path, reference: dict, target: Path, max_bytes: int) -> dict:
 def qualify(state: Path, reference: dict, result: Path) -> dict:
     """Compare complete amplitudes and energy; failed convergence cannot pass."""
     with result.open() as stream:
-        status = dict(zip(COLUMNS, map(float, stream.readline().split()), strict=True))
+        fields = stream.readline().split()
+        columns = (
+            COLUMNS
+            if len(fields) == len(COLUMNS)
+            else (
+                *COLUMNS,
+                "hoisted_evaluations",
+                "preparation_calls",
+                "contraction_terms",
+            )
+        )
+        # Retain compatibility with frozen baseline binaries; integer work
+        # counters must not lose precision through a floating-point parser.
+        status = {
+            key: float(value)
+            if key in ("energy", "r1", "r2", "seconds")
+            else int(value)
+            for key, value in zip(columns, fields, strict=True)
+        }
         amplitudes = np.fromstring(stream.readline(), sep=" ")
         reason = stream.readline().strip()
         if stream.read().strip():
@@ -138,9 +156,12 @@ def qualify(state: Path, reference: dict, result: Path) -> dict:
     if not all(errors[key] <= gates[key] for key in errors):
         raise ValueError(f"independent oracle gates failed: {errors}")
     evaluations = status["iterations_called"] + status["replays_called"]
+    hoisted = status.get("hoisted_evaluations", 0)
     if (
         status["q_calls"] != q * evaluations
-        or status["accumulations"] != 2 * q * evaluations
+        or status["accumulations"] != 2 * q * evaluations + 4 * q * hoisted
+        or status.get("preparation_calls", 0) != hoisted
+        or not 0 <= hoisted <= status["iterations_called"]
     ):
         raise ValueError("incomplete auxiliary work accounting")
     return {

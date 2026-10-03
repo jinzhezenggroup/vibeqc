@@ -1,11 +1,13 @@
 #include "cc/solver.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 
+#include "cc/df_plan.hpp"
 #include "generated_df_ccsd_core_cpu.hpp"
 #include "generated_rccsd_cpu.hpp"
 #include "solver/diis.hpp"
@@ -122,33 +124,43 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
   const auto n1 = checked_mul(p.nocc, p.nvir);
   const auto n2 = checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir));
   const auto elements = checked_add(n1, n2);
-  const auto iteration_elements = p.naux
-                                      ? generated::dfcore::iteration_arena_elements(p.nocc, p.nvir)
-                                      : generated::iteration_arena_elements(p.nocc, p.nvir);
+  auto plan = p.naux
+                  ? df_iteration_plan(p.nocc, p.nvir, p.naux, false, options.df_auxiliary_reduction)
+                  : DFIterationPlan{};
   const auto replay_elements = p.naux ? generated::dfcore::replay_arena_elements(p.nocc, p.nvir)
                                       : generated::replay_arena_elements(p.nocc, p.nvir);
-  const auto virtual_elements =
-      p.naux ? generated::df::virtual_cpu_arena_elements(p.nocc, p.nvir) : 0;
-  std::size_t capacity = checked_add(p.reference_retained_bytes, problem_host_bytes(p));
-  capacity = checked_add(capacity, bytes(iteration_elements));
-  capacity = checked_add(capacity, bytes(replay_elements));
-  capacity = checked_add(capacity, bytes(virtual_elements));
-  if (p.naux) capacity = checked_add(capacity, bytes(elements));
-  // Current, trial, error and a copied history vector coexist before trimming.
-  // DIIS additionally retains Gram/original augmented arrays while solve_linear
-  // owns its by-value matrix/RHS copies. These are numeric storage, not overhead.
-  capacity = checked_add(capacity, bytes(checked_mul(4 + 2 * options.diis_size, elements)));
-  if (options.diis_size) {
-    const std::size_t h = options.diis_size, n = h + 1;
-    const auto scratch = checked_add(
-        checked_mul(h, h), checked_add(checked_mul(2, checked_mul(n, n)), checked_mul(2, n)));
-    capacity = checked_add(capacity, bytes(scratch));
-  }
+  auto capacity_for = [&](const DFIterationPlan& choice) {
+    std::size_t capacity = checked_add(p.reference_retained_bytes, problem_host_bytes(p));
+    capacity = checked_add(
+        capacity,
+        bytes(p.naux ? choice.iteration : generated::iteration_arena_elements(p.nocc, p.nvir)));
+    capacity = checked_add(capacity, bytes(replay_elements));
+    capacity = checked_add(capacity, bytes(choice.auxiliary));
+    capacity = checked_add(capacity, bytes(choice.preparation));
+    capacity = checked_add(capacity, bytes(choice.accumulation));
+    // Current, trial, error and a copied history vector coexist before trimming.
+    // DIIS additionally retains Gram/original augmented arrays while solve_linear
+    // owns its by-value matrix/RHS copies. These are numeric storage, not overhead.
+    capacity = checked_add(capacity, bytes(checked_mul(4 + 2 * options.diis_size, elements)));
+    if (options.diis_size) {
+      const std::size_t h = options.diis_size, n = h + 1;
+      const auto scratch = checked_add(
+          checked_mul(h, h), checked_add(checked_mul(2, checked_mul(n, n)), checked_mul(2, n)));
+      capacity = checked_add(capacity, bytes(scratch));
+    }
+    return capacity;
+  };
+  if (plan.hoisted && capacity_for(plan) > options.max_bytes)
+    plan = df_iteration_plan(p.nocc, p.nvir, p.naux, false, false);
+  const auto capacity = capacity_for(plan);
   if (capacity > options.max_bytes)
     throw std::length_error("RCCSD CPU solve exceeds correlation memory budget");
 
-  std::vector<double> iteration_arena(iteration_elements), replay_arena(replay_elements);
-  std::vector<double> virtual_arena(virtual_elements), virtual_sum(p.naux ? elements : 0);
+  std::vector<double> iteration_arena(p.naux ? plan.iteration
+                                             : generated::iteration_arena_elements(p.nocc, p.nvir)),
+      replay_arena(replay_elements);
+  std::vector<double> virtual_arena(plan.auxiliary), virtual_sum(plan.accumulation),
+      prepare_arena(plan.preparation);
   std::vector<double> current;
   current.reserve(elements);
   current.insert(current.end(), p.initial_t1.begin(), p.initial_t1.end());
@@ -177,6 +189,9 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
       ++result.diagnostic.df_auxiliary_slices;
       result.diagnostic.df_virtual_operations += generated::df::virtual_cpu_operation_count;
       result.diagnostic.df_accumulation_calls += 2;
+      result.diagnostic.df_contraction_terms =
+          checked_add(result.diagnostic.df_contraction_terms,
+                      generated::dfhoist::fallback_virtual_cpu_contraction_terms(p.nocc, p.nvir));
     }
     return generated::dfcore::Inputs{in.foo,
                                      in.fov,
@@ -197,9 +212,68 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
     if (!p.naux)
       return generated::run_iteration_cpu(p.nocc, p.nvir, in, iteration_arena.data(),
                                           iteration_arena.size());
+    if (plan.hoisted) {
+      generated::dfhoist::Inputs fast{};
+      // The first two sums preserve the old singles/ladder layout so expanded
+      // convergence replay can reuse the same allocated accumulator.
+      static_cast<generated::dfcore::Inputs&>(fast) = {in.foo,
+                                                       in.fov,
+                                                       in.fvv,
+                                                       in.ovov,
+                                                       in.ovvo,
+                                                       in.oovv,
+                                                       in.ovoo,
+                                                       in.oooo,
+                                                       in.d1,
+                                                       in.d2,
+                                                       in.t1,
+                                                       in.t2,
+                                                       virtual_sum.data(),
+                                                       virtual_sum.data() + n1};
+      fast.df_singles_residual = virtual_sum.data();
+      fast.df_D05_vv_ladder = virtual_sum.data() + n1;
+      fast.df_Lvv = virtual_sum.data() + elements;
+      fast.df_Wvoov = fast.df_Lvv + p.nvir * p.nvir;
+      fast.df_Wvovo = fast.df_Wvoov + n2;
+      fast.df_Xv = fast.df_Wvovo + n2;
+      std::fill(virtual_sum.begin(), virtual_sum.end(), 0.0);
+      fast.df_tau = generated::dfhoist::run_prepare_cpu(p.nocc, p.nvir, fast, prepare_arena.data(),
+                                                        prepare_arena.size())
+                        .tau;
+      ++result.diagnostic.df_preparation_calls;
+      for (std::size_t q = 0; q < p.naux; ++q) {
+        fast.bov = p.df_bov.data() + q * n1;
+        fast.bvv = p.df_bvv.data() + q * p.nvir * p.nvir;
+        const auto row = generated::dfhoist::run_auxiliary_cpu(
+            p.nocc, p.nvir, fast, virtual_arena.data(), virtual_arena.size());
+        const std::array<const double*, 6> sources{row.singles, row.ladder, row.lvv,
+                                                   row.wvoov,   row.wvovo,  row.xv};
+        const std::array<std::size_t, 6> counts{n1, n2, p.nvir * p.nvir, n2, n2, n2};
+        std::size_t offset = 0;
+        for (std::size_t field = 0; field < counts.size(); ++field) {
+          for (std::size_t k = 0; k < counts[field]; ++k)
+            virtual_sum[offset + k] += sources[field][k];
+          offset += counts[field];
+        }
+        ++result.diagnostic.df_auxiliary_slices;
+        result.diagnostic.df_virtual_operations += generated::dfhoist::auxiliary_operation_count;
+        result.diagnostic.df_accumulation_calls += counts.size();
+      }
+      ++result.diagnostic.df_hoisted_evaluations;
+      result.diagnostic.df_contraction_terms = checked_add(
+          result.diagnostic.df_contraction_terms,
+          checked_add(plan.preparation_terms,
+                      checked_add(checked_mul(p.naux, plan.auxiliary_terms), plan.core_terms)));
+      const auto out = generated::dfhoist::run_iteration_cpu(
+          p.nocc, p.nvir, fast, iteration_arena.data(), iteration_arena.size());
+      return {out.energy, out.r1, out.r2, out.next_t1, out.next_t2};
+    }
     const auto core = df_inputs(in);
     const auto out = generated::dfcore::run_iteration_cpu(
         p.nocc, p.nvir, core, iteration_arena.data(), iteration_arena.size());
+    result.diagnostic.df_contraction_terms =
+        checked_add(result.diagnostic.df_contraction_terms,
+                    generated::dfhoist::fallback_core_contraction_terms(p.nocc, p.nvir));
     return {out.energy, out.r1, out.r2, out.next_t1, out.next_t2};
   };
   auto run_replay = [&](const generated::Inputs& in) -> generated::ReplayOutputs {
@@ -209,6 +283,9 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
     const auto core = df_inputs(in);
     const auto out = generated::dfcore::run_replay_cpu(p.nocc, p.nvir, core, replay_arena.data(),
                                                        replay_arena.size());
+    result.diagnostic.df_contraction_terms =
+        checked_add(result.diagnostic.df_contraction_terms,
+                    generated::dfhoist::fallback_replay_contraction_terms(p.nocc, p.nvir));
     return {out.energy, out.r1, out.r2};
   };
 

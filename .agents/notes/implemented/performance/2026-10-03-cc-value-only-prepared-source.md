@@ -49,7 +49,7 @@ CUDA Fock provider suite (including the exact source allowance), and full 7-AO
 force memcheck with zero errors. This source fix does not expand the public
 12-AO force qualification boundary.
 
-The [retained complete-endpoint evidence](../../../../benchmarks/results/cc-value-source-20261003/summary.json)
+The [retained complete-endpoint evidence](../../../../benchmarks/results/cc-value-source-20261003/summary.json.gz)
 compares all cold, twice-warm and changed-geometry outputs with matched PySCF
 2.14.0 references. Maximum errors are 1.5e-12 Eh for total energy, 1.5e-14 Eh
 for triples and 1.3e-8 Eh/bohr for forces. Semantic CC work counters are unchanged.

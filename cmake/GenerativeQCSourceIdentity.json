@@ -69,6 +69,7 @@
     "tools/generate_rccsd_native.py",
     "tools/generate_df_ccsd_native.py",
     "tools/generate_df_ccsd_core.py",
+    "tools/generate_df_ccsd_hoisted.py",
     "tools/generate_rccsdt_native.py",
     "tools/generate_xc_cpu.py",
     "tools/generate_xc_gradient_cuda.py",

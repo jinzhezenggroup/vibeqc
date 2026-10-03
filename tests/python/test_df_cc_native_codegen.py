@@ -36,6 +36,10 @@ from tools.generate_df_ccsd_native import cpu_header, cuda_header, cuda_source
 assert "run_virtual_cpu" in cpu_header()
 assert "run_factor_vjp_cuda" in cuda_header()
 assert "run_amplitude_vjp_cuda" in cuda_source()
+from tools.generate_df_ccsd_hoisted import cpu_header, cuda_header, cuda_source
+assert "run_prepare_cpu" in cpu_header()
+assert "run_auxiliary_cuda" in cuda_header()
+assert "run_iteration_cuda" in cuda_source()
 """
     subprocess.run(
         [sys.executable, "-I", "-c", script, str(ROOT)],

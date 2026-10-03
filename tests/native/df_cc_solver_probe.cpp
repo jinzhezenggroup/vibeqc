@@ -21,6 +21,7 @@ int main() {
     options.max_bytes = header[3];
     options.max_iterations = header[4];
     options.diis_size = header[5];
+    options.df_auxiliary_reduction = !(header[6] & 4);
     options.energy_tolerance = 1e-12;
     options.residual_tolerance = 1e-10;
     const auto o = p.nocc, v = p.nvir;
@@ -53,8 +54,8 @@ int main() {
       generativeqc::cc::validate_problem(p);
       throw std::runtime_error("conventional admission accepted DF");
     }
-    const auto result = header[6] ? generativeqc::cc::solve_cuda(p, options, 0)
-                                  : generativeqc::cc::solve_cpu(p, options);
+    const auto result = (header[6] & 1) ? generativeqc::cc::solve_cuda(p, options, 0)
+                                        : generativeqc::cc::solve_cpu(p, options);
     const auto& d = result.diagnostic;
     std::cout << std::setprecision(17) << static_cast<int>(result.status) << ' '
               << result.correlation_energy << ' ' << d.iterations << ' ' << d.replay_r1_max << ' '
@@ -63,7 +64,8 @@ int main() {
               << d.amplitude_d2h_bytes << ' ' << d.iteration_graph_calls << ' '
               << d.replay_graph_calls << ' ' << d.df_auxiliary_slices << ' '
               << d.df_virtual_operations << ' ' << d.df_accumulation_calls << ' '
-              << d.tensor_seconds << '\n';
+              << d.tensor_seconds << ' ' << d.df_hoisted_evaluations << ' '
+              << d.df_preparation_calls << ' ' << d.df_contraction_terms << '\n';
     for (double x : result.t1) std::cout << x << ' ';
     for (double x : result.t2) std::cout << x << ' ';
     std::cout << '\n' << result.reason << '\n';

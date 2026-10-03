@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from _cc_owner_test_support import compile_owner
+from _cc_owner_test_support import compile_owner, write_df_cpu_headers
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,6 +36,7 @@ def test_cuda_owner_unwinds_every_setup_failure(tmp_path: Path) -> None:
             "struct DeviceIterationOutputs"
         )
     ]
+    write_df_cpu_headers(tmp_path)
     cpp = tmp_path / "owner.cpp"
     cpp.write_text(PREFIX + state + GENERATED + helpers + owner + "};\n" + MAIN)
     exe = tmp_path / "owner"
@@ -48,6 +49,8 @@ def test_cuda_owner_unwinds_every_setup_failure(tmp_path: Path) -> None:
 
 PREFIX = r"""
 #include "cc/solver.hpp"
+#include "cc/df_plan.hpp"
+#include "generated_rccsd_cpu.hpp"
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -88,18 +91,10 @@ void cuda_check(int code) { if (code) throw std::runtime_error("injected CUDA fa
 namespace generativeqc::cc { namespace generated {
 """
 GENERATED = r"""
-std::size_t checked_add(std::size_t a, std::size_t b) {
-  if (b > std::numeric_limits<std::size_t>::max() - a) throw std::length_error("overflow");
-  return a + b;
-}
-std::size_t iteration_arena_elements(std::size_t, std::size_t) { return 16; }
-std::size_t replay_arena_elements(std::size_t, std::size_t) { return 16; }
 namespace dfcore {
 struct CudaState : generated::CudaState {
   const double *df_virtual_singles{}, *df_virtual_doubles{};
 };
-using generated::iteration_arena_elements;
-using generated::replay_arena_elements;
 }
 namespace df {
 struct CudaState {
@@ -108,7 +103,12 @@ struct CudaState {
   int* error{};
   double* response_arena{};
 };
-std::size_t virtual_cuda_arena_elements(std::size_t, std::size_t) { return 16; }
+
+}
+namespace dfhoist {
+struct CudaState : dfcore::CudaState {
+  double *prepare_arena{}, *auxiliary_arena{};
+};
 }
 }
 std::size_t problem_host_bytes(const Problem&) { return 128; }

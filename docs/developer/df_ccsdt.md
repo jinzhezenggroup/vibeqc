@@ -161,15 +161,31 @@ Its retained states are validation artifacts, not production inputs.
 virtual representation. `ovvv` and `vvvv` must be empty; retained smaller
 blocks must describe the same fitted Hamiltonian. The native CPU/CUDA solver
 reuses the conventional DIIS and physical convergence policy. It accumulates
-all Q slices for every current/trial/replay amplitude state, then executes
-the generated retained core from `tools/generate_df_ccsd_core.py`.
+all Q slices for every current/trial/replay amplitude state. The compiler derives
+the primary schedule in `cc/df_hoist.py` from the shared RCCSD inventory: prepare
+amplitude-only tau once, accumulate the virtual contributions to Lvv, Wvoov,
+Wvovo and Xv, then contract the complete sums with T2. The virtual ladder remains
+inside the Q loop. `tools/generate_df_ccsd_hoisted.py` emits this schedule; no
+materialized tensor has more than two virtual axes. This reduces repeated
+contraction work without changing the formal leading CCSD scaling.
+
+The planner charges preparation, every Q slice and the retained core. It selects
+the reduced schedule only when its scalar contraction-summand count is smaller
+and its complete owner storage fits the budget. Otherwise it uses the original
+bounded schedule. `SolverOptions::df_auxiliary_reduction=false` forces that
+fallback for qualification. Convergence always uses the original expanded
+virtual actions and `tools/generate_df_ccsd_core.py` replay, independently of the
+primary schedule.
 
 Complete solver admission includes resident factors, accumulated corrections,
-both core arenas, one-slice scratch, DIIS and retained/final host arrays. CUDA
+both core arenas, one-slice scratch, preparation and accumulated intermediates,
+DIIS and retained/final host arrays. CUDA
 uploads factors once; borrowed action outputs are consumed on the same stream
 before scratch reuse. A sticky arithmetic flag spans all Q slices and the
-core. Diagnostics report auxiliary slices, virtual operations and accumulation
-calls across the entire solve, including convergence replay.
+core. Diagnostics report auxiliary slices, virtual operations, accumulation
+calls, prepared/hoisted evaluations and exact scalar contraction summands across
+the entire solve, including convergence replay. Summand counts exclude
+elementwise operations and are not hardware FLOPs or timing predictions.
 
 Conventional admission rejects the DF representation unless an owner explicitly
 opts in. Existing Lambda, triples and force consumers remain conventional.

@@ -1,0 +1,177 @@
+{
+  "attachments": [
+    {
+      "kind": "numerical-qualification",
+      "path": "qualification.json.gz",
+      "sha256": "39b4eabb181677d35462ba430c8f7e280594618164e94bc28f903460786b7aba"
+    }
+  ],
+  "backend_selected": "cuda",
+  "block_errors": {
+    "benzene264_energy": {
+      "atol": 3e-09,
+      "max_absolute_error": 4.381384144380718e-12,
+      "max_scaled_error": 0.0014604613814602392,
+      "passed": true,
+      "rms_error": 4.381384144380718e-12,
+      "rtol": 0,
+      "shape": [
+        1
+      ]
+    },
+    "cpu_oracle_energy": {
+      "atol": 3e-10,
+      "max_absolute_error": 3.690242555975942e-13,
+      "max_scaled_error": 0.0012300808519919808,
+      "passed": true,
+      "rms_error": 2.0361413518657078e-13,
+      "rtol": 0,
+      "shape": [
+        6
+      ]
+    },
+    "cpu_t1": {
+      "atol": 2e-11,
+      "max_absolute_error": 2.368168595251463e-16,
+      "max_scaled_error": 1.1840842976257315e-05,
+      "passed": true,
+      "rms_error": 6.837243607208854e-17,
+      "rtol": 0,
+      "shape": [
+        44
+      ]
+    },
+    "cpu_t2": {
+      "atol": 2e-11,
+      "max_absolute_error": 6.418476861114186e-17,
+      "max_scaled_error": 3.209238430557093e-06,
+      "passed": true,
+      "rms_error": 8.008222115725924e-18,
+      "rtol": 0,
+      "shape": [
+        574
+      ]
+    },
+    "cuda_oracle_energy": {
+      "atol": 3e-10,
+      "max_absolute_error": 3.6903813338540203e-13,
+      "max_scaled_error": 0.0012301271112846734,
+      "passed": true,
+      "rms_error": 2.0362153571552724e-13,
+      "rtol": 0,
+      "shape": [
+        6
+      ]
+    },
+    "cuda_t1": {
+      "atol": 2e-11,
+      "max_absolute_error": 2.389649350793832e-16,
+      "max_scaled_error": 1.194824675396916e-05,
+      "passed": true,
+      "rms_error": 6.878850054660765e-17,
+      "rtol": 0,
+      "shape": [
+        44
+      ]
+    },
+    "cuda_t2": {
+      "atol": 2e-11,
+      "max_absolute_error": 5.984795992119984e-17,
+      "max_scaled_error": 2.9923979960599922e-06,
+      "passed": true,
+      "rms_error": 8.62809986915383e-18,
+      "rtol": 0,
+      "shape": [
+        574
+      ]
+    },
+    "ethane230_energy": {
+      "atol": 3e-09,
+      "max_absolute_error": 1.4472312237501228e-12,
+      "max_scaled_error": 0.0004824104079167076,
+      "passed": true,
+      "rms_error": 1.4472312237501228e-12,
+      "rtol": 0,
+      "shape": [
+        1
+      ]
+    }
+  },
+  "compilation": {
+    "reason": "not measured",
+    "seconds": null
+  },
+  "device": {
+    "gpu": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+    "host": "node3"
+  },
+  "hardware": {
+    "reason": null,
+    "slurm_job_id": "12122",
+    "status": "pass"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "4e47fb7f677541fe04ecf9be5b2db30f4d48ff2a89031bbca00475cab7ad65ff",
+    "ir": "4ac6a50d8b7e83c827660156054d267fe925f9b8e42e40d41fded669cc70270e",
+    "schedule": "8ad6308d2d8cc7486b21879fd2501d39e98e8e5d66fc36dfa419b734dc45d766",
+    "source": "ef35462b3a7275c56c46305028b92661d2c4fe6204b6e02fb29a94f9136a692e"
+  },
+  "inputs_hash": "64759237c4143fed3541eeaedecce3e79ca25ec1c6111955792a12776c6aac8c",
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "Exact complete numeric admission checked, including preparation, sums and old replay scratch; explicit bounded fallback exercised. Admission is not measured physical device peak."
+  },
+  "performance": {
+    "reason": "Solver-only full-run timing observations and exact work counts retained; no complete molecular endpoint promotion.",
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "5eb2718a87f61c3c2701362ef54a9e9fec2fcb39",
+  "schema": "generativeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "independent_replay": "original expanded virtual and core",
+    "precision": "FP64",
+    "tau_lifetime": "one amplitude state",
+    "tight_budget": "original bounded schedule"
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": "Complete supplied-Hamiltonian CCSD solves pass; native molecular DF source, triples and forces remain absent.",
+      "status": "not-run"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "No public DF endpoint registration or precision promotion.",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "DF RCCSD complete auxiliary reduction before T2 contraction",
+  "tier": "gpu-numerical",
+  "timings": [],
+  "toolchain": {
+    "architecture": "sm_120",
+    "ccache": true,
+    "cuda": "12.9.86",
+    "optimization": "-O2"
+  }
+}
