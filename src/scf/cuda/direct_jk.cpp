@@ -301,9 +301,12 @@ generativeqc_status create_cuda_direct_jk_plan(
       }
     }
     HostBatch host;
+    // This provider uploads AO/shell data and constructs its own generated or
+    // bounded shell schedules. Building Direct-HF's unused PSSS catalog here
+    // adds quartic setup work; skipping it must retain the direct AO transform.
     direct_jk_require(
         pack_host_batch(systems, std::vector<const std::vector<double>*>(systems.size()), host,
-                        true, false, true),
+                        true, false, true, ResidentPsssPolicy::Skip),
         "direct J/K basis cannot be packed");
     const std::size_t matrix = direct_jk_product(host.nbf, host.nbf);
     (void)direct_jk_product(matrix, matrix);

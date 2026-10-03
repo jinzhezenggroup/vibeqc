@@ -54,12 +54,19 @@ struct HostBatch {
 /** Count public Cartesian primitive references with overflow-checked topology arithmetic. */
 std::size_t checked_expanded_primitive_references(const std::vector<core::System>& systems);
 
+/** Direct J/K's generated/bounded shell owners do not consume the legacy
+ * Direct-HF resident-PSSS task table. Keep this independent of matrix_direct:
+ * those owners still require the spherical-to-Cartesian transform. */
+enum class ResidentPsssPolicy { Build, Skip };
+
 /** Pack topology and warm densities. Matrix-only exporters omit quartet-only
- * transforms and resident task tables; public AO expansion remains intact. */
+ * transforms and resident tasks; public AO expansion remains intact. The
+ * default preserves Direct-HF's resident scheduling metadata. */
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
                      HostBatch& host, bool unrestricted = false, bool matrix_direct = false,
-                     bool require_direct_transform = false);
+                     bool require_direct_transform = false,
+                     ResidentPsssPolicy resident_psss = ResidentPsssPolicy::Build);
 
 /** Compare immutable topology; coordinates and warm state are checked separately by replay. */
 bool same_topology(const HostBatch& first, const HostBatch& second);
