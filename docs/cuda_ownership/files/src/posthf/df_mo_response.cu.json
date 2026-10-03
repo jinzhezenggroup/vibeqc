@@ -1,0 +1,7 @@
+{
+  "path": "src/posthf/df_mo_response.cu",
+  "reason": "Owns bounded DF MO-source response scratch, immutable source-row callbacks, same-stream BLAS admission, generic finite audits and synchronous completion. The scientific reverse traversal is generated from shared TensorIR AD.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

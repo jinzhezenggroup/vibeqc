@@ -1,0 +1,7 @@
+{
+  "path": "src/posthf/df_mo_response.hpp",
+  "reason": "Declares borrowed device inputs, bounded source/cotangent callbacks, diagnostics and stream/lifetime contracts for the compiler-owned DF MO-source reverse action.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
