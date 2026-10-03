@@ -308,11 +308,50 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile_rang
       direct_force_unique_center_atoms(center_atoms, unique_center_atoms);
   if (unique_center_count <= 1U) return;
 
+  // Orders 4--6 share the compiler's all-center recurrence with one LR
+  // moment ladder per primitive/AO quartet, instead of repeating Dual3 for
+  // each unique atom. Short range and other orders keep their current owner.
+  double explicit_unique_gradient[4][3]{};
+  bool shared_long_range = false;
+  if constexpr (AngularOrder >= 4U && AngularOrder <= 6U &&
+                (PackagedShellClass < 0 ||
+                 PackagedRange == generativeqc::integrals::CoulombRange::Long)) {
+    if (range == generativeqc::integrals::CoulombRange::Long) {
+      CartesianQuartetGradient gradient{};
+      if constexpr (AngularOrder == 4U) {
+        gradient = contracted_eri_cartesian_source_order4_gradient<true>(
+            batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
+            static_cast<std::int32_t>(k), static_cast<std::int32_t>(l), omega);
+      } else if constexpr (AngularOrder == 5U) {
+        gradient = contracted_eri_cartesian_source_order5_gradient<true>(
+            batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
+            static_cast<std::int32_t>(k), static_cast<std::int32_t>(l), omega);
+      } else {
+        gradient = contracted_eri_cartesian_source_order6_gradient<true>(
+            batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
+            static_cast<std::int32_t>(k), static_cast<std::int32_t>(l), omega);
+      }
+      // The generated consumer restores raw shell order. Combine repeated
+      // atoms before restoring the last unique atom by translation invariance.
+      for (unsigned shell_center = 0; shell_center < 4; ++shell_center) {
+        unsigned atom = 0;
+        while (unique_center_atoms[atom] != center_atoms[shell_center]) ++atom;
+        for (unsigned axis = 0; axis < 3; ++axis)
+          explicit_unique_gradient[atom][axis] += gradient.center[shell_center][axis];
+      }
+      shared_long_range = true;
+    }
+  }
+
   double derivative_sum[3]{};
   for (unsigned center = 0; center + 1U < unique_center_count; ++center) {
     const std::int64_t coordinate = static_cast<std::int64_t>(unique_center_atoms[center]) * 3;
     Dual3 derivative{};
-    if constexpr (PackagedShellClass >= 0) {
+    if (shared_long_range) {
+      derivative.derivative_x = explicit_unique_gradient[center][0];
+      derivative.derivative_y = explicit_unique_gradient[center][1];
+      derivative.derivative_z = explicit_unique_gradient[center][2];
+    } else if constexpr (PackagedShellClass >= 0) {
       constexpr double packaged_omega = static_cast<double>(PackagedOmegaMilli) / 1000.0;
       derivative =
           contracted_eri_cartesian_source_shell_class<static_cast<unsigned>(PackagedShellClass),

@@ -1747,74 +1747,80 @@ void range_exchange_derivatives() {
   }
 }
 
-/** Four-center CPU displaced values qualify weighted LR center accumulation.
- * A d/p/s/s fixture covers all low-order s/p/d classes plus the higher-order
- * fallback. Its second geometry binds two different shells to the same atom;
- * every force coordinate is checked with both RKS and UKS density weights.
+/** Four-center CPU displaced values qualify bounded LR accumulation.
+ * d/p/s/s covers weighted low orders; d/p/p/s, d/d/p/s and d/d/p/p bind
+ * distinct centers at total orders 4, 5 and 6. Repeated-center geometries
+ * bind different shells to one atom. Check every coordinate in both spins.
  */
 void shell_range_four_center_derivatives() {
   constexpr double omega = 0.3, coefficient = -0.37, step = 1e-4;
-  for (const bool repeated_center : {false, true}) {
-    generativeqc::core::System system;
-    system.atoms = {
-        {1, {0.1, -0.2, -0.8}}, {1, {0.3, 0.1, 0.7}}, {1, {-0.5, 0.6, 0.2}}, {1, {0.8, -0.4, 0.3}}};
-    system.shells = {{0, 2, {{0.8, 1.0}}},
-                     {1, 1, {{0.6, 1.0}}},
-                     {2, 0, {{0.7, 1.0}}},
-                     {repeated_center ? 1 : 3, 0, {{0.9, 1.0}}}};
-    system.electron_count = 4;
-    system.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
-    std::string detail;
-    require(generativeqc::molecule::validate_and_normalize(system, detail) ==
-                GENERATIVEQC_STATUS_SUCCESS,
-            detail.c_str());
-    const auto n = generativeqc::molecule::ao_count(system), matrix = n * n;
-    std::vector<double> a(matrix), b(matrix);
-    for (std::size_t i = 0; i < n; ++i)
-      for (std::size_t j = 0; j < n; ++j) {
-        a[i * n + j] = std::cos(0.3 * (i + j)) / n;
-        b[i * n + j] = std::sin(0.4 * (i + j)) / (2 * n);
-      }
-    CudaDirectJkPlan* raw{};
-    CudaDirectJkDiagnostic diagnostic;
-    require(create_cuda_direct_jk_plan(0, {system}, 1, 0.0, 64U << 20, &raw, diagnostic, detail) ==
-                GENERATIVEQC_STATUS_SUCCESS,
-            detail.c_str());
-    std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
-        raw, &destroy_cuda_direct_jk_plan);
-    DeviceMatrix device_a(a), device_b(b);
-    std::array<std::vector<double>, 2> actual;
-    for (unsigned spin = 0; spin < 2; ++spin)
-      require(execute_cuda_direct_shell_rsh_energy_derivatives_device(
-                  plan.get(), spin ? FockSpin::Unrestricted : FockSpin::Restricted, 0.0, 0.0,
-                  coefficient, omega, device_a.pointer, spin ? device_b.pointer : nullptr, matrix,
-                  actual[spin], detail) == GENERATIVEQC_STATUS_SUCCESS,
+  for (const auto angular :
+       {std::array<unsigned, 4>{2, 1, 0, 0}, std::array<unsigned, 4>{2, 1, 1, 0},
+        std::array<unsigned, 4>{2, 2, 1, 0}, std::array<unsigned, 4>{2, 2, 1, 1}}) {
+    for (const bool repeated_center : {false, true}) {
+      generativeqc::core::System system;
+      system.atoms = {{1, {0.1, -0.2, -0.8}},
+                      {1, {0.3, 0.1, 0.7}},
+                      {1, {-0.5, 0.6, 0.2}},
+                      {1, {0.8, -0.4, 0.3}}};
+      system.shells = {{0, angular[0], {{0.8, 1.0}}},
+                       {1, angular[1], {{0.6, 1.0}}},
+                       {2, angular[2], {{0.7, 1.0}}},
+                       {repeated_center ? 1 : 3, angular[3], {{0.9, 1.0}}}};
+      system.electron_count = 4;
+      system.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
+      std::string detail;
+      require(generativeqc::molecule::validate_and_normalize(system, detail) ==
+                  GENERATIVEQC_STATUS_SUCCESS,
               detail.c_str());
-    const auto coordinates = system.atoms.size() * 3U;
-    for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate) {
-      auto plus = system, minus = system;
-      plus.atoms[coordinate / 3].position[coordinate % 3] += step;
-      minus.atoms[coordinate / 3].position[coordinate % 3] -= step;
-      auto derivative = generativeqc::integrals::build_range_eri(
-          plus, generativeqc::integrals::CoulombRange::Long, omega);
-      const auto negative = generativeqc::integrals::build_range_eri(
-          minus, generativeqc::integrals::CoulombRange::Long, omega);
-      for (std::size_t index = 0; index < derivative.size(); ++index)
-        derivative[index] = (derivative[index] - negative[index]) / (2 * step);
-      for (unsigned spin = 0; spin < 2; ++spin) {
-        auto spec = make_hf_fock_spec(spin ? FockSpin::Unrestricted : FockSpin::Restricted);
-        spec.derivative_order = 1;
-        spec.coulomb.present = false;
-        spec.exchange.coefficient = coefficient;
-        const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
-        const double expected = contract_exact_direct_energy_derivative(
-            cpu, n, derivative, a, spin ? b : std::vector<double>{});
-        require(actual[spin].size() == 3U * coordinates, "bounded LR source shape changed");
-        require(actual[spin][coordinate] == 0.0 && actual[spin][coordinates + coordinate] == 0.0,
-                "disabled bounded RSH source acquired a contribution");
-        const double value = actual[spin][2U * coordinates + coordinate];
-        require(std::isfinite(value) && std::abs(value - expected) < 3e-8,
-                "four-center bounded LR derivative differs from displaced CPU ERIs");
+      const auto n = generativeqc::molecule::ao_count(system), matrix = n * n;
+      std::vector<double> a(matrix), b(matrix);
+      for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = 0; j < n; ++j) {
+          a[i * n + j] = std::cos(0.3 * (i + j)) / n;
+          b[i * n + j] = std::sin(0.4 * (i + j)) / (2 * n);
+        }
+      CudaDirectJkPlan* raw{};
+      CudaDirectJkDiagnostic diagnostic;
+      require(create_cuda_direct_jk_plan(0, {system}, 1, 0.0, 64U << 20, &raw, diagnostic,
+                                         detail) == GENERATIVEQC_STATUS_SUCCESS,
+              detail.c_str());
+      std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+          raw, &destroy_cuda_direct_jk_plan);
+      DeviceMatrix device_a(a), device_b(b);
+      std::array<std::vector<double>, 2> actual;
+      for (unsigned spin = 0; spin < 2; ++spin)
+        require(execute_cuda_direct_shell_rsh_energy_derivatives_device(
+                    plan.get(), spin ? FockSpin::Unrestricted : FockSpin::Restricted, 0.0, 0.0,
+                    coefficient, omega, device_a.pointer, spin ? device_b.pointer : nullptr, matrix,
+                    actual[spin], detail) == GENERATIVEQC_STATUS_SUCCESS,
+                detail.c_str());
+      const auto coordinates = system.atoms.size() * 3U;
+      for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate) {
+        auto plus = system, minus = system;
+        plus.atoms[coordinate / 3].position[coordinate % 3] += step;
+        minus.atoms[coordinate / 3].position[coordinate % 3] -= step;
+        auto derivative = generativeqc::integrals::build_range_eri(
+            plus, generativeqc::integrals::CoulombRange::Long, omega);
+        const auto negative = generativeqc::integrals::build_range_eri(
+            minus, generativeqc::integrals::CoulombRange::Long, omega);
+        for (std::size_t index = 0; index < derivative.size(); ++index)
+          derivative[index] = (derivative[index] - negative[index]) / (2 * step);
+        for (unsigned spin = 0; spin < 2; ++spin) {
+          auto spec = make_hf_fock_spec(spin ? FockSpin::Unrestricted : FockSpin::Restricted);
+          spec.derivative_order = 1;
+          spec.coulomb.present = false;
+          spec.exchange.coefficient = coefficient;
+          const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
+          const double expected = contract_exact_direct_energy_derivative(
+              cpu, n, derivative, a, spin ? b : std::vector<double>{});
+          require(actual[spin].size() == 3U * coordinates, "bounded LR source shape changed");
+          require(actual[spin][coordinate] == 0.0 && actual[spin][coordinates + coordinate] == 0.0,
+                  "disabled bounded RSH source acquired a contribution");
+          const double value = actual[spin][2U * coordinates + coordinate];
+          require(std::isfinite(value) && std::abs(value - expected) < 3e-8,
+                  "four-center bounded LR derivative differs from displaced CPU ERIs");
+        }
       }
     }
   }
