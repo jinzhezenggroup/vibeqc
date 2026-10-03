@@ -7,6 +7,14 @@
 
 namespace generativeqc::scf::cuda_df {
 
+/** Execute an admitted triangular Gram in existing disjoint scratch. The
+ * generated shape gate owns its finite slice count; no allocation or factor
+ * mutation occurs, and both launches remain on the plan's capture-safe stream.
+ */
+cudaError_t launch_split_occupied_gram(cudaStream_t stream, std::size_t n, std::size_t reduction,
+                                       std::size_t splits, double weight, const double* input,
+                                       double* partials, double* output);
+
 /** Mirror the computed column-major lower triangle; never average with the
  * uninitialized upper triangle of a BLAS symmetric rank-k result. */
 void launch_mirror_exchange_triangle(dim3 grid, dim3 block, cudaStream_t stream, std::size_t n,

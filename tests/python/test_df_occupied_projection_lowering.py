@@ -23,12 +23,15 @@ HEADER = r"""
 using cublasHandle_t = void*;
 using cublasStatus_t = int;
 enum cublasOperation_t { CUBLAS_OP_N, CUBLAS_OP_T };
+enum cublasFillMode_t { CUBLAS_FILL_MODE_LOWER, CUBLAS_FILL_MODE_UPPER };
 constexpr int CUBLAS_STATUS_SUCCESS=0, CUBLAS_STATUS_INVALID_VALUE=7;
 int cublasDgemm(cublasHandle_t,cublasOperation_t,cublasOperation_t,int,int,int,
                const double*,const double*,int,const double*,int,const double*,double*,int);
 int cublasDgemmStridedBatched(cublasHandle_t,cublasOperation_t,cublasOperation_t,int,int,int,
                const double*,const double*,int,long long,const double*,int,long long,
                const double*,double*,int,long long,int);
+int cublasDsyrk(cublasHandle_t,cublasFillMode_t,cublasOperation_t,int,int,
+               const double*,const double*,int,const double*,double*,int);
 """
 STANDIN = r"""
 #include <algorithm>
@@ -62,6 +65,20 @@ int cublasDgemmStridedBatched(cublasHandle_t,cublasOperation_t ta,cublasOperatio
   if (++calls==fail_on) return 13;
   for(int p=0;p<batches;++p)
     product(ta,tb,m,n,k,*alpha,a+p*sa,lda,b+p*sb,ldb,*beta,c+p*sc,ldc);
+  return 0;
+}
+int cublasDsyrk(cublasHandle_t,cublasFillMode_t triangle,cublasOperation_t trans,
+               int n,int k,const double* alpha,const double* a,int lda,
+               const double* beta,double* c,int ldc) {
+  if (++calls==fail_on) return 13;
+  for(int j=0;j<n;++j) for(int i=0;i<n;++i) {
+    if(triangle==CUBLAS_FILL_MODE_LOWER ? i<j : i>j) continue;
+    double value=0;
+    for(int z=0;z<k;++z)
+      value+=(trans==CUBLAS_OP_T?a[z+i*lda]:a[i+z*lda])*
+             (trans==CUBLAS_OP_T?a[z+j*lda]:a[j+z*lda]);
+    c[i+j*ldc]=*alpha*value+(*beta==0?0:*beta*c[i+j*ldc]);
+  }
   return 0;
 }
 """
@@ -104,11 +121,21 @@ extern "C" int retained_metric(int a,int rr,const double* x,const double* s,
   calls=0;fail_on=fail;
   return generativeqc::scf::generated::df_occupied_apply_metric_root(nullptr,a,rr,x,s,out);
 }
+extern "C" std::size_t symmetric_pair(std::size_t r,std::size_t i,std::size_t j) {
+  return generativeqc::scf::generated::df_occupied_symmetric_pair(r,i,j);
+}
+extern "C" int symmetric_gram(int a,int r,double scale,const double* u,double* out,int fail) {
+  calls=0;fail_on=fail;
+  return generativeqc::scf::generated::df_occupied_symmetric_metric_gram(
+      nullptr,a,r,scale,u,out);
+}
 """
 
 
-@pytest.fixture(scope="session")
-def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
+@pytest.fixture(scope="session", params=[True, False], ids=["syrk", "gemm-provider"])
+def native(
+    tmp_path_factory: pytest.TempPathFactory, request: pytest.FixtureRequest
+) -> ct.CDLL:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("requires a host C++ compiler")
@@ -119,9 +146,14 @@ def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     folder = tmp_path_factory.mktemp("df-projection-host")
-    (folder / "cublas_v2.h").write_text(HEADER)
+    has_syrk = request.param
+    header = HEADER if has_syrk else HEADER.replace("cublasDsyrk", "unavailableDsyrk")
+    standin = (
+        STANDIN if has_syrk else STANDIN.replace("cublasDsyrk", "unavailableDsyrk")
+    )
+    (folder / "cublas_v2.h").write_text(header)
     code = (
-        STANDIN
+        standin
         + "\nnamespace generativeqc::scf::generated {\n"
         + module.emit_occupied_response_helpers()
         + "\n}\n"
@@ -146,6 +178,7 @@ def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
         check=True,
     )
     lib = ct.CDLL(str(output))
+    lib.has_syrk = has_syrk
     ptr = ct.POINTER(ct.c_double)
     lib.project.argtypes = [ct.c_int] * 5 + [ptr] * 4 + [ct.c_int]
     lib.project.restype = ct.c_int
@@ -158,6 +191,10 @@ def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
     lib.small_metric.restype = ct.c_int
     lib.retained_metric.argtypes = [ct.c_int] * 2 + [ptr] * 3 + [ct.c_int]
     lib.retained_metric.restype = ct.c_int
+    lib.symmetric_pair.argtypes = [ct.c_size_t] * 3
+    lib.symmetric_pair.restype = ct.c_size_t
+    lib.symmetric_gram.argtypes = [ct.c_int] * 2 + [ct.c_double, ptr, ptr, ct.c_int]
+    lib.symmetric_gram.restype = ct.c_int
     return lib
 
 
@@ -402,8 +439,10 @@ def test_full_rank_adjoints_using_emitted_helpers(
     np.testing.assert_allclose(actual_m, ref_m, atol=1e-11, rtol=1e-10)
 
 
+@pytest.mark.parametrize("symmetric_pairs", [False, True])
 def test_rooted_final_projection_weights_match_independent_energy_derivative(
     native: ct.CDLL,
+    symmetric_pairs: bool,
 ) -> None:
     """Emitted finish/root calls feed both response terms and a raw-energy oracle."""
     rng = np.random.default_rng(1694)
@@ -445,10 +484,26 @@ def test_rooted_final_projection_weights_match_independent_energy_derivative(
             )
             == 0
         )
+        pair_count = r * (r + 1) // 2 if symmetric_pairs else r * r
+        if symmetric_pairs:
+            matrices = np.stack(
+                [
+                    projected[p * r * r : (p + 1) * r * r].reshape((r, r), order="F")
+                    for p in range(a)
+                ]
+            )
+            packed = np.empty((a, pair_count))
+            for i in range(r):
+                for j in range(i + 1):
+                    packed[:, native.symmetric_pair(r, i, j)] = 0.5 * (
+                        matrices[:, i, j] + matrices[:, j, i]
+                    )
+            projected = packed
+            rooted = np.full_like(packed, np.nan)
         assert (
             native.retained_metric(
                 a,
-                r * r,
+                pair_count,
                 pointer(np.asfortranarray(root)),
                 pointer(projected),
                 pointer(rooted),
@@ -456,21 +511,40 @@ def test_rooted_final_projection_weights_match_independent_energy_derivative(
             )
             == 0
         )
-        u = np.stack(
-            [
-                rooted[p * r * r : (p + 1) * r * r].reshape((r, r), order="F")
-                for p in range(a)
-            ]
-        )
+        if symmetric_pairs:
+            u = np.empty((a, r, r))
+            for i in range(r):
+                for j in range(r):
+                    u[:, i, j] = rooted[:, native.symmetric_pair(r, i, j)]
+        else:
+            u = np.stack(
+                [
+                    rooted[p * r * r : (p + 1) * r * r].reshape((r, r), order="F")
+                    for p in range(a)
+                ]
+            )
         potential = weight * np.trace(u, axis1=1, axis2=2)
         raw_weight = density[None] * potential[
             :, None, None
         ] - 2 * exchange * weight**2 * np.einsum(
             "mi,qij,nj->qmn", coefficients, u, coefficients
         )
-        metric_weight = -0.5 * np.outer(
-            potential, potential
-        ) + exchange * weight**2 * np.einsum("pij,qij->pq", u, u)
+        metric_weight = np.asfortranarray(-0.5 * np.outer(potential, potential))
+        if symmetric_pairs:
+            assert (
+                native.symmetric_gram(
+                    a,
+                    r,
+                    exchange * weight**2,
+                    pointer(rooted),
+                    pointer(metric_weight),
+                    0,
+                )
+                == 0
+            )
+            metric_weight = np.tril(metric_weight) + np.tril(metric_weight, -1).T
+        else:
+            metric_weight += exchange * weight**2 * np.einsum("pij,qij->pq", u, u)
         analytic.append(
             float(np.vdot(raw_weight, delta_raw) + np.vdot(metric_weight, delta_metric))
         )
@@ -481,3 +555,60 @@ def test_rooted_final_projection_weights_match_independent_energy_derivative(
             - energy(raw - step * delta_raw, metric - step * delta_metric)
         ) / (2 * step)
         assert abs(finite - analytic[0]) < 2e-6
+
+
+@pytest.mark.parametrize("a,r", [(1, 1), (5, 1), (7, 2), (11, 5), (17, 9)])
+@pytest.mark.parametrize("coefficient", [-0.75, 0.0, 0.25])
+def test_symmetric_metric_gram_matches_full_occupied_contraction(
+    native: ct.CDLL,
+    a: int,
+    r: int,
+    coefficient: float,
+) -> None:
+    """Diagonal weight one, off-diagonal weight two, and beta preserve the adjoint."""
+    rng = np.random.default_rng(1709 + a + r)
+    full = rng.normal(size=(a, r, r))
+    full = 0.5 * (full + full.transpose(0, 2, 1))
+    pairs = [(i, i) for i in range(r)] + [(i, j) for i in range(r) for j in range(i)]
+    assert [native.symmetric_pair(r, i, j) for i, j in pairs] == list(range(len(pairs)))
+    packed = np.ascontiguousarray(np.array([full[:, i, j] for i, j in pairs]).T)
+    initial = rng.normal(size=(a, a))
+    initial = 0.5 * (initial + initial.T)
+    actual = np.asfortranarray(initial)
+    expected = initial + coefficient * np.einsum("pij,qij->pq", full, full)
+    assert (
+        native.symmetric_gram(a, r, coefficient, pointer(packed), pointer(actual), 0)
+        == 0
+    )
+    np.testing.assert_allclose(
+        np.tril(actual), np.tril(expected), atol=4e-13, rtol=4e-13
+    )
+    if native.has_syrk:
+        np.testing.assert_array_equal(np.triu(actual, 1), np.triu(initial, 1))
+    else:
+        np.testing.assert_allclose(actual, expected, atol=4e-13, rtol=4e-13)
+    assert native.call_count() == (1 if r == 1 else 2)
+
+
+def test_symmetric_metric_gram_rejects_invalid_shapes_and_propagates_failures(
+    native: ct.CDLL,
+) -> None:
+    """No invalid shape/alias reaches BLAS; either product can propagate its failure."""
+    factors = np.ones((3, 6))
+    output = np.zeros((3, 3), order="F")
+    for a, rank in [(0, 3), (3, 0), (3, -1), (3, 65536), (3, 2**31 - 1)]:
+        assert (
+            native.symmetric_gram(a, rank, 1.0, pointer(factors), pointer(output), 0)
+            == 7
+        )
+        assert native.call_count() == 0
+    assert native.symmetric_gram(3, 3, 1.0, pointer(factors), pointer(factors), 0) == 7
+    for failed_product in (1, 2):
+        output.fill(0)
+        assert (
+            native.symmetric_gram(
+                3, 3, 1.0, pointer(factors), pointer(output), failed_product
+            )
+            == 13
+        )
+        assert native.call_count() == failed_product

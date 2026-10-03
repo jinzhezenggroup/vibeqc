@@ -10,6 +10,11 @@
       "reason": "Reviewed retained large evidence for CG01 protocol evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
       "review_document": "benchmarks/results/cg01/README.md"
     },
+    "cpu-eri-coulomb-20261001": {
+      "owner": "cpu-eri-coulomb-20261001",
+      "reason": "Reviewed compact scientific and negative evidence for the focused compiler Coulomb-root reuse increment. Exact original text records, including failures and outliers, are deterministically compressed, with mechanically reproducible duplicate observation aggregates omitted and a non-task ambient setup inventory replaced by task-specific dependency versions. No source binary/build artifact or retention-policy exception is introduced.",
+      "review_document": "benchmarks/results/cpu-eri-coulomb-20261001/README.md"
+    },
     "cuda-ownership": {
       "owner": "cuda-ownership",
       "reason": "Reviewed retained large evidence for CUDA ownership retirement evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
@@ -179,11 +184,6 @@
       "owner": "xc-contractions",
       "reason": "Reviewed retained large evidence for Native CPU XC contraction evidence. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
       "review_document": "benchmarks/results/xc-contractions/README.md"
-    },
-    "cpu-eri-coulomb-20261001": {
-      "owner": "cpu-eri-coulomb-20261001",
-      "reason": "Reviewed compact scientific and negative evidence for the focused compiler Coulomb-root reuse increment. Exact original text records, including failures and outliers, are deterministically compressed, with mechanically reproducible duplicate observation aggregates omitted and a non-task ambient setup inventory replaced by task-specific dependency versions. No source binary/build artifact or retention-policy exception is introduced.",
-      "review_document": "benchmarks/results/cpu-eri-coulomb-20261001/README.md"
     }
   },
   "files": [

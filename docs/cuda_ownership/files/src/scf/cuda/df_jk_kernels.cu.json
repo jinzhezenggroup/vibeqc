@@ -2,7 +2,7 @@
   "path": "src/scf/cuda/df_jk_kernels.cu",
   "role": "runtime",
   "subsystem": "scf_tensor",
-  "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+  "reason": "DF runtime storage/launch boundary. The bounded occupied triangular Gram is emitted by the compiler; native wrappers own its stream and error propagation, with existing handwritten equations classified below.",
   "regions": [
     {
       "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",

@@ -122,9 +122,11 @@ __device__ __forceinline__ void contract_shell_task(
   }
   __syncwarp(mask);
   unsigned component_work = 0;
+  double absolute_weight = 0;
   for (unsigned i = lane; i < Math::components; i += lanes)
     if (cart_weights[i] != 0) {
       ++component_work;
+      if (first.force_shell_norms) absolute_weight += fabs(cart_weights[i]);
       if (work) {
         convolution_work += Math::convolution_work(i);
         // Component-local work skips zeros. Cooperative root/axis preparation
@@ -137,6 +139,8 @@ __device__ __forceinline__ void contract_shell_task(
     public_work += __shfl_down_sync(mask, public_work, delta, lanes);
     public_loads += __shfl_down_sync(mask, public_loads, delta, lanes);
     component_work += __shfl_down_sync(mask, component_work, delta, lanes);
+    if (first.force_shell_norms)
+      absolute_weight += __shfl_down_sync(mask, absolute_weight, delta, lanes);
     if (work) {
       expansion_work += __shfl_down_sync(mask, expansion_work, delta, lanes);
       convolution_work += __shfl_down_sync(mask, convolution_work, delta, lanes);
@@ -155,6 +159,35 @@ __device__ __forceinline__ void contract_shell_task(
     record_work(work, DfShellWork::subgroup_rendezvous, 2);
   }
   if (!active) return;
+  if (first.force_shell_norms) {
+    // The Cartesian weights already contain spherical/component normalization
+    // and the physical pair multiplicity. A Coulomb Cauchy bound therefore
+    // certifies the whole contracted shell before any primitive recurrence.
+    int skip = 0;
+    if (lane == 0) {
+      const auto low = oc > panel_begin ? oc : panel_begin;
+      const auto high = oc + nc < panel_begin + panel_count ? oc + nc : panel_begin + panel_count;
+      const double bound = absolute_weight *
+                           first.force_shell_norms[sa * first.force_shell_stride + sb] *
+                           auxiliary.force_shell_norms[sc];
+      const double allowance = first.force_shell_budget * na * nb * (high - low);
+      // A positive-product underflow retains work rather than certifying zero.
+      skip = isfinite(bound) && bound > 0 && bound <= allowance;
+      if (first.force_shell_counts) {
+        atomicAdd(first.force_shell_counts, 1ULL);
+        if (skip) {
+          atomicAdd(first.force_shell_counts + 1, 1ULL);
+          const auto primitive_a = o.primitive_offsets[sa + 1] - o.primitive_offsets[sa];
+          const auto primitive_b = o.primitive_offsets[sb + 1] - o.primitive_offsets[sb];
+          const auto primitive_c = x.primitive_offsets[sc + 1] - x.primitive_offsets[sc];
+          atomicAdd(first.force_shell_counts + 2,
+                    static_cast<unsigned long long>(primitive_a) * primitive_b * primitive_c);
+        }
+      }
+    }
+    skip = __shfl_sync(mask, skip, 0, lanes);
+    if (skip) return;
+  }
   const auto atom_a = o.shell_atoms[sa], atom_b = o.shell_atoms[sb], atom_c = x.shell_atoms[sc];
   const auto* ra = positions + 3 * atom_a;
   const auto* rb = positions + 3 * atom_b;

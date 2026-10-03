@@ -1,0 +1,49 @@
+--- a/benchmarks/compare_df_direct_endpoint.py
++++ b/benchmarks/compare_df_direct_endpoint.py
+@@ -37,7 +37,18 @@
+     scaled_geometries,
+ )
+ from benchmarks.df_component_ledger import read_trace
+-from benchmarks.readme_hf_scaling import scaling_cases
++from benchmarks.readme_hf_scaling import scaling_cases as original_scaling_cases
++from dataclasses import replace
++
++def scaling_cases():
++    cases = original_scaling_cases()
++    base = cases["water-96"]
++    extra = [(z, tuple(np.asarray(x) + (30.0, 0.0, 0.0))) for z, x in base.atoms[:12]]
++    cases["water-108"] = replace(base, atoms=list(base.atoms) + extra, expected_ao_count=864,
++        description="108-atom water cluster: water32mer plus four translated waters")
++    cases["water-99"] = replace(base, atoms=list(base.atoms) + extra[:3], expected_ao_count=792,
++        description="99-atom water cluster: water32mer plus one translated water")
++    return cases
+ 
+ if TYPE_CHECKING:
+     from collections.abc import Iterator
+@@ -125,7 +136,7 @@
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("mode", choices=("reference", "native"))
+     parser.add_argument(
+-        "--aos", type=int, choices=(24, 48, 96, 192, 384, 768), required=True
++        "--aos", type=int, choices=(24, 48, 96, 192, 384, 768, 792, 864), required=True
+     )
+     parser.add_argument(
+         "--nested-water",
+@@ -392,6 +403,8 @@
+                     192: 256 << 20,
+                     384: 1_000_000_000,
+                     768: 5_000_000_000,
++                    864: 5_000_000_000,
++                    792: 5_000_000_000,
+                 }[args.aos]
+             ),
+         }.items():
+@@ -461,7 +474,7 @@
+                 "fock_builds": item.fock_builds,
+                 **check_endpoint(item, oracle["records"][index]),
+             }
+-            if is_df:
++            if is_df and item.succeeded:
+                 row["metric"] = [
+                     d.to_dict() for d in owner.last_density_fitting_metric_diagnostics()
+                 ]

@@ -61,6 +61,7 @@ python tools/benchmark_df_values.py \
 | `GENERATIVEQC_DF_VALUE_MATH` | Existing generic Rys | `generic`, `polynomial`, `rys`, `candidate` |
 | `GENERATIVEQC_DF_VALUE_RAW_MAPPING` | Existing scalar raw export | `scalar`, `subgroup`, `warp`, `candidate` |
 | `GENERATIVEQC_DF_FORCE_SCREEN_ABS` | Off | Nonnegative finite absolute force budget, or `off` |
+| `GENERATIVEQC_DF_SHELL_SCREEN_ABS` | `1e-10 Eh/Bohr` on the qualified sm_120 automatic shell domain; strict otherwise | Nonnegative finite absolute force-component budget, or `off` |
 | `GENERATIVEQC_DF_FINAL_PROJECTION` | Reuse under the shared resident RHF work/capacity policy | `off`, `reuse` |
 
 The qualified sm_120 derivative manifest chooses cooperative Rys/compact for
@@ -131,7 +132,59 @@ and the measured domain. `benchmarks.df_admission_probe` compares existing
 controls against an independent full-force reference; it never edits this
 profile or promotes a result automatically.
 
-## Force screening contract
+## Whole-shell force screening
+
+The generated Coulomb-norm envelope rejects negligible weighted three-center
+derivative shell triples **before primitive traversal and Boys/Rys evaluation**.
+It covers s/p/d/f orbital and auxiliary shells, Cartesian and real-spherical
+expansions, full/symmetric/packed response weights, and RHF/UHF. Metric
+derivatives and forward DF values remain strict. This optimization reduces
+derivative generation; it does not make resident fitted `B` storage sparse.
+
+For a positive radial majorant `f`, splitting its Coulomb potential into a ball
+and its exterior gives `sup V_f <= 2*pi*R^2*||f||inf + ||f||1/R`. Minimizing
+over `R` yields
+`||f||C^2 <= (3/2)*(4*pi)^(1/3)*||f||1^(5/3)*||f||inf^(1/3)`.
+The compiler evaluates radial Gaussian moments and monomial suprema for the
+Gaussian-product majorant, then bounds signed contractions by the triangle
+inequality. Raised/lowered orbital envelopes bound the sum of the two center
+derivative norms in each Cartesian direction. Translation therefore also
+bounds the auxiliary center and shared-atom sums.
+
+Each force call computes a symmetric orbital shell-pair derivative norm table
+and an auxiliary shell value norm vector. A task multiplies these envelopes
+by the sum of absolute **folded Cartesian response weights**, which already
+include public component normalization, spherical expansions and pair
+multiplicity. Its allowance is the per-public-triple budget
+`nextafter(target / (N_AO^2 * N_aux), 0)` times its public AO block dimensions
+and the number of auxiliary components inside the current panel. These
+allowances partition an ordered domain that overcounts symmetric/packed work;
+an auxiliary shell split across panels receives only its corresponding pieces.
+Their sum bounds the omitted contribution to each final force component.
+
+The analytical envelope has conservative FP64 headroom, log-space attenuation,
+an upward floor for tiny overlaps, and strict retention on invalid/nonfinite
+bounds or a zero result from positive-product underflow. This is independently
+tested floating-point evaluation, not interval arithmetic or a bound on the
+separate SCF and metric approximation errors. The `1e-10` automatic allowance
+does not change SCF convergence or the independent energy/force acceptance
+gates. If the old SSS primitive screen is explicitly enabled as well, the two
+omission budgets are additive.
+
+Norm storage is admitted only **after** the existing response tiles and scratch
+are fixed. Insufficient response-budget headroom or an optional allocation
+failure retains strict evaluation, without shrinking tiles or replaying source
+work. Generic/partial-shell consumers also remain strict and still reject
+invalid controls. Norms are recomputed for every geometry; they never escape
+the stream-protected force arena. Their bytes are included in response scratch.
+`GENERATIVEQC_DF_SHELL_COUNTERS=1` adds considered/skipped shell tasks and skipped
+primitive products; these intrusive counters are excluded from clean timings.
+
+The [qualification](../../benchmarks/results/df-source-screening-20261004/README.md)
+records full endpoints, independent references, work conservation, changed
+geometries and constrained-memory fallbacks.
+
+## Optional SSS primitive screening
 
 Screening applies only to weighted SSS three-center derivatives. Higher classes,
 metric derivatives and unsupported traversal paths retain strict evaluation.

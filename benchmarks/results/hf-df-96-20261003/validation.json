@@ -1,0 +1,325 @@
+{
+  "schema": "generativeqc.hf-df-96-validation.v1",
+  "baseline_revision": "b9c626d15b2c19c21a848cb3625932d57f754a71",
+  "patches": {
+    "source.patch": {
+      "sha256": "0da43c361ca22523410a2cd4943fcb0d83f16b3ca9113cd3dddee28fe9c07f72",
+      "bytes": 27793
+    },
+    "response-only.patch": {
+      "sha256": "0d9067a398e537f7e1ae30d748f028b51aa19c7e87e5d0dc1f34d3b980ce1749",
+      "bytes": 23585
+    },
+    "larger-harness.patch": {
+      "sha256": "b5b586060e3ea0f97345d29e38b8fae9b5fccd3132d1258bf2c809ab4a27ab57",
+      "bytes": 2037
+    },
+    "combined-preformat.patch": {
+      "sha256": "63933cdfe4aaa2abd76ade0e51fb0e9e36dfe38593e76505db538156217d4e3b",
+      "bytes": 38156
+    },
+    "provider-compatibility.patch": {
+      "sha256": "4ef8d2ebd6ed6be17e2424f1a8491cc6a093b0d3db8066cd8134ed8a7e87361e",
+      "bytes": 6579
+    }
+  },
+  "final_library": {
+    "sha256": "a7da441ec8662f4ee87fc5f6c80354334be39dfae15d8490c197976d62511769",
+    "bytes": 496898464
+  },
+  "build": {
+    "preset": "cuda-release-sm120",
+    "cuda": "12.9.1",
+    "release": true,
+    "fast_compile": false,
+    "aot_shells": true,
+    "stationary_force_aot": false,
+    "cxx_launcher": "ccache",
+    "cuda_launcher": "ccache",
+    "CCACHE_BASEDIR": "checkout root",
+    "shared_ccache_note": "Cache is shared with other jobs; global counter deltas are not attributable solely to this build."
+  },
+  "tests": [
+    {
+      "name": "host compiler/projection/stationary/final-projection/Gram admission",
+      "passed": 145,
+      "receipt": {
+        "sha256": "3b23757fb20eb972f5f35b9cce1a7f2e1f4eee6c06536e53ad1dba4b3ff1cdbb",
+        "bytes": 260
+      }
+    },
+    {
+      "name": "independent molecular CUDA final-K/response/geometry/RHF/UHF controls",
+      "passed": 34,
+      "receipt": {
+        "sha256": "de154c58a87c25aae9a8e994d089c6e99e1c419de789e8be97aa7b5492ba2e5e",
+        "bytes": 1344
+      },
+      "other_result": "Standalone compiler kernel test could not start on n1 because ccache was absent; rerun successfully on node3 under memcheck."
+    },
+    {
+      "name": "native occupied response and final snapshot",
+      "passed": 2,
+      "receipt": {
+        "sha256": "3e934e3f07de38807f9d58d2a4098f8b92cc9f78d52b592721af4c11643c735e",
+        "bytes": 49
+      }
+    },
+    {
+      "name": "standalone generated Gram: odd AO/reduction tails, weights 2/1/-0.5, graph replay with new factors",
+      "passed": 1,
+      "maximum_full_blas_error": 2.4868995751603507e-13,
+      "receipt": {
+        "sha256": "6659255b60dd0a1330ce337d5282faac441516392a1039085bab0572da862195",
+        "bytes": 911
+      }
+    }
+  ],
+  "sanitizers": [
+    {
+      "tool": "memcheck",
+      "scope": "generated Gram full shapes17/33/385/773 and graph replay",
+      "errors": 0,
+      "leaked_bytes": 0,
+      "receipt": {
+        "sha256": "6659255b60dd0a1330ce337d5282faac441516392a1039085bab0572da862195",
+        "bytes": 911
+      }
+    },
+    {
+      "tool": "initcheck",
+      "scope": "same complete generated Gram shapes",
+      "errors": 0,
+      "receipt": {
+        "sha256": "123449826d3ad57f89d0d3905a61a4ca64aa95c5eb5a3233439d21dfaa07b75d",
+        "bytes": 775
+      },
+      "note": "Following all-size racecheck was cancelled for runtime; a bounded shape run is recorded separately."
+    },
+    {
+      "tool": "racecheck",
+      "scope": "33x79 and17x32769, AO/reduction tails and two reduction slices, graph replay",
+      "errors": 0,
+      "warnings": 0,
+      "receipt": {
+        "sha256": "81c182a54a3803848fe1402e441e93a81160770860633f65643b788e0499ac88",
+        "bytes": 418
+      }
+    },
+    {
+      "tool": "memcheck",
+      "scope": "physical packed final-response projection, cc-pVDZ-JKFIT",
+      "errors": 0,
+      "leaked_bytes": 0,
+      "receipt": {
+        "sha256": "c23b18e28480d726ef9897a8552577d0f30175e0aa1c97ad50bdca0f8c48f1d4",
+        "bytes": 257
+      }
+    }
+  ],
+  "known_baseline_failures": [
+    {
+      "scope": "test_df_packed_values_cuda.py",
+      "failed": 6,
+      "passed": 14,
+      "reason": "unchanged packed geometry rebuilt its source",
+      "baseline_receipt": {
+        "sha256": "7049454ba4a0a5b2c5a88cc8a7e3a183d2a4959335a635e67ee845079143f7e1",
+        "bytes": 34685
+      },
+      "candidate_receipt": {
+        "sha256": "2de643e9d9c756db439416a72b94f25edda5a54796cc005f0de9a2eb363f3350",
+        "bytes": 34788
+      },
+      "disposition": "Identical six cases fail before and after; numerical gates unchanged."
+    },
+    {
+      "scope": "generativeqc_density_fitting_tests",
+      "reason": "DF cache bypassed an infeasible replacement budget",
+      "baseline_receipt": {
+        "sha256": "677cb941784109fd48396775d3fc66d786c7cb12625b85999d5b6a837e5d31e3",
+        "bytes": 111
+      },
+      "candidate_receipt": {
+        "sha256": "677cb941784109fd48396775d3fc66d786c7cb12625b85999d5b6a837e5d31e3",
+        "bytes": 111
+      },
+      "disposition": "Both native suites fail on the same pre-existing cache-budget assertion after 48 finite-difference gates."
+    }
+  ],
+  "source_checks": {
+    "precommit": "all applicable hooks passed",
+    "receipt": {
+      "sha256": "8cfa469dd331d4def783d2fe8572f25f298cfd8a1e3b0d6f4d6e9c015078c6d2",
+      "bytes": 1869
+    },
+    "compiler_modules": 408,
+    "compiler_dependency_errors": 0,
+    "native_complexity_matrix_chain_regressions": 0,
+    "cuda_ownership_files": 302
+  },
+  "larger_qualification": {
+    "aos": 792,
+    "atoms": 99,
+    "passed_native_endpoints": 28,
+    "maximum_candidate_energy_error": 2.0099832909181714e-10,
+    "maximum_candidate_force_error": 1.2034107044200937e-10,
+    "resource_limit": "864 AOs/108 atoms return out-of-memory beforeSCF under the identical value/response budget policy on both versions; no accepted timing.",
+    "fallback_at_792_aos": "Auxiliary tile12 cannot admit20 Gram partials; retainsSYRK and bounded symmetric response, with unchanged SCF iterations."
+  },
+  "final_precommit": {
+    "status": "passed",
+    "sha256": "5fd30a91699e6fd89fd018d3c2c0b3b885a822ef661670cb5e1a95f48074ff3c",
+    "bytes": 1869,
+    "retained_evidence_review_bytes": 1166948,
+    "incoming_review_budget_bytes": 2097152
+  },
+  "integration": {
+    "rebased_onto": "06459d469b4f0f4623dff94707c331888bfac411",
+    "measured_commit": "b317e0b7f7983d6d5c907f81fbb856467d1fe29c",
+    "scope": "All14 complete768-AO DF calls rechecked after rebase; NVIDIA Gram/root operations unchanged by the subsequent provider-interface fallback.",
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-hf-df-96-candidate-20261002/build/cuda-release-sm120/libgenerativeqc.so.0.1.0",
+      "library_sha256": "a33f697ef8a2b2e930faac6f20aa3fc444f6d21672f6093d30e7b70edd515bcb",
+      "probe": {
+        "source_identity": "42e7eebc6e494cf743e3478b26f2891ffa7f35b7a0b541188629b7c24af30f33",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    },
+    "medians": {
+      "cold": {
+        "generativeqc_seconds": 38.68325530504808,
+        "gpu4pyscf_seconds": 57.19048053724691,
+        "native_iterations": [
+          24
+        ],
+        "reference_iterations": [
+          44
+        ],
+        "reference_scf_jk_builds": [
+          45
+        ]
+      },
+      "warm": {
+        "generativeqc_seconds": 4.564446472097188,
+        "gpu4pyscf_seconds": 11.233801484107971,
+        "native_iterations": [
+          1
+        ],
+        "reference_iterations": [
+          1,
+          2,
+          4
+        ],
+        "reference_scf_jk_builds": [
+          2,
+          3,
+          5
+        ]
+      },
+      "moved": {
+        "generativeqc_seconds": 31.48760582692921,
+        "gpu4pyscf_seconds": 49.03304863162339,
+        "native_iterations": [
+          13
+        ],
+        "reference_iterations": [
+          37
+        ],
+        "reference_scf_jk_builds": [
+          38
+        ]
+      },
+      "moved-warm": {
+        "generativeqc_seconds": 4.600129395723343,
+        "gpu4pyscf_seconds": 10.19122346304357,
+        "native_iterations": [
+          1
+        ],
+        "reference_iterations": [
+          1,
+          2,
+          3
+        ],
+        "reference_scf_jk_builds": [
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "additional_master_review": {
+      "revision": "db44f79391951cc33951551ab2c8479f68d0b78b",
+      "scope": "CC runtime-shape arena change only; no overlap with HF DF implementation or test inputs."
+    }
+  },
+  "provider_compatibility": {
+    "host_passed": 274,
+    "host_test_receipt": {
+      "sha256": "39f32f26d3796f2814b86dc714682b01b72ff46b536156849c46c03781062f08",
+      "bytes": 340
+    },
+    "scope": "Same independent scalar BLAS/finite-difference tests compile and run with and without a SYRK declaration. The fallback keeps failure propagation and counts full metric products.",
+    "gpu_passed": 34,
+    "gpu_test_receipt": {
+      "sha256": "ac0ff9fa29afe732244fa4f62aa01bbab73efae0239b19f44360360f066f6f16",
+      "bytes": 100
+    },
+    "gpu_scope": "Final NVIDIA library: molecular final-K, occupied response, and final projection controls; triangular metric FLOP counters confirm the SYRK route.",
+    "native_library": {
+      "sha256": "a7da441ec8662f4ee87fc5f6c80354334be39dfae15d8490c197976d62511769",
+      "bytes": 496898464
+    },
+    "precommit_receipt": {
+      "sha256": "efbd8a7b07161561c7d1a6b7e0669d595a7804a888a0aa4c3332e2d794f6a93b",
+      "bytes": 1869
+    },
+    "precommit_status": "all applicable hooks passed"
+  },
+  "figure_library": {
+    "sha256": "6b216cf564aaf61518f5497ed80071baddb1ffab610d1128a891cfac5b5cb8d4",
+    "bytes": 497828152
+  }
+}

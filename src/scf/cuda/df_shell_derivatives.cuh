@@ -24,6 +24,14 @@ struct DfShellBasisView {
   // shell tasks. They are intrusive diagnostics, absent from clean timing.
   double force_screen_budget{};
   unsigned long long* force_screen_counts{};
+  // Optional geometry-only Coulomb norm envelopes, computed once per force
+  // call. Orbital views hold a shell-square derivative envelope; auxiliary
+  // views hold one value envelope per shell. The per-public-triple budget
+  // partitions the complete ordered AO domain, including clipped panels.
+  const double* force_shell_norms{};
+  std::size_t force_shell_stride{};
+  double force_shell_budget{};
+  unsigned long long* force_shell_counts{};
 };
 
 /** Ordered dense reference, folded dense shell pairs, or folded packed AOs.

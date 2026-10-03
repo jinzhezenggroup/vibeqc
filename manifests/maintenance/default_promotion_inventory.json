@@ -310,12 +310,34 @@
       "sources": [
         "python/generativeqc/resources_hf.py"
       ],
-      "rationale": "DF force screening is explicitly off by default; arithmetic/work reduction alone has not established a complete force-endpoint promotion.",
+      "rationale": "The earlier SSS primitive force screen is explicitly off by default; its small measured complete-endpoint gain does not establish automatic promotion. Whole-shell Coulomb-norm screening is registered separately.",
       "revisit_condition": "Require changed-geometry force endpoints, resource accounting, and existing numerical gates before any nonzero automatic screening budget is admitted.",
       "evidence": [
         "issue:#406",
         "docs:docs/developer/df_tuning.md",
         "issue:#1598"
+      ]
+    },
+    {
+      "id": "df.shell-force-screening",
+      "classification": "already-default",
+      "controls": [
+        "hf-runtime:GENERATIVEQC_DF_SHELL_SCREEN_ABS"
+      ],
+      "owner_issues": [
+        406,
+        1598
+      ],
+      "sources": [
+        "python/generativeqc/resources_hf.py",
+        "src/scf/cuda/df_gradient_bridge.cu",
+        "python/generativeqc_compiler/integral/df_pair_screening.py"
+      ],
+      "rationale": "Qualified whole-shell Coulomb-norm screening defaults to a 1e-10 absolute force-component budget on the established sm_120 automatic shell domain. Complete 96-atom warm endpoints improve 27.4%; independent numerical, geometry, batch and constrained-panel checks pass. Generic and capacity-limited consumers retain strict evaluation. The earlier SSS primitive screen remains independently off.",
+      "revisit_condition": "Broaden the architecture or workload domain only with complete endpoint and resource evidence. Preserve explicit off, unchanged tile selection and strict optional-allocation fallback; forward B storage is unchanged.",
+      "evidence": [
+        "docs:docs/developer/df_tuning.md",
+        "benchmarks:benchmarks/results/df-source-screening-20261004/README.md"
       ]
     },
     {

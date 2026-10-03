@@ -33,6 +33,38 @@ __global__ void gather_final_fitted_projection(std::size_t auxiliary, std::size_
   projected[element] = pair_major[(i * rank + j) * auxiliary + q];
 }
 
+/** A physical packed AO source proves S_Q=C^T B_Q C symmetric. Average the
+ * two computed entries to remove only their FP64 reduction-order asymmetry;
+ * generic diagnostic tensors still use the complete gather above. Diagonal-
+ * first pair storage permits a half-sized metric-root contraction and keeps
+ * the Coulomb trace contiguous without changing its reduction order.
+ */
+__global__ void gather_symmetric_final_fitted_projection(std::size_t auxiliary, std::size_t rank,
+                                                         const double* pair_major,
+                                                         double* projected) {
+  const auto element = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (element >= auxiliary * rank * rank) return;
+  const auto q = element / (rank * rank), i = element % rank, j = (element / rank) % rank;
+  if (i < j) return;
+  const auto pair = generated::df_occupied_symmetric_pair(rank, i, j);
+  const auto value = pair_major[(i * rank + j) * auxiliary + q];
+  projected[q * (rank * (rank + 1) / 2) + pair] =
+      i == j ? value : 0.5 * (value + pair_major[(j * rank + i) * auxiliary + q]);
+}
+
+/** Expand only after the compact factors' metric Gram has finished. Input
+ * and output are disjoint existing response intervals; an in-place parallel
+ * expansion would overwrite still-unread auxiliary slices.
+ */
+__global__ void expand_symmetric_occupied_projection(std::size_t auxiliary, std::size_t rank,
+                                                     const double* packed, double* full) {
+  const auto element = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (element >= auxiliary * rank * rank) return;
+  const auto q = element / (rank * rank), i = element % rank, j = (element / rank) % rank;
+  const auto pair = generated::df_occupied_symmetric_pair(rank, i, j);
+  full[element] = packed[q * (rank * (rank + 1) / 2) + pair];
+}
+
 /** Scalar kernels preserve their original per-output summation order. The
  * exchange metric dot uses the plan's cuBLAS GEMV below, with this scalar
  * kernel retained for ablation. Both routes use the same bounded raw panel;
@@ -635,6 +667,11 @@ static cudaError_t contract_occupied_response(
   const bool reuse_final_fitted_projection =
       final_fitted_projection && retained_root && terms.size() == 1 &&
       buffers.occupied_factors[0].rank && buffers.occupied_factors[0].density_scale == 2.0;
+  // Symmetry follows from unit-weight packed AO values, not merely from the
+  // dimensions or the final determinant. Keep every dense/nonsymmetric,
+  // spectral, truncated, UHF and unqualified final-state path unchanged.
+  const bool symmetric_occupied_pairs =
+      reuse_final_fitted_projection && fitted_occupied->packed_pairs;
   const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
   const double one = 1, zero = 0;
   const auto checked = [](cublasStatus_t status) {
@@ -665,19 +702,24 @@ static cudaError_t contract_occupied_response(
     // removes the fitted-B charge traversal and its separate charge-root work.
     const auto& factor = buffers.occupied_factors[0];
     const auto r = factor.rank, rr = r * r;
+    const auto root_pairs = symmetric_occupied_pairs ? r * (r + 1) / 2 : rr;
     runtime::cuda_trace::TraceRegion reuse("final_fitted_projection_potential_reuse", stream);
     checked(generated::df_occupied_finish_projection(blas, ni, static_cast<int>(r), ai,
                                                      factor.coefficients, final_fitted_projection,
                                                      transformed_projected));
-    gather_final_fitted_projection<<<blocks(a * rr), threads, 0, stream>>>(
-        a, r, transformed_projected, projected);
+    if (symmetric_occupied_pairs)
+      gather_symmetric_final_fitted_projection<<<blocks(a * rr), threads, 0, stream>>>(
+          a, r, transformed_projected, projected);
+    else
+      gather_final_fitted_projection<<<blocks(a * rr), threads, 0, stream>>>(
+          a, r, transformed_projected, projected);
     error = cudaGetLastError();
     if (error != cudaSuccess) return error;
-    checked(generated::df_occupied_apply_metric_root(blas, ai, static_cast<int>(rr),
+    checked(generated::df_occupied_apply_metric_root(blas, ai, static_cast<int>(root_pairs),
                                                      metric.inverse_square_root, projected,
                                                      transformed_projected));
     generated::df_rhf_potential_from_rooted_projection<<<blocks(a), threads, 0, stream>>>(
-        a, r, factor.density_scale, transformed_projected, potentials);
+        a, r, factor.density_scale, transformed_projected, potentials, symmetric_occupied_pairs);
     error = cudaGetLastError();
     if (error != cudaSuccess) return error;
     runtime::cuda_trace::trace_counter("response_final_fitted_projection_reused", 1);
@@ -690,6 +732,9 @@ static cudaError_t contract_occupied_response(
     runtime::cuda_trace::trace_counter("response_final_fitted_potential_trace_elements", a * r);
     runtime::cuda_trace::trace_counter("response_fitted_occupied_metric_root_gemms", 1);
     runtime::cuda_trace::trace_counter("response_retained_metric_root", 1);
+    runtime::cuda_trace::trace_counter("response_symmetric_occupied_pairs",
+                                       symmetric_occupied_pairs);
+    runtime::cuda_trace::trace_counter("response_occupied_root_elements", a * root_pairs);
     runtime::cuda_trace::trace_counter("response_occupied_charge_inverse_gemms_avoided", 2);
     runtime::cuda_trace::trace_counter("response_occupied_charge_scale_elements_avoided", a);
     runtime::cuda_trace::trace_counter("response_retained_fitted_charge_source_elements_avoided",
@@ -990,8 +1035,9 @@ static cudaError_t contract_occupied_response(
         }
         runtime::cuda_trace::trace_counter("response_occupied_inverse_gemms",
                                            retained_root ? 1 : 2);
-        runtime::cuda_trace::trace_counter("response_occupied_inverse_flops",
-                                           (retained_root ? 2 : 4) * rr * aa);
+        runtime::cuda_trace::trace_counter(
+            "response_occupied_inverse_flops",
+            (retained_root ? 2 : 4) * aa * (symmetric_occupied_pairs ? r * (r + 1) / 2 : rr));
       } else {
         checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
                             inverse, ai, &zero, transformed_projected + retained, rri));
@@ -1003,8 +1049,37 @@ static cudaError_t contract_occupied_response(
       // still needs raw T in its spectral map to retain subspace motion.
       const double alpha = metric.full_rank ? coefficient : -coefficient;
       const auto* metric_factors = metric.full_rank ? transformed_projected + retained : projected;
-      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, rri, &alpha, metric_factors, rri,
-                          metric_factors, rri, &one, bar_inverse, ai));
+      if (symmetric_occupied_pairs) {
+        bool triangular_metric = true;
+        checked(generated::df_occupied_symmetric_metric_gram(blas, ai, ri, alpha, metric_factors,
+                                                             bar_inverse, &triangular_metric));
+        cuda_df::launch_mirror_exchange_triangle(blocks(aa), threads, stream, a, bar_inverse);
+        runtime::cuda_trace::trace_counter("response_occupied_metric_products", r > 1 ? 2 : 1);
+        runtime::cuda_trace::trace_counter(
+            "response_occupied_metric_flops",
+            (triangular_metric ? a * (a + 1) : 2 * aa) * (r * (r + 1) / 2));
+      } else {
+        checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ai, rri, &alpha, metric_factors,
+                            rri, metric_factors, rri, &one, bar_inverse, ai));
+        runtime::cuda_trace::trace_counter("response_occupied_metric_products", 1);
+        runtime::cuda_trace::trace_counter("response_occupied_metric_flops", 2 * aa * rr);
+      }
+    }
+    if (symmetric_occupied_pairs) {
+      runtime::cuda_trace::TraceRegion expand("occupied_symmetric_projection_expand", stream);
+      // The sole RHF factor has consumed both its root input and its compact
+      // Gram. Reuse the dead exchange interval for expansion, then restore the
+      // original staging layout before any bounded pseudo-density writer runs.
+      // Charged capacities and the downstream buffer lifetime stay unchanged.
+      expand_symmetric_occupied_projection<<<blocks(a * rr), threads, 0, stream>>>(
+          a, r, transformed_projected, projected);
+      error = cudaGetLastError();
+      if (error != cudaSuccess) return error;
+      error = cudaMemcpyAsync(transformed_projected, projected, a * rr * sizeof(double),
+                              cudaMemcpyDeviceToDevice, stream);
+      if (error != cudaSuccess) return error;
+      runtime::cuda_trace::trace_counter("response_symmetric_expansion_copy_bytes",
+                                         a * rr * sizeof(double));
     }
     retained += a * rr;
     runtime::cuda_trace::trace_counter("response_occupied_rank", r);

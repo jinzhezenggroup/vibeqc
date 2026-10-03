@@ -1334,21 +1334,35 @@ int main() {
           bucket_options.density_fitting_memory_budget_bytes = budget;
           const auto replay = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
                                   bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
-          if (budget != 0 && budget <= 8U * 1024U * 1024U) {
+          if (budget != 0 && budget <= 4U * 1024U * 1024U) {
             // These budgets cannot fit the solver owners and DIIS
             // together with this sp batch's source/SCF buffers under the
             // resolved hard-cap value allowance.
-            // A stale default cache used to bypass that active limit.
-            require(replay.size() == 2 && replay[0].status == GENERATIVEQC_STATUS_OUT_OF_MEMORY &&
-                        replay[1].status == GENERATIVEQC_STATUS_OUT_OF_MEMORY && !cached.plan,
-                    "DF cache bypassed an infeasible replacement budget");
+            // A stale default cache used to bypass that active limit. The
+            // 8-MiB cap now admits this tiny two-item workload: its value
+            // partition is 5,594,904 bytes, above the complete planned owner.
+            // Keep it in the success/force-parity arm instead of demanding OOM.
+            require(
+                replay.size() == 2 && replay[0].status == GENERATIVEQC_STATUS_OUT_OF_MEMORY &&
+                    replay[1].status == GENERATIVEQC_STATUS_OUT_OF_MEMORY && !cached.plan,
+                ("DF cache bypassed an infeasible replacement budget; budget_bytes=" +
+                 std::to_string(budget) + "; result_count=" + std::to_string(replay.size()) +
+                 "; status[0]=" + (replay.empty() ? "missing" : std::to_string(replay[0].status)) +
+                 "; status[1]=" +
+                 (replay.size() < 2 ? "missing" : std::to_string(replay[1].status)) +
+                 "; cached_plan=" + (cached.plan ? "non-null" : "null"))
+                    .c_str());
             continue;
           }
-          require(replay.size() == 2 && replay[0].status == GENERATIVEQC_STATUS_SUCCESS &&
-                      replay[1].status == GENERATIVEQC_STATUS_SUCCESS,
-                  ("generated DF cache budget replay failed at " + std::to_string(budget) +
-                   " bytes; status=" + std::to_string(replay[0].status))
-                      .c_str());
+          require(
+              replay.size() == 2 && replay[0].status == GENERATIVEQC_STATUS_SUCCESS &&
+                  replay[1].status == GENERATIVEQC_STATUS_SUCCESS && cached.plan,
+              ("generated DF cache budget replay failed at " + std::to_string(budget) +
+               " bytes; result_count=" + std::to_string(replay.size()) +
+               "; status[0]=" + (replay.empty() ? "missing" : std::to_string(replay[0].status)) +
+               "; status[1]=" + (replay.size() < 2 ? "missing" : std::to_string(replay[1].status)) +
+               "; cached_plan=" + (cached.plan ? "non-null" : "null"))
+                  .c_str());
           for (const auto& item : prepared_cache) {
             require(
                 item && item->one_electron_gradient_system.has_value() &&

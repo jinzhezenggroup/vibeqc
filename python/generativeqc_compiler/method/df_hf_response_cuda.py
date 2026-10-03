@@ -119,16 +119,19 @@ inline cublasStatus_t df_rhf_charge_contract(
  * occupied projection. For D = w C C^T, S_P = C^T B_P C and U = X S with
  * X=M^-1/2, linearity of trace gives X(D:B) = w tr(U). The final-K handoff
  * already proves that C and B*C belong to the same final determinant.
+ * Symmetric storage places the rank diagonal entries first, followed by
+ * unit-weight off-diagonal pairs; dense diagnostic tensors retain rr stride.
  */
 static __global__ void df_rhf_potential_from_rooted_projection(
     std::size_t auxiliary, std::size_t rank, double density_scale,
-    const double* rooted, double* potentials) {{
+    const double* rooted, double* potentials, bool symmetric_pairs = false) {{
   const auto q = std::size_t{{blockIdx.x}} * blockDim.x + threadIdx.x;
   if (q >= auxiliary) return;
-  const auto rr = rank * rank;
+  const auto stride = symmetric_pairs ? rank * (rank + 1) / 2 : rank * rank;
+  const auto diagonal_stride = symmetric_pairs ? 1 : rank + 1;
   double value = 0.0;
   for (std::size_t i = 0; i < rank; ++i)
-    value += rooted[q * rr + i * (rank + 1)];
+    value += rooted[q * stride + i * diagonal_stride];
   potentials[q] = density_scale * value;
 }}
 

@@ -107,6 +107,14 @@ def main() -> None:
             args.shell_output.with_name("generated_df_screening.cuh"),
             emit_sss_force_screening_cuda(),
         )
+        from generativeqc_compiler.integral.df_pair_screening import (
+            emit_df_pair_screening_cuda,
+        )
+
+        write_if_changed(
+            args.shell_output.with_name("generated_df_pair_screening.cuh"),
+            emit_df_pair_screening_cuda(),
+        )
         from generativeqc_compiler.integral.df_tuning.manifest import (
             MANIFEST,
             emit_policy,

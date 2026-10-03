@@ -1,0 +1,1604 @@
+{
+  "schema": "generativeqc.df-shell-screening-qualification.v1",
+  "baseline": {
+    "commit": "7d11520383a01dce7b0997f16d745cdb95de8efd",
+    "status": "",
+    "library_sha256": "dec11dcdeca456a5a1c0419f538dc2eadbe098c2351ec1781f366e81dc06f2eb",
+    "library_bytes": 513254048
+  },
+  "qualified_binary_sha256": "08f2edac5bc97261ea438731d855062acb6e3726f7bbda88a58febcb4c6181c3",
+  "measured_source_base": "7d11520383a01dce7b0997f16d745cdb95de8efd",
+  "measured_source_patch_sha256": "0f8a75963525617842c1d800b6d6cc993c7bebb4f93a2c784101af0473f023e2",
+  "implementation_commit": "1da601644b938991d236b87d55f6a8a7cf06dad0",
+  "integration_source_commit": "b54cf8bda2feba7f28162b72be5294b4ca7f093c",
+  "source_note": "Measurements used the base plus working source changes. Production hashes below identify the implementation independently of later evidence/documentation commits.",
+  "production_sources": {
+    "cmake/GenerativeQCGeneratedSources.cmake": "205ec3dfe607424259caf43442a70ddc0adec5690753e1d0285e68edce5b91db",
+    "tools/generate_df_kernels.py": "745e9a8a25ca288c291b9103c368333c824608866050cdc9f9a456e810546779",
+    "python/generativeqc_compiler/integral/df_pair_screening.py": "f038433cffece41e36d8928be163aa8a4b3a539555817a969a324f912f3083ee",
+    "python/generativeqc/resources_hf.py": "b66bc0b364a8d81b54ef9853cb8306e7ddcf543a7e48f95c5594534c050f8639",
+    "src/scf/cuda/df_gradient_bridge.cu": "586d810c184cbbae98889a14de69b26cca878a51aba16681fb61fcb06f84b383",
+    "src/scf/cuda/df_shell_kernel.cuh": "07ad714156cf7bd38b9a03be3e43a75c80f569848cd85d0eae00070c5dcc1e27",
+    "src/scf/cuda/df_shell_derivatives.cuh": "ceb386379b3bce7611181b60c2490bd658cdf5eb5e7c0313950a0dfc6ceb157c"
+  },
+  "build": {
+    "preset": "cuda-release-sm120",
+    "cuda": "12.9.1",
+    "cxx_launcher": "ccache",
+    "cuda_launcher": "ccache",
+    "cuda_compile_jobs": 8,
+    "build_tests": true,
+    "aot_shells": true,
+    "stationary_force_aot": false,
+    "configure_sha256": "6c738384e92ffcd3db69762e3cbe9f0ca4ef3fc3d59024ecb4d6654fbe4b67de",
+    "final_build_sha256": "502a013e423225ba6d1ddd2bdfa4daab9baa4ac23caf1cb017d984aba11c5d8a",
+    "cache_statistics": "Summary:\n  Hits:             61255 / 227109 (26.97 %)\n    Direct:         49143 / 228237 (21.53 %)\n    Preprocessed:   12112 / 179047 (6.76 %)\n  Misses:          165854\n    Direct:        179094\n    Preprocessed:  166935\n  Errors:             920\n  Uncacheable:       4117\nPrimary storage:\n  Hits:            123041 / 456427 (26.96 %)\n  Misses:          333386\n  Cache size (GB):  10.99 /  12.00 (91.54 %)\n  Cleanups:           557\n\nUse the -v/--verbose option for more details.\n"
+  },
+  "receipts": {
+    "host-qualified-2.log": {
+      "sha256": "5b6a537a182cc38eaeccf1701d051eeafb32401ff5b0f54b299318c945ea3700",
+      "last_lines": [
+        "........................................................................ [ 61%]",
+        "..............................................                           [100%]",
+        "118 passed in 5.85s"
+      ]
+    },
+    "final-bound-tests.log": {
+      "sha256": "ceff95c8bf2d3e53feba48eb0386fcd387847201b3f70bb06f17c469b262e265",
+      "last_lines": [
+        "........................................................................ [ 93%]",
+        ".....                                                                    [100%]",
+        "77 passed in 3.87s"
+      ]
+    },
+    "final-gpu-tests.log": {
+      "sha256": "a559d0f09b13b5c814dfaaf7e2bd9ab22936b56414acef5e0d82e76acc13ee29",
+      "last_lines": [
+        "FAILED tests/python/test_df_property_budget_cuda.py::test_property_replay_replans_value_storage_with_complete_forces[25165824]",
+        "FAILED tests/python/test_df_property_budget_cuda.py::test_resident_response_budget_replans_without_reference_factors",
+        "FAILED tests/python/test_df_practical_response_cuda.py::test_practical_water_insufficient_budget[dense-83886080]",
+        "FAILED tests/python/test_df_practical_response_cuda.py::test_practical_water_insufficient_budget[packed-167772160]",
+        "17 failed, 165 passed in 91.26s (0:01:31)"
+      ]
+    },
+    "final-memcheck.log": {
+      "sha256": "4770ecedc023b98b74b7789e6ca5f8be0debf74eb14572972d0526f08b41411a",
+      "last_lines": [
+        "========= COMPUTE-SANITIZER",
+        ".                                                                        [100%]",
+        "1 passed in 4.94s",
+        "========= ERROR SUMMARY: 0 errors"
+      ]
+    },
+    "candidate-race-sync.log": {
+      "sha256": "69fcddb42333b61e4250192c7aa65a1541507e0906af195a70470955181a6a4a",
+      "last_lines": [
+        "========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)",
+        "========= COMPUTE-SANITIZER",
+        ".                                                                        [100%]",
+        "1 passed in 2.73s",
+        "========= ERROR SUMMARY: 0 errors"
+      ]
+    },
+    "candidate-memcheck.log": {
+      "sha256": "be755a3f6dd38dd21e13c405a8b674c78c93cc6c0be19bb7a7d04109af557285",
+      "last_lines": [
+        "========= COMPUTE-SANITIZER",
+        ".                                                                        [100%]",
+        "1 passed in 5.33s",
+        "========= ERROR SUMMARY: 0 errors"
+      ]
+    },
+    "compiler-check.log": {
+      "sha256": "d80b59e2578ce7b5df655d1bffdb1700e09916fc51fab97b4121f66208ea97fa",
+      "last_lines": [
+        "Checked 415 compiler modules; 0 dependency errors"
+      ]
+    },
+    "codegen-test-ownership.log": {
+      "sha256": "3925bc8054131fd2931f58277cbd3518ef4ac9ce34f69034bb70047b07916eb0",
+      "last_lines": [
+        "codegen test ownership guard: 4460/4518 legacy lines retained"
+      ]
+    },
+    "promotion-check.log": {
+      "sha256": "634b50ace7267059bb233386ef7a3d81a8c0f6720d3073255d17b7fc5e76cc18",
+      "last_lines": [
+        "default-promotion inventory: 19 entries, 60 audited controls, all registered"
+      ]
+    },
+    "ownership-check.log": {
+      "sha256": "e05a012835d063f59e219b997dfebd9de6750a28b65b5f052402accb5e4ffa95",
+      "last_lines": [
+        "CUDA ownership inventory checked: 304 files"
+      ]
+    },
+    "native-complexity-check.log": {
+      "sha256": "22714dcf8013226ace1f9150e91244b9ae360b7a298d5d348471954e9cc308fb",
+      "last_lines": [
+        "native complexity audit: 523 files, 163 high-order loop nests; fixed-extent-inner-loop=24, high-order-loop=115, high-rank-output-materialization=5, high-rank-source-contraction=19"
+      ]
+    },
+    "scf-structure-check.log": {
+      "sha256": "908e8eb9705ebca726532f447f738cbb4e48edbda37f0e8b2381f55cb18b8da3",
+      "last_lines": [
+        "Checked 203 shared SCF modules; 0 dependency errors"
+      ]
+    },
+    "boundary-check.log": {
+      "sha256": "08bdf59b43136aa37f197db2b9ec3d7469fa08c69bd3b45ae521fee92d789435",
+      "last_lines": [
+        "Checked 59 shared native modules; 43 local dependency edges; 0 architecture errors; 2/2 known reverse edges present; 16/16 known post-HF -> SCF edges present; known duplicate debt: cc_host_bounded_iteration_owner=0/0, cc_cpu_diis_owner=0/0, cc_cpu_local_linear_solver=0/0, cc_cuda_diis_owner=1/1"
+      ]
+    },
+    "method-manifest-check.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "last_lines": []
+    },
+    "baseline-failures.log": {
+      "sha256": "6e07db1f805c974d4c901fd338ecfd09182f41431f7943b6e51f45a2bad48f0f"
+    },
+    "baseline-failures.xml": {
+      "sha256": "9e8cb73f357571a090d21001eb3f7194869cfa51470e0e6c437a6a534d5a35ef"
+    },
+    "final-gpu-tests.xml": {
+      "sha256": "8a7b695d5345d4d8ebbfbe226da6008d9d4d75117eefa51c6defef30475a72a7"
+    }
+  },
+  "gpu_test_cases": [
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-full]",
+      "seconds": 1.162,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-symmetric]",
+      "seconds": 0.297,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-packed]",
+      "seconds": 0.29,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-full]",
+      "seconds": 0.466,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-symmetric]",
+      "seconds": 0.345,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-packed]",
+      "seconds": 0.337,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-full]",
+      "seconds": 0.329,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-symmetric]",
+      "seconds": 0.298,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-packed]",
+      "seconds": 0.298,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-full]",
+      "seconds": 0.393,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-symmetric]",
+      "seconds": 0.316,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-packed]",
+      "seconds": 0.297,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-full]",
+      "seconds": 0.677,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-symmetric]",
+      "seconds": 0.569,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-packed]",
+      "seconds": 0.563,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-full]",
+      "seconds": 1.278,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-symmetric]",
+      "seconds": 1.026,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-packed]",
+      "seconds": 0.912,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-full]",
+      "seconds": 0.58,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-symmetric]",
+      "seconds": 0.512,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-packed]",
+      "seconds": 0.501,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-full]",
+      "seconds": 0.838,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-symmetric]",
+      "seconds": 0.641,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-packed]",
+      "seconds": 0.639,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_screening_energy_finite_difference",
+      "seconds": 0.409,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_shell_screening_invalid_control_on_generic",
+      "seconds": 0.044,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_panel_clipping_and_capacity_fallback[3145728-False]",
+      "seconds": 0.274,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_panel_clipping_and_capacity_fallback[2000000-True]",
+      "seconds": 3.865,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_batch_geometry_screening_matches_strict",
+      "seconds": 0.422,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_screening_cuda.test_automatic_shell_budget",
+      "seconds": 0.137,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[rhf-cartesian-full]",
+      "seconds": 0.235,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[rhf-cartesian-symmetric]",
+      "seconds": 0.21,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[rhf-cartesian-packed]",
+      "seconds": 0.209,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[rhf-spherical-full]",
+      "seconds": 0.217,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[rhf-spherical-symmetric]",
+      "seconds": 0.195,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[rhf-spherical-packed]",
+      "seconds": 0.192,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[uhf-cartesian-full]",
+      "seconds": 0.292,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[uhf-cartesian-symmetric]",
+      "seconds": 0.266,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[uhf-cartesian-packed]",
+      "seconds": 0.269,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[uhf-spherical-full]",
+      "seconds": 0.299,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[uhf-spherical-symmetric]",
+      "seconds": 0.273,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_force_budget[uhf-spherical-packed]",
+      "seconds": 0.274,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screened_force_matches_energy_finite_differences",
+      "seconds": 0.212,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_invalid_screening_budget_is_rejected_on_strict_fallback",
+      "seconds": 0.065,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_force_screening_cuda.test_screening_feature_histogram_matches_device_work",
+      "seconds": 0.013,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-cartesian-rhf-off]",
+      "seconds": 0.314,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-cartesian-rhf-on]",
+      "seconds": 0.38,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-cartesian-rhf-packet]",
+      "seconds": 0.315,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-cartesian-uhf-off]",
+      "seconds": 0.358,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-cartesian-uhf-on]",
+      "seconds": 0.425,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-cartesian-uhf-packet]",
+      "seconds": 0.359,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-spherical-rhf-off]",
+      "seconds": 0.3,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-spherical-rhf-on]",
+      "seconds": 0.366,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-spherical-rhf-packet]",
+      "seconds": 0.303,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-spherical-uhf-off]",
+      "seconds": 0.371,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-spherical-uhf-on]",
+      "seconds": 0.437,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-warp-spherical-uhf-packet]",
+      "seconds": 0.372,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-cartesian-rhf-off]",
+      "seconds": 0.316,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-cartesian-rhf-on]",
+      "seconds": 0.381,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-cartesian-rhf-packet]",
+      "seconds": 0.315,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-cartesian-uhf-off]",
+      "seconds": 0.358,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-cartesian-uhf-on]",
+      "seconds": 0.423,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-cartesian-uhf-packet]",
+      "seconds": 0.358,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-spherical-rhf-off]",
+      "seconds": 0.304,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-spherical-rhf-on]",
+      "seconds": 0.368,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-spherical-rhf-packet]",
+      "seconds": 0.3,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-spherical-uhf-off]",
+      "seconds": 0.371,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-spherical-uhf-on]",
+      "seconds": 0.436,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-packed-spherical-uhf-packet]",
+      "seconds": 0.371,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-cartesian-rhf-off]",
+      "seconds": 0.315,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-cartesian-rhf-on]",
+      "seconds": 0.381,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-cartesian-rhf-packet]",
+      "seconds": 0.313,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-cartesian-uhf-off]",
+      "seconds": 0.359,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-cartesian-uhf-on]",
+      "seconds": 0.423,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-cartesian-uhf-packet]",
+      "seconds": 0.359,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-spherical-rhf-off]",
+      "seconds": 0.301,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-spherical-rhf-on]",
+      "seconds": 0.368,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-spherical-rhf-packet]",
+      "seconds": 0.3,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-spherical-uhf-off]",
+      "seconds": 0.37,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-spherical-uhf-on]",
+      "seconds": 0.436,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[scalar-pageable-compact-spherical-uhf-packet]",
+      "seconds": 0.371,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-cartesian-rhf-off]",
+      "seconds": 0.311,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-cartesian-rhf-on]",
+      "seconds": 0.377,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-cartesian-rhf-packet]",
+      "seconds": 0.311,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-cartesian-uhf-off]",
+      "seconds": 0.359,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-cartesian-uhf-on]",
+      "seconds": 0.429,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-cartesian-uhf-packet]",
+      "seconds": 0.363,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-spherical-rhf-off]",
+      "seconds": 0.297,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-spherical-rhf-on]",
+      "seconds": 0.366,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-spherical-rhf-packet]",
+      "seconds": 0.299,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-spherical-uhf-off]",
+      "seconds": 0.371,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-spherical-uhf-on]",
+      "seconds": 0.439,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-warp-spherical-uhf-packet]",
+      "seconds": 0.373,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-cartesian-rhf-off]",
+      "seconds": 0.313,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-cartesian-rhf-on]",
+      "seconds": 0.378,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-cartesian-rhf-packet]",
+      "seconds": 0.311,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-cartesian-uhf-off]",
+      "seconds": 0.359,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-cartesian-uhf-on]",
+      "seconds": 0.425,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-cartesian-uhf-packet]",
+      "seconds": 0.362,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-spherical-rhf-off]",
+      "seconds": 0.298,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-spherical-rhf-on]",
+      "seconds": 0.365,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-spherical-rhf-packet]",
+      "seconds": 0.299,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-spherical-uhf-off]",
+      "seconds": 0.372,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-spherical-uhf-on]",
+      "seconds": 0.438,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-packed-spherical-uhf-packet]",
+      "seconds": 0.374,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-rhf-off]",
+      "seconds": 0.262,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-rhf-on]",
+      "seconds": 0.314,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-rhf-packet]",
+      "seconds": 0.261,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-uhf-off]",
+      "seconds": 0.361,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-uhf-on]",
+      "seconds": 0.426,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-uhf-packet]",
+      "seconds": 0.396,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-rhf-off]",
+      "seconds": 0.248,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-rhf-on]",
+      "seconds": 0.3,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-rhf-packet]",
+      "seconds": 0.248,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-uhf-off]",
+      "seconds": 0.374,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-uhf-on]",
+      "seconds": 0.438,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-uhf-packet]",
+      "seconds": 0.374,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_raw_upload_attribution_preserves_complete_response[cartesian-rhf]",
+      "seconds": 0.152,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_raw_upload_attribution_preserves_complete_response[cartesian-uhf]",
+      "seconds": 0.184,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_raw_upload_attribution_preserves_complete_response[spherical-rhf]",
+      "seconds": 0.151,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_raw_upload_attribution_preserves_complete_response[spherical-uhf]",
+      "seconds": 0.217,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-0-cartesian-rhf]",
+      "seconds": 0.166,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-0-cartesian-uhf]",
+      "seconds": 0.243,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-0-spherical-rhf]",
+      "seconds": 0.145,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-0-spherical-uhf]",
+      "seconds": 0.25,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-67108864-cartesian-rhf]",
+      "seconds": 0.164,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-67108864-cartesian-uhf]",
+      "seconds": 0.264,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-67108864-spherical-rhf]",
+      "seconds": 0.146,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-67108864-spherical-uhf]",
+      "seconds": 0.273,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-0-cartesian-rhf]",
+      "seconds": 0.194,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-0-cartesian-uhf]",
+      "seconds": 0.243,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-0-spherical-rhf]",
+      "seconds": 0.177,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-0-spherical-uhf]",
+      "seconds": 0.252,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-67108864-cartesian-rhf]",
+      "seconds": 0.219,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-67108864-cartesian-uhf]",
+      "seconds": 0.264,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-67108864-spherical-rhf]",
+      "seconds": 0.205,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[serial-67108864-spherical-uhf]",
+      "seconds": 0.274,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_property_replay_replans_value_storage_with_complete_forces[25165824]",
+      "seconds": 0.901,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_property_replay_replans_value_storage_with_complete_forces[33554432]",
+      "seconds": 0.307,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_property_replay_replans_value_storage_with_complete_forces[67108864]",
+      "seconds": 0.287,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_resident_response_budget_replans_without_reference_factors",
+      "seconds": 0.254,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_response_override_cannot_be_invalid_or_enlarge_public_budget[0-0]",
+      "seconds": 0.002,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_response_override_cannot_be_invalid_or_enlarge_public_budget[-1-0]",
+      "seconds": 0.001,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_response_override_cannot_be_invalid_or_enlarge_public_budget[1e9-0]",
+      "seconds": 0.001,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_response_override_cannot_be_invalid_or_enlarge_public_budget[18446744073709551616-0]",
+      "seconds": 0.001,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_response_override_cannot_be_invalid_or_enlarge_public_budget[16777216-16777216]",
+      "seconds": 0.001,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_batch_four_rejects_insufficient_solver_allowance[cartesian-rhf]",
+      "seconds": 0.011,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_batch_four_rejects_insufficient_solver_allowance[cartesian-uhf]",
+      "seconds": 0.009,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_batch_four_rejects_insufficient_solver_allowance[spherical-rhf]",
+      "seconds": 0.011,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_property_budget_cuda.test_batch_four_rejects_insufficient_solver_allowance[spherical-uhf]",
+      "seconds": 0.009,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-dense-auto-auto-blas-0]",
+      "seconds": 1.198,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-dense-panel-dense-scalar-0]",
+      "seconds": 0.555,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-dense-panel-dense-blas-0]",
+      "seconds": 0.557,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-dense-jk-scratch-occupied-blas-0]",
+      "seconds": 0.593,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-packed-auto-occupied-blas-0]",
+      "seconds": 0.586,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-packed-panel-dense-blas-0]",
+      "seconds": 0.57,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[oh-def2-svp-spherical-uhf-dense-panel-dense-blas-134217728]",
+      "seconds": 0.584,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[oh-def2-svp-spherical-uhf-dense-panel-dense-scalar]",
+      "seconds": 0.544,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[oh-def2-svp-spherical-uhf-dense-panel-dense-blas]",
+      "seconds": 0.546,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[oh-def2-svp-spherical-uhf-dense-jk-scratch-occupied-blas]",
+      "seconds": 0.582,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[oh-def2-svp-spherical-uhf-packed-auto-occupied-blas]",
+      "seconds": 0.574,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[oh-def2-svp-spherical-uhf-packed-panel-dense-blas]",
+      "seconds": 0.561,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_packed_oh_at_128_mib[oh-def2-svp-spherical-uhf]",
+      "seconds": 0.638,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_auxiliary_f_rys_is_executed[oh-def2-svp-spherical-uhf-off]",
+      "seconds": 0.073,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_auxiliary_f_rys_is_executed[oh-def2-svp-spherical-uhf-packet]",
+      "seconds": 0.073,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-dense-auto-auto-blas-0]",
+      "seconds": 3.498,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-dense-panel-dense-scalar-0]",
+      "seconds": 1.826,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-dense-panel-dense-blas-0]",
+      "seconds": 1.158,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-dense-jk-scratch-occupied-blas-0]",
+      "seconds": 1.368,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-packed-auto-occupied-blas-0]",
+      "seconds": 1.255,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-packed-panel-dense-blas-0]",
+      "seconds": 1.229,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_full_force_cold_warm_and_changed_geometry[water-tetramer-def2-svp-spherical-dense-panel-dense-blas-134217728]",
+      "seconds": 1.458,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[water-tetramer-def2-svp-spherical-dense-panel-dense-scalar]",
+      "seconds": 1.785,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[water-tetramer-def2-svp-spherical-dense-panel-dense-blas]",
+      "seconds": 1.12,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[water-tetramer-def2-svp-spherical-dense-jk-scratch-occupied-blas]",
+      "seconds": 1.331,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[water-tetramer-def2-svp-spherical-packed-auto-occupied-blas]",
+      "seconds": 1.219,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_original_density_request[water-tetramer-def2-svp-spherical-packed-panel-dense-blas]",
+      "seconds": 1.191,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_auxiliary_f_rys_is_executed[water-tetramer-def2-svp-spherical-off]",
+      "seconds": 0.359,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_auxiliary_f_rys_is_executed[water-tetramer-def2-svp-spherical-packet]",
+      "seconds": 0.353,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_water_insufficient_budget[dense-83886080]",
+      "seconds": 8.133,
+      "status": "failed-also-on-clean-baseline"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_water_insufficient_budget[packed-134217728]",
+      "seconds": 0.403,
+      "status": "passed"
+    },
+    {
+      "id": "tests.python.test_df_practical_response_cuda.test_practical_water_insufficient_budget[packed-167772160]",
+      "seconds": 0.76,
+      "status": "failed-also-on-clean-baseline"
+    }
+  ],
+  "broad_gpu_result": {
+    "passed": 165,
+    "failed": 17,
+    "clean_baseline_reproduced_failures": 17
+  },
+  "integration": {
+    "source_commit": "b54cf8bda2feba7f28162b72be5294b4ca7f093c",
+    "binary_sha256": "8c89c6c8714fafb0889d18254c926a9281d5acf5ab774bc8f0add22e095a18d9",
+    "slurm_job_id": "12193",
+    "gpu_cases": [
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-full]",
+        "seconds": 1.198,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-symmetric]",
+        "seconds": 0.299,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-packed]",
+        "seconds": 0.294,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-full]",
+        "seconds": 0.481,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-symmetric]",
+        "seconds": 0.358,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-packed]",
+        "seconds": 0.342,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-full]",
+        "seconds": 0.331,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-symmetric]",
+        "seconds": 0.303,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-packed]",
+        "seconds": 0.303,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-full]",
+        "seconds": 0.398,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-symmetric]",
+        "seconds": 0.318,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-packed]",
+        "seconds": 0.301,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-full]",
+        "seconds": 0.695,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-symmetric]",
+        "seconds": 0.587,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-packed]",
+        "seconds": 0.567,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-full]",
+        "seconds": 1.354,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-symmetric]",
+        "seconds": 0.941,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-packed]",
+        "seconds": 0.855,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-full]",
+        "seconds": 0.596,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-symmetric]",
+        "seconds": 0.505,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-packed]",
+        "seconds": 0.515,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-full]",
+        "seconds": 0.841,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-symmetric]",
+        "seconds": 0.641,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-packed]",
+        "seconds": 0.644,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_screening_energy_finite_difference",
+        "seconds": 0.41,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_screening_invalid_control_on_generic",
+        "seconds": 0.046,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_panel_clipping_and_capacity_fallback[3145728-False]",
+        "seconds": 0.243,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_panel_clipping_and_capacity_fallback[2000000-True]",
+        "seconds": 3.94,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_batch_geometry_screening_matches_strict",
+        "seconds": 0.426,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_automatic_shell_budget",
+        "seconds": 0.137,
+        "status": "passed"
+      }
+    ],
+    "complete_96_atom_endpoints_passed": 14,
+    "receipts": {
+      "integration-gpu.log": {
+        "sha256": "aa589679c0a27cbcad00c5e2b47bee492c7299b42d39b99752b69d89f0e40c65",
+        "last_lines": [
+          "8c89c6c8714fafb0889d18254c926a9281d5acf5ab774bc8f0add22e095a18d9  /home/jzzeng/codes/qc-df-source-screening-20261003/build/cuda-release-sm120/libgenerativeqc.so",
+          "..............................                                           [100%]",
+          "30 passed in 19.26s",
+          "PASS integrated 96-atom endpoint"
+        ]
+      },
+      "integration-build.log": {
+        "sha256": "3bf6c265d4dd6573b065ce3ddab3ba15826eea555bf8a8ae0ed1bd734575d78c",
+        "last_lines": [
+          "48674 |   const std::size_t n=checked_add(o,v);",
+          "      |                     ^",
+          "[32/35] Linking CXX shared library libgenerativeqc.so.0.1.0",
+          "[33/35] Creating library symlink libgenerativeqc.so.0 libgenerativeqc.so",
+          "[34/35] Linking CXX executable generativeqc"
+        ]
+      },
+      "integration-configure.log": {
+        "sha256": "6c738384e92ffcd3db69762e3cbe9f0ca4ef3fc3d59024ecb4d6654fbe4b67de",
+        "last_lines": [
+          "-- GenerativeQC compiler cache: /home/jzzeng/.local/bin/ccache",
+          "-- GenerativeQC CPU linear algebra: scalar fallback",
+          "-- Configuring done (0.3s)",
+          "-- Generating done (0.2s)",
+          "-- Build files have been written to: /home/jzzeng/codes/qc-df-source-screening-20261003/build/cuda-release-sm120"
+        ]
+      },
+      "integration-budget-test.log": {
+        "sha256": "070a0a1a384f8986bf91c5e6a28d1adb0cf8744a853fe1ce7e8ca4541698f8d4",
+        "last_lines": [
+          ".                                                                        [100%]",
+          "1 passed in 1.21s"
+        ]
+      },
+      "integration-ccache-before.log": {
+        "sha256": "07ddd5951af971a8a04e4c91336cb4a0c3e4a38499cab690cc86945eff42517a",
+        "last_lines": [
+          "  Misses:          333386",
+          "  Cache size (GB):  10.99 /  12.00 (91.54 %)",
+          "  Cleanups:           557",
+          "",
+          "Use the -v/--verbose option for more details."
+        ]
+      },
+      "integration-ccache-after.log": {
+        "sha256": "ecfaf72c4faf01526522e6941f6df71893136e68379d8079735d4cba6c7fac55",
+        "last_lines": [
+          "  Misses:          333420",
+          "  Cache size (GB):  10.99 /  12.00 (91.56 %)",
+          "  Cleanups:           557",
+          "",
+          "Use the -v/--verbose option for more details."
+        ]
+      }
+    },
+    "scope": "Rebuild and requalify after preserving PR head 23df34f35; all DF screening production files are unchanged. Integration timings are not substituted into the measured figure or screening A/B."
+  },
+  "baseline_failure_comparison": [
+    {
+      "test": "tests.python.test_df_force_screening_cuda.test_screening_feature_histogram_matches_device_work",
+      "baseline": "KeyError: 'shell_000_p3_3_3_weight_effective_samples'",
+      "candidate": "KeyError: 'shell_000_p3_3_3_weight_effective_samples'",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-rhf-off]",
+      "baseline": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x7d0cbce80b80>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x7d0cbce80b80> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 120, 'host_to_device_bytes': 8284, ...}.get\n  \n    blas)",
+      "candidate": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x73d9cc205100>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x73d9cc205100> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 120, 'host_to_device_bytes': 8284, ...}.get\n  \n    blas)",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-rhf-on]",
+      "baseline": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x7d0cbceb4900>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x7d0cbceb4900> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 120, 'host_to_device_bytes': 8380, ...}.get\n  \n    blas)",
+      "candidate": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x73d9ddff1e80>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x73d9ddff1e80> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 120, 'host_to_device_bytes': 8380, ...}.get\n  \n    blas)",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-cartesian-rhf-packet]",
+      "baseline": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x7d0cbcef2d80>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x7d0cbcef2d80> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 120, 'host_to_device_bytes': 8380, ...}.get\n  \n    blas)",
+      "candidate": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x73d9cc214280>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x73d9cc214280> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 120, 'host_to_device_bytes': 8380, ...}.get\n  \n    blas)",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-rhf-off]",
+      "baseline": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x7d0cbcebd740>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x7d0cbcebd740> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 120, 'host_to_device_bytes': 7816, ...}.get\n  \n    blas)",
+      "candidate": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x73d9e408c700>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x73d9e408c700> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 120, 'host_to_device_bytes': 7816, ...}.get\n  \n    blas)",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-rhf-on]",
+      "baseline": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x7d0cbcebed40>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x7d0cbcebed40> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 120, 'host_to_device_bytes': 7912, ...}.get\n  \n    blas)",
+      "candidate": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x73d9ec574dc0>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x73d9ec574dc0> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 120, 'host_to_device_bytes': 7912, ...}.get\n  \n    blas)",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_shell_derivatives_cuda.test_shell_execution_and_return_to_generic[blas-pinned-panels-compact-spherical-rhf-packet]",
+      "baseline": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x7d0cbc32d680>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x7d0cbc32d680> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 120, 'host_to_device_bytes': 7912, ...}.get\n  \n    blas)",
+      "candidate": "AssertionError: assert (0 > 0) == ('blas' == 'blas'\n +  where 0 = <built-in method get of dict object at 0x73d9ddfdd980>('response_charge_blas_dots', 0)\n +    where <built-in method get of dict object at 0x73d9ddfdd980> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 120, 'host_to_device_bytes': 7912, ...}.get\n  \n    blas)",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_response_weights_cuda.test_raw_upload_attribution_preserves_complete_response[cartesian-rhf]",
+      "baseline": "assert 293452 == 43452",
+      "candidate": "assert 293452 == 43452",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_response_weights_cuda.test_raw_upload_attribution_preserves_complete_response[spherical-rhf]",
+      "baseline": "assert 261408 == 40224",
+      "candidate": "assert 261408 == 40224",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-0-cartesian-rhf]",
+      "baseline": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x7d0cbce68a80>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x7d0cbce68a80> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7980, ...}.get\n  \n    blas))",
+      "candidate": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x73d9e40a5f80>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x73d9e40a5f80> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7980, ...}.get\n  \n    blas))",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-0-spherical-rhf]",
+      "baseline": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x7d0cbc349280>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x7d0cbc349280> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7512, ...}.get\n  \n    blas))",
+      "candidate": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x73d9ddffc1c0>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x73d9ddffc1c0> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7512, ...}.get\n  \n    blas))",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-67108864-cartesian-rhf]",
+      "baseline": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x7d0cbcec3300>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x7d0cbcec3300> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7980, ...}.get\n  \n    blas))",
+      "candidate": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x73d9ddffdd00>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x73d9ddffdd00> = {'atom_coordinates': 9, 'density_upload_bytes': 5000, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7980, ...}.get\n  \n    blas))",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_response_weights_cuda.test_response_route_and_host_ablation[blas-67108864-spherical-rhf]",
+      "baseline": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x7d0cbce6e9c0>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x7d0cbce6e9c0> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7512, ...}.get\n  \n    blas))",
+      "candidate": "AssertionError: assert False == ((True and 'blas' == 'blas'\n +  where False = bool(0)\n +    where 0 = <built-in method get of dict object at 0x73d9e40448c0>('response_metric_blas_dots', 0)\n +      where <built-in method get of dict object at 0x73d9e40448c0> = {'atom_coordinates': 9, 'density_upload_bytes': 4608, 'device_to_host_bytes': 72, 'host_to_device_bytes': 7512, ...}.get\n  \n    blas))",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_property_budget_cuda.test_property_replay_replans_value_storage_with_complete_forces[25165824]",
+      "baseline": "AssertionError: assert False == ((25165824 == (24 << 20) and 'forces' in ('energy', 'forces')))\n +  where False = DensityFittingMetricDiagnostic(bucket_id=0, system_index=0, effective_rank=96, absolute_threshold=7.527269023992962e-0...33, peak_device_bytes=17610493, host_resident_bytes=2238042, peak_host_bytes=2939331, auxiliary_tile=3, streamed=False).streamed",
+      "candidate": "AssertionError: assert False == ((25165824 == (24 << 20) and 'forces' in ('energy', 'forces')))\n +  where False = DensityFittingMetricDiagnostic(bucket_id=0, system_index=0, effective_rank=96, absolute_threshold=7.527269023992962e-0...33, peak_device_bytes=17610493, host_resident_bytes=2238042, peak_host_bytes=2939331, auxiliary_tile=3, streamed=False).streamed",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_property_budget_cuda.test_resident_response_budget_replans_without_reference_factors",
+      "baseline": "assert not True",
+      "candidate": "assert not True",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_practical_response_cuda.test_practical_water_insufficient_budget[dense-83886080]",
+      "baseline": "AssertionError: success\nassert 0 == 7\n +  where 0 = BatchItemResult(index=0, status=0, status_message='success', energy=-304.15104061102807, forces=array([[ 0.01153154,  ...ical_residual_rms=None, ks_diagnostic=None, correlation=None, cc_performance=None, dispersion=None, initial_guess=None).status\n +  and   7 = _native.STATUS_OUT_OF_MEMORY",
+      "candidate": "AssertionError: success\nassert 0 == 7\n +  where 0 = BatchItemResult(index=0, status=0, status_message='success', energy=-304.15104061102807, forces=array([[ 0.01153154,  ...ical_residual_rms=None, ks_diagnostic=None, correlation=None, cc_performance=None, dispersion=None, initial_guess=None).status\n +  and   7 = _native.STATUS_OUT_OF_MEMORY",
+      "same_leading_assertion": true
+    },
+    {
+      "test": "tests.python.test_df_practical_response_cuda.test_practical_water_insufficient_budget[packed-167772160]",
+      "baseline": "AssertionError: success\nassert 0 == 7\n +  where 0 = BatchItemResult(index=0, status=0, status_message='success', energy=-304.15104061102744, forces=array([[ 0.01153154,  ...ical_residual_rms=None, ks_diagnostic=None, correlation=None, cc_performance=None, dispersion=None, initial_guess=None).status\n +  and   7 = _native.STATUS_OUT_OF_MEMORY",
+      "candidate": "AssertionError: success\nassert 0 == 7\n +  where 0 = BatchItemResult(index=0, status=0, status_message='success', energy=-304.15104061102744, forces=array([[ 0.01153154,  ...ical_residual_rms=None, ks_diagnostic=None, correlation=None, cc_performance=None, dispersion=None, initial_guess=None).status\n +  and   7 = _native.STATUS_OUT_OF_MEMORY",
+      "same_leading_assertion": true
+    }
+  ],
+  "independent_device_validation": {
+    "node": "node2",
+    "slurm_job_id": "2180",
+    "assigned_cuda_visible_devices": "1",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "driver": "595.91.07",
+    "binary_sha256": "08f2edac5bc97261ea438731d855062acb6e3726f7bbda88a58febcb4c6181c3",
+    "purpose": "Numerical and sanitizer qualification only; no cross-device timing comparison.",
+    "cases": [
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-full]",
+        "seconds": 2.103,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-symmetric]",
+        "seconds": 0.248,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-cartesian-packed]",
+        "seconds": 0.27,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-full]",
+        "seconds": 0.416,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-symmetric]",
+        "seconds": 0.302,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-rhf-spherical-packed]",
+        "seconds": 0.3,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-full]",
+        "seconds": 0.278,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-symmetric]",
+        "seconds": 0.254,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-cartesian-packed]",
+        "seconds": 0.255,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-full]",
+        "seconds": 0.359,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-symmetric]",
+        "seconds": 0.283,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-svp-uhf-spherical-packed]",
+        "seconds": 0.274,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-full]",
+        "seconds": 0.601,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-symmetric]",
+        "seconds": 0.517,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-cartesian-packed]",
+        "seconds": 0.493,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-full]",
+        "seconds": 1.011,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-symmetric]",
+        "seconds": 0.748,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-rhf-spherical-packed]",
+        "seconds": 0.724,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-full]",
+        "seconds": 0.496,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-symmetric]",
+        "seconds": 0.431,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-cartesian-packed]",
+        "seconds": 0.43,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-full]",
+        "seconds": 0.737,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-symmetric]",
+        "seconds": 0.561,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_budget_and_skipped_work[def2-tzvp-uhf-spherical-packed]",
+        "seconds": 0.558,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_screening_energy_finite_difference",
+        "seconds": 0.363,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_shell_screening_invalid_control_on_generic",
+        "seconds": 0.04,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_panel_clipping_and_capacity_fallback[3145728-False]",
+        "seconds": 0.212,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_panel_clipping_and_capacity_fallback[2000000-True]",
+        "seconds": 3.791,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_batch_geometry_screening_matches_strict",
+        "seconds": 0.373,
+        "status": "passed"
+      },
+      {
+        "id": "tests.python.test_df_shell_screening_cuda.test_automatic_shell_budget",
+        "seconds": 0.121,
+        "status": "passed"
+      }
+    ],
+    "receipts": {
+      "validation.log": {
+        "sha256": "dffdccb0dfcf019093f98e4e8b0a0fe740b1c84b1c580f6101102d5cda5c56fd",
+        "last_lines": [
+          "08f2edac5bc97261ea438731d855062acb6e3726f7bbda88a58febcb4c6181c3  /home/jzzeng/codes/df-source-screening-20261004/libraries/qualified.so",
+          "..............................                                           [100%]",
+          "30 passed in 18.08s",
+          "PASS memcheck",
+          "PASS racecheck",
+          "PASS synccheck"
+        ]
+      },
+      "memcheck.log": {
+        "sha256": "4caeb5a9bdc365365b04fdb838d4acf64b2320711a8e387796ef9b956406c5af",
+        "last_lines": [
+          "========= COMPUTE-SANITIZER",
+          ".                                                                        [100%]",
+          "1 passed in 9.43s",
+          "========= ERROR SUMMARY: 0 errors"
+        ]
+      },
+      "racecheck.log": {
+        "sha256": "671191b213255625a8a4e70a247c91b6c5f157a853a640c6da150480da425f0e",
+        "last_lines": [
+          "========= COMPUTE-SANITIZER",
+          ".                                                                        [100%]",
+          "1 passed in 170.50s (0:02:50)",
+          "========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)"
+        ]
+      },
+      "synccheck.log": {
+        "sha256": "eae35f898bf16cdc82424b21d78454ec454ec9defd42ed53c5ede4ffe7a23dbe",
+        "last_lines": [
+          "========= COMPUTE-SANITIZER",
+          ".                                                                        [100%]",
+          "1 passed in 3.52s",
+          "========= ERROR SUMMARY: 0 errors"
+        ]
+      }
+    }
+  },
+  "excluded_attempts": [
+    "Initial Cartesian cc-pVDZ-JKFIT dimer crossed the native metric cutoff (260/262 directions); unscreened energy differed by 1.83e-8 Eh from full Cholesky. The Cartesian test matrix uses full-rank def2-SVP auxiliaries without changing gates.",
+    "Initial water/OH UHF geometry did not converge with screening off; water plus atomic H provides the converged open-shell oracle.",
+    "Disk exhaustion interrupted two diagnostic attempts; complete measurements were rerun in fresh output directories.",
+    "A host test attempt lacked an explicitly selected library during rebuilding (30 failed); rerunning with the correct library passed all 118 tests.",
+    "n4 first lacked compatible CUDA libraries, then CUDA initialization failed with error 804 and NVML driver/library mismatch; no n4 samples enter performance claims."
+  ],
+  "scientific_gates": {
+    "energy_Eh": 1e-08,
+    "force_Eh_per_Bohr": 1e-07,
+    "shell_omission_budget_Eh_per_Bohr": 1e-10
+  },
+  "scope": "Generation-time screening of weighted three-center derivatives; forward A/B, metric derivatives and SCF are unchanged.",
+  "measured_source_reconstruction": {
+    "status": "passed",
+    "method": "apply retained patch to a temporary index at measured_source_base; SHA-256 of every listed production source equals the implementation checkout"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "path": "src/scf/cuda/df_shell_derivatives.cuh",
-  "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract.",
+  "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract. Optional shell Coulomb norm pointers and per-public-triple budgets share the same immutable view and arena lifetime as the derivative consumer.",
   "regions": [],
   "role": "runtime",
   "subsystem": "runtime"

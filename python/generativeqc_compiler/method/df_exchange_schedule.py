@@ -8,6 +8,8 @@ device, orbital lifetime, or density acceptance policy.
 
 from dataclasses import dataclass
 
+from .df_occupied_gram_cuda import emit_occupied_gram
+
 
 @dataclass(frozen=True)
 class ProjectedExchangeSchedule:
@@ -140,4 +142,4 @@ bool visit_shared_projected_exchange(std::size_t n, std::size_t rows, bool trian
   return completed && next_charge_row == n;
 }
 }  // namespace generativeqc::scf::generated
-"""
+""" + emit_occupied_gram()

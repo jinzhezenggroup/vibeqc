@@ -149,6 +149,26 @@ def test_single_final_k_and_response_replay(
                 "response_occupied_charge_inverse_gemms_avoided", 0
             ) == (2 if reused else 0)
             if reused:
+                rank = mol.nelectron // 2
+                auxiliary_count = mf.with_df.auxmol.nao_nr()
+                occupied_pairs = rank * (rank + 1) // 2
+                assert counters["response_symmetric_occupied_pairs"] == 1
+                assert (
+                    counters["response_occupied_root_elements"]
+                    == auxiliary_count * occupied_pairs
+                )
+                assert (
+                    counters["response_occupied_inverse_flops"]
+                    == 2 * auxiliary_count**2 * occupied_pairs
+                )
+                assert (
+                    counters["response_occupied_metric_flops"]
+                    == auxiliary_count * (auxiliary_count + 1) * occupied_pairs
+                )
+                assert (
+                    counters["response_symmetric_expansion_copy_bytes"]
+                    == auxiliary_count * rank**2 * 8
+                )
                 assert counters.get("response_retained_fitted_charge_panels", 0) == 0
                 assert (
                     counters["response_retained_fitted_charge_source_elements_avoided"]
@@ -159,6 +179,8 @@ def test_single_final_k_and_response_replay(
                     > 0
                 )
             else:
+                assert counters.get("response_symmetric_occupied_pairs", 0) == 0
+                assert counters.get("response_symmetric_expansion_copy_bytes", 0) == 0
                 assert counters["response_retained_fitted_charge_panels"] > 0
             assert counters.get("response_fitted_occupied_metric_root_gemms") == (
                 2 if metric == "spectral" else 1

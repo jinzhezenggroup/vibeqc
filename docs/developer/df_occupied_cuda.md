@@ -6,8 +6,8 @@ orbital AOs, `a` auxiliary AOs and occupied rank `r`, dense exchange requires
 `4*a*n^3` FLOPs and occupied projection plus a full Gram requires at most
 `4*a*n^2*r`. Auto requires at least a twofold arithmetic reduction (`0 < r <=
 floor(n/2)`). This margin is a workload heuristic, not a promise of a twofold
-latency improvement on every device. It uses the ordinary FP64 BLAS backend
-and has no GPU product-name, architecture, exact AO/rank or equal-basis gate.
+latency improvement on every device. It uses FP64 contractions and has no GPU
+product-name, architecture, exact AO/rank or equal-basis gate.
 
 Resident execution additionally requires a single RHF system, a non-streamed resident
 plan, full AO rows, reserved factors, native BLAS index bounds and sufficient
@@ -56,8 +56,23 @@ resident full-Gram K, resident flattened dense K, or the default panel-dense
 and triangular occupied route. The plan freezes this policy; changing it
 rebuilds captured SCF work.
 
-The [split Gram decision](../../.agents/notes/rejected/2026-09-17-split-occupied-gram.md)
-records the endpoint qualification behind retaining this single-Gram policy.
+Packed resident plans use a compiler-generated triangular FP64 Gram when
+`n >= 384`, the reduction `a*r >= 32768`, and at most 64 slices of 32768
+reduction entries fit the existing `exchange_intermediate` capacity. Each
+32-by-32 lower output tile produces disjoint partials; a second kernel sums
+them in ascending slice order, applies the occupation weight once and writes
+both triangles. Padded AO/reduction tails are explicit. This preserves U for
+its final-response lease, adds no allocation or atomics, and supports capture
+on the existing stream. Short, constrained, nonpacked and full-matrix routes
+keep their BLAS provider. Errors propagate without retrying another algorithm.
+Trace counters include partial bytes, slice count, reduction elements and
+executed FLOPs including padded diagonal/edge arithmetic.
+
+The earlier [split GEMM experiment](../../.agents/notes/rejected/2026-09-17-split-occupied-gram.md)
+remains rejected: it computed both triangles and lost its kernel saving to
+extra SCF iterations. The generated triangular provider and its complete
+endpoint qualification are described in the
+[96-atom optimization decision](../../.agents/notes/implemented/performance/2026-10-03-df-symmetric-occupied-products.md).
 
 The same plan supports resident tensors, generated panels and compatibility
 host-backed tiles. Full AO panels follow #282's capacity rebalance and reuse
@@ -428,6 +443,27 @@ consumers retain their original spectral response, including discarded-direction
 derivatives; they cannot borrow this root shortcut. The choice adds no device
 allocation and grants no raw final-projection lease. Trace counters report the
 actual root GEMMs, FLOPs, copy bytes and scratch allowance.
+
+An exact final-K projection from a physical packed AO source additionally proves
+`S_Q = C^T B_Q C` symmetric. The response stores its `r*(r+1)/2` independent
+occupied pairs, with diagonals first, and applies the second metric root to
+that smaller extent. The Coulomb potential still reads the diagonal trace.
+Two lower-triangle SYRK products form the metric adjoint: diagonal occupied
+pairs have weight one and off-diagonal pairs weight two. Their `beta=1`
+updates preserve the existing Coulomb contribution before mirroring. Providers
+without SYRK keep two full GEMM products over those same weighted pairs, with
+full-product FLOPs reported; NVIDIA execution retains the two SYRK calls.
+
+Only singleton RHF with its exact final-state lease, retained full-rank metric
+root and packed physical source can take this route. Dense/nonsymmetric
+fixtures, spectral and truncated-metric controls, UHF, corrected factors
+without a lease and insufficient resident storage preserve their original
+paths. Off-diagonal projection entries are averaged to remove FP64 reduction
+asymmetry. After the compact Gram finishes, expansion uses the dead exchange
+interval and restores the original disjoint staging layout; bounded derivative
+panels and resource reservations remain unchanged. No in-place expansion is
+permitted. Counters expose compact root elements, actual contraction FLOPs and
+the expansion copy separately.
 
 `benchmarks/compare_df_direct_endpoint.py` qualifies complete energy/force
 endpoints for direct RHF and explicitly selected DF on identical geometry,

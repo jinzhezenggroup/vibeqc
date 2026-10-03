@@ -1,0 +1,8 @@
+{
+  "96": {
+    "reference_timings_comparable": true,
+    "maximum_off_on_energy_difference": 0.0,
+    "maximum_off_on_force_difference": 4.227729277772596e-13,
+    "warm_time_reduction": 0.2736922501259291
+  }
+}

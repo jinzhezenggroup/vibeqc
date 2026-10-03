@@ -259,29 +259,48 @@ generativeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std:
     }
     bool triangular = false;
     auto* output = exchange + system * plan.matrix_elements;
-    status = trace_call("ri_k_occupied_exchange_gemm", plan.stream, [&] {
-      // K is a Gram matrix even when the three-center fixture is not AO
-      // symmetric. Reduce its product domain before BLAS, then mirror the
-      // result. Providers without SYRK retain the exact full GEMM route.
-      const auto product = [&](auto handle) {
-        if constexpr (requires {
-                        cublasDsyrk(handle, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_T, n, ar, &weight, u,
-                                    ar, &zero, output, n);
-                      }) {
-          if (plan.triangular_exchange) {
-            triangular = true;
-            return cublasDsyrk(handle, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_T, n, ar, &weight, u, ar,
-                               &zero, output, n);
+    // U remains live for the exact final-response lease. The intermediate
+    // buffer is dead between projection and K consumption; only its charged
+    // capacity may hold deterministic triangular reduction slices. Restrict
+    // promotion to packed sources; all other providers retain their BLAS path.
+    const auto gram_splits =
+        packed && plan.triangular_exchange
+            ? generated::df_occupied_gram_splits(plan.nbf, plan.naux * rank, plan.panel_capacity)
+            : 0;
+    if (gram_splits) {
+      runtime::cuda_trace::TraceRegion gram("ri_k_occupied_split_gram", plan.stream);
+      error = launch_split_occupied_gram(plan.stream, plan.nbf, plan.naux * rank, gram_splits,
+                                         weight, u, plan.exchange_intermediate, output);
+      if (error != cudaSuccess) return cuda_failure(error, "split occupied DF Gram", detail);
+      triangular = true;
+      trace_counter("occupied_exchange_split_count", gram_splits);
+      trace_counter("occupied_exchange_partial_bytes",
+                    gram_splits * plan.matrix_elements * sizeof(double));
+      trace_counter("occupied_exchange_reduction_elements", gram_splits * plan.matrix_elements);
+    } else
+      status = trace_call("ri_k_occupied_exchange_gemm", plan.stream, [&] {
+        // K is a Gram matrix even when the three-center fixture is not AO
+        // symmetric. Reduce its product domain before BLAS, then mirror the
+        // result. Providers without SYRK retain the exact full GEMM route.
+        const auto product = [&](auto handle) {
+          if constexpr (requires {
+                          cublasDsyrk(handle, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_T, n, ar, &weight,
+                                      u, ar, &zero, output, n);
+                        }) {
+            if (plan.triangular_exchange) {
+              triangular = true;
+              return cublasDsyrk(handle, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_T, n, ar, &weight, u, ar,
+                                 &zero, output, n);
+            }
           }
-        }
-        return cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, n, ar, &weight, u, ar, u, ar, &zero,
-                           output, n);
-      };
-      return product(plan.blas);
-    });
+          return cublasDgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, n, ar, &weight, u, ar, u, ar,
+                             &zero, output, n);
+        };
+        return product(plan.blas);
+      });
     if (status != CUBLAS_STATUS_SUCCESS)
       return blas_failure(status, "resident occupied DF K product", detail);
-    if (triangular) {
+    if (triangular && !gram_splits) {
       runtime::cuda_trace::TraceRegion mirror("ri_k_occupied_mirror", plan.stream);
       launch_mirror_exchange_triangle(blocks_for(plan.matrix_elements), kThreads, plan.stream,
                                       plan.nbf, output);
@@ -291,8 +310,13 @@ generativeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std:
     trace_counter("occupied_projection_products", plan.nbf);
     trace_counter("occupied_projection_flops", 2 * plan.naux * plan.nbf * plan.nbf * rank);
     trace_counter("occupied_exchange_products", 1);
-    trace_counter("occupied_exchange_flops",
-                  plan.naux * rank * plan.nbf * (triangular ? plan.nbf + 1 : 2 * plan.nbf));
+    const auto gram_tiles = (plan.nbf + 31) / 32;
+    // Count padded diagonal/edge arithmetic, including discarded entries,
+    // instead of labeling the generated tile kernel as an ideal triangle.
+    trace_counter(
+        "occupied_exchange_flops",
+        gram_splits ? ((plan.naux * rank + 31) / 32 * 32) * 32 * 32 * gram_tiles * (gram_tiles + 1)
+                    : plan.naux * rank * plan.nbf * (triangular ? plan.nbf + 1 : 2 * plan.nbf));
     trace_counter("occupied_exchange_triangular", triangular);
     trace_counter("occupied_projection_m", plan.naux);
     trace_counter("occupied_projection_n", rank);

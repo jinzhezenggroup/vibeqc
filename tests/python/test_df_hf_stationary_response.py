@@ -231,7 +231,8 @@ def test_production_native_lowering_is_bound_to_stationary_plan() -> None:
     assert "tensorir-charge-lowering: direct-NT" in cuda
     assert "df_rhf_charge_contract" in cuda
     assert "df_rhf_potential_from_rooted_projection" in cuda
-    assert "rooted[q * rr + i * (rank + 1)]" in cuda
+    assert "rooted[q * stride + i * diagonal_stride]" in cuda
+    assert "symmetric_pairs ? 1 : rank + 1" in cuda
     assert "potentials[q] = density_scale * value" in cuda
     assert "cublasDgemm" in cuda
     for kernel in (

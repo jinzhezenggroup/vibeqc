@@ -26,7 +26,10 @@ def _payload() -> dict:
 
 
 def _copy_audited_sources(payload: dict, destination_root: Path) -> None:
-    for relative in payload["scope"]["audited_sources"]:
+    sources = set(payload["scope"]["audited_sources"])
+    for entry in payload["entries"]:
+        sources.update(entry["sources"])
+    for relative in sorted(sources):
         source = ROOT / relative
         destination = destination_root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -38,6 +41,17 @@ def test_current_default_promotion_inventory_is_complete() -> None:
     assert not errors
     assert payload["tracking_issue"] == 1598
     assert len(payload["entries"]) >= 10
+
+
+def test_fixture_copies_registered_sources_outside_the_audited_scope(
+    tmp_path: Path,
+) -> None:
+    payload = _payload()
+    _copy_audited_sources(payload, tmp_path)
+    for entry in payload["entries"]:
+        for relative in entry["sources"]:
+            assert (tmp_path / relative).read_bytes() == (ROOT / relative).read_bytes()
+    assert not validate_inventory(payload, root=tmp_path)
 
 
 def test_inventory_requires_owner_rationale_and_revisit_condition() -> None:

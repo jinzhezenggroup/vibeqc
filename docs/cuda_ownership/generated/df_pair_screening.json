@@ -1,0 +1,7 @@
+{
+  "name": "df_pair_screening",
+  "outputs": [
+    "generated/generated_df_pair_screening.cuh"
+  ],
+  "owner": "python/generativeqc_compiler/integral/df_pair_screening.py"
+}

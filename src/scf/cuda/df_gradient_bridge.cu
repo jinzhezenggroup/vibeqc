@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "generated_df_pair_screening.cuh"
 #include "molecule/basis.hpp"
 #include "runtime/cuda_architecture.hpp"
 #include "runtime/cuda_component_trace.hpp"
@@ -31,6 +32,62 @@ namespace {
 struct CudaFailure {
   cudaError_t status;
 };
+
+/** Prepare shell envelopes once, independently of auxiliary panels and weights.
+ * Native code owns normalized-basis traversal and storage. The compiler owns
+ * the radial envelope and raised/lowered center derivative mathematics.
+ */
+__global__ void build_df_pair_force_norms(DfShellBasisView view, const double* positions,
+                                          std::size_t shells, double* output) {
+  const auto index = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (index >= shells * (shells + 1) / 2) return;
+  auto first = static_cast<std::size_t>((sqrt(8.0 * index + 1) - 1) * .5);
+  while (first * (first + 1) / 2 > index) --first;
+  while ((first + 1) * (first + 2) / 2 <= index) ++first;
+  const auto second = index - first * (first + 1) / 2;
+  const auto& b = view.basis;
+  const auto* a_power =
+      b.term_angular + view.ao_offsets[first] * molecule::kMaximumAoExpansionTerms * 3;
+  const auto* b_power =
+      b.term_angular + view.ao_offsets[second] * molecule::kMaximumAoExpansionTerms * 3;
+  const unsigned la = a_power[0] + a_power[1] + a_power[2];
+  const unsigned lb = b_power[0] + b_power[1] + b_power[2];
+  double distance2 = 0;
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    const double delta =
+        positions[3 * b.shell_atoms[first] + axis] - positions[3 * b.shell_atoms[second] + axis];
+    distance2 += delta * delta;
+  }
+  const double distance = sqrt(distance2);
+  double bound = 0;
+  for (auto ia = b.primitive_offsets[first]; ia < b.primitive_offsets[first + 1]; ++ia)
+    for (auto ib = b.primitive_offsets[second]; ib < b.primitive_offsets[second + 1]; ++ib) {
+      const double coefficient = fabs(b.coefficients[ia] * b.coefficients[ib]);
+      // A product underflow must never hide a later large normalization factor.
+      if (!coefficient && b.coefficients[ia] && b.coefficients[ib]) {
+        bound = HUGE_VAL;
+        continue;
+      }
+      bound += generated_df_screening::radial_pair_derivative_norm(
+          la, lb, b.exponents[ia], b.exponents[ib], distance, coefficient);
+    }
+  output[first * shells + second] = output[second * shells + first] = bound;
+}
+
+__global__ void build_df_auxiliary_value_norms(DfShellBasisView view, std::size_t shells,
+                                               double* output) {
+  const auto shell = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
+  if (shell >= shells) return;
+  const auto& b = view.basis;
+  const auto* power =
+      b.term_angular + view.ao_offsets[shell] * molecule::kMaximumAoExpansionTerms * 3;
+  const unsigned angular = power[0] + power[1] + power[2];
+  double bound = 0;
+  for (auto p = b.primitive_offsets[shell]; p < b.primitive_offsets[shell + 1]; ++p)
+    bound += generated_df_screening::radial_pair_norm(angular, 0, b.exponents[p], 0, 0,
+                                                      fabs(b.coefficients[p]));
+  output[shell] = bound;
+}
 void check(cudaError_t status) {
   if (status != cudaSuccess) throw CudaFailure{status};
 }
@@ -646,6 +703,16 @@ generativeqc_status execute_cuda_df_hf_gradient(
       return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
     }
   }
+  double shell_target = 0;
+  const char* shell_screen_control = std::getenv("GENERATIVEQC_DF_SHELL_SCREEN_ABS");
+  if (shell_screen_control && std::string_view(shell_screen_control) != "off") {
+    char* end = nullptr;
+    shell_target = std::strtod(shell_screen_control, &end);
+    if (end == shell_screen_control || *end || !std::isfinite(shell_target) || shell_target < 0) {
+      detail = "GENERATIVEQC_DF_SHELL_SCREEN_ABS requires off or a finite nonnegative force budget";
+      return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
+    }
+  }
 
   if (resources) *resources = {};
   const auto n = molecule::ao_count(orbital), a = molecule::ao_count(auxiliary),
@@ -834,9 +901,11 @@ generativeqc_status execute_cuda_df_hf_gradient(
     // The host destination must outlive Arena's exceptional-path stream drain.
     std::array<unsigned long long, 6> observed_shell_work{};
     std::array<unsigned long long, 3> observed_screen_work{};
+    std::array<unsigned long long, 3> observed_shell_screen_work{};
     std::unique_ptr<double[]> screening_feature_weights;
     std::size_t screening_feature_capacity{};
     unsigned long long* screen_counters = nullptr;
+    unsigned long long* shell_screen_counters = nullptr;
     std::vector<unsigned long long> detailed_shell_work_host;
     DfShellDiagnostics detailed_shell_work;
     DfShellDiagnostics* shell_diagnostics = nullptr;
@@ -883,6 +952,10 @@ generativeqc_status execute_cuda_df_hf_gradient(
     runtime::cuda_trace::trace_counter("response_derivative_shell_execution", shell_execution);
     runtime::cuda_trace::trace_counter("response_derivative_profile_promoted", promoted_default);
     const bool full_shell_domain = execution == "shell";
+    // The measured sm_120 shell domain admits one absolute force-component
+    // budget. Unknown architectures and small automatic workloads stay strict;
+    // explicit controls can independently qualify their shell consumers.
+    if (!shell_screen_control && promoted_default) shell_target = 1e-10;
     const char* pair_control = std::getenv("GENERATIVEQC_DF_DERIVATIVE_PAIRS");
     const std::string_view pair_policy = pair_control ? pair_control : "auto";
     if (pair_policy != "auto" && pair_policy != "full" && pair_policy != "symmetric" &&
@@ -1184,7 +1257,7 @@ generativeqc_status execute_cuda_df_hf_gradient(
                                            arena.stats.borrowed_device_bytes);
         runtime::cuda_trace::trace_counter("response_resident_auxiliary_tile", consume_tile);
       }
-      runtime::cuda_trace::trace_counter("response_scratch_bytes", arena.stats.device_bytes);
+      auto response_scratch_bytes = arena.stats.device_bytes;
       runtime::cuda_trace::trace_counter("density_upload_bytes",
                                          arena.stats.density_host_to_device_bytes);
       // Causal attribution controls, not production schedule candidates. Both
@@ -1242,6 +1315,65 @@ generativeqc_status execute_cuda_df_hf_gradient(
         runtime::cuda_trace::trace_counter("derivative_probe_scratch_bytes",
                                            bytes + gradient_copies * sizeof(double));
       }
+      if (shell_target > 0 && shell_execution && full_shell_domain) {
+        // Reserve only unused headroom AFTER the original response shape and
+        // scratch have been fixed. Tight budgets retain strict evaluation;
+        // this optimization never shrinks a tile or amplifies source work.
+        const auto orbital_shells = orbital.shells.size();
+        const auto auxiliary_shells = auxiliary.shells.size();
+        const auto norm_bytes =
+            (orbital_shells * orbital_shells + auxiliary_shells) * sizeof(double);
+        const auto counter_bytes = shell_counters ? sizeof(observed_shell_screen_work) : 0;
+        double* norms = nullptr;
+        if (norm_bytes + counter_bytes <= maximum_bytes - arena.stats.device_bytes &&
+            counter_bytes <= maximum_bytes - arena.stats.host_bytes) {
+          // One optional allocation also makes actual device-memory pressure
+          // a strict fallback, without leaving a partially admitted screen.
+          try {
+            norms = static_cast<double*>(arena.allocate(norm_bytes + counter_bytes));
+          } catch (const CudaFailure& error) {
+            if (error.status != cudaErrorMemoryAllocation) throw;
+            (void)cudaGetLastError();
+          } catch (const std::bad_alloc&) {
+            // Arena cleans a failed host ownership insertion before throwing.
+          }
+        }
+        if (norms) {
+          runtime::cuda_trace::TraceRegion norm_preparation("force_screen_norm_preparation",
+                                                            arena.stream);
+          auto* auxiliary_norms = norms + orbital_shells * orbital_shells;
+          if (counter_bytes) {
+            shell_screen_counters =
+                reinterpret_cast<unsigned long long*>(auxiliary_norms + auxiliary_shells);
+            check(cudaMemsetAsync(shell_screen_counters, 0, counter_bytes, arena.stream));
+            arena.stats.host_bytes += counter_bytes;
+          }
+          build_df_pair_force_norms<<<(orbital_shells * (orbital_shells + 1) / 2 + 127) / 128, 128,
+                                      0, arena.stream>>>(shell_o->view, r, orbital_shells, norms);
+          check(cudaGetLastError());
+          build_df_auxiliary_value_norms<<<(auxiliary_shells + 127) / 128, 128, 0, arena.stream>>>(
+              shell_x->view, auxiliary_shells, auxiliary_norms);
+          check(cudaGetLastError());
+          const double budget = std::nextafter(
+              static_cast<double>(static_cast<long double>(shell_target) / n / n / a), 0.0);
+          for (auto* view : {&shell_o->view, &shell_o->signature_view}) {
+            view->force_shell_norms = norms;
+            view->force_shell_stride = orbital_shells;
+            view->force_shell_budget = budget;
+            view->force_shell_counts = shell_screen_counters;
+          }
+          shell_x->view.force_shell_norms = shell_x->signature_view.force_shell_norms =
+              auxiliary_norms;
+          runtime::cuda_trace::trace_counter("screening_shell_norm_bytes", norm_bytes);
+          runtime::cuda_trace::trace_counter("screening_shell_enabled", 1);
+          // Add production metadata to the scratch ledger while preserving
+          // the separate accounting of explicitly requested probe buffers.
+          response_scratch_bytes += norm_bytes + counter_bytes;
+        } else {
+          runtime::cuda_trace::trace_counter("screening_shell_capacity_fallback", 1);
+        }
+      }
+      runtime::cuda_trace::trace_counter("response_scratch_bytes", response_scratch_bytes);
       runtime::cuda_trace::trace_counter("response_probe_total_device_bytes",
                                          arena.stats.device_bytes);
       preparation.finish();
@@ -1707,6 +1839,12 @@ generativeqc_status execute_cuda_df_hf_gradient(
                             sizeof(observed_screen_work), cudaMemcpyDeviceToHost, arena.stream));
       arena.stats.device_to_host_bytes += sizeof(observed_screen_work);
     }
+    if (shell_screen_counters) {
+      check(cudaMemcpyAsync(observed_shell_screen_work.data(), shell_screen_counters,
+                            sizeof(observed_shell_screen_work), cudaMemcpyDeviceToHost,
+                            arena.stream));
+      arena.stats.device_to_host_bytes += sizeof(observed_shell_screen_work);
+    }
     check(cudaMemcpyAsync(result.data(), output, result.size() * sizeof(double),
                           cudaMemcpyDeviceToHost, arena.stream));
     arena.stats.device_to_host_bytes += result.size() * sizeof(double);
@@ -1732,6 +1870,14 @@ generativeqc_status execute_cuda_df_hf_gradient(
                                          observed_screen_work[0] - observed_screen_work[1]);
       runtime::cuda_trace::trace_counter("screening_000_shell_tasks_skipped",
                                          observed_screen_work[2]);
+    }
+    if (shell_screen_counters) {
+      runtime::cuda_trace::trace_counter("screening_shell_tasks_considered",
+                                         observed_shell_screen_work[0]);
+      runtime::cuda_trace::trace_counter("screening_shell_tasks_skipped",
+                                         observed_shell_screen_work[1]);
+      runtime::cuda_trace::trace_counter("screening_shell_primitive_products_skipped",
+                                         observed_shell_screen_work[2]);
     }
     runtime::cuda_trace::trace_counter("host_to_device_bytes", arena.stats.host_to_device_bytes);
     runtime::cuda_trace::trace_counter("tensor_host_to_device_bytes",

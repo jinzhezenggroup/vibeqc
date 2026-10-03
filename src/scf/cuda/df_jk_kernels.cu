@@ -10,9 +10,24 @@
 #include <utility>
 #include <vector>
 
+#include "generated_df_exchange_schedule.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
 
 namespace generativeqc::scf::cuda_df {
+
+cudaError_t launch_split_occupied_gram(cudaStream_t stream, std::size_t n, std::size_t reduction,
+                                       std::size_t splits, double weight, const double* input,
+                                       double* partials, double* output) {
+  const auto tiles = (n + generated::df_occupied_gram_tile - 1) / generated::df_occupied_gram_tile;
+  generated::df_occupied_gram_partials<<<dim3(tiles, tiles, splits), dim3(16, 16), 0, stream>>>(
+      static_cast<int>(n), static_cast<int>(reduction), input, partials);
+  const auto error = cudaGetLastError();
+  if (error != cudaSuccess) return error;
+  generated::
+      df_occupied_gram_reduce<<<static_cast<unsigned>((n * n + 255) / 256), 256, 0, stream>>>(
+          n, splits, weight, partials, output);
+  return cudaGetLastError();
+}
 
 __global__ void mirror_exchange_triangle(std::size_t n, double* matrix) {
   const auto k = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;

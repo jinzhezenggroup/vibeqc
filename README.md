@@ -193,7 +193,7 @@ print(first.energies)
 
 | Method | Performance |
 | --- | --- |
-| HF (direct / DF) | <a href="benchmarks/results/df-one-step-warm-20260926/hf.svg"><img src="benchmarks/results/df-one-step-warm-20260926/hf.svg" width="900" alt="GenerativeQC versus GPU4PySCF: direct and DF RHF energy-plus-force latency"></a> |
+| HF (direct / DF) | <a href="benchmarks/results/df-source-screening-20261004/hf.svg"><img src="benchmarks/results/df-source-screening-20261004/hf.svg" width="900" alt="GenerativeQC versus GPU4PySCF: direct and DF RHF energy-plus-force latency"></a> |
 
 <!-- DFT benchmark rows are temporarily withheld from the rendered README.
 Restore these rows to the table above only after approval to publish the results.
@@ -202,7 +202,7 @@ Restore these rows to the table above only after approval to publish the results
 -->
 
 RTX 5090, spherical def2-SVP: complete warm RHF energy + forces, five repeats.
-[Protocol and results](benchmarks/results/df-one-step-warm-20260926/README.md).
+[Protocol and results](benchmarks/results/df-source-screening-20261004/README.md).
 
 <!-- DFT benchmark discussion is temporarily withheld with the rows above.
 PBE0 uses the same 3–96-atom water clusters, full spherical def2-SVP,

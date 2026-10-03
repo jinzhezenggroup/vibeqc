@@ -97,6 +97,7 @@ macro(generativeqc_register_host_generated_sources target)
     OUTPUTS "${GENERATIVEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/method/df_exchange_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/method/df_occupied_gram_cuda.py"
     ARGS --output "${GENERATIVEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
     COMMENT "Generating compiler-owned DF source-reuse schedule")
 
@@ -602,6 +603,7 @@ macro(generativeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_rys_policy.hpp"
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_production.hpp"
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_screening.cuh"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_pair_screening.cuh"
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_rys_shell.cuh")
   generativeqc_register_generated_sources(
     TARGET ${target}

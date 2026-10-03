@@ -1,0 +1,823 @@
+{
+  "schema": "generativeqc.hf-comparison.v2",
+  "repeats": 5,
+  "scope": "complete RHF energy and analytic forces; explicit packed-single fitted DF",
+  "timing": "separate engine processes; cold includes prepare; frozen warm replays; traces excluded",
+  "figure": "GenerativeQC/GPU4PySCF direct/DF medians and min-max over every warm repeat; crosses mark varying iteration counts",
+  "cases": [
+    {
+      "aos": 24,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 1.1694271648302674,
+          "gpu4pyscf_seconds": 12.39272124832496,
+          "native_iterations": [
+            19
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.08057384798303246,
+          "gpu4pyscf_seconds": 0.884561357088387,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.5308455103076994,
+          "gpu4pyscf_seconds": 10.96191467391327,
+          "native_iterations": [
+            14
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.07406386313959956,
+          "gpu4pyscf_seconds": 0.881540650036186,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 24,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 0.27502922154963017,
+          "gpu4pyscf_seconds": 1.039154976606369,
+          "native_iterations": [
+            17
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.013729899190366268,
+          "gpu4pyscf_seconds": 0.2074248567223549,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.048198566772043705,
+          "gpu4pyscf_seconds": 0.45456127217039466,
+          "native_iterations": [
+            12
+          ],
+          "reference_iterations": [
+            40
+          ],
+          "reference_scf_jk_builds": [
+            41
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.013645847793668509,
+          "gpu4pyscf_seconds": 0.20727924816310406,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 48,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 1.277085155248642,
+          "gpu4pyscf_seconds": 16.230475016403943,
+          "native_iterations": [
+            22
+          ],
+          "reference_iterations": [
+            53
+          ],
+          "reference_scf_jk_builds": [
+            54
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.09195527015253901,
+          "gpu4pyscf_seconds": 0.9419120568782091,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.5944143133237958,
+          "gpu4pyscf_seconds": 11.678810809273273,
+          "native_iterations": [
+            15
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.08240839280188084,
+          "gpu4pyscf_seconds": 0.9452375117689371,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 48,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 0.36958316154778004,
+          "gpu4pyscf_seconds": 1.1541245388798416,
+          "native_iterations": [
+            19
+          ],
+          "reference_iterations": [
+            53
+          ],
+          "reference_scf_jk_builds": [
+            54
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.028338902164250612,
+          "gpu4pyscf_seconds": 0.22066672565415502,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.09981484757736325,
+          "gpu4pyscf_seconds": 0.5007850141264498,
+          "native_iterations": [
+            12
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.02838430879637599,
+          "gpu4pyscf_seconds": 0.22075298195704818,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 1.9197709211148322,
+          "gpu4pyscf_seconds": 18.951238876208663,
+          "native_iterations": [
+            27
+          ],
+          "reference_iterations": [
+            49
+          ],
+          "reference_scf_jk_builds": [
+            50
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.12916876981034875,
+          "gpu4pyscf_seconds": 1.1185403047129512,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.9404853829182684,
+          "gpu4pyscf_seconds": 14.066013701725751,
+          "native_iterations": [
+            16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.12054446805268526,
+          "gpu4pyscf_seconds": 1.1209984831511974,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 0.580628041177988,
+          "gpu4pyscf_seconds": 1.3546605152077973,
+          "native_iterations": [
+            23
+          ],
+          "reference_iterations": [
+            49
+          ],
+          "reference_scf_jk_builds": [
+            50
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.06504127895459533,
+          "gpu4pyscf_seconds": 0.2627487606368959,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.2521649319678545,
+          "gpu4pyscf_seconds": 0.663702713791281,
+          "native_iterations": [
+            12
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.06509475177153945,
+          "gpu4pyscf_seconds": 0.2624717620201409,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 3.453755280934274,
+          "gpu4pyscf_seconds": 23.719393698498607,
+          "native_iterations": [
+            20
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.25838228687644005,
+          "gpu4pyscf_seconds": 1.6143074962310493,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 2.427344396710396,
+          "gpu4pyscf_seconds": 20.6558727636002,
+          "native_iterations": [
+            15
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.26049468014389277,
+          "gpu4pyscf_seconds": 1.6051917942240834,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 1.1680846340022981,
+          "gpu4pyscf_seconds": 2.068344760220498,
+          "native_iterations": [
+            18
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.1721066739410162,
+          "gpu4pyscf_seconds": 0.5290588131174445,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 0.7921482459641993,
+          "gpu4pyscf_seconds": 1.3698890767991543,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.17373565072193742,
+          "gpu4pyscf_seconds": 0.52978470409289,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 11.632861067075282,
+          "gpu4pyscf_seconds": 33.84720250265673,
+          "native_iterations": [
+            24
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.75380639731884,
+          "gpu4pyscf_seconds": 2.3795449547469616,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 7.27002419391647,
+          "gpu4pyscf_seconds": 28.504483118187636,
+          "native_iterations": [
+            16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.754586920607835,
+          "gpu4pyscf_seconds": 2.3860610518604517,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 4.637375174090266,
+          "gpu4pyscf_seconds": 7.88566372403875,
+          "native_iterations": [
+            21
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 0.5969890309497714,
+          "gpu4pyscf_seconds": 1.7622443838045,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 3.7358782100491226,
+          "gpu4pyscf_seconds": 6.3563987128436565,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 0.6073082657530904,
+          "gpu4pyscf_seconds": 1.7653872189112008,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 39.617086821235716,
+          "gpu4pyscf_seconds": 51.04022983415052,
+          "native_iterations": [
+            25
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 2.9969293139874935,
+          "gpu4pyscf_seconds": 5.13895862409845,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3,
+            5
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4,
+            6
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 26.839158267714083,
+          "gpu4pyscf_seconds": 43.33135542878881,
+          "native_iterations": [
+            16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 2.9908156972378492,
+          "gpu4pyscf_seconds": 6.200626445002854,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            3,
+            4,
+            5
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            4,
+            5,
+            6
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "generativeqc_seconds": 37.6027017920278,
+          "gpu4pyscf_seconds": 58.236315835267305,
+          "native_iterations": [
+            24
+          ],
+          "reference_iterations": [
+            45
+          ],
+          "reference_scf_jk_builds": [
+            46
+          ]
+        },
+        "warm": {
+          "generativeqc_seconds": 3.3177440860308707,
+          "gpu4pyscf_seconds": 11.231751148123294,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4
+          ]
+        },
+        "moved": {
+          "generativeqc_seconds": 30.232847086153924,
+          "gpu4pyscf_seconds": 48.98743907362223,
+          "native_iterations": [
+            13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
+          ]
+        },
+        "moved-warm": {
+          "generativeqc_seconds": 3.3371284431777894,
+          "gpu4pyscf_seconds": 11.24808644829318,
+          "native_iterations": [
+            1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
+          ]
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "path": "samples.json.gz",
+      "bytes": 9064,
+      "sha256": "9fa21f19998a7c4f7260f7a9a29f57d7c362dec5978b4aa0a4ea67a2a1ae851e",
+      "encoding": "gzip",
+      "decoded_bytes": 83985,
+      "decoded_sha256": "e296a428fe536443de65815b534d0e1a11043a8c8c7796aa7e93ed9501ecf652"
+    },
+    {
+      "path": "references.json.gz",
+      "bytes": 45566,
+      "sha256": "8f0ad1918b20e09b1fdf37fa32e497a29c2cacbf8b8e743cd0d3c65df0bd249b",
+      "encoding": "gzip",
+      "decoded_bytes": 414604,
+      "decoded_sha256": "314ab87b664e51478c226b8dbfee82087da53d6c512d0cd016c83c875dbe0876"
+    },
+    {
+      "path": "work.json.gz",
+      "bytes": 8846,
+      "sha256": "abb27166e2ac3e4c68dab57ad5436641b324639aeacde6bfe2a08d251af4c60a",
+      "encoding": "gzip",
+      "decoded_bytes": 220363,
+      "decoded_sha256": "126794619343aee42017ec1062195d34a3d2aa36f8603005ccc24b23681cc47e"
+    }
+  ],
+  "native_endpoint_samples": 156,
+  "reference_endpoint_samples": 144,
+  "maximum_energy_error": 4.638422979041934e-11,
+  "maximum_force_error": 1.4935430669993366e-10,
+  "native_identity": {
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-source-screening-20261003/.artifacts/df-source-screening/qualified.so",
+      "library_sha256": "08f2edac5bc97261ea438731d855062acb6e3726f7bbda88a58febcb4c6181c3",
+      "probe": {
+        "source_identity": "88e211bd89a374a53ee3bbfb1eaddfeaf18a2f16485a2757bdf537c0921d74c2",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    },
+    "source_revision": "7d11520383a01dce7b0997f16d745cdb95de8efd",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "slurm_job_id": "12189"
+  }
+}

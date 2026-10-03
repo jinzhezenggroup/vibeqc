@@ -1,7 +1,7 @@
 {
   "owner": "scf_tensor",
   "current_default": "RHF response coefficients and method-level Coulomb/exchange A/M weight kernels are compiler-generated from the DensityFittingRHFResponsePlan identity. Native CUDA owns dynamic-size BLAS, packed/resident storage, tiling, streams and callbacks. Rank-deficient metric response calls the separately generated symmetric pseudoinverse custom rule.",
-  "generated_capability": "StationaryProblem derives RHF one-electron, Pulay, three-center A and metric M source weights; its native lowering emits the production RHF coefficient contract plus dynamic-size Coulomb/exchange source-weight kernels. #143 owns coordinate-integral derivatives and SymmetricMatrixFunctionSpec owns pseudoinverse spectral response.",
+  "generated_capability": "StationaryProblem derives RHF one-electron, Pulay, three-center A and metric M source weights; its native lowering emits the production RHF coefficient contract plus dynamic-size Coulomb/exchange source-weight kernels. #143 owns coordinate-integral derivatives and SymmetricMatrixFunctionSpec owns pseudoinverse spectral response. Qualified symmetric occupied response uses compiler-owned diagonal-first pair indexing, compact metric-root products and weighted triangular metric Gram contractions.",
   "missing_capability": "UHF/multiple-density composition and direct dynamic-shape execution of the full TensorIR stationary graph remain native/generic follow-up work; BLAS, eigensolver, allocation, tiling, packed layout and stream policy intentionally remain native runtime.",
   "retained_duplicate_reason": "oracle",
   "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
@@ -23,7 +23,10 @@
     "tests/python/test_df_exchange_policy.py",
     "tests/python/test_df_auto_exchange_cuda.py",
     ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
-    "tests/python/test_df_resources.py"
+    "tests/python/test_df_resources.py",
+    "tests/python/test_df_occupied_projection_lowering.py",
+    "tests/python/test_df_single_final_exchange_cuda.py",
+    ".agents/notes/implemented/performance/2026-10-03-df-symmetric-occupied-products.md"
   ],
   "status": "partial_compiler_migration"
 }

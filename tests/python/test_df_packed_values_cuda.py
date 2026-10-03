@@ -226,13 +226,16 @@ def test_packed_preparation_replay_and_representation_replacement(
                 r for r in records if r["counters"].get("packed_raw_generation_calls")
             ]
             if storage == "packed":
-                if step != 2:
-                    assert packed_setup, (
-                        "packing was not selected before physical source creation"
-                    )
-                else:
+                # Only the zero-budget fleet retains prepared data and its
+                # device plan across calls. Positive budgets rebuild bounded
+                # transient preparation, even for unchanged packed geometry.
+                if step == 2 and budget == 0:
                     assert not packed_setup, (
                         "unchanged packed geometry rebuilt its source"
+                    )
+                else:
+                    assert packed_setup, (
+                        "packing was not selected before physical source creation"
                     )
                 responses = [r for r in records if r["operation"] == "force_response"]
                 assert len(responses) == batch_size
