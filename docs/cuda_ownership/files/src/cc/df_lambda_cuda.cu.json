@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/df_lambda_cuda.cu",
+  "reason": "Owns one resident DF Lambda input state, complete numeric admission, core/Q action composition, generic accumulation, bounded scratch reuse and transactional response publication. The compiler owns all residual and derivative equations.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
