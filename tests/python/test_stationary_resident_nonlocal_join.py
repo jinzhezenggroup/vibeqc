@@ -551,3 +551,80 @@ def test_profile_fallback_reports_actual_grid_uploads(
     if atomic_resident:
         assert work["grid_atomic_measure_h2d_bytes"] == expected
         assert ("profile-host" in work["grid_atomic_measure_source"]) == bool(profiled)
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_local_ao_maps_reach_both_consumers_without_skipping_points(
+    empty: bool,
+) -> None:
+    """Even an empty AO tile still owns nonlocal seeds and grid response work."""
+    args, events = fixture()
+    state = args["state"]
+    state.grid.identity = "grid"
+    state.identity = SimpleNamespace(geometry_identity="geometry")
+    selected = np.frombuffer(
+        np.array([] if empty else [1], dtype=np.uintp).tobytes(), dtype=np.uintp
+    )
+    domain = SimpleNamespace(
+        point_pointer=8192,
+        point_count=6,
+        device=0,
+        grid_identity="grid",
+        geometry_identity="geometry",
+    )
+    original = args["grid"].feature_task_device_points
+
+    @contextmanager
+    def feature(
+        pointer: int, count: int, ids: typing.Any, ingredients: tuple[str, ...]
+    ) -> typing.Iterator[SimpleNamespace]:
+        assert ids is selected
+        events.append(("selected", len(ids)))
+        with original(pointer, count, None, ingredients) as task:
+            yield task
+
+    class Maps:
+        work: typing.ClassVar[dict[str, int]] = {"retained_map_bytes": selected.nbytes}
+
+        def reset_work(self) -> None:
+            events.append(("mask_reset",))
+
+        def select(
+            self, grid: typing.Any, actual_domain: typing.Any, begin: int, count: int
+        ) -> np.ndarray:
+            assert actual_domain is domain
+            assert grid is args["grid"] and count == 2
+            events.append(("mask", begin))
+            return selected
+
+    args["grid"].feature_task_device_points = feature
+    args.update(ao_maps=Maps(), ao_domain=domain)
+    _, _, work = MODULE.resident_nonlocal_geometry(**args)
+    assert [event for event in events if event[0] == "mask"] == [
+        ("mask", 0),
+        ("mask", 2),
+        ("mask", 4),
+    ]
+    assert len([event for event in events if event[0] == "local"]) == 3
+    assert len([event for event in events if event[0] == "external"]) == 3
+    assert work["geometry_point_visits"] == 12
+    assert work["active_ao_maps"] == {"retained_map_bytes": selected.nbytes}
+
+
+def test_local_ao_domain_is_checked_against_actual_snapshot_grid() -> None:
+    args, events = fixture()
+    args["state"].grid.identity = "grid"
+    args["state"].identity = SimpleNamespace(geometry_identity="geometry")
+    args.update(
+        ao_maps=object(),
+        ao_domain=SimpleNamespace(
+            point_pointer=16384,
+            point_count=6,
+            device=0,
+            grid_identity="grid",
+            geometry_identity="geometry",
+        ),
+    )
+    with pytest.raises(ValueError, match="current grid lease"):
+        MODULE.resident_nonlocal_geometry(**args)
+    assert not events

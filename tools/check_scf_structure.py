@@ -251,6 +251,7 @@ CUDA_MODULES["cuda_direct_provider_host"] = (
     "direct_coulomb",
 )
 CUDA_ALLOWED["cuda_direct_provider_host"] = (
+    "scf/direct_block_schedule.hpp",
     "scf/cuda/direct_jk.",
     "scf/cuda/direct_jk_plan.",
     "scf/cuda/direct_coulomb.",
@@ -296,7 +297,10 @@ CUDA_MODULES["cuda_provider_kernel_interfaces"] = (
     "direct_jk_kernels.hpp",
     "one_electron_export_kernels.hpp",
 )
-CUDA_ALLOWED["cuda_provider_kernel_interfaces"] = ("scf/cuda/packed_basis.",)
+CUDA_ALLOWED["cuda_provider_kernel_interfaces"] = (
+    "scf/cuda/packed_basis.",
+    "scf/direct_block_domain.hpp",
+)
 # Retained numerical primitives have no queue policy or host plan dependency.
 # One-electron consumers share only these bounded scientific building blocks.
 CUDA_MODULES["cuda_integral_numerics"] = (
@@ -395,6 +399,9 @@ CUDA_ALLOWED["cuda_direct_contractions"] = (
         "scf/cuda/" + stem + ".cuh" for stem in CUDA_MODULES["cuda_direct_contractions"]
     )
     + (
+        # Weighted LR force consumers reuse the shared scalar moment primitive;
+        # this exact dependency does not admit integral tensors or CPU oracles.
+        "integrals/range_moments.hpp",
         "scf/cuda/direct_constants.hpp",
         "scf/cuda/direct_metadata.hpp",
         "scf/cuda/packed_basis.hpp",
@@ -444,6 +451,7 @@ CUDA_ALLOWED["cuda_direct_kernel_interfaces"] = (
     "scf/cuda/direct_metadata.hpp",
     "scf/cuda/packed_basis.hpp",
     "scf/cuda_weighted_eri.hpp",
+    "scf/direct_block_domain.hpp",
 )
 # Direct-HF host control is split from numerical launch orchestration. The
 # bucket owner may consume planning/policy interfaces but never device

@@ -1155,6 +1155,22 @@ typedef struct generativeqc_ks_transport_diagnostic {
   uint64_t occupation_stabilized_proposals;
 } generativeqc_ks_transport_diagnostic;
 
+/** Optional sampled-AO geometry preparation and actual solve work. Maps are
+ * immutable for one prepared geometry. Discovery time/bytes refer to its setup
+ * and must not be counted again on warm solves; xc_evaluations is solve-local.
+ * Point/AO counts describe ONE complete XC traversal, including every tile.
+ * Numeric resource bounds charge full-capacity discovery, never mean AO counts.
+ * These counters are evidence, not energy/force accuracy certificates. */
+typedef struct generativeqc_ks_ao_selection_diagnostic_v1 {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  uint64_t requested, selected, tiles, empty_tiles, min_active, max_active, active_sum;
+  uint64_t discovery_ao_jet_values, point_ao_visits, point_ao_square_sum;
+  uint64_t dense_point_ao_square_sum, discovery_d2h_bytes;
+  uint64_t reserved_device_bytes, host_peak_bytes, xc_evaluations;
+  double cutoff, discovery_seconds;
+} generativeqc_ks_ao_selection_diagnostic_v1;
+
 /** Optional per-system coordinates for a prepared ragged batch execution. */
 typedef struct generativeqc_batch_input_descriptor {
   uint32_t struct_size;
@@ -1559,6 +1575,12 @@ GENERATIVEQC_API generativeqc_status generativeqc_batch_get_ks_diagnostic(
  * retired owner's counters and add the replacement owner's setup. */
 GENERATIVEQC_API generativeqc_status generativeqc_batch_get_ks_transport_diagnostic(
     const generativeqc_batch* batch, uint32_t index, generativeqc_ks_transport_diagnostic* out);
+
+/** Host-only query for the current input-ordered KS result. Failed or stale
+ * batch items have no record; this never accesses device state or runs AO work. */
+GENERATIVEQC_API generativeqc_status generativeqc_batch_get_ks_ao_selection_diagnostic_v1(
+    const generativeqc_batch* batch, uint32_t index,
+    generativeqc_ks_ao_selection_diagnostic_v1* out);
 
 /**
  * Enable or disable replacement of retained warm-start densities.

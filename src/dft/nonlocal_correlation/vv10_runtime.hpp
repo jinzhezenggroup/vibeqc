@@ -110,6 +110,8 @@ Vv10CudaDeviceLayout vv10_cuda_device_layout(std::size_t point_count, std::size_
  * All scientific inputs and outputs are device-resident. No allocation,
  * host transfer or synchronization occurs here. energy may alias workspace
  * because it is published only after all pair kernels have consumed scratch.
+ * point_derivative may alias density_gradient: local-scale construction is
+ * the last gradient reader and precedes every point-derivative writer on stream.
  */
 void enqueue_vv10_cuda_device(const Vv10CudaDeviceLayout& layout, Vv10Parameters parameters,
                               int device_id, cudaStream_t stream, const double* coordinates,
@@ -123,6 +125,8 @@ void enqueue_vv10_cuda_device(const Vv10CudaDeviceLayout& layout, Vv10Parameters
  * Inputs are validated before screening. rho<threshold becomes zero weight,
  * rho=1 and grad-rho=0 so inactive points disappear from both pair domains
  * while local scales remain finite. No allocation, transfer or fence occurs.
+ * Effective density and gradient may respectively alias their inputs; each
+ * point's inputs are loaded before its thread writes any effective output.
  */
 void enqueue_vv10_molecular_domain_cuda(cudaStream_t stream, std::size_t point_count,
                                         double density_threshold, const double* weights,

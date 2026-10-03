@@ -38,7 +38,7 @@ def stack_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     cpp, binary = directory / "probe.cpp", directory / "probe"
     cpp.write_text(stubs + preparation + DRIVER)
     subprocess.run(
-        [compiler, "-std=c++17", str(cpp), "-o", str(binary)],
+        [compiler, "-std=c++17", "-I", str(ROOT / "src"), str(cpp), "-o", str(binary)],
         check=True,
         capture_output=True,
         text=True,

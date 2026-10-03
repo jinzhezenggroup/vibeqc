@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "dft/ao_grid.hpp"
+#include "dft/ao_selection_work.hpp"
 #include "dft/grid.hpp"
 #include "runtime/bounded_workspace.hpp"
 
@@ -51,7 +52,33 @@ struct CudaXcLayout {
   /** Full-grid points/weights are borrowed from an immutable MolecularGrid
    * device owner instead of occupying this arena. */
   bool borrowed_grid{};
+  /** Explicit local maps are optional; their device indices and retained host
+   * offsets are charged separately. Full-capacity AO scratch remains bounded
+   * by nao, never by the mean selected column count. */
+  bool local_ao{};
+  std::size_t ao_map_entries{}, host_ao_map_bytes{};
 };
+
+/** Explicit CSR maps for the immutable point-tile sequence. Every local map
+ * is sorted, unique, and in range; empty tiles are legal. These indices define
+ * the caller's selected scientific domain, not an error-certified cutoff. */
+struct CudaXcAoTiles {
+  std::vector<std::size_t> offsets, indices;
+};
+
+/** Worst-case admission for sampled-jet discovery. The device bound includes
+ * the dense arena and one global-capacity map per tile; host peak includes
+ * those maps, offsets, and the current tile's flags. No mean AO count enters
+ * admission. Discovery borrows the already charged AO/work scratch. */
+struct CudaXcAoSelectionResources {
+  std::size_t device_bytes{}, host_peak_bytes{}, max_entries{}, tiles{};
+};
+CudaXcAoSelectionResources cuda_xc_ao_selection_resources(const CudaXcLayout& dense);
+
+/** Validate maps and charge their storage on top of the ordinary dense layout.
+ * Only physical FP64 execution is admitted; response retains its dense route.
+ * No discovery, screening threshold, CUDA allocation or GPU work occurs here. */
+CudaXcLayout cuda_xc_local_ao_layout(CudaXcLayout dense, const CudaXcAoTiles& maps);
 
 CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
                             std::uint32_t functional, bool unrestricted,
@@ -115,14 +142,20 @@ class CudaXcPlan {
    * the same bounded arena used by SCF. No grid is regenerated for response. */
   CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_basis,
              const std::vector<double>& points, const std::vector<double>& weights, void* arena,
-             std::size_t arena_bytes, cudaStream_t stream,
-             CudaMolecularGridView borrowed_grid = {});
+             std::size_t arena_bytes, cudaStream_t stream, CudaMolecularGridView borrowed_grid = {},
+             const CudaXcAoTiles* ao_maps = nullptr);
   ~CudaXcPlan();
   CudaXcPlan(const CudaXcPlan&) = delete;
   CudaXcPlan& operator=(const CudaXcPlan&) = delete;
 
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
+  /** Explicit setup-only policy; no density work or external oracle is used.
+   * Returns false without discovery if either numeric budget is insufficient.
+   * A successful selection is immutable for the lifetime of this geometry
+   * owner. A positive sampled-jet cutoff requires endpoint qualification. */
+  bool select_local_ao(double cutoff, std::size_t max_host_bytes);
+  const CudaXcAoSelectionWork& ao_selection_work() const noexcept { return ao_selection_work_; }
   /** Borrow immutable device quadrature owned by this plan. */
   CudaXcGridView grid_view() const;
   void enqueue(const double* density, std::size_t elements, std::uint64_t generation,
@@ -180,17 +213,29 @@ class CudaXcPlan {
   CudaXcLayout layout_;
   CudaXcPointLauncher point_launcher_{};
   CudaXcTransfers transfers_;
+  CudaXcAoSelectionWork ao_selection_work_;
+  bool evaluation_started_{};
   int device_{};
   void* arena_{};
+  std::size_t arena_bytes_{};
   cudaStream_t stream_{};
   std::shared_ptr<const void> grid_lifetime_;
   generativeqc::runtime::AsyncGeneration generations_;
   double *basis_{}, *points_{}, *weights_{}, *ao_{}, *work_{}, *features_{}, *coefficients_{},
       *point_totals_{}, *potential_{}, *totals_{}, *delta_features_{};
   int* error_{};
+  std::size_t* ao_ids_{};
+  // Immutable host offsets determine launch shapes and survive graph capture.
+  // Only offsets are retained here; device indices live in the caller's arena.
+  std::vector<std::size_t> ao_offsets_;
 };
 
 namespace cuda_xc_detail {
+/** Populate one host flag per global AO from all actual jets in a point tile.
+ * The caller lends full-capacity panels and owns stream/error lifetimes. */
+void select_ao(const CudaXcLayout& layout, cudaStream_t stream, const double* basis,
+               const double* points, std::size_t count, double cutoff, double* ao, double* work,
+               int* error, unsigned* host_flags);
 /** Emitted finite admission selector; performs no CUDA calls or allocation. */
 CudaXcPointLauncher resolve_point_launcher(std::uint32_t functional, bool response);
 /** Allocation-free launch adapter compiled with the existing generated AO
@@ -201,12 +246,15 @@ void enqueue(const CudaXcLayout& layout, CudaXcPointLauncher point_launcher, cud
              double* coefficients, double* point_totals, double* potential, double* totals,
              int* error, CudaXcDensityPrecision precision, const double* direction = nullptr,
              double* delta_features = nullptr, double* total_density = nullptr,
-             double* total_gradient = nullptr);
+             double* total_gradient = nullptr, const std::vector<std::size_t>& ao_offsets = {},
+             const std::size_t* ao_ids = nullptr);
 void enqueue_nonlocal_potential(const CudaXcLayout& layout, cudaStream_t stream,
                                 const double* basis, const double* points,
                                 const double* effective_weights, const double* total_gradient,
                                 const double* vrho, const double* vsigma,
                                 const double* nonlocal_energy, double* ao, double* coefficients,
-                                double* potential, double* totals, int* error);
+                                double* potential, double* totals, int* error, double* work,
+                                const std::vector<std::size_t>& ao_offsets = {},
+                                const std::size_t* ao_ids = nullptr);
 }  // namespace cuda_xc_detail
 }  // namespace generativeqc::dft

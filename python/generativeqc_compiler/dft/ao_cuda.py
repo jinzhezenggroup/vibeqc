@@ -319,25 +319,27 @@ using generativeqc_tensor::I;
 // density matrix as rho/gradient; LDA/GGA retain the one-panel fast path.
 template <bool Mixed>
 __global__ void density_product(const double* density, const double* ao, I n, I count, I spins,
-                                I work_jets, double* work, int* error) {
+                                I work_jets, double* work, int* error, const size_t* ao_ids, I full_n) {
   const I panel = count * n;
   for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * work_jets * panel;
        i += I(blockDim.x) * gridDim.x) {
     const I spin = i / (work_jets * panel), jet = i / panel % work_jets;
     const I point = i / n % count, mu = i % n;
-    const double* d = density + spin * n * n;
+    const double* d = density + spin * full_n * full_n;
+    const I row = ao_ids ? ao_ids[mu] : mu;
     const double* source = ao + jet * panel;
     double value = 0.0;
     for (I nu = 0; nu < n; ++nu) {
+      const I col = ao_ids ? ao_ids[nu] : nu;
       if constexpr (Mixed) {
         // AUTO uses binary32 products while retaining the long AO reduction in binary64.
-        const float left = __double2float_rn(d[mu * n + nu]);
-        const float right = __double2float_rn(d[nu * n + mu]);
+        const float left = __double2float_rn(d[row * full_n + col]);
+        const float right = __double2float_rn(d[col * full_n + row]);
         const float symmetric = __fadd_rn(__fmul_rn(0.5f, left), __fmul_rn(0.5f, right));
         const float orbital = __double2float_rn(source[point * n + nu]);
         value = __dadd_rn(value, static_cast<double>(__fmul_rn(symmetric, orbital)));
       } else {
-        value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
+        value += (0.5 * d[row * full_n + col] + 0.5 * d[col * full_n + row]) * source[point * n + nu];
       }
     }
     work[i] = finite(value, error, 1);
@@ -706,7 +708,9 @@ void launch_split_hybrid_points(
 
 __global__ void assemble_potential(const double* ao, const double* coefficients,
                                    const double* weights, I n, I count, I spins, I feature_terms,
-                                   double* potential, int* error) {
+                                   double* potential, int* error, const size_t* ao_ids = nullptr,
+                                   I full_n = 0) {
+  if (!full_n) full_n = n;
   const I stride = count * n;
   for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * n * n;
        i += I(blockDim.x) * gridDim.x) {
@@ -727,9 +731,13 @@ __global__ void assemble_potential(const double* ao, const double* coefficients,
                        ao[(k + 1) * stride + p * n + mu] * ao[(k + 1) * stride + p * n + nu];
       value += weights[p] * integrand;
     }
-    value = finite(potential[i] + value, error, 3);
-    potential[i] = value;
-    potential[(spin * n + nu) * n + mu] = value;
+    // Unique local indices make the scatter race-free within a tile; tiles
+    // are serialized on the owner's stream. The full matrix is precleared.
+    const I row = ao_ids ? ao_ids[mu] : mu, col = ao_ids ? ao_ids[nu] : nu;
+    const I index = (spin * full_n + row) * full_n + col;
+    value = finite(potential[index] + value, error, 3);
+    potential[index] = value;
+    potential[(spin * full_n + col) * full_n + row] = value;
   }
 }
 

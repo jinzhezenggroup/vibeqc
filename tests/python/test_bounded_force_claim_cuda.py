@@ -1,8 +1,8 @@
-"""Backport the claim protocol regression from PR #1767, without indexed pages.
+"""Stress persistent claims for triangular products and indexed empty pages.
 
-Adapted from njzjz-bot commit 0b99c6ce298f2726373f1909ad10a37b5acffc43.
-The host invariant is a control-flow proof; optional CUDA stress is not an
-independent integral oracle or a complete-endpoint performance measurement.
+Preserve the master skip regression and PR #1767's indexed-page extension of
+njzjz-bot commit 0b99c6ce298f2726373f1909ad10a37b5acffc43. The host invariant
+checks control flow; optional CUDA stress does not replace integral oracles.
 """
 
 import os
@@ -15,19 +15,22 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _claim_parts() -> tuple[str, str]:
+def _claim_parts() -> tuple[str, str, str]:
     source = (ROOT / "src/scf/cuda/direct_bounded_fallback.cu").read_text()
-    start = source.index("  const std::size_t total =")
+    start = source.index("  constexpr auto full_block_candidates")
     stop = source.index("\n\n  while (true)", start)
     preparation = source[start:stop]
     start = source.index("  while (true) {", stop)
     stop = source.index("    if (block_quartet >= total) return;", start)
-    return preparation, source[start:stop]
+    claim = source[start:stop]
+    start = source.index("    const std::size_t page_begin =", stop)
+    stop = source.index("    for (std::size_t candidate_begin", start)
+    return preparation, claim, source[start:stop]
 
 
 def test_claim_consumption_barrier_precedes_every_leader_overwrite() -> None:
-    """A publication-only barrier cannot protect a skipped previous claim."""
-    _, claim = _claim_parts()
+    """A publication-only barrier cannot protect an empty previous page."""
+    _, claim, _ = _claim_parts()
     statements = "\n".join(
         line for line in claim.splitlines() if not line.strip().startswith("//")
     )
@@ -46,7 +49,7 @@ def claim_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     compiler = Path(os.environ["CUDA_PATH"]) / "bin/nvcc"
     assert cache and compiler.is_file()
     subprocess.run([cache, "--version"], check=True, timeout=10)
-    preparation, claim = _claim_parts()
+    preparation, claim, page = _claim_parts()
     directory = tmp_path_factory.mktemp("bounded-claim")
     source = directory / "probe.cu"
     source.write_text(
@@ -58,14 +61,15 @@ def claim_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include "scf/direct_block_domain.hpp"
 #include "scf/direct_task_layout.hpp"
 namespace detail = generativeqc::scf::detail;
 constexpr unsigned threads = 128;
 constexpr unsigned workers = 4;
-constexpr unsigned products_count = 6;
-constexpr unsigned counts[products_count] = {528, 1024, 1, 17, 256, 63};
+constexpr unsigned products_count = 7;
+constexpr unsigned counts[products_count] = {528, 1024, 1, 17, 0, 63, 256};
 struct Batch { std::size_t total_shell_pair_block_quartets; };
-__global__ void probe(Batch batch,
+__global__ void probe(Batch batch, detail::BoundedDirectBlockDomain block_domain,
                       const unsigned* candidate_counts, unsigned long long* global_cursor,
                       unsigned* visits, unsigned skip_mode) {
   __shared__ unsigned long long block_quartet;
@@ -81,11 +85,14 @@ __global__ void probe(Batch batch,
     }
     if (block_quartet >= total) return;
     const auto observed = block_quartet;
-    const auto product = observed;
+    const auto product = observed / pages;
     if ((skip_mode & 1U) && product % 3 == 0) continue;
     if ((skip_mode & 2U) && product % 3 == 1) continue;
     const std::size_t candidate_count = candidate_counts[product];
-    for (std::size_t candidate_begin = 0; candidate_begin < candidate_count;
+"""
+        + page
+        + r"""
+    for (std::size_t candidate_begin = page_begin; candidate_begin < page_end;
          candidate_begin += detail::kBoundedDirectQueueCapacity) {
       __syncthreads();
       atomicAdd(visits + observed * threads + threadIdx.x, 1U);
@@ -102,20 +109,24 @@ void checked(cudaError_t status) {
 int main() {
   unsigned *device_counts{}, *visits{};
   unsigned long long* cursor{};
-  constexpr auto maximum_claims = products_count;
+  std::uint64_t* prefix{};
+  constexpr auto maximum_claims = products_count * detail::kBoundedDirectIndexedCandidatePages;
   checked(cudaMalloc(&device_counts, sizeof(counts)));
   checked(cudaMalloc(&visits, maximum_claims * threads * sizeof(unsigned)));
   checked(cudaMalloc(&cursor, sizeof(*cursor)));
+  checked(cudaMalloc(&prefix, sizeof(*prefix)));
   checked(cudaMemcpy(device_counts, counts, sizeof(counts), cudaMemcpyHostToDevice));
   for (unsigned replay = 0; replay < 16; ++replay) {
-    {
-      const auto total = products_count;
+    for (bool indexed : {false, true}) {
+      const auto pages = indexed ? detail::kBoundedDirectIndexedCandidatePages : 1U;
+      const auto total = products_count * pages;
       for (unsigned skip_mode = 0; skip_mode < 4; ++skip_mode) {
-        for (unsigned long long initial : {0ULL, 1ULL}) {
+        for (unsigned long long initial : {0ULL, 1ULL, 15ULL}) {
           if (initial >= total) continue;
           checked(cudaMemset(visits, 0, maximum_claims * threads * sizeof(unsigned)));
           checked(cudaMemcpy(cursor, &initial, sizeof(initial), cudaMemcpyHostToDevice));
-          probe<<<workers, threads>>>({products_count}, device_counts, cursor, visits, skip_mode);
+          detail::BoundedDirectBlockDomain domain{indexed ? prefix : nullptr, products_count, products_count};
+          probe<<<workers, threads>>>({products_count}, domain, device_counts, cursor, visits, skip_mode);
           checked(cudaGetLastError());
           checked(cudaDeviceSynchronize());
           std::vector<unsigned> actual(maximum_claims * threads);
@@ -126,11 +137,13 @@ int main() {
           for (unsigned ordinal = 0; ordinal < maximum_claims; ++ordinal) {
             unsigned expected = 0;
             if (ordinal >= initial && ordinal < total) {
-              const auto product = ordinal;
+              const auto product = ordinal / pages;
               const bool skipped = ((skip_mode & 1U) && product % 3 == 0) ||
                                    ((skip_mode & 2U) && product % 3 == 1);
-              if (!skipped)
-                expected = (counts[product] + detail::kBoundedDirectQueueCapacity - 1) / detail::kBoundedDirectQueueCapacity;
+              const std::size_t begin = indexed ? (ordinal % pages) * 64 : 0;
+              const auto end = indexed ? std::min<std::size_t>(counts[product], begin + 64) : counts[product];
+              if (!skipped && end > begin)
+                expected = (end - begin + detail::kBoundedDirectQueueCapacity - 1) / detail::kBoundedDirectQueueCapacity;
             }
             for (unsigned lane = 0; lane < threads; ++lane)
               assert(actual[ordinal * threads + lane] == expected);
@@ -139,9 +152,9 @@ int main() {
       }
     }
   }
-  checked(cudaFree(cursor));
+  checked(cudaFree(prefix)); checked(cudaFree(cursor));
   checked(cudaFree(visits)); checked(cudaFree(device_counts));
-  std::puts("inactive and screened triangular claims preserve every reader");
+  std::puts("empty diagonal/tail, inactive and screened claims preserve every reader");
 }
 """
     )
@@ -165,11 +178,11 @@ int main() {
 
 
 @pytest.mark.parametrize("sanitizer", [None, "synccheck", "racecheck"])
-def test_cuda_claim_readers_survive_skipped_products(
+def test_cuda_claim_readers_survive_empty_and_skipped_pages(
     claim_probe: Path,
     sanitizer: str | None,
 ) -> None:
-    """Use real producer code; independent force oracles are separate gates."""
+    """Use real producer/page code; independent force oracles are separate gates."""
     command = [str(claim_probe)]
     if sanitizer:
         tool = shutil.which("compute-sanitizer")

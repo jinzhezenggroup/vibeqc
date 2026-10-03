@@ -23,6 +23,7 @@ STUBS = r"""
 #include <new>
 #include <stdexcept>
 #include <vector>
+#include "scf/direct_block_schedule.hpp"
 using cudaStream_t = void*;
 enum cudaError_t { cudaSuccess, cudaErrorMemoryAllocation, cudaErrorUnknown };
 constexpr int cudaLimitStackSize=0, cudaMemcpyHostToDevice=1, cudaMemcpyDeviceToHost=2;
@@ -69,6 +70,8 @@ struct Schedule { unsigned persistent_quartet_warps_per_sm=1; std::size_t cuda_s
 Schedule resolve_direct_jk_schedule_policy(int) { return {}; }
 }
 namespace detail {
+using generativeqc::scf::detail::BoundedDirectHostSchedule;
+using generativeqc::scf::detail::make_bounded_direct_schedule;
 constexpr unsigned kDirectQuartetShellClassCount=1, kDirectShellPairClassCount=1, kDirectQuartetThreads=32;
 enum class GeneratedFockConsumer { Coulomb };
 }
@@ -134,7 +137,7 @@ int main(int argc,char** argv) {
   injected_stage=std::atoi(argv[1]); injected_kind=std::atoi(argv[2]);
   bool propagated=false;
   try {
-    auto plan=prepare_generated_coulomb(host,borrowed,reinterpret_cast<void*>(1),0,0.0,1<<20,false);
+    auto plan=prepare_generated_coulomb(host,borrowed,reinterpret_cast<void*>(1),0,0.0,1<<20,false,nullptr);
     if(injected_stage==0) assert(plan && live_allocations>0);
     else assert(!plan);
   } catch(const std::bad_alloc&) { return 2; }
@@ -145,7 +148,7 @@ int main(int argc,char** argv) {
   if(injected_stage>=4) assert(fences>0);
   // A rejected optional owner must not poison a fresh preparation.
   injected_stage=0;
-  auto recovered=prepare_generated_coulomb(host,borrowed,reinterpret_cast<void*>(1),0,0.0,1<<20,false);
+  auto recovered=prepare_generated_coulomb(host,borrowed,reinterpret_cast<void*>(1),0,0.0,1<<20,false,nullptr);
   assert(recovered && live_allocations>0);
   recovered.reset(); assert(live_allocations==0);
 }
@@ -177,7 +180,7 @@ def allocation_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     cpp, binary = directory / "probe.cpp", directory / "probe"
     cpp.write_text(STUBS + preparation + DRIVER)
     subprocess.run(
-        [compiler, "-std=c++17", str(cpp), "-o", str(binary)],
+        [compiler, "-std=c++17", "-I", str(ROOT / "src"), str(cpp), "-o", str(binary)],
         check=True,
         capture_output=True,
         text=True,

@@ -29,6 +29,26 @@ the existing strict-FP64 value mathematics and derivative ownership. The
 [bounded value policy note](../../.agents/notes/implemented/performance/2026-10-02-through-f-value-policy.md)
 records the measured regression and requirements for future default promotion.
 
+## Experimental bounded force schedule
+
+`GENERATIVEQC_BOUNDED_SCHWARZ_SCHEDULE=1` (or `indexed`) opts derivative-capable
+generated exchange owners into per-system descending Schwarz pair order.
+It is **off by default**. Preparation reuses the existing geometry-bound
+readback; no density-dependent index is retained. Independent full-range J/K
+force sources use an exclusive prefix over geometry-live block rows, with
+16 independently claimed 64-candidate pages per admitted block product.
+Density, exact shell and AO screening and physical quartet orientation are
+unchanged. Other consumers retain triangular traversal, although consumers
+sharing an opted-in derivative owner see its sorted pair order.
+
+The optional device prefix costs `(pair_blocks + 1) * sizeof(uint64_t)` within
+the owner's existing budget. Insufficient prefix capacity retains sorted
+triangular traversal; inability to admit the owner retains the existing generic
+fallback. Sorting and paging reduce candidate amplification and improve load
+balance, not the dense worst-case scaling. Sparse-density cases can be slower;
+this switch is a qualification control, not a universal speedup or default
+promotion. See the [schedule decision](../../.agents/notes/implemented/performance/2026-10-03-schwarz-indexed-independent-force-domain.md).
+
 ## Public prepared API
 
 `FockPlan` owns normalized geometry, orbital/auxiliary data and native sources.

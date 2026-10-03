@@ -18,6 +18,7 @@
 #include "runtime/resource_ledger.hpp"
 #include "scf/cuda/direct_jk_kernels.hpp"
 #include "scf/cuda/direct_jk_plan.hpp"
+#include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_direct_jk.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
@@ -1709,6 +1710,29 @@ void range_exchange_derivatives() {
                   detail.c_str());
           require(fused.size() == 18 && j_gradient.size() == 6,
                   "fused CUDA RSH derivative returned the wrong source shape");
+          // The public generic provider above can choose canonical derivatives.
+          // Qualify the distinct bounded shell route used by molecular WB97M-V
+          // as well, including its full-minus-LR reconstruction of the SR source.
+          CudaDirectJkPlan* shell_raw{};
+          CudaDirectJkDiagnostic shell_diagnostic;
+          require(create_cuda_direct_jk_plan(0, {item == 0 ? first : second}, 1, 0.0, 64U << 20,
+                                             &shell_raw, shell_diagnostic,
+                                             detail) == GENERATIVEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> shell_plan(
+              shell_raw, &destroy_cuda_direct_jk_plan);
+          DeviceMatrix device_a(a), device_b(b);
+          std::vector<double> shell;
+          require(execute_cuda_direct_shell_rsh_energy_derivatives_device(
+                      shell_plan.get(), spin, 1.0, coefficient, coefficient, omega,
+                      device_a.pointer, spin == FockSpin::Unrestricted ? device_b.pointer : nullptr,
+                      matrix, shell, detail) == GENERATIVEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          require(shell.size() == fused.size(), "bounded shell RSH source shape changed");
+          for (std::size_t coordinate = 0; coordinate < shell.size(); ++coordinate)
+            require(std::isfinite(shell[coordinate]) &&
+                        std::abs(shell[coordinate] - fused[coordinate]) < 3e-10,
+                    "bounded shell RSH derivative differs from CPU-qualified canonical source");
           for (std::size_t coordinate = 0; coordinate < 6; ++coordinate) {
             require(std::abs(fused[coordinate] - j_gradient[coordinate]) < 2e-11,
                     "fused CUDA RSH Coulomb derivative changed");
@@ -1722,6 +1746,85 @@ void range_exchange_derivatives() {
           require(std::abs(gradients[0][coordinate] - gradients[1][coordinate] -
                            gradients[2][coordinate]) < 2e-11,
                   "CUDA radial full derivative is not short plus long range");
+      }
+    }
+  }
+}
+
+/** Four-center CPU displaced values qualify bounded LR accumulation.
+ * d/p/s/s covers weighted low orders; d/p/p/s, d/d/p/s and d/d/p/p bind
+ * distinct centers at total orders 4, 5 and 6. Repeated-center geometries
+ * bind different shells to one atom. Check every coordinate in both spins.
+ */
+void shell_range_four_center_derivatives() {
+  constexpr double omega = 0.3, coefficient = -0.37, step = 1e-4;
+  for (const auto angular :
+       {std::array<unsigned, 4>{2, 1, 0, 0}, std::array<unsigned, 4>{2, 1, 1, 0},
+        std::array<unsigned, 4>{2, 2, 1, 0}, std::array<unsigned, 4>{2, 2, 1, 1}}) {
+    for (const bool repeated_center : {false, true}) {
+      generativeqc::core::System system;
+      system.atoms = {{1, {0.1, -0.2, -0.8}},
+                      {1, {0.3, 0.1, 0.7}},
+                      {1, {-0.5, 0.6, 0.2}},
+                      {1, {0.8, -0.4, 0.3}}};
+      system.shells = {{0, angular[0], {{0.8, 1.0}}},
+                       {1, angular[1], {{0.6, 1.0}}},
+                       {2, angular[2], {{0.7, 1.0}}},
+                       {repeated_center ? 1 : 3, angular[3], {{0.9, 1.0}}}};
+      system.electron_count = 4;
+      system.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
+      std::string detail;
+      require(generativeqc::molecule::validate_and_normalize(system, detail) ==
+                  GENERATIVEQC_STATUS_SUCCESS,
+              detail.c_str());
+      const auto n = generativeqc::molecule::ao_count(system), matrix = n * n;
+      std::vector<double> a(matrix), b(matrix);
+      for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = 0; j < n; ++j) {
+          a[i * n + j] = std::cos(0.3 * (i + j)) / n;
+          b[i * n + j] = std::sin(0.4 * (i + j)) / (2 * n);
+        }
+      CudaDirectJkPlan* raw{};
+      CudaDirectJkDiagnostic diagnostic;
+      require(create_cuda_direct_jk_plan(0, {system}, 1, 0.0, 64U << 20, &raw, diagnostic,
+                                         detail) == GENERATIVEQC_STATUS_SUCCESS,
+              detail.c_str());
+      std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+          raw, &destroy_cuda_direct_jk_plan);
+      DeviceMatrix device_a(a), device_b(b);
+      std::array<std::vector<double>, 2> actual;
+      for (unsigned spin = 0; spin < 2; ++spin)
+        require(execute_cuda_direct_shell_rsh_energy_derivatives_device(
+                    plan.get(), spin ? FockSpin::Unrestricted : FockSpin::Restricted, 0.0, 0.0,
+                    coefficient, omega, device_a.pointer, spin ? device_b.pointer : nullptr, matrix,
+                    actual[spin], detail) == GENERATIVEQC_STATUS_SUCCESS,
+                detail.c_str());
+      const auto coordinates = system.atoms.size() * 3U;
+      for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate) {
+        auto plus = system, minus = system;
+        plus.atoms[coordinate / 3].position[coordinate % 3] += step;
+        minus.atoms[coordinate / 3].position[coordinate % 3] -= step;
+        auto derivative = generativeqc::integrals::build_range_eri(
+            plus, generativeqc::integrals::CoulombRange::Long, omega);
+        const auto negative = generativeqc::integrals::build_range_eri(
+            minus, generativeqc::integrals::CoulombRange::Long, omega);
+        for (std::size_t index = 0; index < derivative.size(); ++index)
+          derivative[index] = (derivative[index] - negative[index]) / (2 * step);
+        for (unsigned spin = 0; spin < 2; ++spin) {
+          auto spec = make_hf_fock_spec(spin ? FockSpin::Unrestricted : FockSpin::Restricted);
+          spec.derivative_order = 1;
+          spec.coulomb.present = false;
+          spec.exchange.coefficient = coefficient;
+          const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
+          const double expected = contract_exact_direct_energy_derivative(
+              cpu, n, derivative, a, spin ? b : std::vector<double>{});
+          require(actual[spin].size() == 3U * coordinates, "bounded LR source shape changed");
+          require(actual[spin][coordinate] == 0.0 && actual[spin][coordinates + coordinate] == 0.0,
+                  "disabled bounded RSH source acquired a contribution");
+          const double value = actual[spin][2U * coordinates + coordinate];
+          require(std::isfinite(value) && std::abs(value - expected) < 3e-8,
+                  "four-center bounded LR derivative differs from displaced CPU ERIs");
+        }
       }
     }
   }
@@ -1794,6 +1897,108 @@ void full_range_shell_source_oracles(const generativeqc::core::System& system,
       }
     }
   }
+}
+
+/** Verify the indexed multi-system domain and exact optional-prefix budget edges.
+ * Independent CPU ERIs qualify both sources, including zero screening. This
+ * diagnostic-only policy is exercised when explicitly enabled by the test job. */
+void bounded_schwarz_schedule_budget() {
+  using namespace generativeqc;
+  using namespace generativeqc::scf::cuda_execution;
+  if (!cuda_policy::bounded_schwarz_schedule_requested()) return;
+  core::System first;
+  first.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
+  first.electron_count = 12;
+  for (unsigned atom = 0; atom < 12; ++atom) {
+    first.atoms.push_back(
+        {1, {0.2 * (atom % 3), 0.15 * (atom % 2), 40.0 * (atom / 6) + 0.5 * (atom % 6)}});
+    first.shells.push_back({atom, 0, {{0.8 + 0.03 * atom, 1.0}}});
+  }
+  std::string detail;
+  require(molecule::validate_and_normalize(first, detail) == GENERATIVEQC_STATUS_SUCCESS,
+          detail.c_str());
+  auto second = first;
+  second.atoms[1].position[0] += 0.1;
+  const std::vector<core::System> systems{first, second};
+  const auto dimension = molecule::ao_count(first);
+  const auto matrix = dimension * dimension;
+  const auto coordinates = first.atoms.size() * 3;
+  std::vector<double> density(2 * matrix), expected(4 * coordinates);
+  for (std::size_t index = 0; index < density.size(); ++index)
+    density[index] = std::cos(0.17 * (index % dimension) + 0.23 * (index / dimension)) / dimension;
+  for (std::size_t item = 0; item < systems.size(); ++item) {
+    const auto integrals = integrals::build_integrals(systems[item], true);
+    const std::vector<double> input(density.begin() + item * matrix,
+                                    density.begin() + (item + 1) * matrix);
+    for (unsigned source = 0; source < 2; ++source) {
+      auto spec = make_hf_fock_spec(FockSpin::Restricted);
+      spec.derivative_order = 1;
+      spec.coulomb = {source == 0, 1.0};
+      spec.exchange.present = source == 1;
+      spec.exchange.coefficient = -0.25;
+      const auto resolved = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
+      for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate)
+        expected[source * 2 * coordinates + item * coordinates + coordinate] =
+            contract_exact_direct_energy_derivative(
+                resolved, dimension,
+                std::span<const double>(integrals.eri_derivative)
+                    .subspan(coordinate * matrix * matrix, matrix * matrix),
+                input, {});
+    }
+  }
+  HostBatch host;
+  require(pack_host_batch(systems, {nullptr, nullptr}, host, true, false, true),
+          "cannot pack batch");
+  for (double screening : {0.0, 1e-12}) {
+    CudaDirectJkPlan* raw = nullptr;
+    CudaDirectJkDiagnostic diagnostic;
+    require(create_cuda_direct_jk_plan(0, systems, 1, screening, 64U << 20, &raw, diagnostic,
+                                       detail) == GENERATIVEQC_STATUS_SUCCESS,
+            detail.c_str());
+    std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+        raw, destroy_cuda_direct_jk_plan);
+    require(bool(plan->generated_exchange), "missing derivative owner");
+    auto& original = *plan->generated_exchange;
+    require(original.bounded_block_domain.prefix, "missing indexed domain");
+    const auto prefix_bytes =
+        (original.bounded_block_domain.row_count + 1U) * sizeof(std::uint64_t);
+    const auto full_budget = original.device_bytes;
+    check(cudaMemcpy(plan->density, density.data(), density.size() * sizeof(double),
+                     cudaMemcpyHostToDevice));
+    for (const auto budget : {full_budget, full_budget - 1U, full_budget - prefix_bytes}) {
+      auto owner = prepare_generated_exchange(host, original.shared->batch, plan->stream, 0,
+                                              screening, budget, true, false);
+      require(bool(owner), "tight prefix budget discarded admitted owner");
+      const bool indexed = owner->bounded_block_domain.prefix != nullptr;
+      require(indexed == (budget == full_budget), "incorrect prefix budget edge");
+      require(owner->device_bytes == full_budget - (indexed ? 0 : prefix_bytes),
+              "device inventory did not charge optional prefix exactly");
+      std::vector<double> actual;
+      check(execute_generated_full_range_energy_derivatives(*owner, false, plan->density, nullptr,
+                                                            1.0, -0.25, actual));
+      require(actual.size() == expected.size(), "batch source shape changed");
+      double error = 0;
+      for (std::size_t index = 0; index < actual.size(); ++index) {
+        require(std::isfinite(actual[index]), "nonfinite batch derivative");
+        error = std::max(error, std::abs(actual[index] - expected[index]));
+      }
+      require(error < 3e-10, "screened/budget batch derivative differs from CPU ERIs");
+      unsigned long long cursor = 0;
+      check(cudaMemcpy(&cursor, owner->force_cursor, sizeof(cursor), cudaMemcpyDeviceToHost));
+      const auto products = indexed ? owner->bounded_block_domain.quartet_count
+                                    : owner->shared->batch.total_shell_pair_block_quartets;
+      const auto pages =
+          indexed ? generativeqc::scf::detail::kBoundedDirectIndexedCandidatePages : 1U;
+      require(cursor == products * pages + owner->shared->worker_blocks,
+              "scheduler domain mismatch");
+      if (indexed && screening > 0)
+        require(products < owner->shared->batch.total_shell_pair_block_quartets,
+                "test fixture did not prune any rows");
+      std::cout << "screening=" << screening << " budget=" << budget << " indexed=" << indexed
+                << " products=" << products << " max_error=" << error << '\n';
+    }
+  }
+  std::cout << "CUDA indexed Schwarz batch and prefix-budget gates PASS\n";
 }
 
 void direct_providers(bool through_f_response, bool eri_tiles_only = false) {
@@ -2080,6 +2285,7 @@ int main(int argc, char** argv) {
     }
     if (argc == 2 && std::string(argv[1]) == "--range-response-only") {
       range_exchange_derivatives();
+      shell_range_four_center_derivatives();
       canonical_order_two_derivatives();
       std::cout << "CUDA s/p/d/f SR/LR derivative gates PASS\n";
       return 0;
@@ -2088,6 +2294,7 @@ int main(int argc, char** argv) {
             "expected optional --mixed-census-only, --range-response-only, or "
             "--through-f-response");
     const bool through_f_response = argc == 2;
+    bounded_schwarz_schedule_budget();
     spd_optional_allocation_fallback();
     spd_canonical_range_values();
     direct_value_dispatch_selection();
@@ -2097,6 +2304,7 @@ int main(int argc, char** argv) {
     device_selection();
     range_exchange_provider();
     range_exchange_derivatives();
+    shell_range_four_center_derivatives();
     canonical_order_two_derivatives();
     direct_providers(through_f_response);
     std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "

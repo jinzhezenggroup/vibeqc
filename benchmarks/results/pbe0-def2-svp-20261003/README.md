@@ -41,7 +41,7 @@ Each control completes all 12 endpoints against the identical reference file.
 These use the retained pre-change native binary/runtime, not the much older
 October 1 measurements. They include the benchmark-only reference repair but
 no snapshot cache, cooperative default or fused full-range derivative source.
-No completed 96-atom control speedup is claimed. See `control-water<atoms>.json`.
+No completed 96-atom control speedup is claimed. See `control-water<atoms>.json.gz`.
 
 ## Cold and changed geometry, seconds
 
@@ -158,13 +158,22 @@ match the recorded commit.
   under memcheck with zero errors. These cover explicitly rounded nonbinary
   products, unequal spins, full/range cancellation, null exchange pointers,
   failure bits and nonfinite rejection. The production kernel is unchanged.
-- `water<atoms>.json` (losslessly gzipped as `water96.json.gz` for 96 atoms)
+- `water<atoms>.json.gz` (lossless gzip)
   retains every scalar observation, gates, source hashes,
   work/resources and both independent force oracles. Corresponding raw
   `*-{native,reference}.json.gz` files retain **all** forces; decompressed hashes
   must match `raw_sha256`. Controls and the two failed 96-atom attempts stay
   separate. Historical build/profile logs remain in ignored
   `.artifacts/pbe0-large-20261002/`, not external release assets.
+
+Eleven formerly plain complete/control/failed reports are now losslessly
+compressed too. [report-storage.json](report-storage.json) records both byte
+counts and hashes, plus the immutable original Git revision. Decompression
+recovers every original byte, not merely an equivalent JSON object. No sample,
+failed outcome, numerical gate or measured source identity changes. The existing
+96-atom and raw endpoint gzip members are unchanged. Use `gzip -dc <file.json.gz>`
+to inspect a report; `tests/python/test_pbe0_report_storage.py` checks every new
+member. This storage-only change saves 614,539 payload bytes before the manifest.
 
 ## Reproduce
 

@@ -222,6 +222,7 @@ struct GeneratedExchangePlan {
   std::uint32_t* heads;
   double *shell_pair_density_bounds=nullptr, *system_density_bounds=nullptr;
   double* direct_spin=nullptr;
+  int bounded_block_domain=0;
 };
 // PRODUCTION_DENSITY_COEFFICIENT
 int prepare_generated_exchange_density(GeneratedExchangePlan& plan,bool,const double* alpha,const double*) {

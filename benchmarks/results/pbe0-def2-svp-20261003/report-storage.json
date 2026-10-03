@@ -1,0 +1,95 @@
+{
+  "schema": "generativeqc.pbe0-lossless-report-storage.v1",
+  "original_revision": "ab9a8490970d2b1dfaf711398b9069c5318ecb62",
+  "scope": "Storage-only gzip of this task's earlier complete/control/failed reports; no observation or scientific identity changed.",
+  "members": [
+    {
+      "original": "control-water12.json",
+      "stored": "control-water12.json.gz",
+      "original_bytes": 61957,
+      "stored_bytes": 8630,
+      "original_sha256": "73772c7dd3ef39ae04a6d7a84c480fe48416e2fae4a87776050491cba3b4a2d5",
+      "stored_sha256": "dda72739db37da5b925e40ca3fbe1cad01b8cdc4da363e05e9a4407e81d997b4"
+    },
+    {
+      "original": "control-water24.json",
+      "stored": "control-water24.json.gz",
+      "original_bytes": 65247,
+      "stored_bytes": 9369,
+      "original_sha256": "ed0ea0e41fdbfa4192c483cde7ae8eb255e939df4de95b0c5c2d42f446e34283",
+      "stored_sha256": "ce6c6c861fed889b70aeec9b583ec6703dafa2909a61f7bb200cdae18f011bac"
+    },
+    {
+      "original": "control-water3.json",
+      "stored": "control-water3.json.gz",
+      "original_bytes": 59216,
+      "stored_bytes": 7701,
+      "original_sha256": "2d517aa6a6b6d3627ecc69180072f69e41b95d1cf52c86ef8ef13d48c26a153d",
+      "stored_sha256": "ec84867114cf9d23d8f8b394f944d3257a4be8ec3a9c9f3124d8f4d4e7616a3e"
+    },
+    {
+      "original": "control-water48.json",
+      "stored": "control-water48.json.gz",
+      "original_bytes": 71847,
+      "stored_bytes": 11011,
+      "original_sha256": "86045539be9ec7cf0c973b7f49d3964de46624db4e3ae1b382743f5411becacd",
+      "stored_sha256": "c3342b3e1e7cc16eedc9979ff6ce52175cebb485094cf9abd72fdb6d454d9b3c"
+    },
+    {
+      "original": "failed-integration-water96.json",
+      "stored": "failed-integration-water96.json.gz",
+      "original_bytes": 37724,
+      "stored_bytes": 11592,
+      "original_sha256": "a0d71341ee627c231a7d1b7559bcfb87ae90e0e6bec1642a36453ac5c7012006",
+      "stored_sha256": "43c83970732d90c386425cd10622b0767117a6907c3223e71dbddc666b12b8fb"
+    },
+    {
+      "original": "failed-preintegration-water96.json",
+      "stored": "failed-preintegration-water96.json.gz",
+      "original_bytes": 57324,
+      "stored_bytes": 12503,
+      "original_sha256": "4e29dc194619f6b0c4d586d76deaeb3475e4794d2be89790acdc20e91783286b",
+      "stored_sha256": "387a3f4070760507d36cdbf15fcaa2645fa71e4ff638d2fbf4fdaf1cb105b865"
+    },
+    {
+      "original": "water12.json",
+      "stored": "water12.json.gz",
+      "original_bytes": 72737,
+      "stored_bytes": 9717,
+      "original_sha256": "fa61fb2a06b5de0a12271449b5fc79a3ecafa5b4044325bca0f6a95c0bc2af58",
+      "stored_sha256": "0730667b0fc5bf2b3e0a3b58644ab5f8d99207bf5648a007c269c43fb7b91ad5"
+    },
+    {
+      "original": "water24.json",
+      "stored": "water24.json.gz",
+      "original_bytes": 75884,
+      "stored_bytes": 10388,
+      "original_sha256": "74fb29a1bf7141d16a147becb70ffacc1b93e9915259564b1cfa25604e38b72c",
+      "stored_sha256": "b7611edad40419e92cd63c3fbcf7cc61187c404e6069def4831384b13dd61242"
+    },
+    {
+      "original": "water3.json",
+      "stored": "water3.json.gz",
+      "original_bytes": 69864,
+      "stored_bytes": 8785,
+      "original_sha256": "692f235a2cf08617c2a7d41ab8d096933b87183fbc29cc1745181fab24853ee2",
+      "stored_sha256": "01044291e6cb418bf06b633abb8fcd09ed3afa615ed6e784a98260d67f1f4146"
+    },
+    {
+      "original": "water48.json",
+      "stored": "water48.json.gz",
+      "original_bytes": 82615,
+      "stored_bytes": 12107,
+      "original_sha256": "4e9b93a94781c28c281be9e0eb99859a7c552b10d1419fe9c2b19a8f845e5055",
+      "stored_sha256": "59b01f47d619398253aa15f473a553048c2ead4cbc85f2f857e3e99f1171af05"
+    },
+    {
+      "original": "water6.json",
+      "stored": "water6.json.gz",
+      "original_bytes": 70993,
+      "stored_bytes": 9066,
+      "original_sha256": "289976f70fb072f924eb7271b67adb25cd62cee973c5b2c33483757b20751e39",
+      "stored_sha256": "069834a3afb82c12a5f2b1075d40a4d6f310215fe1a46a7d33ebb8aa26b08eb7"
+    }
+  ]
+}

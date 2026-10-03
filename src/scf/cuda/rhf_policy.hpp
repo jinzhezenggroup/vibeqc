@@ -251,6 +251,9 @@ DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept;
 bool direct_tile_validation_requested() noexcept;
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept;
 bool force_density_product_screening_requested() noexcept;
+
+/** Diagnostic only until complete independent-source endpoints are qualified. */
+bool bounded_schwarz_schedule_requested() noexcept;
 bool resident_ppps_bra_requested() noexcept;
 bool ppps_signature_bucketing_requested() noexcept;
 bool psps_signature_bucketing_requested() noexcept;

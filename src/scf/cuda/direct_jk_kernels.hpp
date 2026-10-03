@@ -7,6 +7,7 @@
 #include <cstdint>
 
 #include "scf/cuda/packed_basis.hpp"
+#include "scf/direct_block_domain.hpp"
 
 namespace generativeqc::scf::cuda_execution {
 
@@ -130,7 +131,8 @@ void launch_bounded_shell_energy_derivative(
     const double* shell_pair_block_bounds, const double* system_density_bounds,
     const std::uint32_t* class_state, const double* schwarz_bounds, const double* density,
     const std::uint8_t* active, double* output, unsigned long long* cursor,
-    double coulomb_coefficient, double exchange_coefficient);
+    double coulomb_coefficient, double exchange_coefficient,
+    detail::BoundedDirectBlockDomain block_domain = {});
 
 /** SR/LR exchange derivative through the same bounded shell scheduler.
  * The full-range Schwarz/density bounds remain conservative for both ranges. */

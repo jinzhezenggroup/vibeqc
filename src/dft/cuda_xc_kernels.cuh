@@ -33,12 +33,41 @@ __global__ void add_nonlocal_energy(const double* energy, double* totals, int* e
 
 }  // namespace
 
+void select_ao(const CudaXcLayout& l, cudaStream_t stream, const double* basis,
+               const double* points, std::size_t count, double cutoff, double* ao, double* work,
+               int* error, unsigned* host_flags) {
+  // Before first evaluation the dense work panels are dead. Even the smallest
+  // panel holds N doubles, enough for N flags, with no extra device allocation.
+  auto* flags = reinterpret_cast<unsigned*>(work);
+  int failure = 0;
+  try {
+    cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
+    cuda_check(cudaMemsetAsync(flags, 0, l.nao * sizeof(unsigned), stream));
+    scheduled_ao(stream, basis, l.natom, l.nprimitive, l.nao, points, count, l.jets, ao, error,
+                 nullptr);
+    cuda_check(cudaGetLastError());
+    const auto point_blocks = std::min(std::size_t{65535}, (count + 127) / 128);
+    active_ao_columns<<<dim3((l.nao + 31) / 32, point_blocks), 128, 0, stream>>>(
+        ao, count, l.nao, l.jets, cutoff, flags, error);
+    cuda_check(cudaGetLastError());
+    cuda_check(cudaMemcpyAsync(host_flags, flags, l.nao * sizeof(unsigned), cudaMemcpyDeviceToHost,
+                               stream));
+    cuda_check(cudaMemcpyAsync(&failure, error, sizeof(int), cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaStreamSynchronize(stream));
+  } catch (...) {
+    cudaStreamSynchronize(stream);
+    throw;
+  }
+  if (failure) throw std::runtime_error("nonfinite native XC AO selection output");
+}
+
 void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStream_t stream,
              const double* basis, const double* points, const double* weights,
              const double* density, double* ao, double* work, double* features,
              double* coefficients, double* point_totals, double* potential, double* totals,
              int* error, CudaXcDensityPrecision precision, const double* direction,
-             double* delta_features, double* total_density, double* total_gradient) {
+             double* delta_features, double* total_density, double* total_gradient,
+             const std::vector<std::size_t>& ao_offsets, const std::size_t* ao_ids) {
   const I matrices = l.spins * l.nao * l.nao;
   if ((total_density == nullptr) != (total_gradient == nullptr))
     throw std::invalid_argument("CUDA XC total-density capture requires rho and gradient together");
@@ -51,18 +80,29 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
     validate_density<<<blocks(matrices, 128), 128, 0, stream>>>(direction, l.nao, l.spins, error);
     cuda_check(cudaGetLastError());
   }
+  if (l.local_ao) {
+    // The first selected tile cannot initialize matrix entries absent from its
+    // map. Clear once for the complete evaluation; dense initialization stays
+    // fused with the first potential tile as before.
+    cuda_check(cudaMemsetAsync(potential, 0, matrices * sizeof(double), stream));
+    cuda_check(cudaMemsetAsync(totals, 0, 3 * sizeof(double), stream));
+  }
   for (std::size_t begin = 0; begin < l.npoint; begin += l.tile_points) {
     const I count = std::min(l.tile_points, l.npoint - begin);
+    const auto tile = begin / l.tile_points;
+    const I active = l.local_ao ? ao_offsets[tile + 1] - ao_offsets[tile] : l.nao;
+    const auto* ids = l.local_ao && active ? ao_ids + ao_offsets[tile] : nullptr;
     // Route B changes only AO arithmetic. The AO panel and all downstream
     // density/XC reductions stay FP64 so this is a clean precision ablation.
-    scheduled_ao(stream, basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao,
-                 error, nullptr, l.ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage);
+    if (active)
+      scheduled_ao(stream, basis, l.natom, l.nprimitive, active, points + 3 * begin, count, l.jets,
+                   ao, error, ids, l.ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage);
     cuda_check(cudaGetLastError());
-    scheduled_density_product(stream, density, ao, l.nao, count, l.spins, l.work_jets,
+    scheduled_density_product(stream, density, ao, active, count, l.spins, l.work_jets,
                               precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate, work,
-                              error);
+                              error, ids, l.nao);
     cuda_check(cudaGetLastError());
-    scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
+    scheduled_density_features(stream, ao, work, active, count, l.spins, l.jets, l.work_jets,
                                l.feature_terms, l.functional, features, error);
     cuda_check(cudaGetLastError());
     if (total_density) {
@@ -77,7 +117,7 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
                                 precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate,
                                 work, error);
       cuda_check(cudaGetLastError());
-      scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
+      scheduled_density_features(stream, ao, work, active, count, l.spins, l.jets, l.work_jets,
                                  l.feature_terms, l.functional, delta_features, error);
       cuda_check(cudaGetLastError());
     }
@@ -89,9 +129,9 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
     // tiled schedule also folds the deterministic three-channel total reduction
     // into this launch; its scalar fallback retains the historical reducer.
     // The first point tile initializes its outputs directly; later tiles accumulate.
-    scheduled_potential(stream, ao, coefficients, weights + begin, l.nao, count, l.spins,
+    scheduled_potential(stream, ao, coefficients, weights + begin, active, count, l.spins,
                         l.feature_terms, l.work_jets, work, point_totals, potential, totals,
-                        begin != 0, error);
+                        begin != 0 || l.local_ao, error, ids, l.nao);
     cuda_check(cudaGetLastError());
   }
 }
@@ -100,21 +140,34 @@ void enqueue_nonlocal_potential(const CudaXcLayout& l, cudaStream_t stream, cons
                                 const double* points, const double* effective_weights,
                                 const double* total_gradient, const double* vrho,
                                 const double* vsigma, const double* nonlocal_energy, double* ao,
-                                double* coefficients, double* potential, double* totals,
-                                int* error) {
+                                double* coefficients, double* potential, double* totals, int* error,
+                                double* work, const std::vector<std::size_t>& ao_offsets,
+                                const std::size_t* ao_ids) {
   if (l.feature_terms < 4 || l.ao_precision != CudaXcAoPrecision::Fp64)
     throw std::invalid_argument("CUDA nonlocal AO assembly requires strict-FP64 GGA ingredients");
   for (std::size_t begin = 0; begin < l.npoint; begin += l.tile_points) {
     const I count = std::min(l.tile_points, l.npoint - begin);
-    scheduled_ao(stream, basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao,
-                 error, nullptr);
+    const auto tile = begin / l.tile_points;
+    const I active = l.local_ao ? ao_offsets[tile + 1] - ao_offsets[tile] : l.nao;
+    const auto* ids = l.local_ao && active ? ao_ids + ao_offsets[tile] : nullptr;
+    if (active)
+      scheduled_ao(stream, basis, l.natom, l.nprimitive, active, points + 3 * begin, count, l.jets,
+                   ao, error, ids);
     cuda_check(cudaGetLastError());
     scheduled_nonlocal_feature_coefficients(stream, total_gradient, vrho, vsigma, begin, count,
                                             l.spins, l.feature_terms, coefficients, error);
     cuda_check(cudaGetLastError());
-    assemble_potential<<<blocks(l.spins * l.nao * l.nao, 128), 128, 0, stream>>>(
-        ao, coefficients, effective_weights + begin, l.nao, count, l.spins, l.feature_terms,
-        potential, error);
+    if (l.local_ao) {
+      // Reuse the semilocal compact bilinear with nonlocal coefficients. The
+      // energy is supplied once below, so no point-total reduction is needed.
+      scheduled_potential(stream, ao, coefficients, effective_weights + begin, active, count,
+                          l.spins, l.feature_terms, l.work_jets, work, nullptr, potential, totals,
+                          true, error, ids, l.nao);
+    } else {
+      assemble_potential<<<blocks(l.spins * l.nao * l.nao, 128), 128, 0, stream>>>(
+          ao, coefficients, effective_weights + begin, l.nao, count, l.spins, l.feature_terms,
+          potential, error);
+    }
     cuda_check(cudaGetLastError());
   }
   add_nonlocal_energy<<<1, 1, 0, stream>>>(nonlocal_energy, totals, error);

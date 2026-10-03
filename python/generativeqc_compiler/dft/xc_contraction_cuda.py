@@ -225,21 +225,25 @@ _TILED_TEMPLATE = r"""
 // Partial tiles still participate in both barriers and load exact zero padding.
 template <bool Mixed>
 __global__ void tiled_density_product(const double* density, const double* ao, I n, I count,
-                                      I work_jets, double* work, int* error) {
+                                      I work_jets, double* work, int* error, const size_t* ao_ids, I full_n) {
   __shared__ double d[@TILE@][@PAD@], a[@TILE@][@PAD@];
   const I x = threadIdx.x, y = threadIdx.y;
   const I mu = I(blockIdx.x)*@TILE@+x, point = I(blockIdx.y)*@TILE@+y;
   const I spin = blockIdx.z/work_jets, jet = blockIdx.z%work_jets;
   const I panel = count*n;
   const double* source = ao+jet*panel;
-  const double* matrix = density+spin*n*n;
+  const double* matrix = density+spin*full_n*full_n;
   double value = 0.0;
   for (I begin = 0; begin < n; begin += @TILE@) {
     const I row = I(blockIdx.x)*@TILE@+y, col = begin+x;
+    // Gather directly into the existing shared tile: no full/local D copy and
+    // no extra matrix allocation. Tail lanes must not dereference the AO map.
+    const I global_row = row < n ? (ao_ids ? ao_ids[row] : row) : 0;
+    const I global_col = col < n ? (ao_ids ? ao_ids[col] : col) : 0;
     if constexpr (Mixed) {
       if (row < n && col < n) {
-        const float left = __double2float_rn(matrix[row*n+col]);
-        const float right = __double2float_rn(matrix[col*n+row]);
+        const float left = __double2float_rn(matrix[global_row*full_n+global_col]);
+        const float right = __double2float_rn(matrix[global_col*full_n+global_row]);
         d[y][x] = static_cast<double>(
             __fadd_rn(__fmul_rn(0.5f, left), __fmul_rn(0.5f, right)));
       } else {
@@ -249,7 +253,7 @@ __global__ void tiled_density_product(const double* density, const double* ao, I
                     ? static_cast<double>(__double2float_rn(source[point*n+col]))
                     : 0.0;
     } else {
-      d[y][x] = row < n && col < n ? 0.5*matrix[row*n+col]+0.5*matrix[col*n+row] : 0.0;
+      d[y][x] = row < n && col < n ? 0.5*matrix[global_row*full_n+global_col]+0.5*matrix[global_col*full_n+global_row] : 0.0;
       a[y][x] = point < count && col < n ? source[point*n+col] : 0.0;
     }
     __syncthreads();
@@ -278,7 +282,7 @@ __global__ void tiled_density_product(const double* density, const double* ao, I
 // matrix-sized or totals memset before every XC evaluation.
 __global__ void tiled_potential(const double* ao, const double* work, I n, I count,
                                 I work_jets, const double* point_totals, double* potential,
-                                double* totals, bool accumulate, int* error) {
+                                double* totals, bool accumulate, int* error, const size_t* ao_ids, I full_n) {
   __shared__ I tile_mu, tile_nu;
   if (threadIdx.x == 0 && threadIdx.y == 0) {
     const I pair = blockIdx.x;
@@ -314,13 +318,14 @@ __global__ void tiled_potential(const double* ao, const double* work, I n, I cou
     }
   }
   if (mu < n && nu < n && mu <= nu) {
-    const I index = (spin*n+mu)*n+nu;
+    const I row = ao_ids ? ao_ids[mu] : mu, col = ao_ids ? ao_ids[nu] : nu;
+    const I index = (spin*full_n+row)*full_n+col;
     const double prior = accumulate ? potential[index] : 0.0;
     value = finite(prior+value, error, 3);
     potential[index] = value;
-    potential[(spin*n+nu)*n+mu] = value;
+    potential[(spin*full_n+col)*full_n+row] = value;
   }
-  if (blockIdx.x == 0 && blockIdx.z == 0 && threadIdx.y == 0 && threadIdx.x < 3) {
+  if (point_totals && blockIdx.x == 0 && blockIdx.z == 0 && threadIdx.y == 0 && threadIdx.x < 3) {
     const I channel = threadIdx.x;
     double sum = 0.0;
     for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];
@@ -343,45 +348,57 @@ inline bool tiled_xc_admitted(I n, I count, I spins, I work_jets) {
 }
 inline void scheduled_density_product(cudaStream_t stream, const double* density,
     const double* ao, I n, I count, I spins, I work_jets, bool mixed,
-    double* work, int* error) {
+    double* work, int* error, const size_t* ao_ids = nullptr, I full_n = 0) {
+  if (!full_n) full_n = n;
+  if (!n) return;
   if (tiled_xc_admitted(n, count, spins, work_jets)) {
     const dim3 grid((n+@TILE_MINUS_ONE@)/@TILE@, (count+@TILE_MINUS_ONE@)/@TILE@,
                     spins*work_jets), block(@TILE@,@TILE@);
     if (mixed)
       tiled_density_product<true><<<grid, block, 0, stream>>>(
-          density, ao, n, count, work_jets, work, error);
+          density, ao, n, count, work_jets, work, error, ao_ids, full_n);
     else
       tiled_density_product<false><<<grid, block, 0, stream>>>(
-          density, ao, n, count, work_jets, work, error);
+          density, ao, n, count, work_jets, work, error, ao_ids, full_n);
   } else {
     if (mixed)
       density_product<true><<<generativeqc_tensor::blocks(spins*work_jets*count*n,128),128,0,stream>>>(
-          density,ao,n,count,spins,work_jets,work,error);
+          density,ao,n,count,spins,work_jets,work,error,ao_ids,full_n);
     else
       density_product<false><<<generativeqc_tensor::blocks(spins*work_jets*count*n,128),128,0,stream>>>(
-          density,ao,n,count,spins,work_jets,work,error);
+          density,ao,n,count,spins,work_jets,work,error,ao_ids,full_n);
   }
 }
 inline void scheduled_potential(cudaStream_t stream, const double* ao,
     const double* coefficients, const double* weights, I n, I count, I spins,
     I terms, I work_jets, double* work, const double* point_totals,
-    double* potential, double* totals, bool accumulate, int* error) {
+    double* potential, double* totals, bool accumulate, int* error,
+    const size_t* ao_ids = nullptr, I full_n = 0) {
+  if (!full_n) full_n = n;
+  // Sparse accumulation requires initialization of absent global entries by
+  // the owner, once per complete evaluation. Empty tiles still publish totals.
+  if (ao_ids && !accumulate)
+    throw std::invalid_argument("mapped XC potential requires initialized global output");
+  if (!n) {
+    if (point_totals) accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);
+    return;
+  }
   if (tiled_xc_admitted(n, count, spins, work_jets)) {
     compact_potential_panels<<<generativeqc_tensor::blocks(spins*count*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,work_jets,work,error);
     generativeqc_tensor::cuda_check(cudaGetLastError());
     const I tiles = (n+@TILE_MINUS_ONE@)/@TILE@, tile_pairs = tiles*(tiles+1)/2;
     tiled_potential<<<dim3(tile_pairs,1,spins),dim3(@TILE@,@TILE@),0,stream>>>(
-        ao,work,n,count,work_jets,point_totals,potential,totals,accumulate,error);
+        ao,work,n,count,work_jets,point_totals,potential,totals,accumulate,error,ao_ids,full_n);
   } else {
     if (!accumulate) {
       generativeqc_tensor::cuda_check(cudaMemsetAsync(potential,0,spins*n*n*sizeof(double),stream));
       generativeqc_tensor::cuda_check(cudaMemsetAsync(totals,0,3*sizeof(double),stream));
     }
     assemble_potential<<<generativeqc_tensor::blocks(spins*n*n,128),128,0,stream>>>(
-        ao,coefficients,weights,n,count,spins,terms,potential,error);
+        ao,coefficients,weights,n,count,spins,terms,potential,error,ao_ids,full_n);
     generativeqc_tensor::cuda_check(cudaGetLastError());
-    accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);
+    if (point_totals) accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);
   }
 }
 """

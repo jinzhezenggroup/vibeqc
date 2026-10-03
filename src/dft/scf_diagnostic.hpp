@@ -6,6 +6,8 @@
 #include <limits>
 #include <vector>
 
+#include "dft/ao_selection_work.hpp"
+
 namespace generativeqc::dft {
 
 /** Physical energy terms, never the half-trace of an XC-containing Fock. */
@@ -65,6 +67,7 @@ struct ScfDiagnostic {
   double physical_residual{std::numeric_limits<double>::infinity()};
   EnergyComponents components;
   IncrementalXcDiagnostic incremental_xc;
+  CudaXcAoSelectionWork cuda_ao_selection;
   std::vector<ScfIteration> history;
 };
 }  // namespace generativeqc::dft

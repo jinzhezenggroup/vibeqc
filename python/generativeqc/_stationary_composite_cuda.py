@@ -55,6 +55,7 @@ from generativeqc_compiler.method.stationary_prepared import (
 
 from . import _native
 from ._dft_gradient import StationaryDerivativeContract, native_ao_geometry_identity
+from ._resident_ao_maps import ResidentAoMapCache, ResidentAoMapDomain
 from ._stationary_cuda import _DOUBLE, _CudaSources, _native_grid_artifact, _ptr
 from ._stationary_nonlocal_cuda import resident_nonlocal_geometry
 from .nonlocal_runtime import _ResidentNonlocalForceOwner
@@ -130,6 +131,7 @@ class PreparedCompositeStationaryCudaGradient:
         self._stack = ExitStack()
         self._identity = None
         self._nonlocal = None
+        self._ao_maps = None
         self.executions = 0
         self.last_work = None
 
@@ -139,6 +141,7 @@ class PreparedCompositeStationaryCudaGradient:
             # seeds, including a failed downstream geometry enqueue.
             self._nonlocal.close()
             self._nonlocal = None
+        self._ao_maps = None
         self._stack.close()
         self._identity = None
         self.last_work = None
@@ -154,6 +157,8 @@ class PreparedCompositeStationaryCudaGradient:
         tile_points: int | None = None,
         max_device_bytes: int = 1 << 30,
         max_host_bytes: int = 2 << 30,
+        active_ao_cutoff: float | None = None,
+        active_ao_cache_bytes: int = 64 << 20,
     ) -> tuple[np.ndarray, dict[str, typing.Any]]:
         """Publish only a complete result; failed executions discard retained scratch."""
         try:
@@ -166,6 +171,8 @@ class PreparedCompositeStationaryCudaGradient:
                 tile_points=tile_points,
                 max_device_bytes=max_device_bytes,
                 max_host_bytes=max_host_bytes,
+                active_ao_cutoff=active_ao_cutoff,
+                active_ao_cache_bytes=active_ao_cache_bytes,
             )
         except BaseException:
             self.close()
@@ -182,9 +189,19 @@ class PreparedCompositeStationaryCudaGradient:
         tile_points: int | None,
         max_device_bytes: int,
         max_host_bytes: int,
+        active_ao_cutoff: float | None,
+        active_ao_cache_bytes: int,
     ) -> tuple[np.ndarray, dict[str, typing.Any]]:
         """Contract all twelve gradients under the live SCF token and publish forces."""
         started = perf_counter()
+        if active_ao_cutoff is not None and (
+            type(active_ao_cutoff) not in (int, float)
+            or not np.isfinite(active_ao_cutoff)
+            or active_ao_cutoff <= 0
+        ):
+            raise ValueError("active AO cutoff must be finite and positive")
+        if type(active_ao_cache_bytes) is not int or active_ao_cache_bytes < 0:
+            raise ValueError("active AO cache budget must be nonnegative")
         if not callable(getattr(_CudaSources, "geometry_external_device", None)):
             raise NotImplementedError(
                 "resident nonlocal force composition requires the stationary seed consumer"
@@ -275,6 +292,14 @@ class PreparedCompositeStationaryCudaGradient:
         source_bytes = layout.sources.allocation_bytes
         native_budget = layout.native_bytes
         device_bound, host_bound = layout.device_bound, layout.host_bound
+        # Admit dense scratch first. Optional maps use only remaining host
+        # capacity, with a zero-budget dense fallback when no room remains.
+        ao_cache_allowance = (
+            min(active_ao_cache_bytes, max(0, max_host_bytes - host_bound))
+            if active_ao_cutoff is not None
+            else 0
+        )
+        host_bound += ao_cache_allowance
         cache = Path(cache)
         identity = (
             basis.identity,
@@ -289,6 +314,8 @@ class PreparedCompositeStationaryCudaGradient:
             max_device_bytes,
             max_host_bytes,
             nlc_budget,
+            active_ao_cutoff,
+            ao_cache_allowance,
         )
         reused = identity == self._identity
         if not reused:
@@ -432,6 +459,30 @@ class PreparedCompositeStationaryCudaGradient:
         component_seconds["density_and_nuclear_setup"] = (
             perf_counter() - component_start
         )
+        ao_domain = None
+        if active_ao_cutoff is not None:
+            lease = source.cuda_resident_grid()
+            if lease is None:
+                raise NotImplementedError(
+                    "active AO maps require the resident molecular grid"
+                )
+            ao_domain = ResidentAoMapDomain(
+                self.grid.basis_identity,
+                state.identity.geometry_identity,
+                state.grid.identity,
+                lease.device,
+                lease.points,
+                lease.point_count,
+                tile_points,
+                self.grid.plan.order,
+            )
+            if self._ao_maps is None or self._ao_maps.domain != ao_domain:
+                self._ao_maps = ResidentAoMapCache(
+                    self.grid,
+                    ao_domain,
+                    cutoff=active_ao_cutoff,
+                    budget_bytes=ao_cache_allowance,
+                )
         resident_parts, resident_seconds, resident_work = resident_nonlocal_geometry(
             grid=self.grid,
             sources=self.sources,
@@ -443,6 +494,8 @@ class PreparedCompositeStationaryCudaGradient:
             ao_count=n,
             functional=functional,
             ingredients=grid_features,
+            ao_maps=self._ao_maps,
+            ao_domain=ao_domain,
         )
         components.update(resident_parts)
         component_seconds.update(resident_seconds)
@@ -494,6 +547,8 @@ class PreparedCompositeStationaryCudaGradient:
             ),
             "additional_device_peak_bound": device_bound,
             "additional_host_numeric_bound": host_bound,
+            "active_ao_cache_allowance_bytes": ao_cache_allowance,
+            "active_ao_cutoff": active_ao_cutoff,
             "native_integral_resources": dict(
                 zip(
                     (

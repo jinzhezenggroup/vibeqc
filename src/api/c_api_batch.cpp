@@ -161,6 +161,40 @@ generativeqc_status generativeqc_batch_get_ks_diagnostic(const generativeqc_batc
                                                history_capacity);
 }
 
+generativeqc_status generativeqc_batch_get_ks_ao_selection_diagnostic_v1(
+    const generativeqc_batch* batch, uint32_t index,
+    generativeqc_ks_ao_selection_diagnostic_v1* out) {
+  if (!batch || !out || index >= batch->ks_diagnostics.size())
+    return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
+  if (!generativeqc::api::valid_descriptor(out)) return GENERATIVEQC_STATUS_ABI_MISMATCH;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  if (!batch->ks_diagnostics[index]) return GENERATIVEQC_STATUS_NOT_IMPLEMENTED;
+  const auto& work = batch->ks_diagnostics[index]->cuda_ao_selection;
+  // CPU/host-unfused owners have no device XC submission evidence. Preserve
+  // unavailable rather than publishing their default-initialized zero counts.
+  if (!work.xc_evaluations) return GENERATIVEQC_STATUS_NOT_IMPLEMENTED;
+  *out = {sizeof(*out),
+          GENERATIVEQC_ABI_VERSION,
+          work.requested,
+          work.selected,
+          work.tiles,
+          work.empty_tiles,
+          work.min_active,
+          work.max_active,
+          work.active_sum,
+          work.discovery_ao_jet_values,
+          work.point_ao_visits,
+          work.point_ao_square_sum,
+          work.dense_point_ao_square_sum,
+          work.discovery_d2h_bytes,
+          work.reserved_device_bytes,
+          work.host_peak_bytes,
+          work.xc_evaluations,
+          work.cutoff,
+          work.discovery_seconds};
+  return GENERATIVEQC_STATUS_SUCCESS;
+}
+
 generativeqc_status generativeqc_batch_get_ks_transport_diagnostic(
     const generativeqc_batch* batch, uint32_t index, generativeqc_ks_transport_diagnostic* out) {
   if (!batch || index >= batch->plan->size()) return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
