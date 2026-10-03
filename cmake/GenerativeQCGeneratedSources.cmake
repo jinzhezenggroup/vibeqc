@@ -451,6 +451,21 @@ macro(generativeqc_register_host_generated_sources target)
     ARGS --output "${GENERATIVEQC_GFN2_SDQ_CPU_HEADER}"
     COMMENT "Generating compiler-owned GFN2 S/D/Q CPU primitive kernels")
 
+  # Shared post-HF source traversal is generated for both CPU and CUDA owners.
+  file(GLOB GENERATIVEQC_DF_MO_SOURCE_INPUTS CONFIGURE_DEPENDS
+       "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/tensor/*.py")
+  set(GENERATIVEQC_DF_MO_SOURCE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/df_mo_source_generated.hpp")
+  generativeqc_register_generated_sources(
+    NAME generativeqc_df_mo_source_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_mo_source.py"
+    OUTPUTS "${GENERATIVEQC_DF_MO_SOURCE_HEADER}"
+    DEPENDS ${GENERATIVEQC_DF_MO_SOURCE_INPUTS}
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/generativeqc_compiler/method/df_mo_source.py"
+    ARGS --output "${GENERATIVEQC_DF_MO_SOURCE_HEADER}")
+
   set(GENERATIVEQC_RCCSD_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsd_cpu.hpp")
   generativeqc_register_generated_sources(

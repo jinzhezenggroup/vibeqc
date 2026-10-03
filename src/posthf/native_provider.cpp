@@ -6,10 +6,12 @@
 #include <numeric>
 #include <stdexcept>
 
+#include "df_mo_source_generated.hpp"
 #include "integrals/density_fitting_metric.hpp"
 #include "integrals/s_integrals.hpp"
 #include "posthf/cuda_transform.hpp"
 #include "posthf/source_reuse_schedule_generated.hpp"
+#include "tensor/cpu_linalg.hpp"
 
 namespace generativeqc::posthf {
 NativeBlockProvider::NativeBlockProvider(const integrals::ElectronInteractionSource& source,
@@ -439,27 +441,20 @@ DensityFittedBlockProvider::DensityFittedBlockProvider(const RawSource& source,
   const auto three_center_elements = checked_mul(pair_count, naux_);
   transformed_.assign(three_center_elements, 0.0);
   whitened_.assign(three_center_elements, 0.0);
-  auto idx = [this](std::size_t p, std::size_t q, std::size_t aux) {
-    return (p * n_ + q) * naux_ + aux;
-  };
-  for (std::size_t p = 0; p < n_; ++p)
-    for (std::size_t q = 0; q < n_; ++q)
-      for (std::size_t mu = 0; mu < n_; ++mu) {
-        const double left = ref_.coefficients[mu * n_ + p];
-        for (std::size_t nu = 0; nu < n_; ++nu) {
-          const double coefficient = left * ref_.coefficients[nu * n_ + q];
-          if (coefficient == 0.0) continue;
-          const auto raw_pair = (mu * n_ + nu) * naux_;
-          for (std::size_t aux = 0; aux < naux_; ++aux)
-            transformed_[idx(p, q, aux)] += coefficient * raw.three_center[raw_pair + aux];
-        }
-      }
-  for (std::size_t p = 0; p < n_; ++p)
-    for (std::size_t q = 0; q < n_; ++q)
-      for (std::size_t target = 0; target < naux_; ++target)
-        for (std::size_t source_aux = 0; source_aux < naux_; ++source_aux)
-          whitened_[idx(p, q, target)] += transformed_[idx(p, q, source_aux)] *
-                                          inverse_square_root_[source_aux * naux_ + target];
+  // The compiler shares the first orbital projection instead of expanding
+  // both orbital sums for each output pair. Borrow whitened_ as that temporary;
+  // its projection is dead before the final metric contraction overwrites it.
+  // Thus the staged N^3*Q transform needs no additional retained-sized buffer.
+  generated::transform_df_mo_source(
+      n_, naux_, ref_.coefficients.data(), inverse_square_root_.data(), whitened_.data(),
+      transformed_.data(),
+      [&](std::size_t mu) { return raw.three_center.data() + mu * n_ * naux_; },
+      [](char ta, char tb, std::size_t m, std::size_t n, std::size_t k, const double* a,
+         const double* b, double* c) {
+        // A column-major product is its reversed row-major transpose. Both
+        // backends execute the same packed schedule, including non-symmetric M.
+        tensor::cpu_gemm(tb, ta, n, m, k, b, a, c);
+      });
 
   const auto reference_elements = checked_add(checked_mul(5, pair_count), n_);
   auto bytes =

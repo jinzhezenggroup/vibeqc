@@ -90,8 +90,10 @@ class NativeBlockProvider final : public MOBlockProvider {
 /** CPU factorized two-electron provider for the RI-MP2 response path.
  *
  * The provider materializes the value-side A[mu,nu,P], transforms it once to
- * the canonical MO frame, and stores both A[P,p,q] and B[Q,p,q]=A* M^(-1/2).
- * Four-index blocks are reconstructed on demand as sum_Q B[Q,p,q] B[Q,r,s].
+ * the canonical MO frame, and stores both A[p,q,P] and B[p,q,Q]=A* M^(-1/2).
+ * The compiler stages the two orbital projections in O(N^3 Q) work; metric
+ * whitening is O(N^2 Q^2). B storage holds the first projection temporarily.
+ * Four-index blocks are reconstructed on demand as sum_Q B[p,q,Q] B[r,s,Q].
  * No nuclear derivative tensor is owned here; the reverse consumer publishes
  * A/M cotangents to the shared #143 derivative boundary.
  */
