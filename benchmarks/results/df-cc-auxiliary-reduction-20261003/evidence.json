@@ -3,11 +3,22 @@
     {
       "kind": "numerical-qualification",
       "path": "qualification.json.gz",
-      "sha256": "776569026ccfa8ef55554e7017b409344403958a5a93e3c0b112f8c8e245f517"
+      "sha256": "39b4eabb181677d35462ba430c8f7e280594618164e94bc28f903460786b7aba"
     }
   ],
   "backend_selected": "cuda",
   "block_errors": {
+    "benzene264_energy": {
+      "atol": 3e-09,
+      "max_absolute_error": 4.381384144380718e-12,
+      "max_scaled_error": 0.0014604613814602392,
+      "passed": true,
+      "rms_error": 4.381384144380718e-12,
+      "rtol": 0,
+      "shape": [
+        1
+      ]
+    },
     "cpu_oracle_energy": {
       "atol": 3e-10,
       "max_absolute_error": 3.690242555975942e-13,

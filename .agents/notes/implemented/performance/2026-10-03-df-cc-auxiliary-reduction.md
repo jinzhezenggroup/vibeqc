@@ -80,3 +80,24 @@ strict-FP64/single-buffer/unfused fallbacks when qualifying those directions.
 Native molecular source, standard (T), Lambda/orbital/factor/metric response and
 forces remain separate required owners. No public DF Calculator registration or
 force-domain expansion is implied by this schedule.
+
+
+## Additional complete 264-AO qualification
+
+The same frozen CUDA binary completes benzene/cc-pVTZ with cc-pVTZ-RI
+(o/v/Q=21/243/666), n2 Slurm 2162, exit 0. It converges in 23 iterations,
+44 primary evaluations and one original expanded replay. Correlation energy
+-1.0707950360409848 Eh differs from the independent same-Hamiltonian oracle
+by 4.381384144380718e-12 Eh. Every amplitude passes: T1/T2 maximum differences
+5.7356795094692936e-11 / 2.165781443075332e-11; expanded residual maxima
+1.9587846969426614e-13 / 4.988405521988426e-13.
+
+The solver counter reports 3696.084602716 s; process wall is 1:01:45 at the
+time tool's one-second reported precision. Admission/device bytes are
+17,381,701,856 / 15,769,752,320. Semantic contraction summands, including replay,
+are 570,074,868,504,288. No converged previous-schedule benzene run is available,
+so the earlier one-update comparison cannot establish a full-run speedup.
+This extends supplied-Hamiltonian CCSD qualification, not molecular CCSD(T)
+or force endpoint acceptance. The compressed qualification retains unrounded
+statistics, output/amplitude hashes, source input/binary identities and logs;
+the full 609,136,761-byte amplitude output remains in ignored local artifacts.
