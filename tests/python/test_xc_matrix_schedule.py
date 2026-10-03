@@ -95,9 +95,11 @@ def test_tiled_first_point_tile_initializes_outputs_without_global_clears() -> N
 
     glue = (ROOT / "src/dft/cuda_xc_kernels.cuh").read_text()
     setup = glue[: glue.index("for (std::size_t begin")]
-    assert "cudaMemsetAsync(potential" not in setup
-    assert "cudaMemsetAsync(totals" not in setup
-    assert "begin != 0, error" in glue
+    dense_setup, sparse_setup = setup.split("if (l.local_ao) {", 1)
+    assert "cudaMemsetAsync(potential" not in dense_setup
+    assert "cudaMemsetAsync(totals" not in dense_setup
+    assert "cudaMemsetAsync(potential" in sparse_setup
+    assert "begin != 0 || l.local_ao, error" in glue
 
 
 @pytest.mark.parametrize(

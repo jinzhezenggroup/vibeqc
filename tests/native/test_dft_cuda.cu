@@ -67,7 +67,8 @@ struct Fixture {
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
           std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
-          bool response = false, double exchange_scale = 1.0, double correlation_scale = 1.0)
+          bool response = false, double exchange_scale = 1.0, double correlation_scale = 1.0,
+          const CudaXcAoTiles* maps = nullptr)
       : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision, exchange_scale,
                               correlation_scale)) {
     try {
@@ -75,12 +76,14 @@ struct Fixture {
         layout = cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
                                       functional, uks, tile, true, ao_precision, exchange_scale,
                                       correlation_scale);
+      if (maps) layout = cuda_xc_local_ao_layout(layout, *maps);
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
       check(cudaMalloc(&density, layout.spins * layout.nao * layout.nao * sizeof(double)));
-      plan = std::make_unique<CudaXcPlan>(layout, basis.packed, grid.points(), grid.weights(),
-                                          arena, layout.device_bytes, stream);
+      plan =
+          std::make_unique<CudaXcPlan>(layout, basis.packed, grid.points(), grid.weights(), arena,
+                                       layout.device_bytes, stream, CudaMolecularGridView{}, maps);
     } catch (...) {
       cleanup();
       throw;
@@ -170,8 +173,11 @@ void resident_grid_borrow_case(const generativeqc::core::System& molecule, const
       cuda_xc_layout(basis, grid, 1U, false, 7, CudaXcAoPrecision::Fp64, 1.0, 1.0, false);
   const auto borrowed_layout =
       cuda_xc_layout(basis, grid, 1U, false, 7, CudaXcAoPrecision::Fp64, 1.0, 1.0, true);
+  // XC owns only xyz + partitioned weights. The shared molecular owner also
+  // retains atomic weights, which were never part of this XC allocation.
   require(borrowed_layout.borrowed_grid &&
-              owned_layout.device_bytes == borrowed_layout.device_bytes + resident.device_bytes,
+              owned_layout.device_bytes ==
+                  borrowed_layout.device_bytes + 4 * grid.point_count() * sizeof(double),
           "resident-grid XC layout did not retire duplicate point/weight storage");
 
   cudaStream_t stream{};
@@ -308,8 +314,10 @@ void density_feature_capture_case(const AoBasis& basis, const MolecularGrid& gri
   fixture.canary();
 }
 
-void nonlocal_potential_case(const AoBasis& basis, const MolecularGrid& grid, bool unrestricted) {
-  Fixture fixture(basis, grid, 4U, unrestricted, 7);
+void nonlocal_potential_case(const AoBasis& basis, const MolecularGrid& grid, bool unrestricted,
+                             const CudaXcAoTiles* maps = nullptr, std::size_t tile_points = 7) {
+  Fixture fixture(basis, grid, 4U, unrestricted, tile_points, CudaXcAoPrecision::Fp64, false, 1.0,
+                  1.0, maps);
   const auto d = density(basis.nao, unrestricted ? 2U : 1U);
   fixture.submit(d);
   const auto before_scalars = fixture.scalars();
@@ -360,6 +368,12 @@ void nonlocal_potential_case(const AoBasis& basis, const MolecularGrid& grid, bo
     std::vector<double> ao(4 * points * n), expected(matrix);
     basis.evaluate(grid.points().data(), points, 1, 0, n, ao.data(), ao.size());
     const auto phi = [&](unsigned jet, std::size_t p, std::size_t mu) {
+      if (maps) {
+        const auto tile = p / tile_points;
+        if (!std::binary_search(maps->indices.begin() + maps->offsets[tile],
+                                maps->indices.begin() + maps->offsets[tile + 1], mu))
+          return 0.0;
+      }
       return ao[(jet * points + p) * n + mu];
     };
     for (std::size_t p = 0; p < points; ++p)
@@ -558,10 +572,11 @@ void mixed_density_contraction(const AoBasis& basis, const MolecularGrid& grid,
   mixed.canary();
 }
 
-/** omegaB97M-V has no mixed-density qualification. Reject that request without
+/** B3LYP and omegaB97M-V have no mixed-density qualification. Reject the request without
  * invalidating an existing FP64 result or consuming the next generation. */
-void mixed_density_rejection(const AoBasis& basis, const MolecularGrid& grid, bool uks) {
-  Fixture test(basis, grid, 4U, uks, 13);
+void mixed_density_rejection(const AoBasis& basis, const MolecularGrid& grid, bool uks,
+                             std::uint32_t functional) {
+  Fixture test(basis, grid, functional, uks, 13);
   const auto d = density(basis.nao, uks ? 2 : 1);
   compare(test, basis, grid, d);
   const auto previous = test.scalars();
@@ -575,7 +590,7 @@ void mixed_density_rejection(const AoBasis& basis, const MolecularGrid& grid, bo
     rejected =
         std::string(error.what()).find("not qualified for this functional") != std::string::npos;
   }
-  require(rejected, "unqualified omegaB97M-V mixed density was not rejected");
+  require(rejected, "unqualified functional mixed density was not rejected");
   const auto after = test.plan->transfers();
   require(after.setup_h2d_bytes == before.setup_h2d_bytes &&
               after.output_d2h_bytes == before.output_d2h_bytes &&
@@ -657,8 +672,9 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
 }
 
 void graph_capture(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
-                   bool unrestricted, std::size_t tile = 9) {
-  Fixture captured(basis, grid, functional, unrestricted, tile);
+                   bool unrestricted, std::size_t tile = 9, const CudaXcAoTiles* maps = nullptr) {
+  Fixture captured(basis, grid, functional, unrestricted, tile, CudaXcAoPrecision::Fp64, false, 1.0,
+                   1.0, maps);
   auto d = density(basis.nao, unrestricted ? 2 : 1);
   check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
                         cudaMemcpyHostToDevice, captured.stream));
@@ -680,8 +696,12 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid, unsigned fun
       check(cudaStreamSynchronize(captured.stream));
       const auto result = captured.scalars();
       require(result.error == 0, "captured XC result was invalid");
-      Fixture fresh(basis, grid, functional, unrestricted, 7);
-      compare(fresh, basis, grid, d);
+      Fixture fresh(basis, grid, functional, unrestricted, maps ? tile : 7, CudaXcAoPrecision::Fp64,
+                    false, 1.0, 1.0, maps);
+      if (maps)
+        fresh.submit(d);
+      else
+        compare(fresh, basis, grid, d);
       close(result.energy, fresh.scalars().energy, "captured XC energy");
       const auto actual = captured.potential(), expected = fresh.potential();
       for (std::size_t i = 0; i < actual.size(); ++i)
@@ -802,12 +822,19 @@ void matrix_schedule_cases() {
         variational_and_state(large_basis, large_grid, functional, 17);
     }
 }
+#include "dft_local_ao_cases.cuh"
 }  // namespace
 
 int main(int argc, char** argv) {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    local_ao_cases();
+    if (argc == 2 && std::string(argv[1]) == "--local-ao") {
+      std::cout
+          << "CUDA XC local-AO CPU E/V, feature, nonlocal, capture and resource gates passed\n";
+      return 0;
+    }
     matrix_schedule_cases();
     if (argc == 2 && std::string(argv[1]) == "--matrix-schedule") {
       std::cout << "CUDA XC matrix-tail, spin, functional, variational and capture gates passed\n";
@@ -908,6 +935,9 @@ int main(int argc, char** argv) {
     require(scaled_r2scan_rejected, "unqualified scaled meta-GGA CUDA XC was accepted");
 
     for (std::uint32_t functional : {0U, 1U, 2U, 3U, 4U}) {
+      // Keep the complete regression unchanged; this selector isolates the
+      // requested WB97M-V qualification from unrelated functional failures.
+      if (argc == 2 && std::string(argv[1]) == "--wb97mv" && functional != 4U) continue;
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
           Fixture test(basis, grid, functional, uks, tile);
@@ -922,8 +952,8 @@ int main(int argc, char** argv) {
         }
       }
       for (bool uks : {false, true}) {
-        if (functional == 4U)
-          mixed_density_rejection(basis, grid, uks);
+        if (functional > 2U)
+          mixed_density_rejection(basis, grid, uks, functional);
         else
           mixed_density_contraction(basis, grid, functional, uks);
       }

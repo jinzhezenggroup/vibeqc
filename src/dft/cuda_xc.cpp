@@ -134,6 +134,31 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   return out;
 }
 
+CudaXcLayout cuda_xc_local_ao_layout(CudaXcLayout dense, const CudaXcAoTiles& maps) {
+  if (dense.local_ao || dense.ao_map_entries || dense.host_ao_map_bytes || dense.response ||
+      dense.ao_precision != CudaXcAoPrecision::Fp64 || !dense.tile_points || !dense.npoint)
+    throw std::invalid_argument("local CUDA XC maps require a dense physical FP64 layout");
+  const auto tiles = 1 + (dense.npoint - 1) / dense.tile_points;
+  if (maps.offsets.size() != tiles + 1 || maps.offsets.front() != 0 ||
+      maps.offsets.back() != maps.indices.size())
+    throw std::invalid_argument("local CUDA XC map offsets differ from the point tile domain");
+  for (std::size_t tile = 0; tile < tiles; ++tile) {
+    const auto first = maps.offsets[tile], last = maps.offsets[tile + 1];
+    if (first > last || last > maps.indices.size() || last - first > dense.nao)
+      throw std::invalid_argument("invalid local CUDA XC map extent");
+    for (auto i = first; i < last; ++i)
+      if (maps.indices[i] >= dense.nao || (i > first && maps.indices[i - 1] >= maps.indices[i]))
+        throw std::invalid_argument("local CUDA XC AO maps must be sorted, unique and in range");
+  }
+  constexpr auto overflow = "local CUDA XC map storage overflow";
+  dense.local_ao = true;
+  dense.ao_map_entries = maps.indices.size();
+  dense.host_ao_map_bytes = size_mul(maps.offsets.size(), sizeof(std::size_t), overflow);
+  dense.device_bytes = size_add(
+      dense.device_bytes, size_mul(maps.indices.size(), sizeof(std::size_t), overflow), overflow);
+  return dense;
+}
+
 CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
                        bool unrestricted, std::size_t tile_points, void* arena,
                        std::size_t arena_bytes, cudaStream_t stream, CudaXcAoPrecision ao_precision,
@@ -146,7 +171,7 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uin
 CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_basis,
                        const std::vector<double>& points, const std::vector<double>& weights,
                        void* arena, std::size_t arena_bytes, cudaStream_t stream,
-                       CudaMolecularGridView borrowed_grid)
+                       CudaMolecularGridView borrowed_grid, const CudaXcAoTiles* ao_maps)
     : layout_(cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
                                    layout.functional, layout.spins == 2, layout.tile_points,
                                    layout.response, layout.ao_precision, layout.exchange_scale,
@@ -154,6 +179,14 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
       point_launcher_(cuda_xc_detail::resolve_point_launcher(layout_.functional, layout_.response)),
       arena_(arena),
       stream_(stream) {
+  if (ao_maps) {
+    layout_ = cuda_xc_local_ao_layout(layout_, *ao_maps);
+    ao_offsets_ = ao_maps->offsets;
+  }
+  if (layout.local_ao != layout_.local_ao || layout.ao_map_entries != layout_.ao_map_entries ||
+      layout.host_ao_map_bytes != layout_.host_ao_map_bytes ||
+      layout.device_bytes != layout_.device_bytes)
+    throw std::invalid_argument("CUDA XC local map resource layout mismatch");
   if (layout.spins != 1 && layout.spins != 2)
     throw std::invalid_argument("CUDA XC spin layout is invalid");
   if (packed_basis.size() != layout_.packed_elements || points.size() != 3 * layout_.npoint ||
@@ -213,6 +246,12 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
   totals_ = take_double(3);
   auto* error_storage = take_double(1);
   error_ = reinterpret_cast<int*>(error_storage);
+  if (l.ao_map_entries) {
+    std::size_t offset = 0;
+    if (!workspace.append<std::size_t>(l.ao_map_entries, offset))
+      throw std::overflow_error("local CUDA XC map storage overflow");
+    ao_ids_ = arena_view.view<std::size_t>(offset, l.ao_map_entries).data;
+  }
   if (workspace.bytes() != layout_.device_bytes)
     throw std::logic_error("CUDA XC workspace layout mismatch");
   try {
@@ -224,6 +263,10 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
       check(cudaMemcpyAsync(owned_weights, weights.data(), l.npoint * sizeof(double),
                             cudaMemcpyHostToDevice, stream_));
     }
+    if (l.ao_map_entries)
+      check(cudaMemcpyAsync(ao_ids_, ao_maps->indices.data(),
+                            l.ao_map_entries * sizeof(std::size_t), cudaMemcpyHostToDevice,
+                            stream_));
     // Complete setup before releasing borrowed host quadrature/basis inputs.
     check(cudaStreamSynchronize(stream_));
   } catch (...) {
@@ -236,7 +279,9 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
           : size_add(l.packed_elements, size_mul(4, l.npoint, "CUDA XC transfer size overflow"),
                      "CUDA XC transfer size overflow");
   transfers_.setup_h2d_bytes =
-      size_mul(setup_elements, sizeof(double), "CUDA XC transfer size overflow");
+      size_add(size_mul(setup_elements, sizeof(double), "CUDA XC transfer size overflow"),
+               size_mul(l.ao_map_entries, sizeof(std::size_t), "CUDA XC transfer size overflow"),
+               "CUDA XC transfer size overflow");
   transfers_.synchronizations = 1;
 }
 
@@ -367,7 +412,8 @@ void CudaXcPlan::enqueue_nonlocal_potential_impl(std::uint64_t generation, bool 
 #endif
     cuda_xc_detail::enqueue_nonlocal_potential(layout_, stream_, basis_, points_, effective_weights,
                                                total_gradient, vrho, vsigma, nonlocal_energy, ao_,
-                                               coefficients_, potential_, totals_, error_);
+                                               coefficients_, potential_, totals_, error_, work_,
+                                               ao_offsets_, ao_ids_);
     if (publish_generation) generations_.commit(generation);
   } catch (const generativeqc_tensor::DeviceAllocationError&) {
     (void)cudaStreamSynchronize(stream_);
@@ -392,6 +438,8 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
   if (precision != CudaXcDensityPrecision::Fp64 &&
       precision != CudaXcDensityPrecision::Fp32ComputeFp64Accumulate)
     throw std::invalid_argument("unknown CUDA XC density precision");
+  if (layout_.local_ao && precision != CudaXcDensityPrecision::Fp64)
+    throw std::invalid_argument("local CUDA XC maps require FP64 density contraction");
   if (precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate && layout_.functional > 2U)
     throw std::invalid_argument(
         "mixed CUDA XC density precision is not qualified for this functional");
@@ -441,7 +489,7 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
     cuda_xc_detail::enqueue(layout_, point_launcher_, stream_, basis_, points_, weights_, density,
                             ao_, work_, features_, coefficients_, point_totals_, potential_,
                             totals_, error_, precision, direction, delta_features_, total_density,
-                            total_gradient);
+                            total_gradient, ao_offsets_, ao_ids_);
   } catch (const generativeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at
     // this native owner boundary so both single-point and batch APIs preserve it.
