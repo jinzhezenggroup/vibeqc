@@ -163,6 +163,7 @@ hessian
 :caption: Execution and backends
 
 tensor_cuda
+cuda_time_estimator
 tensor_precision
 state_transport
 opencl_backend

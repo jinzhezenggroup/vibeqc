@@ -1,0 +1,26 @@
+{
+  "schema": "generativeqc.cuda-timing-sanitizer.v1",
+  "utc": "2026-10-03T16:48:05.070056+00:00",
+  "command": [
+    "/group/software/cuda-12.9.1/bin/compute-sanitizer",
+    "--tool",
+    "memcheck",
+    "--error-exitcode",
+    "99",
+    "build/cuda-timing-calibration/probe",
+    "3",
+    "--smoke"
+  ],
+  "slurm_job_id": "12186",
+  "cuda_visible_devices": "0",
+  "binary_sha256": "36977aa98369dbcd6512f60dd0059b2473a0c56f8388c087298b46abf32e36e0",
+  "exit_code": 0,
+  "memory_errors": 0,
+  "scope": "all four probe families and non-divisible grid-stride tails; excluded from timing fit",
+  "validation_lines": [
+    "smoke-fma validated, 256 launches/sample",
+    "smoke-launch validated, 3 launches/sample",
+    "smoke-copy validated, 161 launches/sample",
+    "smoke-mixed validated, 106 launches/sample"
+  ]
+}

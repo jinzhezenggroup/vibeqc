@@ -104,3 +104,11 @@ promotion oracle.
 
 - `.agents/notes/implemented/performance/2026-09-21-gpu-profitability-model.md`
 - `.agents/notes/implemented/performance/2026-10-01-stationary-geometry-point-lanes.md`
+
+## Follow-up: explicit experimental calibration
+
+The [2026-10-03 calibrated timing decision](2026-10-03-calibrated-cuda-kernel-timing.md)
+adds an optional caller-calibrated kernel estimate without changing screening or
+production promotion. It narrows the rejection of absolute timing to distinguish
+explicit experiments from validated predictions; no measured calibration or
+held-out accuracy claim is supplied.

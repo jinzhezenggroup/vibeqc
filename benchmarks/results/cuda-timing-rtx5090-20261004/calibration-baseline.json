@@ -1,0 +1,13 @@
+{
+  "architecture": "sm_120",
+  "device": "NVIDIA GeForce RTX 5090",
+  "effective_compute_ops_per_second": 1577700795435.659,
+  "effective_memory_bytes_per_second": 1504096582313.9165,
+  "launch_seconds": 2.898876953125e-06,
+  "provenance": "measurement.json sha256:ab78f6b3461fb3d02bfbe56588cd33d65bd0c5d4ae963aa241765825c8936fea; tools/calibrate_cuda_time.py; CUDA runtime 12090",
+  "saturation_occupancy": 0.15,
+  "schema": "generativeqc.compiler.cuda-timing-calibration.v1",
+  "sm_count": 170,
+  "uncertainty_fraction": 0.15,
+  "workload": "FP64 independent FMA chains and streaming copy; FMA=2 ops; streaming arrays >=4x L2 each; warm serial same-stream CUDA batches"
+}

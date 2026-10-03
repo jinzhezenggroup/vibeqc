@@ -16,6 +16,10 @@ from generativeqc_compiler.common.cuda_resources import (
     parse_resources,
 )
 from generativeqc_compiler.common.cuda_target import cuda_target_info
+from generativeqc_compiler.common.cuda_time_estimator import (
+    CudaTimingCalibration,
+    estimate_cuda_time,
+)
 from generativeqc_compiler.common.gpu_profitability import GpuProfitability
 
 
@@ -54,7 +58,8 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Build a CUDA resource/parallelism screening report without probing "
-            "or executing a GPU. The output is not a runtime prediction."
+            "or executing a GPU. Optional explicit calibration adds an experimental "
+            "homogeneous-kernel timing estimate, never an endpoint prediction."
         )
     )
     parser.add_argument("--arch", required=True, help="CUDA architecture, e.g. sm_120")
@@ -84,17 +89,66 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         help="pre-compilation occupancy upper bound in [0, 1]",
     )
+    parser.add_argument(
+        "--calibration",
+        type=Path,
+        help="cuda-timing-calibration.v1 or .v2 JSON with measured device/workload rates",
+    )
+    parser.add_argument(
+        "--spill-traffic-bytes",
+        type=int,
+        help="total dynamic spill traffic across all launches, excluding semantic traffic",
+    )
+    parser.add_argument(
+        "--allow-per-sm-fallback",
+        action="store_true",
+        help="explicitly allow optimistic timing without global underfill evidence",
+    )
     return parser
 
 
 def main() -> None:
-    args = _parser().parse_args()
+    """Emit static evidence and, only on request, calibrated kernel timing."""
+    parser = _parser()
+    args = parser.parse_args()
+    try:
+        payload = _report(args)
+    except (OSError, TypeError, ValueError) as exc:
+        parser.error(str(exc))
+    print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
+
+
+def _report(args: argparse.Namespace) -> dict[str, object]:
+    calibration = None
+    if args.calibration is not None:
+        calibration_payload = json.loads(args.calibration.read_text(encoding="utf-8"))
+        schema = (
+            calibration_payload.pop("schema", None)
+            if isinstance(calibration_payload, dict)
+            else None
+        )
+        if schema not in {
+            "generativeqc.compiler.cuda-timing-calibration.v1",
+            "generativeqc.compiler.cuda-timing-calibration.v2",
+        }:
+            raise ValueError(
+                "calibration must be a cuda-timing-calibration.v1 or .v2 JSON object"
+            )
+        calibration = CudaTimingCalibration(**calibration_payload)
+        if calibration.to_payload()["schema"] != schema:
+            raise ValueError("calibration schema and model version disagree")
+    elif args.spill_traffic_bytes is not None or args.allow_per_sm_fallback:
+        raise ValueError("timing options require --calibration")
     target = cuda_target_info(args.arch)
     ptxas_evidence = None
     if args.ptxas is not None:
         resources, architecture_verified = _ptxas_resources(
             args.ptxas.read_text(encoding="utf-8"), target.architecture
         )
+        # A max-resource summary is useful for screening, but timing mixed
+        # kernels with one roofline/occupancy value loses sequential work.
+        if calibration is not None and len(resources) != 1:
+            raise ValueError("timing requires exactly one PTXAS kernel resource row")
         ptxas_evidence = {
             "architecture": target.architecture if architecture_verified else None,
             "architecture_verified": architecture_verified,
@@ -127,7 +181,11 @@ def main() -> None:
         target,
         args.block_threads,
         grid_blocks=args.grid_blocks,
-        sm_count=args.sm_count,
+        sm_count=(
+            calibration.sm_count
+            if args.sm_count is None and calibration is not None
+            else args.sm_count
+        ),
     )
     if ptxas_evidence is not None and not ptxas_evidence["architecture_verified"]:
         report = replace(
@@ -144,7 +202,14 @@ def main() -> None:
     payload["ptxas_evidence"] = ptxas_evidence
     payload["screening_priority"] = report.screening_priority(0)
     payload["profitability"] = profitability.to_payload()
-    print(json.dumps(payload, indent=2, sort_keys=True))
+    if calibration is not None:
+        payload["time_estimate"] = estimate_cuda_time(
+            report,
+            calibration,
+            spill_traffic_bytes=args.spill_traffic_bytes,
+            allow_per_sm_fallback=args.allow_per_sm_fallback,
+        ).to_payload()
+    return payload
 
 
 if __name__ == "__main__":

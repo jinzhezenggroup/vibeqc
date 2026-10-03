@@ -1,0 +1,10 @@
+{
+  "binary_sha256": "93883b0cce97af597b12b9705d26cbdb6f8d0e8154bfba3ad7b7c763dd61bff3",
+  "exit_code": 0,
+  "invocation": "srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:05:00 /group/software/cuda-12.9.1/bin/compute-sanitizer --tool memcheck --error-exitcode 99 build/cuda-timing-calibration/probe 3 --smoke",
+  "memory_errors": 0,
+  "retained_local_output_sha256": "0522e2e598081a2053c0d3892dffb4af54f4173eb1ea498a93e620201daacdc0",
+  "schema": "generativeqc.cuda-timing-probe-sanitizer.v1",
+  "scope": "all four probe kernels, non-divisible grid-stride tails, independent numerical oracle; excluded from timing fit",
+  "tool_version": "NVIDIA (R) Compute Sanitizer\nCopyright (c) 2020-2025 NVIDIA Corporation\nVersion 2025.2.1.0 (build 35969825) (public-release)"
+}

@@ -40,6 +40,8 @@ class StaticCudaCost:
     optimistic. ``grid_saturation_upper_bound`` reports the fraction of one
     resident wave supplied by the grid. ``device_occupancy_upper_bound`` combines
     that fraction with per-SM occupancy when grid size and SM count are known.
+    ``spill_bytes`` retains static PTXAS spill evidence; it is not total dynamic
+    memory traffic across threads, loop iterations, or repeated launches.
     """
 
     architecture: str
