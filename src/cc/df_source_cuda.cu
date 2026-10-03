@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -232,6 +233,7 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
       throw std::runtime_error("nonfinite native CUDA DF-CC integral block");
     result.factor_block_d2h_bytes = checked_add(result.factor_block_d2h_bytes, bytes(count));
   };
+  download(result.boo, factors.boo, checked_mul(q, checked_mul(o, o)));
   download(result.bov, factors.bov, checked_mul(q, checked_mul(o, v)));
   download(result.bvv, factors.bvv, checked_mul(q, checked_mul(v, v)));
   auto block_gemm = [&](char ta, char tb, std::size_t m, std::size_t columns, std::size_t k,
@@ -255,6 +257,88 @@ DFSourceResult build_df_source_cuda(const core::System& orbital, const core::Sys
     throw std::logic_error("native DF-CC publication size differs from compiler layout");
   result.block_seconds = elapsed(stage);
   result.total_seconds = elapsed(started);
+  return result;
+}
+
+DFFactorResponseResult pullback_df_factors_cuda(std::size_t o, std::size_t v, std::size_t q,
+                                                DFFactorResponseView input, std::size_t budget,
+                                                int device, std::size_t caller_bytes) {
+  if (!o || !v || !q || !budget || device < 0)
+    throw std::invalid_argument("invalid native DF factor response dimensions/device/budget");
+  namespace gen = generated::df_source;
+  const auto oo = checked_mul(o, o), ov = checked_mul(o, v), vv = checked_mul(v, v);
+  const auto qoo = checked_mul(q, oo), qov = checked_mul(q, ov), qvv = checked_mul(q, vv);
+  const auto block = checked_mul(ov, ov);
+  const std::array<std::size_t, 10> sizes{
+      qoo, qov, qvv, block, block, block, checked_mul(ov, oo), checked_mul(oo, oo), qov, qvv};
+  const std::array<std::span<const double>, 10> views{
+      input.boo,      input.bov,      input.bvv,      input.bar_ovov, input.bar_ovvo,
+      input.bar_oovv, input.bar_ovoo, input.bar_oooo, input.bar_bov,  input.bar_bvv};
+  std::size_t inputs = 0;
+  for (std::size_t i = 0; i < views.size(); ++i) {
+    if (views[i].size() != sizes[i] ||
+        !std::all_of(views[i].begin(), views[i].end(), [](double x) { return std::isfinite(x); }))
+      throw std::invalid_argument("invalid native DF factor response input shape/value");
+    inputs = checked_add(inputs, sizes[i]);
+  }
+  for (const auto& item : {std::pair{input.boo, o}, std::pair{input.bvv, v}})
+    for (std::size_t Q = 0; Q < q; ++Q)
+      for (std::size_t i = 0; i < item.second; ++i)
+        for (std::size_t j = 0; j < i; ++j)
+          if (std::abs(item.first[(Q * item.second + i) * item.second + j] -
+                       item.first[(Q * item.second + j) * item.second + i]) > 1e-10)
+            throw std::invalid_argument("native DF factor response requires symmetric pairs");
+  const auto outputs = checked_add(qoo, checked_add(qov, qvv));
+  const auto arena = gen::response_arena_elements(o, v, q);
+  DFFactorResponseResult result;
+  result.owned_device_bytes = checked_add(bytes(checked_add(inputs, arena)), sizeof(int));
+  result.numeric_capacity_bytes = checked_add(
+      caller_bytes, checked_add(result.owned_device_bytes, bytes(checked_add(inputs, outputs))));
+  result.h2d_bytes = bytes(inputs);
+  result.d2h_bytes = bytes(outputs);
+  result.contraction_terms = gen::response_contraction_terms(o, v, q);
+  result.generated_kernels = gen::response_operations;
+  if (result.numeric_capacity_bytes > budget)
+    throw std::length_error("native DF factor response exceeds complete numeric budget");
+  // Declare every host download destination before stream-dependent storage:
+  // its destructor drains queued work before a destination can be destroyed.
+  result.boo.resize(qoo);
+  result.bov.resize(qov);
+  result.bvv.resize(qvv);
+  int failed = 0;
+  runtime::CudaDeviceScope scope(device);
+  runtime::OwnedCudaStream stream(device);
+  runtime::OwnedCudaBuffer<double> storage(device, checked_add(inputs, arena), stream.get());
+  runtime::OwnedCudaBuffer<int> error(device, 1, stream.get());
+  gen::ResponseCudaState state;
+  state.o = o;
+  state.v = v;
+  state.q = q;
+  state.stream = stream.get();
+  state.error = error.get();
+  state.response_arena = storage.get() + inputs;
+  const std::array<const double**, 10> fields{
+      &state.boo,      &state.bov,      &state.bvv,      &state.bar_ovov, &state.bar_ovvo,
+      &state.bar_oovv, &state.bar_ovoo, &state.bar_oooo, &state.bar_bov,  &state.bar_bvv};
+  std::size_t cursor = 0;
+  for (std::size_t i = 0; i < views.size(); ++i) {
+    *fields[i] = storage.get() + cursor;
+    runtime::cuda_resource_check(cudaMemcpyAsync(storage.get() + cursor, views[i].data(),
+                                                 bytes(sizes[i]), cudaMemcpyHostToDevice,
+                                                 stream.get()));
+    cursor = checked_add(cursor, sizes[i]);
+  }
+  const auto response = gen::response_cuda(state);
+  const std::array<const double*, 3> sources{response.bar_boo, response.bar_bov, response.bar_bvv};
+  const std::array<std::vector<double>*, 3> destinations{&result.boo, &result.bov, &result.bvv};
+  for (std::size_t i = 0; i < sources.size(); ++i)
+    runtime::cuda_resource_check(cudaMemcpyAsync(destinations[i]->data(), sources[i],
+                                                 bytes(destinations[i]->size()),
+                                                 cudaMemcpyDeviceToHost, stream.get()));
+  runtime::cuda_resource_check(
+      cudaMemcpyAsync(&failed, error.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()));
+  runtime::cuda_resource_check(cudaStreamSynchronize(stream.get()));
+  if (failed) throw std::runtime_error("nonfinite native DF factor response arithmetic");
   return result;
 }
 }  // namespace generativeqc::cc

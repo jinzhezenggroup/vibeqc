@@ -509,6 +509,8 @@ macro(generativeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_cc_source_cuda.cu"
     DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_ccsd_hoisted.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_ccsd_core.py"
     ARGS --output-dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
   if(GENERATIVEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE

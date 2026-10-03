@@ -76,6 +76,14 @@ void validate_problem(const Problem& p, bool allow_df_virtual) {
     expect(p.vvvv, 0, "vvvv must be empty for DF");
     expect(p.df_bov, checked_mul(p.naux, ov), "df_bov");
     expect(p.df_bvv, checked_mul(p.naux, vv), "df_bvv");
+    if (!p.df_boo.empty()) {
+      expect(p.df_boo, checked_mul(p.naux, oo), "df_boo");
+      for (std::size_t q = 0; q < p.naux; ++q)
+        for (std::size_t i = 0; i < o; ++i)
+          for (std::size_t j = 0; j < i; ++j)
+            if (std::abs(p.df_boo[q * oo + i * o + j] - p.df_boo[q * oo + j * o + i]) > 1e-10)
+              throw std::invalid_argument("DF B_oo must preserve symmetric spatial-MO pairs");
+    }
     for (std::size_t q = 0; q < p.naux; ++q)
       for (std::size_t a = 0; a < v; ++a)
         for (std::size_t b = 0; b < a; ++b)
@@ -84,6 +92,7 @@ void validate_problem(const Problem& p, bool allow_df_virtual) {
   } else {
     expect(p.df_bov, 0, "df_bov requires naux");
     expect(p.df_bvv, 0, "df_bvv requires naux");
+    expect(p.df_boo, 0, "df_boo requires naux");
     expect(p.ovvv, checked_mul(o, checked_mul(vv, v)), "ovvv");
     expect(p.vvvv, checked_mul(vv, vv), "vvvv");
   }
@@ -115,6 +124,7 @@ std::size_t problem_host_bytes(const Problem& p) {
       &p.foo,  &p.fov,  &p.fvv, &p.ovov, &p.ovvo,       &p.oovv,       &p.ovvv,   &p.ovoo,
       &p.oooo, &p.vvvv, &p.d1,  &p.d2,   &p.initial_t1, &p.initial_t2, &p.df_bov, &p.df_bvv};
   for (const auto* value : values) result = checked_add(result, bytes(value->capacity()));
+  result = checked_add(result, bytes(p.df_boo.capacity()));
   return result;
 }
 

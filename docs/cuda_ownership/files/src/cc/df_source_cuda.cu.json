@@ -1,6 +1,6 @@
 {
   "path": "src/cc/df_source_cuda.cu",
-  "reason": "Owns the shared generated integral/metric source, buffers and BLAS callbacks. Factor selection and contraction traversal are compiler-generated; this file implements admission, lifetime, transfer, and publication.",
+  "reason": "Owns the shared generated integral/metric source, buffers and BLAS callbacks, plus the bounded retained/virtual factor-response action. Factor selection, contractions and pullbacks are compiler-generated; this file implements admission, lifetime, transfer, validation and transactional publication.",
   "regions": [],
   "role": "runtime",
   "subsystem": "runtime"

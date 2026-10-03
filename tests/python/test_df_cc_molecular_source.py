@@ -171,6 +171,7 @@ def test_native_molecular_factors_and_blocks(
     with NativeSource(**args) as source:
         q = source.naux
         shapes = [
+            (q, o, o),
             (q, o, v),
             (q, v, v),
             (o, v, o, v),
@@ -233,6 +234,7 @@ def test_native_molecular_factors_and_blocks(
         b = (b + b.transpose(1, 0, 2)) / 2
         eri = np.einsum("pqQ,rsQ->pqrs", b, b, optimize=True)
         expected = [
+            b[:o, :o, :].transpose(2, 0, 1),
             b[:o, o:, :].transpose(2, 0, 1),
             b[o:, o:, :].transpose(2, 0, 1),
             eri[:o, o:, :o, o:],
@@ -258,7 +260,7 @@ def test_native_molecular_factors_and_blocks(
             and counts[5] == 5
         )
         assert counts[6] == 2 * n**3 * q + n * n * q * q
-        assert counts[7] == q * sum(int(np.prod(shape)) for shape in shapes[2:])
+        assert counts[7] == q * sum(int(np.prod(shape)) for shape in shapes[3:])
         assert (
             counts[8] == n * n * 8
             and counts[9] == elements * 8
