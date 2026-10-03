@@ -34,6 +34,10 @@ from generativeqc_compiler.cc.lambda_equations import (
     build_lambda_programs,
     build_parameter_vjp,
 )
+from generativeqc_compiler.cc.triples_fock_response import (
+    build_runtime_triples_resolvent_program,
+    build_triples_fock_moment_program,
+)
 from generativeqc_compiler.cc.triples_tiles import build_runtime_tile_triples_program
 from generativeqc_compiler.tensor.ad_program import (
     transpose_program,
@@ -689,6 +693,8 @@ def _cpu_function(
         returned = [outputs["eri"]]
     elif output_type == "OrbitalJvpOutput":
         returned = [outputs["d_fov"]]
+    elif output_type == "TriplesResolventOutputs":
+        returned = [outputs["x"], outputs["y"]]
     elif output_type == "TriplesResponseOutputs":
         returned = [outputs[f"bar_{name}"] for name in TRIPLES_RESPONSE_INPUTS]
     else:
@@ -1451,7 +1457,7 @@ def _cuda_program(
         ]
     elif output_type == "DeviceLambdaOutputs":
         returned = [outputs["bar_t1"], outputs["bar_t2"]]
-    elif output_type == "DeviceParameterOutput":
+    elif output_type in ("DeviceParameterOutput", "ParameterOutput"):
         if len(outputs) != 1:
             raise ValueError("RCCSD CUDA parameter VJP must expose exactly one output")
         returned = [next(iter(outputs.values()))]
@@ -1476,6 +1482,8 @@ def _cuda_program(
         returned = [outputs["eri"]]
     elif output_type == "DeviceOrbitalJvpOutput":
         returned = [outputs["d_fov"]]
+    elif output_type == "TriplesResolventOutputs":
+        returned = [outputs["x"], outputs["y"]]
     elif output_type == "TriplesResponseOutputs":
         returned = [outputs[f"bar_{name}"] for name in TRIPLES_RESPONSE_INPUTS]
     else:
@@ -1751,12 +1759,128 @@ def triples_response_cuda_source() -> str:
     )
 
 
+def _triples_fock_programs(backend: str) -> dict[str, Program]:
+    """Share bounded scientific programs and require identical CPU/CUDA layouts."""
+    raw = {
+        "triples_resolvent": build_runtime_triples_resolvent_program(
+            *REPRESENTATIVE, capacity=6
+        ),
+        **{
+            f"triples_{block}_moment": build_triples_fock_moment_program(
+                REPRESENTATIVE[0], capacity=6, block=block
+            )
+            for block in ("oo", "vv")
+        },
+    }
+    result = {}
+    for name, program in raw.items():
+        cpu = _prepare_production(program, "cpu")
+        chosen = cpu if backend == "cpu" else _prepare_production(program, backend)
+        if cpu.logical_hash != chosen.logical_hash or _arena_plan(cpu) != _arena_plan(
+            chosen
+        ):
+            raise ValueError("triples Fock CPU/CUDA arena or identity diverged")
+        result[name] = chosen
+    return result
+
+
+def triples_fock_cpu_header() -> str:
+    """Emit bounded resolvent vectors/moments without changing existing CC kernels."""
+    programs = _triples_fock_programs("cpu")
+    inputs = {
+        node.attrs["name"]: node
+        for node in programs["triples_resolvent"].live_nodes
+        if node.op == "input"
+    }
+    parts = [
+        "// Generated standard-(T) separable Fock resolvent from audited W/V/R3.",
+        "#pragma once",
+        '#include "generated_rccsd_cpu.hpp"',
+        "namespace generativeqc::cc::generated {",
+        "struct TriplesResolventInputs {",
+        *[
+            f"const {'std::int64_t' if node.spec.dtype == 'int64' else 'double'}* {name}{{}};"
+            for name, node in sorted(inputs.items())
+        ],
+        "};",
+        "struct TriplesResolventOutputs { const double* x{}; const double* y{}; };",
+        "struct TriplesFockMomentInputs { const double* x_left{}; const double* y_left{}; const double* x_right{}; const double* y_right{}; };",
+    ]
+    for name, program in programs.items():
+        vector = name == "triples_resolvent"
+        input_type = "TriplesResolventInputs" if vector else "TriplesFockMomentInputs"
+        output_type = "TriplesResolventOutputs" if vector else "ParameterOutput"
+        parts.extend(
+            [
+                f'inline constexpr const char* {name}_program_hash="{program.logical_hash}";',
+                _required_function(program, name + "_arena_elements", batch_dim=True),
+                _cpu_function(
+                    program,
+                    "run_" + name + "_cpu",
+                    output_type,
+                    signature=f"const {input_type}& inputs",
+                    input_overrides={
+                        node.attrs["name"]: f"inputs.{node.attrs['name']}"
+                        for node in program.live_nodes
+                        if node.op == "input"
+                    },
+                    batch_dim=True,
+                ),
+            ]
+        )
+    return "\n".join([*parts, "}", ""])
+
+
+def triples_fock_cuda_source() -> str:
+    """Emit the same bounded resolvent/moment programs for resident CUDA owners."""
+    parts = [
+        "// Generated standard-(T) separable Fock resolvent from audited W/V/R3.",
+        '#include "cc/triples_fock_response_cuda.cuh"',
+        '#include "tensor/cuda_runtime.cuh"',
+        "namespace generativeqc::cc::generated {",
+        "using generativeqc_tensor::finite;",
+    ]
+    for name, program in _triples_fock_programs("cuda").items():
+        vector = name == "triples_resolvent"
+        field = "inputs" if vector else "moments"
+        output_type = "TriplesResolventOutputs" if vector else "ParameterOutput"
+        parts.extend(
+            [
+                _cuda_program(
+                    program,
+                    name,
+                    output_type,
+                    input_overrides={
+                        node.attrs["name"]: f"s.{field}.{node.attrs['name']}"
+                        for node in program.live_nodes
+                        if node.op == "input"
+                    },
+                    arena_field="arena",
+                    state_type="TriplesFockCudaState",
+                    batch_dim=True,
+                ),
+                f"{output_type} run_{name}_cuda(TriplesFockCudaState& s){{return run_{name}(s);}}",
+                f"std::size_t {name}_cuda_kernel_count(){{return {sum(node.op != 'input' for node in _execution_nodes(program))};}}",
+            ]
+        )
+    return "\n".join([*parts, "}", ""])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cpu-header", type=Path)
     parser.add_argument("--cuda-source", type=Path)
     parser.add_argument("--triples-cuda-source", type=Path)
+    parser.add_argument("--triples-fock-cpu-header", type=Path)
+    parser.add_argument("--triples-fock-cuda-source", type=Path)
     args = parser.parse_args()
+    for path, emit in (
+        (args.triples_fock_cpu_header, triples_fock_cpu_header),
+        (args.triples_fock_cuda_source, triples_fock_cuda_source),
+    ):
+        if path:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(emit(), encoding="utf-8")
     if args.cpu_header:
         args.cpu_header.parent.mkdir(parents=True, exist_ok=True)
         args.cpu_header.write_text(cpu_header(), encoding="utf-8")
@@ -1768,8 +1892,16 @@ def main() -> None:
         args.triples_cuda_source.write_text(
             triples_response_cuda_source(), encoding="utf-8"
         )
-    if not args.cpu_header and not args.cuda_source and not args.triples_cuda_source:
-        parser.error("select --cpu-header, --cuda-source and/or --triples-cuda-source")
+    if not any(
+        (
+            args.cpu_header,
+            args.cuda_source,
+            args.triples_cuda_source,
+            args.triples_fock_cpu_header,
+            args.triples_fock_cuda_source,
+        )
+    ):
+        parser.error("select a CPU header or CUDA source output")
 
 
 if __name__ == "__main__":

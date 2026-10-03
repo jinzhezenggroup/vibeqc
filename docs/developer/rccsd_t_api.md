@@ -194,7 +194,7 @@ the RCCSD correlation diagnostics.
 The current public boundary remains deliberately bounded:
 
 ```text
-CPU energy + force:          yes (qualified conventional <=28-AO force domain)
+CPU energy + force:          yes (qualified conventional <=56-AO force domain)
 CPU homogeneous batch:      yes
 CUDA energy + force:         yes (same force domain)
 CUDA homogeneous batch:     yes

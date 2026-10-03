@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/triples_fock_response_cuda.cu",
+  "reason": "Bounded two-page triples Fock response device storage, runtime virtual-pair traversal, moment scatter and counted transfers; all numerator and resolvent contractions are generated TensorIR.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

@@ -93,3 +93,10 @@ its <=12-AO conventional all-electron RHF boundary remains in force.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Later extension
+
+The [complete triples Fock resolvent](2026-10-03-gap-free-triples-fock-response.md)
+supersedes same-occupancy degeneracy rejection for the native conventional
+CCSD(T) force owner. Occupied/virtual separation and all physical response gates
+remain required.

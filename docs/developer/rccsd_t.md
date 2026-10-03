@@ -206,7 +206,7 @@ final contractions therefore consume the same total response weights.
 The current qualification is restricted to real closed-shell canonical RHF,
 conventional unscreened all-electron Hamiltonians, no frozen core, no ECP or
 auxiliary basis. The native/public CCSD(T) force owner is qualified through
-28 AOs; the separate Python complete-gradient validation owner retains its
+56 AOs; the separate Python complete-gradient validation owner retains its
 <=12-AO boundary.
 `derivative_backend="cuda"` moves only the final AO/nuclear derivative consumers
 to CUDA; it does not by itself qualify a fully resident GPU response chain.
@@ -230,7 +230,7 @@ The ownership rationale is recorded in
 CUDA RHF, the existing conventional MO-block preparation, resident RCCSD with
 physical residual replay, and the generated CUDA standard `(T)` evaluator.
 Energy single points and homogeneous prepared batches use this owner. Force
-requests in the qualified <=28-AO conventional all-electron domain reuse the
+requests in the qualified <=56-AO conventional all-electron domain reuse the
 same native CCSD(T) response mathematics as CPU and send the final one-/two-
 electron nuclear derivative contractions to the existing CUDA consumers.
 
@@ -267,15 +267,33 @@ overwritten for the audit, so the numeric-capacity bound is unchanged. Internal
 `LambdaOptions::diagonal_preconditioning=false` selects the original solver;
 the completed-force trace reports selection, iterations and preconditioner
 actions. See the [decision and qualification](../../.agents/notes/implemented/performance/2026-10-03-lambda-diagonal-preconditioning.md).
-Generated parameter,
-Hamiltonian and orbital actions execute on CUDA. Triples response, the physical
-response control and the final MO-to-AO weight pullback retain host ownership;
+Generated triples VJP, parameter, Hamiltonian and orbital actions execute on
+CUDA. Physical response control and the final MO-to-AO weight pullback retain host ownership;
 the complete endpoint is not fully device resident.
+
+Same-occupancy orbital gaps at or below `1e-10` select a complete triples Fock
+response from the separable resolvent. This seed replaces both diagonal orbital
+energy seeds and their same-space canonicalization term. It requires an open
+occupied/virtual gap but does not divide by internal gaps. The original
+nondegenerate schedule remains available automatically; all physical
+stationarity and residual gates are unchanged.
+
+The compiler generates both resolvent vectors and Fock moments. Native CPU/CUDA
+owners sweep unordered virtual-pair panels with the exact permutation weight
+and at most two pairs of bounded virtual pages. Budget admission includes
+inputs, outputs, controls, vector pages and generated scratch, including CUDA
+resident storage. An internal owner shrinks pages to fit its allowance or
+refuses before allocating; the complete-force planner conservatively reserves
+its default page capacity. Completed-force traces expose pair/vector pages,
+occupied/virtual moments, kernels and transfers, including recomputation when
+virtual space exceeds one page. See the [resolvent decision](../../.agents/notes/implemented/numerics/2026-10-03-gap-free-triples-fock-response.md).
 
 `tests/python/test_rccsdt_public.py` includes an independent 14-AO force reference,
 cold/warm/changed-geometry reuse and two-step directional energy finite
 differences. Set `GENERATIVEQC_RCCSDT_LARGE_TEST=1` to include the longer 28-AO
-reference test. CUDA tests additionally require a Slurm GPU allocation and
+reference test, or `GENERATIVEQC_RCCSDT_FRONTIER_TEST=1` for the 56-AO reference
+and directional finite differences. The small tetrahedral methane test covers
+exact and near internal degeneracies on both backends. CUDA tests additionally require a Slurm GPU allocation and
 `GENERATIVEQC_RCCSDT_CUDA_TEST=1`. Independent pinned PySCF references are
 reproducible with `benchmarks/ccsdt_cluster_oracle.py`; complete endpoint timing
 uses `benchmarks/ccsdt_prepared_endpoint.py`.

@@ -82,6 +82,7 @@ function(generativeqc_add_posthf_cc_sources target)
     src/cc/solver.cpp
     src/cc/lambda_response.cpp
     src/cc/triples_response.cpp
+    src/cc/triples_fock_response.cpp
     src/cc/rccsdt_force.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
@@ -104,6 +105,7 @@ function(generativeqc_add_posthf_cc_sources target)
       src/cc/cuda_solver.cu
       src/cc/lambda_response_cuda.cu
       src/cc/triples_response_cuda.cu
+      src/cc/triples_fock_response_cuda.cu
       src/posthf/df_bridge.cu
       src/posthf/cuda_transform.cu
       src/posthf/ri_mp2_cuda.cu)

@@ -461,6 +461,16 @@ macro(generativeqc_register_host_generated_sources target)
     DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cpu-header "${GENERATIVEQC_RCCSD_CPU_HEADER}")
 
+  set(GENERATIVEQC_TRIPLES_FOCK_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_triples_fock_response_cpu.hpp")
+  generativeqc_register_generated_sources(
+    NAME generativeqc_triples_fock_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+    OUTPUTS "${GENERATIVEQC_TRIPLES_FOCK_CPU_HEADER}"
+    DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+    ARGS --triples-fock-cpu-header "${GENERATIVEQC_TRIPLES_FOCK_CPU_HEADER}")
+
   set(GENERATIVEQC_RCCSDT_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cpu.hpp")
   generativeqc_register_generated_sources(
@@ -955,6 +965,17 @@ macro(generativeqc_register_cuda_generated_sources target)
     OUTPUTS "${GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE}"
     DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --triples-cuda-source "${GENERATIVEQC_TRIPLES_RESPONSE_CUDA_SOURCE}")
+
+  set(GENERATIVEQC_TRIPLES_FOCK_CUDA_SOURCE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_triples_fock_response_cuda.cu")
+  generativeqc_register_generated_sources(
+    NAME generativeqc_triples_fock_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsd_native.py"
+    OUTPUTS "${GENERATIVEQC_TRIPLES_FOCK_CUDA_SOURCE}"
+    DEPENDS ${GENERATIVEQC_RCCSD_GENERATOR_INPUTS}
+    ARGS --triples-fock-cuda-source "${GENERATIVEQC_TRIPLES_FOCK_CUDA_SOURCE}")
 
   set(GENERATIVEQC_RCCSDT_CUDA_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cuda.cu")

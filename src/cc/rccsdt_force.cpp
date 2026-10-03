@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "cc/triples_fock_response.hpp"
 #include "cc/triples_response.hpp"
 #include "cc/triples_response_internal.hpp"
 #include "generated_rccsd_cpu.hpp"
@@ -417,6 +418,16 @@ static RccsdtForcePlan plan_relaxed_rccsd_force_cpu(const core::System& system,
         &reference.orbital_energies, &reference.density, &reference.weighted_density})
     reference_bytes = checked_add(reference_bytes, bytes(values->capacity()));
   RccsdtForcePlan plan;
+  plan.full_triples_fock_response = include_triples && reference.orbital_energies.size() != n;
+  if (include_triples && reference.orbital_energies.size() == n) {
+    for (const auto& bounds :
+         {std::pair<std::size_t, std::size_t>{0, o}, std::pair<std::size_t, std::size_t>{o, n}})
+      for (std::size_t i = bounds.first; i < bounds.second; ++i)
+        for (std::size_t j = i + 1; j < bounds.second; ++j)
+          if (std::abs(reference.orbital_energies[i] - reference.orbital_energies[j]) <=
+              kMinimumSameSpaceGap)
+            plan.full_triples_fock_response = true;
+  }
   // Lambda's existing bound includes this borrowed subset. Subtract it only
   // when composing that stage, so the actual reference is charged once.
   const auto lambda_borrowed = sum({p.reference_retained_bytes, problem_host_bytes(p),
@@ -435,13 +446,25 @@ static RccsdtForcePlan plan_relaxed_rccsd_force_cpu(const core::System& system,
                                  o, v, TriplesResponseOptions{}.batch_capacity, cuda_transform)
                                  .numeric_bytes()})
                       : 0;
+  const auto fock_retained =
+      plan.full_triples_fock_response ? bytes(checked_add(square(o), square(v))) : 0;
+  if (plan.full_triples_fock_response) {
+    // The triples VJP owner has released its arena/device storage; only its
+    // eight outputs coexist with the separately admitted Fock-moment phase.
+    plan.triples_fock_phase_bytes =
+        sum({plan.retained_input_bytes, bytes(n), triples_retained,
+             detail::triples_fock_response_layout(o, v, TriplesResponseOptions{}.batch_capacity,
+                                                  cuda_transform)
+                 .numeric_bytes()});
+    plan.triples_phase_bytes = std::max(plan.triples_phase_bytes, plan.triples_fock_phase_bytes);
+  }
   LambdaOptions lambda_options;
   lambda_options.max_bytes = max_bytes;
   lambda_options.gmres.max_workspace_bytes = max_bytes;
   const auto lambda_capacity = lambda_cpu_numeric_capacity(p, cc, lambda_options, include_triples);
   if (lambda_capacity < lambda_borrowed) throw std::logic_error("Lambda capacity underflow");
-  plan.lambda_phase_bytes =
-      sum({plan.retained_input_bytes, triples_retained, lambda_capacity - lambda_borrowed});
+  plan.lambda_phase_bytes = sum({plan.retained_input_bytes, triples_retained, fock_retained,
+                                 lambda_capacity - lambda_borrowed});
   const auto parameter_retained = bytes(parameter_elements(o, v));
   const auto parameter_arena = bytes(std::max({generated::parameter_foo_arena_elements(o, v),
                                                generated::parameter_fov_arena_elements(o, v),
@@ -455,7 +478,7 @@ static RccsdtForcePlan plan_relaxed_rccsd_force_cpu(const core::System& system,
                                                generated::parameter_vvvv_arena_elements(o, v)}));
   const auto before_raw =
       sum({plan.retained_input_bytes, triples_retained, bytes(amplitudes), parameter_retained});
-  plan.parameter_phase_bytes = checked_add(before_raw, parameter_arena);
+  plan.parameter_phase_bytes = sum({before_raw, fock_retained, parameter_arena});
   std::size_t shell = 0;
   for (const auto& basis_shell : system.shells) {
     const auto l = static_cast<std::size_t>(basis_shell.angular_momentum);
@@ -638,6 +661,31 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
                                std::vector<double>(eps_v.begin(), eps_v.end()), triples_options));
   }
 
+  std::optional<TriplesFockResponseResult> triples_fock;
+  if (resources.full_triples_fock_response) {
+    TriplesResponseOptions options;
+    options.denominator_threshold = denominator_threshold;
+    std::size_t retained = 0;
+    for (const auto* block : {&triples->ovvv, &triples->ovoo, &triples->ovov, &triples->fov,
+                              &triples->t1, &triples->t2, &triples->eps_o, &triples->eps_v})
+      retained = checked_add(retained, bytes(block->capacity()));
+    const auto borrowed =
+        checked_add(resources.retained_input_bytes, checked_add(retained, bytes(n)));
+    if (borrowed >= max_bytes)
+      throw std::length_error("triples Fock response has no admitted budget");
+    options.max_bytes = max_bytes - borrowed;
+#if GENERATIVEQC_HAS_CUDA
+    if (cuda_derivative)
+      triples_fock.emplace(triples_fock_response_cuda(
+          problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
+          std::vector<double>(eps_v.begin(), eps_v.end()), device_id, options));
+    else
+#endif
+      triples_fock.emplace(triples_fock_response_cpu(
+          problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
+          std::vector<double>(eps_v.begin(), eps_v.end()), options));
+  }
+
   LambdaOptions lambda_options;
   const auto lambda_started = Clock::now();
   lambda_options.max_bytes = max_bytes;
@@ -673,6 +721,17 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
     throw std::runtime_error("RCCSD(T) CUDA force lost CUDA Lambda action ownership");
 
   if (triples) add_triples_parameter_sources(parameters, *triples);
+  if (triples_fock) {
+    // The full resolvent includes diagonal denominator AND off-diagonal
+    // canonicalization sources. Fold it once, then release its result buffers
+    // before raw-Hamiltonian allocation. Diagnostics remain available below.
+    for (std::size_t k = 0; k < parameters.foo.size(); ++k)
+      parameters.foo[k] += triples_fock->foo[k];
+    for (std::size_t k = 0; k < parameters.fvv.size(); ++k)
+      parameters.fvv[k] += triples_fock->fvv[k];
+    std::vector<double>().swap(triples_fock->foo);
+    std::vector<double>().swap(triples_fock->fvv);
+  }
   const auto raw_started = Clock::now();
   posthf::ProviderWork raw_work;
   auto raw = raw_hamiltonian(source, reference, max_bytes, cuda_derivative,
@@ -718,7 +777,7 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
   // Fold them into the already-declared foo/fvv parameter seeds so every
   // intermediate orbital-control query can use the pruned Hamiltonian VJP.
   std::vector<double> bar_fock(square(n), 0.0);
-  if (triples) {
+  if (triples && !triples_fock) {
     for (std::size_t i = 0; i < o; ++i) bar_fock[i * n + i] = triples->eps_o[i];
     for (std::size_t a = 0; a < v; ++a) bar_fock[(o + a) * n + o + a] = triples->eps_v[a];
     add_same_space_fock_seed(parameters, bar_fock, o, v);
@@ -733,16 +792,20 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
       for (std::size_t q = p + 1; q < bounds.second; ++q) {
         const double gap = reference.orbital_energies[p] - reference.orbital_energies[q];
         minimum_same_space_gap = std::min(minimum_same_space_gap, std::abs(gap));
-        if (std::abs(gap) <= kMinimumSameSpaceGap)
-          throw std::runtime_error("degenerate RCCSD(T) canonical occupied/virtual subspace");
-        const double value = -correlation.stationarity[p * n + q] / (2.0 * gap);
-        bar_fock[p * n + q] = value;
-        bar_fock[q * n + p] = value;
+        if (!triples_fock) {
+          if (std::abs(gap) <= kMinimumSameSpaceGap)
+            throw std::runtime_error("degenerate RCCSD(T) canonical occupied/virtual subspace");
+          const double value = -correlation.stationarity[p * n + q] / (2.0 * gap);
+          bar_fock[p * n + q] = value;
+          bar_fock[q * n + p] = value;
+        }
       }
   }
-  add_same_space_fock_seed(parameters, bar_fock, o, v);
-  correlation = ControlWeights{};
-  correlation = control_dispatch(parameters, 0.0);
+  if (!triples_fock) {
+    add_same_space_fock_seed(parameters, bar_fock, o, v);
+    correlation = ControlWeights{};
+    correlation = control_dispatch(parameters, 0.0);
+  }
   std::vector<double>().swap(bar_fock);
   double same_space_stationarity = 0.0;
   for (const auto& bounds :
@@ -890,7 +953,8 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
     // These owners execute serially; the public device high-water mark must
     // include triples scratch even when it exceeds the later response arena.
     result.response_owned_device_bytes =
-        std::max(cuda_response->owned_device_bytes(), triples ? triples->device_capacity_bytes : 0);
+        std::max({cuda_response->owned_device_bytes(), triples ? triples->device_capacity_bytes : 0,
+                  triples_fock ? triples_fock->device_capacity_bytes : 0});
     result.response_h2d_bytes = cuda_response->h2d_bytes();
     result.response_d2h_bytes = cuda_response->d2h_bytes();
     result.response_synchronizations = cuda_response->synchronizations();
@@ -917,6 +981,21 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
     Scope::number("triples_response_h2d_bytes", triples ? triples->host_to_device_bytes : 0);
     Scope::number("triples_response_d2h_bytes", triples ? triples->device_to_host_bytes : 0);
     Scope::number("triples_response_kernel_launches", triples ? triples->kernel_launches : 0);
+    Scope::number("triples_fock_resolvent", triples_fock.has_value());
+    Scope::number("triples_fock_numeric_bytes",
+                  triples_fock ? triples_fock->numeric_capacity_bytes : 0);
+    Scope::number("triples_fock_device_bytes",
+                  triples_fock ? triples_fock->device_capacity_bytes : 0);
+    Scope::number("triples_fock_page_capacity", triples_fock ? triples_fock->page_capacity : 0);
+    Scope::number("triples_fock_pair_panels", triples_fock ? triples_fock->pair_panels : 0);
+    Scope::number("triples_fock_vector_pages", triples_fock ? triples_fock->vector_pages : 0);
+    Scope::number("triples_fock_occupied_moments",
+                  triples_fock ? triples_fock->occupied_moments : 0);
+    Scope::number("triples_fock_virtual_moments", triples_fock ? triples_fock->virtual_moments : 0);
+    Scope::number("triples_fock_h2d_bytes", triples_fock ? triples_fock->host_to_device_bytes : 0);
+    Scope::number("triples_fock_d2h_bytes", triples_fock ? triples_fock->device_to_host_bytes : 0);
+    Scope::number("triples_fock_d2d_bytes", triples_fock ? triples_fock->device_copy_bytes : 0);
+    Scope::number("triples_fock_kernel_launches", triples_fock ? triples_fock->kernel_launches : 0);
     Scope::number("triples_response_ns", nanoseconds(result.triples_seconds));
     Scope::number("lambda_parameter_ns", nanoseconds(result.lambda_parameter_seconds));
     Scope::number("raw_hamiltonian_ns", std::chrono::duration_cast<std::chrono::nanoseconds>(

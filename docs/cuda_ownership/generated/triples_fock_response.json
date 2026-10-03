@@ -1,0 +1,9 @@
+{
+  "name": "triples_fock_response",
+  "outputs": [
+    "generated/generated_triples_fock_response_cpu.hpp",
+    "generated/generated_triples_fock_response_cuda.cu"
+  ],
+  "owner": "tools/generate_rccsd_native.py",
+  "scope": "Bounded canonical triples resolvent vectors and complete same-space Fock moments; generated CPU/CUDA owner used by the qualified conventional CCSD(T) force endpoint through 56 AOs."
+}

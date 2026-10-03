@@ -12,6 +12,10 @@ def test_native_cc_codegen_without_site_packages(tmp_path: Path) -> None:
         "--cpu-header": tmp_path / "generated_rccsd_cpu.hpp",
         "--cuda-source": tmp_path / "generated_rccsd_cuda.cu",
         "--triples-cuda-source": tmp_path / "generated_triples_response_cuda.cu",
+        "--triples-fock-cpu-header": tmp_path
+        / "generated_triples_fock_response_cpu.hpp",
+        "--triples-fock-cuda-source": tmp_path
+        / "generated_triples_fock_response_cuda.cu",
     }
     command = [sys.executable, "-S", str(root / "tools/generate_rccsd_native.py")]
     for flag, path in outputs.items():

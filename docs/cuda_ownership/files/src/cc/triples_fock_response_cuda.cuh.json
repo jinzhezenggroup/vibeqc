@@ -1,0 +1,7 @@
+{
+  "path": "src/cc/triples_fock_response_cuda.cuh",
+  "reason": "Borrowed bounded device views and generated standard-(T) resolvent/moment interfaces.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

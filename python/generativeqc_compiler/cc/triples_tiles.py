@@ -605,15 +605,10 @@ def _runtime_r3_node(w: typing.Any) -> typing.Any:
     )
 
 
-def build_runtime_tile_triples_program(
-    nocc: typing.Any, nvir: typing.Any, *, capacity: typing.Any
-) -> Program:
-    """Build one fixed-capacity triples graph reused across runtime tile ranges.
-
-    The graph contains no Python/IR loop over (a,b,c). Runtime int64 maps bind
-    triangular virtual triples to the leading domain axis; all W/V/R3 algebra
-    is vectorized over that domain and reduced only after the scientific body.
-    """
+def _runtime_triples_inputs(
+    nocc: int, nvir: int, capacity: int
+) -> dict[str, typing.Any]:
+    """Shared runtime input declarations for the energy and resolvent frontends."""
     if any(type(n) is not int or n < 1 for n in (nocc, nvir, capacity)):
         raise ValueError(
             "runtime triples require positive occupied/virtual/domain sizes"
@@ -663,6 +658,25 @@ def build_runtime_tile_triples_program(
             TensorSpec((q,), role="input", representation="restricted_spatial"),
         ),
     }
+    return nodes
+
+
+def build_runtime_tile_triples_program(
+    nocc: typing.Any, nvir: typing.Any, *, capacity: typing.Any
+) -> Program:
+    """Build one fixed-capacity triples graph reused across runtime tile ranges.
+
+    The graph contains no Python/IR loop over (a,b,c). Runtime int64 maps bind
+    triangular virtual triples to the leading domain axis; all W/V/R3 algebra
+    is vectorized over that domain and reduced only after the scientific body.
+    """
+    nodes = _runtime_triples_inputs(nocc, nvir, capacity)
+    q = nodes["a_map"].spec.indices[0]
+    occ = nodes["eps_o"].spec.indices[0].space
+
+    def O(name: str) -> Index:
+        return Index(name, occ)
+
     views = _t_views_tile(nodes)
     base_maps = (nodes["a_map"], nodes["b_map"], nodes["c_map"])
     coordinates = {
