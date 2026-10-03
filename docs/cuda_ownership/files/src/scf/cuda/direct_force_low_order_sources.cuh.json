@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_force_low_order_sources.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Independent low-order J/K force adapters share AO traversal and immutable primitive geometry while retaining separate compiler-owned density coefficients and Weighted IntegralIR force roots. Native component indexing, screening admission and primitive reductions remain scientific composition; source sharing does not retire or reclassify those responsibilities.",
+  "reason": "Independent low-order J/K force adapters share AO traversal and immutable primitive geometry while retaining separate compiler-owned density coefficients and Weighted IntegralIR force roots. LR exchange reuses these roots with the shared range-moment primitive once per primitive quartet. Native component indexing, screening admission and primitive reductions remain scientific composition; source sharing does not retire or reclassify those responsibilities.",
   "regions": []
 }

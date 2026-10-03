@@ -1706,6 +1706,29 @@ void range_exchange_derivatives() {
                   detail.c_str());
           require(fused.size() == 18 && j_gradient.size() == 6,
                   "fused CUDA RSH derivative returned the wrong source shape");
+          // The public generic provider above can choose canonical derivatives.
+          // Qualify the distinct bounded shell route used by molecular WB97M-V
+          // as well, including its full-minus-LR reconstruction of the SR source.
+          CudaDirectJkPlan* shell_raw{};
+          CudaDirectJkDiagnostic shell_diagnostic;
+          require(create_cuda_direct_jk_plan(0, {item == 0 ? first : second}, 1, 0.0, 64U << 20,
+                                             &shell_raw, shell_diagnostic,
+                                             detail) == GENERATIVEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> shell_plan(
+              shell_raw, &destroy_cuda_direct_jk_plan);
+          DeviceMatrix device_a(a), device_b(b);
+          std::vector<double> shell;
+          require(execute_cuda_direct_shell_rsh_energy_derivatives_device(
+                      shell_plan.get(), spin, 1.0, coefficient, coefficient, omega,
+                      device_a.pointer, spin == FockSpin::Unrestricted ? device_b.pointer : nullptr,
+                      matrix, shell, detail) == GENERATIVEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          require(shell.size() == fused.size(), "bounded shell RSH source shape changed");
+          for (std::size_t coordinate = 0; coordinate < shell.size(); ++coordinate)
+            require(std::isfinite(shell[coordinate]) &&
+                        std::abs(shell[coordinate] - fused[coordinate]) < 3e-10,
+                    "bounded shell RSH derivative differs from CPU-qualified canonical source");
           for (std::size_t coordinate = 0; coordinate < 6; ++coordinate) {
             require(std::abs(fused[coordinate] - j_gradient[coordinate]) < 2e-11,
                     "fused CUDA RSH Coulomb derivative changed");
@@ -1719,6 +1742,79 @@ void range_exchange_derivatives() {
           require(std::abs(gradients[0][coordinate] - gradients[1][coordinate] -
                            gradients[2][coordinate]) < 2e-11,
                   "CUDA radial full derivative is not short plus long range");
+      }
+    }
+  }
+}
+
+/** Four-center CPU displaced values qualify weighted LR center accumulation.
+ * A d/p/s/s fixture covers all low-order s/p/d classes plus the higher-order
+ * fallback. Its second geometry binds two different shells to the same atom;
+ * every force coordinate is checked with both RKS and UKS density weights.
+ */
+void shell_range_four_center_derivatives() {
+  constexpr double omega = 0.3, coefficient = -0.37, step = 1e-4;
+  for (const bool repeated_center : {false, true}) {
+    generativeqc::core::System system;
+    system.atoms = {
+        {1, {0.1, -0.2, -0.8}}, {1, {0.3, 0.1, 0.7}}, {1, {-0.5, 0.6, 0.2}}, {1, {0.8, -0.4, 0.3}}};
+    system.shells = {{0, 2, {{0.8, 1.0}}},
+                     {1, 1, {{0.6, 1.0}}},
+                     {2, 0, {{0.7, 1.0}}},
+                     {repeated_center ? 1 : 3, 0, {{0.9, 1.0}}}};
+    system.electron_count = 4;
+    system.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
+    std::string detail;
+    require(generativeqc::molecule::validate_and_normalize(system, detail) ==
+                GENERATIVEQC_STATUS_SUCCESS,
+            detail.c_str());
+    const auto n = generativeqc::molecule::ao_count(system), matrix = n * n;
+    std::vector<double> a(matrix), b(matrix);
+    for (std::size_t i = 0; i < n; ++i)
+      for (std::size_t j = 0; j < n; ++j) {
+        a[i * n + j] = std::cos(0.3 * (i + j)) / n;
+        b[i * n + j] = std::sin(0.4 * (i + j)) / (2 * n);
+      }
+    CudaDirectJkPlan* raw{};
+    CudaDirectJkDiagnostic diagnostic;
+    require(create_cuda_direct_jk_plan(0, {system}, 1, 0.0, 64U << 20, &raw, diagnostic, detail) ==
+                GENERATIVEQC_STATUS_SUCCESS,
+            detail.c_str());
+    std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+        raw, &destroy_cuda_direct_jk_plan);
+    DeviceMatrix device_a(a), device_b(b);
+    std::array<std::vector<double>, 2> actual;
+    for (unsigned spin = 0; spin < 2; ++spin)
+      require(execute_cuda_direct_shell_rsh_energy_derivatives_device(
+                  plan.get(), spin ? FockSpin::Unrestricted : FockSpin::Restricted, 0.0, 0.0,
+                  coefficient, omega, device_a.pointer, spin ? device_b.pointer : nullptr, matrix,
+                  actual[spin], detail) == GENERATIVEQC_STATUS_SUCCESS,
+              detail.c_str());
+    const auto coordinates = system.atoms.size() * 3U;
+    for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate) {
+      auto plus = system, minus = system;
+      plus.atoms[coordinate / 3].position[coordinate % 3] += step;
+      minus.atoms[coordinate / 3].position[coordinate % 3] -= step;
+      auto derivative = generativeqc::integrals::build_range_eri(
+          plus, generativeqc::integrals::CoulombRange::Long, omega);
+      const auto negative = generativeqc::integrals::build_range_eri(
+          minus, generativeqc::integrals::CoulombRange::Long, omega);
+      for (std::size_t index = 0; index < derivative.size(); ++index)
+        derivative[index] = (derivative[index] - negative[index]) / (2 * step);
+      for (unsigned spin = 0; spin < 2; ++spin) {
+        auto spec = make_hf_fock_spec(spin ? FockSpin::Unrestricted : FockSpin::Restricted);
+        spec.derivative_order = 1;
+        spec.coulomb.present = false;
+        spec.exchange.coefficient = coefficient;
+        const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
+        const double expected = contract_exact_direct_energy_derivative(
+            cpu, n, derivative, a, spin ? b : std::vector<double>{});
+        require(actual[spin].size() == 3U * coordinates, "bounded LR source shape changed");
+        require(actual[spin][coordinate] == 0.0 && actual[spin][coordinates + coordinate] == 0.0,
+                "disabled bounded RSH source acquired a contribution");
+        const double value = actual[spin][2U * coordinates + coordinate];
+        require(std::isfinite(value) && std::abs(value - expected) < 3e-8,
+                "four-center bounded LR derivative differs from displaced CPU ERIs");
       }
     }
   }
@@ -2067,6 +2163,7 @@ int main(int argc, char** argv) {
     }
     if (argc == 2 && std::string(argv[1]) == "--range-response-only") {
       range_exchange_derivatives();
+      shell_range_four_center_derivatives();
       canonical_order_two_derivatives();
       std::cout << "CUDA s/p/d/f SR/LR derivative gates PASS\n";
       return 0;
@@ -2084,6 +2181,7 @@ int main(int argc, char** argv) {
     device_selection();
     range_exchange_provider();
     range_exchange_derivatives();
+    shell_range_four_center_derivatives();
     canonical_order_two_derivatives();
     direct_providers(through_f_response);
     std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "

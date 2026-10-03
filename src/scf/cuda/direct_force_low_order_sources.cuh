@@ -4,8 +4,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <weighted_eri.cuh>
 
+#include "integrals/range_moments.hpp"
 #include "scf/cuda/boys_table.cuh"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_density.cuh"
@@ -17,7 +19,11 @@
 
 namespace generativeqc::scf::cuda_execution {
 
-/** Bind one closed low-order class to the existing compiler-owned force roots. */
+// A constant keeps the failure marker usable by both NVCC and CuMetal without
+// invoking a host-only nan()/numeric_limits function from a device function.
+inline constexpr double kInvalidDirectForceMoment = std::numeric_limits<double>::quiet_NaN();
+
+/** Bind one low-order class to radial-moment-parametric compiler force roots. */
 template <unsigned ShellClass>
 struct LowOrderSourceRoots {
   static constexpr unsigned angular_order = direct_shell_class_angular_order(ShellClass);
@@ -57,26 +63,33 @@ struct LowOrderSourceRoots {
 };
 
 /**
- * Consume one screened shell task into independent full-range J and K forces.
+ * Consume one screened shell task into full-range J/K or one LR exchange force.
  *
- * Only immutable shell geometry, AO traversal and Boys values are shared. Each
+ * Only immutable shell geometry, AO traversal and radial moments are shared. Each
  * source retains its own density weights, generated force evaluation and
  * primitive reduction order. This is not a combined HF-force specialization.
  * The caller owns screening/queue policy and selects only orders zero to three;
  * no resident primitive storage, new cutoff or additional allocation is needed.
+ *
+ * LR uses the same generated roots: with rho and omega fixed under nuclear
+ * displacement, its radial moments satisfy dM_n/dT = -M_(n+1), just as Boys
+ * values do. One moment ladder therefore supplies every AO component and
+ * independent center derivative, instead of repeating a Dual3 recurrence for
+ * each AO quartet and atom. Higher angular orders keep their existing owner.
  */
-template <bool Unrestricted, unsigned ShellClass>
+template <bool Unrestricted, unsigned ShellClass, bool LongRange = false>
 __device__ inline __noinline__ void contract_two_electron_force_low_order_sources_task(
     const DeviceBatch& batch, ActiveShellQuartetTile task, double screening_tolerance,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces,
-    double coulomb_coefficient, double exchange_coefficient) {
+    double coulomb_coefficient, double exchange_coefficient, double omega = 0.0) {
   using Roots = LowOrderSourceRoots<ShellClass>;
+  constexpr unsigned source_count = LongRange ? 1U : 2U;
   if (task.tile != 0U) return;
   const std::size_t first_pair = task.first_pair;
   const std::size_t second_pair = task.second_pair;
   const std::int32_t system = batch.shell_pair_systems[first_pair];
   if (active[system] == 0) return;
-  if (coulomb_coefficient == 0.0 && exchange_coefficient == 0.0) return;
+  if ((LongRange || coulomb_coefficient == 0.0) && exchange_coefficient == 0.0) return;
 
   const std::int32_t raw_shell[4] = {
       batch.shell_pair_first[first_pair], batch.shell_pair_second[first_pair],
@@ -113,8 +126,8 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
 
   const DirectShellAoQuartetLayout layout =
       direct_shell_ao_quartet_layout(batch, first_pair, second_pair);
-  double weights[2][Roots::component_count]{};
-  bool source_active[2]{};
+  double weights[source_count][Roots::component_count]{};
+  bool source_active[source_count]{};
   for (std::size_t ordinal = 0; ordinal < layout.quartet_count; ++ordinal) {
     std::size_t raw_ao[4];
     decode_shell_ao_quartet(batch, first_pair, second_pair, layout, ordinal, system_ao_begin,
@@ -135,9 +148,9 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
     }
     if (output >= Roots::component_count) return;
 #pragma unroll
-    for (unsigned source = 0; source < 2; ++source) {
-      const double coulomb = source == 0U ? coulomb_coefficient : 0.0;
-      const double exchange = source == 1U ? exchange_coefficient : 0.0;
+    for (unsigned source = 0; source < source_count; ++source) {
+      const double coulomb = !LongRange && source == 0U ? coulomb_coefficient : 0.0;
+      const double exchange = LongRange || source == 1U ? exchange_coefficient : 0.0;
       if (coulomb == 0.0 && exchange == 0.0) continue;
       const double coefficient = direct_force_density_coefficient_scaled<Unrestricted>(
           dimension, physical_offset, spin_offset, density, raw_ao[0], raw_ao[1], raw_ao[2],
@@ -158,12 +171,16 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
   }
   if constexpr (ShellClass == kPsssShellClass) {
 #pragma unroll
-    for (unsigned source = 0; source < 2; ++source) {
+    for (unsigned source = 0; source < source_count; ++source) {
       source_active[source] =
           weights[source][0] != 0.0 || weights[source][1] != 0.0 || weights[source][2] != 0.0;
     }
   }
-  if (!source_active[0] && !source_active[1]) return;
+  if constexpr (LongRange) {
+    if (!source_active[0]) return;
+  } else {
+    if (!source_active[0] && !source_active[1]) return;
+  }
 
   const std::size_t canonical_pair[2] = {canonical_raw_slot[0] < 2U ? first_pair : second_pair,
                                          canonical_raw_slot[2] < 2U ? first_pair : second_pair};
@@ -177,7 +194,7 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
   const std::int64_t first_end = batch.shell_pair_primitive_offsets[canonical_pair[0] + 1];
   const std::int64_t second_begin = batch.shell_pair_primitive_offsets[canonical_pair[1]];
   const std::int64_t second_end = batch.shell_pair_primitive_offsets[canonical_pair[1] + 1];
-  generated_weighted_eri::IndependentGradient result[2]{};
+  generated_weighted_eri::IndependentGradient result[source_count]{};
   for (std::int64_t first_primitive = first_begin; first_primitive < first_end; ++first_primitive) {
     const PrimitivePairData first_data = batch.shell_primitive_pairs[first_primitive];
     for (std::int64_t second_primitive = second_begin; second_primitive < second_end;
@@ -187,9 +204,21 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
       const double boys_argument = generated_weighted_eri::make_direct_cached_geometry(
           first_data, second_data, reverse_first, reverse_second, position[0], position[1],
           position[2], position[3], geometry);
-      boys_values<Roots::angular_order + 1U>(boys_argument, geometry.boys);
+      if constexpr (LongRange) {
+        const bool valid = generativeqc::integrals::range_moments(
+            Roots::angular_order + 1U, boys_argument, geometry.rho,
+            generativeqc::integrals::CoulombRange::Long, omega, geometry.boys);
+        // Preserve the existing nonfinite-result failure contract. An invalid
+        // ladder must not leave uninitialized moments or silently omit work.
+        if (!valid) {
+          for (unsigned order = 0; order <= Roots::angular_order + 1U; ++order)
+            geometry.boys[order] = kInvalidDirectForceMoment;
+        }
+      } else {
+        boys_values<Roots::angular_order + 1U>(boys_argument, geometry.boys);
+      }
 #pragma unroll
-      for (unsigned source = 0; source < 2; ++source) {
+      for (unsigned source = 0; source < source_count; ++source) {
         if (!source_active[source]) continue;
         const auto primitive = Roots::evaluate(geometry, weights[source]);
 #pragma unroll
@@ -203,7 +232,7 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
     }
   }
 #pragma unroll
-  for (unsigned source = 0; source < 2; ++source) {
+  for (unsigned source = 0; source < source_count; ++source) {
     if (!source_active[source]) continue;
     scatter_direct_force_independent_gradient(
         center_atoms, unique_center_atoms, unique_center_count, result[source],
@@ -211,18 +240,18 @@ __device__ inline __noinline__ void contract_two_electron_force_low_order_source
   }
 }
 
-/** Dispatch only the closed full-range low-order source domain. */
-template <bool Unrestricted>
+/** Dispatch only the closed low-order domain for the selected radial owner. */
+template <bool Unrestricted, bool LongRange = false>
 __device__ inline void contract_two_electron_force_low_order_sources(
     unsigned shell_class, const DeviceBatch& batch, ActiveShellQuartetTile task,
     double screening_tolerance, const double* schwarz_bounds, const double* density,
     const std::uint8_t* active, double* forces, double coulomb_coefficient,
-    double exchange_coefficient) {
-#define GENERATIVEQC_LOW_ORDER_SOURCES_CASE(ShellClass)                            \
-  case ShellClass:                                                                 \
-    contract_two_electron_force_low_order_sources_task<Unrestricted, ShellClass>(  \
-        batch, task, screening_tolerance, schwarz_bounds, density, active, forces, \
-        coulomb_coefficient, exchange_coefficient);                                \
+    double exchange_coefficient, double omega = 0.0) {
+#define GENERATIVEQC_LOW_ORDER_SOURCES_CASE(ShellClass)                                      \
+  case ShellClass:                                                                           \
+    contract_two_electron_force_low_order_sources_task<Unrestricted, ShellClass, LongRange>( \
+        batch, task, screening_tolerance, schwarz_bounds, density, active, forces,           \
+        coulomb_coefficient, exchange_coefficient, omega);                                   \
     break
   switch (shell_class) {
     GENERATIVEQC_LOW_ORDER_SOURCES_CASE(kSsssShellClass);
