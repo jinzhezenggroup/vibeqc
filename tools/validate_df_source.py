@@ -179,6 +179,10 @@ def main() -> None:
             "cartesian-spherical",
             "long",
             "dependent",
+            "g-cartesian",
+            "g-spherical",
+            "g-dependent",
+            "g-cartesian-spherical",
         ),
         default=[
             "cartesian",
@@ -216,14 +220,31 @@ def main() -> None:
         "runs": [],
     }
     for case in args.cases:
+        g_auxiliary = case.startswith("g-")
+        base_case = case.removeprefix("g-")
+        if g_auxiliary and args.derivatives:
+            parser.error("g auxiliary source qualification covers values only")
         systems = fixture_systems(
-            "cartesian" if case in ("long", "dependent") else case.split("-")[0],
-            long_contractions=case in ("long", "dependent"),
+            "cartesian"
+            if base_case in ("long", "dependent")
+            else base_case.split("-")[0],
+            long_contractions=base_case in ("long", "dependent") and not g_auxiliary,
         )
-        if "-" in case:
+        if g_auxiliary:
             for _, auxiliary in systems:
-                auxiliary["basis_representation"] = case.split("-")[1]
-        if case == "dependent":
+                # Retain all existing f source classes; add one signed g shell
+                # per item without changing homogeneous batch dimensions.
+                auxiliary["shells"].append(
+                    {
+                        "atom_index": len(auxiliary["coordinates"]) - 1,
+                        "angular_momentum": 4,
+                        "primitives": [[0.71, 0.8], [1.92, -0.13]],
+                    }
+                )
+        if "-" in base_case:
+            for _, auxiliary in systems:
+                auxiliary["basis_representation"] = base_case.split("-")[1]
+        if base_case == "dependent":
             # Exact duplicate auxiliary charge distributions have a deficient
             # metric by construction. Compare rank/RI values at one threshold
             # rather than treating discarded eigenmodes as arithmetic errors.

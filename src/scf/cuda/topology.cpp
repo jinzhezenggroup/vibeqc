@@ -36,8 +36,21 @@ std::size_t checked_expanded_primitive_references(const std::vector<core::System
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
                      HostBatch& host, bool unrestricted, bool matrix_direct,
-                     bool require_direct_transform) {
+                     bool require_direct_transform, HostBasisPacking packing) {
   if (systems.empty() || systems.size() != initial_densities.size()) return false;
+  const bool df_values = packing == HostBasisPacking::DfValues;
+  // The DF owner independently expands public spherical AOs after packing.
+  // Enforce Cartesian metadata here so the legacy three-term AO ABI remains
+  // valid; g public transforms have their own bounded six-term records.
+  if (df_values && (unrestricted || !matrix_direct || require_direct_transform ||
+                    std::any_of(systems.begin(), systems.end(),
+                                [](const auto& system) {
+                                  return system.basis_representation !=
+                                         GENERATIVEQC_BASIS_CARTESIAN;
+                                }) ||
+                    std::any_of(initial_densities.begin(), initial_densities.end(),
+                                [](const auto* density) { return density != nullptr; })))
+    return false;
   if (std::any_of(systems.begin(), systems.end(),
                   [](const auto& s) { return !s.ecp_terms.empty(); }))
     host.ecp_systems = systems;
@@ -60,7 +73,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
   host.system_shell_pair_block_offsets.push_back(0);
   host.system_shell_pair_block_quartet_offsets.push_back(0);
   host.shell_pair_primitive_offsets.push_back(0);
-  host.warm_density.resize(systems.size() * host.spin_count * matrix_size, 0.0);
+  if (!df_values) host.warm_density.resize(systems.size() * host.spin_count * matrix_size, 0.0);
   // Small-HF energy historically used persistent ERIs and therefore did not
   // need a public-to-Cartesian transform. Force requests may now select the
   // quartet-direct route at the same <=16-AO sizes, so their caller must opt
@@ -92,7 +105,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
     const std::size_t system_direct_ao_begin = host.direct_ao_shells.size();
     const std::size_t system_shell_begin = host.shell_atoms.size();
     for (const core::Shell& shell : system.shells) {
-      if (shell.angular_momentum > kMaximumAngularMomentum ||
+      if (shell.angular_momentum > (df_values ? 4U : kMaximumAngularMomentum) ||
           shell.atom_index >= system.atoms.size())
         return false;
       if (host.shell_atoms.size() >=
@@ -161,6 +174,9 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       return false;
     }
     host.system_shell_offsets.push_back(static_cast<std::int64_t>(host.shell_atoms.size()));
+    // Values do not consume shell pairs, quartets, occupation or warm state.
+    // Skip their construction, rather than merely omitting device uploads.
+    if (df_values) continue;
     for (std::size_t first = system_shell_begin; first < host.shell_atoms.size(); ++first) {
       for (std::size_t second = system_shell_begin; second <= first; ++second) {
         host.shell_pair_systems.push_back(static_cast<std::int32_t>(system_index));

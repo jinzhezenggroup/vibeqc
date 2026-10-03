@@ -1,4 +1,4 @@
-"""Bounded CUDA lowering of raw DF values through one- to five-root Rys rules.
+"""Bounded CUDA DF values: Rys through f and moment polynomials for auxiliary g.
 
 The operator/signature records own root counts and auxiliary roles. Scalar
 Gaussian moment DAGs are lowered by the common expression emitter; audited
@@ -11,6 +11,7 @@ from __future__ import annotations
 from itertools import product
 
 from .cuda import CudaEmitter
+from .df_g_cuda import emit_df_g_values_cuda
 from .df_values import build_df_axis_moment, build_df_value_ir
 from .ir_serialization import integral_to_payload
 from .rys import (
@@ -22,12 +23,14 @@ from .rys import (
 
 
 def df_program_inventory() -> dict:
-    """Expose every supported operator signature and its exact quadrature order."""
+    """Expose the Rys and auxiliary-g polynomial value domains explicitly."""
     programs = []
     for family, count in (("coulomb_metric", 2), ("three_center_eri", 3)):
-        for angular in product(range(4), repeat=count):
+        domains = (range(5),) * 2 if count == 2 else (range(4), range(4), range(5))
+        for angular in product(*domains):
             nroots = sum(angular) // 2 + 1
-            integral = build_df_value_ir(family, angular, recurrence=f"rys{nroots}")
+            recurrence = "subset_wick" if 4 in angular else f"rys{nroots}"
+            integral = build_df_value_ir(family, angular, recurrence=recurrence)
             programs.append(integral_to_payload(integral))
     return {
         "schema": "generativeqc.df_values",
@@ -168,7 +171,9 @@ __device__ __forceinline__ double metric(
   const Vec3 difference{A.x - C.x, A.y - C.y, A.z - C.z};
   const Angular b{0, 0, 0};
   const unsigned total = order(a) + order(c);
-  if (order(a) > 3 || order(c) > 3) return NAN;
+  if (order(a) > 4 || order(c) > 4) return NAN;
+  if (order(a) == 4 || order(c) == 4)
+    return auxiliary_g::evaluate(alpha,A,a,0.0,A,b,gamma,C,c);
   if (total <= 1) return value<1>(alpha, gamma, zero, zero, difference, a, b, c);
   if (total <= 3) return value<2>(alpha, gamma, zero, zero, difference, a, b, c);
   if (total <= 5) return value<3>(alpha, gamma, zero, zero, difference, a, b, c);
@@ -187,7 +192,8 @@ __device__ __forceinline__ double three_center(
   const Vec3 difference{A.x - C.x + pa.x, A.y - C.y + pa.y, A.z - C.z + pa.z};
   const double decay = exp(-alpha * beta / p * (ab.x * ab.x + ab.y * ab.y + ab.z * ab.z));
   const unsigned total = order(a) + order(b) + order(c);
-  if (order(a) > 3 || order(b) > 3 || order(c) > 3) return NAN;
+  if (order(a) > 3 || order(b) > 3 || order(c) > 4) return NAN;
+  if (order(c) == 4) return auxiliary_g::evaluate(alpha,A,a,beta,B,b,gamma,C,c);
   double result;
   if (total <= 1) result = value<1>(p, gamma, pa, pb, difference, a, b, c);
   else if (total <= 3) result = value<2>(p, gamma, pa, pb, difference, a, b, c);
@@ -201,9 +207,9 @@ __device__ __forceinline__ double three_center(
 """
     # Scalar headers are shared across typed consumers. Internal CUDA linkage
     # prevents NVCC host registration symbols and tables from violating ODR.
-    return (prefix + tables + emit_df_axis_cuda() + suffix).replace(
-        "__device__", "static __device__"
-    )
+    return (
+        prefix + tables + emit_df_axis_cuda() + emit_df_g_values_cuda() + suffix
+    ).replace("__device__", "static __device__")
 
 
 def emit_df_values_cpu() -> str:

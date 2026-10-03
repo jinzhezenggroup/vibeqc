@@ -34,9 +34,9 @@ struct MethodError : std::runtime_error {
 struct Reference { std::size_t reference_memory_budget_bytes=100; int diis_history=8; double screening_tolerance=0; };
 namespace scf {
 namespace cuda_execution {
-bool cuda_df_shell_domain(const core::System& system,const char*,std::string& detail) {
+bool cuda_df_value_domain(const core::System& orbital,const core::System& system,std::string& detail) {
   detail="unsupported DF source basis";
-  return system.df_supported;
+  return orbital.df_supported && system.df_supported;
 }
 }
 enum class FockSpin { Restricted };

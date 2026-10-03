@@ -206,15 +206,21 @@ def evaluate_df_derivative(
     )
 
 
-def axis_polynomial(a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
+def axis_polynomial(
+    a: typing.Any, b: typing.Any, c: typing.Any, *, auxiliary_g: bool = False
+) -> typing.Any:
     """Rewrite the shared Gaussian moment DAG as coefficients in u=t^2.
 
     Rys means and covariances are affine in u. Coefficient convolution therefore
     gives the exact same moment polynomial without differentiating fitted Rys
     roots. First derivatives need at most F_10 for public f/f/f, including the
     internal raising of one orbital Gaussian power.
+    The separate g-auxiliary value domain also ends at F_10 (f/f/g); it
+    explicitly disables internal derivative raising.
     """
-    source, root = build_df_axis_moment(a, b, c, internal_derivative=True)
+    source, root = build_df_axis_moment(
+        a, b, c, internal_derivative=not auxiliary_g, auxiliary_g=auxiliary_g
+    )
     g = Graph()
     z = g.constant(0)
     pa, pb, dx, sx, sy, ip, iq = (

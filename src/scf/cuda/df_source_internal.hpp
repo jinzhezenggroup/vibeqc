@@ -31,7 +31,8 @@ struct CudaDensityFittingIntegralSourceImpl {
   // Freeze the generated schedule so a warm plan never mixes mapping policies.
   unsigned value_mapping{};
   unsigned raw_value_mapping{};
-  unsigned value_math{};  // Frozen with mapping; unsupported angular classes use generic Rys.
+  unsigned value_math{};  // Frozen with mapping; only qualified generated math for auxiliary g.
+  bool auxiliary_g_values_only{};  // Immutable basis capability, never a derivative promotion.
   std::size_t batch_size{};
   std::size_t public_nbf{};
   std::size_t public_naux{};
@@ -58,8 +59,6 @@ struct CudaDensityFittingIntegralSourceImpl {
     for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
   }
 };
-
-/** Reject unsupported physical shells before packing either source or exported tensors. */
 
 /** Build a source transactionally and return its current metric; ownership transfers only on
  * success. */

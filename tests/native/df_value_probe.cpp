@@ -143,8 +143,36 @@ int main(int argc, char** argv) {
         generate_cuda_density_fitting_raw_tile(source.get(), count, 0, 1, 0, 1, -1, stream, device,
                                                detail) == GENERATIVEQC_STATUS_INVALID_ARGUMENT,
         "invalid batch offset accepted");
+    const bool has_g = std::any_of(auxiliary.begin(), auxiliary.end(), [](const auto& system) {
+      return std::any_of(system.shells.begin(), system.shells.end(),
+                         [](const auto& shell) { return shell.angular_momentum == 4U; });
+    });
+    if (has_g) {
+      // A g owner is value-only, even when the requested derivative tile
+      // happens to select lower shells. Failure must not launch or publish.
+      const double sentinel = 17.25;
+      check(cudaMemcpyAsync(device, &sentinel, sizeof(double), cudaMemcpyHostToDevice, stream));
+      check(cudaStreamSynchronize(stream));
+      require(generate_cuda_density_fitting_raw_tile(source.get(), 0, 0, 1, 0, 1, 0, stream, device,
+                                                     detail) == GENERATIVEQC_STATUS_NOT_IMPLEMENTED,
+              "g raw derivative was not rejected");
+      require(generate_cuda_density_fitting_transformed_tile(source.get(), 0, 0, 1, 0, 1, 0, device,
+                                                             stream, device, detail) ==
+                  GENERATIVEQC_STATUS_NOT_IMPLEMENTED,
+              "g transformed derivative was not rejected");
+      require(generate_cuda_density_fitting_metric_derivative_tile(source.get(), 0, 0, 1, 0, stream,
+                                                                   device, detail) ==
+                  GENERATIVEQC_STATUS_NOT_IMPLEMENTED,
+              "g metric derivative was not rejected");
+      double after = 0;
+      check(cudaMemcpyAsync(&after, device, sizeof(double), cudaMemcpyDeviceToHost, stream));
+      check(cudaStreamSynchronize(stream));
+      require(after == sentinel, "rejected g derivative changed output");
+      const auto counters = cuda_density_fitting_integral_source_counters(source.get());
+      require(counters.generated_value_tiles == 0, "rejected g derivative generated source work");
+    }
     auto unsupported_auxiliary = auxiliary;
-    unsupported_auxiliary[0].shells[0].angular_momentum = 4U;
+    unsupported_auxiliary[0].shells[0].angular_momentum = 5U;
     CudaDensityFittingIntegralSource* unsupported = nullptr;
     std::vector<double> unsupported_metric;
     std::size_t unsupported_nbf = 0, unsupported_naux = 0;
@@ -152,8 +180,8 @@ int main(int argc, char** argv) {
         create_cuda_density_fitting_integral_source(
             0, orbital, unsupported_auxiliary, &unsupported, unsupported_metric, unsupported_nbf,
             unsupported_naux, detail) == GENERATIVEQC_STATUS_INVALID_ARGUMENT &&
-            unsupported == nullptr && detail.find("beyond f") != std::string::npos,
-        "unsupported auxiliary g shell was not explicitly rejected");
+            unsupported == nullptr && detail.find("beyond g") != std::string::npos,
+        "unsupported auxiliary h shell was not explicitly rejected");
     std::vector<double> values(count * pairs * naux), tile(tile_elements);
     start = Clock::now();
     for (std::size_t system = 0; system < count; ++system) {

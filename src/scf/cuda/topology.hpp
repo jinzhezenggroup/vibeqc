@@ -54,12 +54,18 @@ struct HostBatch {
 /** Count public Cartesian primitive references with overflow-checked topology arithmetic. */
 std::size_t checked_expanded_primitive_references(const std::vector<core::System>& systems);
 
+/** DF values consume Cartesian basis metadata only, not SCF/task state.
+ * The explicit mode permits g metadata without extending any SCF kernel domain.
+ */
+enum class HostBasisPacking { Scf, DfValues };
+
 /** Pack topology and warm densities. Matrix-only exporters omit quartet-only
  * transforms and resident task tables; public AO expansion remains intact. */
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
                      HostBatch& host, bool unrestricted = false, bool matrix_direct = false,
-                     bool require_direct_transform = false);
+                     bool require_direct_transform = false,
+                     HostBasisPacking packing = HostBasisPacking::Scf);
 
 /** Compare immutable topology; coordinates and warm state are checked separately by replay. */
 bool same_topology(const HostBatch& first, const HostBatch& second);

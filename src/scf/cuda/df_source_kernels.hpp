@@ -13,12 +13,14 @@ namespace generativeqc::scf::cuda_execution {
 /** Shell-local public AO expansion into the existing normalized Cartesian ABI.
  * One record per public AO and per batch item; indices remain in Cartesian
  * order so contraction summation is unchanged. Cartesian public AOs have
- * exactly one term. The normalized basis owner defines the finite s--f bound.
+ * exactly one term. The g, m=0 solid harmonic has six Cartesian terms.
+ * This bound is local to DF value transforms; the legacy f ABI stays unchanged.
  */
+inline constexpr std::size_t kDfPublicAoExpansionTerms = 6;
 struct DfPublicAoExpansion {
   std::uint32_t count{};
-  std::int32_t cartesian[molecule::kMaximumAoExpansionTerms]{};
-  double coefficients[molecule::kMaximumAoExpansionTerms]{};
+  std::int32_t cartesian[kDfPublicAoExpansionTerms]{};
+  double coefficients[kDfPublicAoExpansionTerms]{};
 };
 
 /** Resolve the compiler's raw/transformed source schedule without GPU work.

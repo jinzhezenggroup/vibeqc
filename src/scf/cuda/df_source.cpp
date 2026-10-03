@@ -56,6 +56,10 @@ generativeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     detail = "bounded DF transformed tile dimensions are invalid";
     return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
   }
+  if (derivative_coordinate >= 0 && source->auxiliary_g_values_only) {
+    detail = "CUDA DF g auxiliary sources support values only, not derivatives";
+    return GENERATIVEQC_STATUS_NOT_IMPLEMENTED;
+  }
   // Empty blocks at valid offsets are legal no-ops and perform no device work.
   if (pair_count == 0U || auxiliary_count == 0U) return GENERATIVEQC_STATUS_SUCCESS;
   if (derivative_coordinate >= 0) {
@@ -157,6 +161,10 @@ generativeqc_status generate_cuda_density_fitting_metric_derivative_tile_impl(
       auxiliary_row_count > source->public_naux - auxiliary_row_begin) {
     detail = "bounded DF metric derivative tile dimensions are invalid";
     return GENERATIVEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (source->auxiliary_g_values_only) {
+    detail = "CUDA DF g auxiliary sources support values only, not derivatives";
+    return GENERATIVEQC_STATUS_NOT_IMPLEMENTED;
   }
   const std::size_t atom_count = static_cast<std::size_t>(source->host_atom_offsets[system + 1U] -
                                                           source->host_atom_offsets[system]);
@@ -264,7 +272,9 @@ CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnost
   const char* math = implementation.value_math == 3U   ? "manifest"
                      : implementation.value_math == 1U ? "specialized_polynomial"
                      : implementation.value_math == 2U ? "specialized_rys"
-                                                       : "generated_rys";
+                     : implementation.auxiliary_g_values_only
+                         ? "generated_rys_auxiliary_g_polynomial"
+                         : "generated_rys";
   return {math, mapping, true, true};
 }
 

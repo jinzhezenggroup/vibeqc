@@ -96,7 +96,53 @@ def source_probe(tmp_path_factory: pytest.TempPathFactory) -> typing.Any:
     return call
 
 
-@pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
+def auxiliary_g_fixture(representation: str) -> tuple[dict, dict]:
+    """Independent signed f-orbital/g-auxiliary blocks and a nontrivial frame.
+
+    This source test supplies an orthogonal frame, not a converged HF state.
+    Complete molecular tests below separately cover native RHF composition.
+    """
+    pytest.importorskip("pyscf")
+    from tools.generativeqc_validation.df_gradient import reference_df_matrices
+
+    common = {
+        "atomic_numbers": [2, 1, 1],
+        "coordinates": [[0.1, -0.2, -0.7], [0.3, 0.1, 0.8], [-0.5, 0.4, 0.2]],
+        "charge": 0,
+        "multiplicity": 1,
+        "basis_representation": representation,
+    }
+
+    def shell(atom: int, angular: int) -> dict:
+        return {
+            "atom_index": atom,
+            "angular_momentum": angular,
+            "primitives": [[0.6 + 0.2 * angular, 0.8], [1.7 + 0.1 * angular, -0.1]],
+        }
+
+    orbital = {**common, "shells": [shell(0, 0), shell(0, 3), shell(1, 0), shell(1, 1)]}
+    auxiliary = {
+        **common,
+        "shells": [shell(0, 0), shell(0, 2), shell(1, 4), shell(2, 3)],
+    }
+    raw, metric, _, _ = reference_df_matrices(orbital, auxiliary)
+    c, _ = np.linalg.qr(np.random.default_rng(1777).normal(size=(len(raw), len(raw))))
+    metadata = {
+        "inputs": {
+            **orbital,
+            "basis_representation": "real_spherical"
+            if representation == "spherical"
+            else "cartesian",
+        },
+        "auxiliary_shells": auxiliary["shells"],
+        "records": {"conventional": {"electron_count": 4}},
+    }
+    return metadata, {"metric": metric, "raw_three_center": raw, "conventional_C": c}
+
+
+@pytest.mark.parametrize(
+    "name", ["h2", "water", "lih", "f_heh", "g_cartesian", "g_spherical"]
+)
 @pytest.mark.parametrize("duplicate_auxiliary", [False, True])
 def test_native_molecular_factors_and_blocks(
     source_probe: typing.Any, name: str, duplicate_auxiliary: bool, tmp_path: Path
@@ -104,7 +150,11 @@ def test_native_molecular_factors_and_blocks(
     from tools.generativeqc_posthf.fixtures import load_fixture, source_arguments
     from tools.generativeqc_posthf.sources import NativeSource
 
-    meta, arrays = load_fixture(name)
+    meta, arrays = (
+        auxiliary_g_fixture(name.removeprefix("g_"))
+        if name.startswith("g_")
+        else load_fixture(name)
+    )
     args = source_arguments(meta)
     auxiliary_indices = list(range(len(arrays["metric"])))
     if duplicate_auxiliary:
@@ -231,8 +281,12 @@ def test_native_molecular_factors_and_blocks(
 
 
 @pytest.mark.parametrize("duplicate_auxiliary", [False, True])
+@pytest.mark.parametrize("auxiliary_g", [False, True])
 def test_complete_native_h2_df_ccsd_against_determinant_energy(
-    source_probe: typing.Any, duplicate_auxiliary: bool, tmp_path: Path
+    source_probe: typing.Any,
+    duplicate_auxiliary: bool,
+    auxiliary_g: bool,
+    tmp_path: Path,
 ) -> None:
     from tools.generativeqc_cc.oracle import DeterminantOracle
     from tools.generativeqc_posthf.fixtures import load_fixture, source_arguments
@@ -240,7 +294,19 @@ def test_complete_native_h2_df_ccsd_against_determinant_energy(
 
     meta, arrays = load_fixture("h2")
     args = source_arguments(meta)
-    indices = [0, 1]
+    if auxiliary_g:
+        pytest.importorskip("pyscf")
+        from generativeqc import Primitive, Shell
+
+        from tools.generativeqc_validation.df_gradient import reference_df_matrices
+
+        extra = {"atom_index": 0, "angular_momentum": 4, "primitives": [[0.7, 1.0]]}
+        args["auxiliary_basis"] += (Shell(0, 4, (Primitive(0.7, 1.0),)),)
+        orbital = {**meta["inputs"], "basis_representation": args["representation"]}
+        auxiliary = {**orbital, "shells": [*meta["auxiliary_shells"], extra]}
+        raw, metric, _, _ = reference_df_matrices(orbital, auxiliary)
+        arrays = {**arrays, "metric": metric, "raw_three_center": raw}
+    indices = list(range(len(arrays["metric"])))
     if duplicate_auxiliary:
         args["auxiliary_basis"] += (args["auxiliary_basis"][0],)
         indices.append(0)
@@ -290,6 +356,7 @@ def test_complete_native_h2_df_ccsd_against_determinant_energy(
         json.dumps(
             {
                 "case": "h2",
+                "auxiliary_g": auxiliary_g,
                 "duplicate_auxiliary": duplicate_auxiliary,
                 "values": values.tolist(),
                 "expected_correlation_energy": float(expected),

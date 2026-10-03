@@ -266,6 +266,7 @@ def build_df_axis_moment(
     c: int,
     *,
     internal_derivative: bool = False,
+    auxiliary_g: bool = False,
     states: set[tuple[int, int, int]] | None = None,
 ) -> tuple[Graph, Expr]:
     """Build one-axis Gaussian moments used by a bounded Rys value schedule.
@@ -276,16 +277,19 @@ def build_df_axis_moment(
     root-dependent inputs; recurrence pruning visits only ancestors of (a,b,c).
     Internal first derivatives may raise one orbital power to four. This is
     recurrence scratch, not an extension of public orbital/auxiliary families.
+    ``auxiliary_g`` selects a separate value domain: f/f/g three-center or
+    g/g metric moments (the metric has b=0). It does not extend derivatives.
     An optional diagnostic set collects the nonconstant recurrence states visited
     by this same builder, before expression simplification or backend CSE.
     """
     powers = (a, b, c)
-    maximum = 4 if internal_derivative else 3
-    if (
-        any(type(n) is not int or not 0 <= n <= maximum for n in powers)
-        or c > 3
-        or sum(n == 4 for n in powers) > 1
-    ):
+    maximum = 4 if internal_derivative or auxiliary_g else 3
+    invalid = any(type(n) is not int or not 0 <= n <= maximum for n in powers)
+    if auxiliary_g:
+        invalid = invalid or internal_derivative or b > 3 or (a == 4 and b != 0)
+    else:
+        invalid = invalid or c > 3 or sum(n == 4 for n in powers) > 1
+    if invalid:
         raise ValueError("DF axis powers must lie within s/p/d/f")
     graph = Graph()
     means = tuple(graph.variable(f"mean_{i}") for i in range(3))

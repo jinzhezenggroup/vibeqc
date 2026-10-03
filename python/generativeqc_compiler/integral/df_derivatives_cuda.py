@@ -59,27 +59,14 @@ def emit_df_geometry_cuda(
     )
 
 
-def emit_df_derivatives_cuda() -> typing.Any:
-    """Share base axis moments and Boys values across all independent centers.
+def emit_df_boys_cuda() -> str:
+    """Emit the shared FP64 positive-series/downward Boys evaluation.
 
-    The derivative of an unnormalized basis factor is
-    2*alpha*g_(a+1) - a*g_(a-1). This is applied to the same moment DAG as the
-    value generator, at generation time. A branch owns at most eleven scalar
-    coefficients; the runtime holds bounded coefficient arrays, never AD state.
+    Callers own order+1 output slots. Value and derivative consumers use the
+    same arithmetic and convergence rule; no fitted high-order Rys rule is
+    introduced by the g-auxiliary value consumer.
     """
-    prefix = r"""// Generated DF metric/three-center first derivatives.
-#ifndef GENERATIVEQC_GENERATED_DF_DERIVATIVES_CUH
-#define GENERATIVEQC_GENERATED_DF_DERIVATIVES_CUH
-#include <cuda_runtime.h>
-#include <cmath>
-namespace generativeqc::scf::generated_df_derivatives {
-struct Vec3 { double x,y,z; };
-struct Angular { unsigned x,y,z; };
-struct Response { double value; Vec3 first,second,third; };
-__device__ __forceinline__ unsigned order(Angular a) { return a.x+a.y+a.z; }
-__device__ __forceinline__ double component(Vec3 a,unsigned i) { return i==0?a.x:i==1?a.y:a.z; }
-__device__ __forceinline__ unsigned power(Angular a,unsigned i) { return i==0?a.x:i==1?a.y:a.z; }
-/** Diagnostic metadata describes the actual positive-series branch, not FLOPs.
+    return r"""/** Diagnostic metadata describes the actual positive-series branch, not FLOPs.
  * A null sink is a compile-time constant in the normal inlined callers.
  * Zero arguments still execute the series; small_argument is a subdomain of
  * that branch, never a claim that a separate asymptotic formula was used.
@@ -108,12 +95,49 @@ __device__ __forceinline__ void boys_values(unsigned order,double argument,doubl
     for(unsigned n=1;n<=order;++n) f[n]=((2*n-1)*f[n-1]-decay)/(2*argument);
   }
 }
-/** Exact coefficients in u=t^2 of the shared Gaussian-moment value DAG. */
+"""
+
+
+def emit_df_polynomial_dot_cuda() -> str:
+    """Integrate the common axis polynomials against exact Boys moments."""
+    return r"""/** Integrate the product of three polynomials using exact Boys moments. */
+__device__ double dot(unsigned da,const double* a,unsigned db,const double* b,
+    unsigned dc,const double* c,const double* f) {
+  double value=0.0;
+  for(unsigned i=0;i<=da;++i)
+    for(unsigned j=0;j<=db;++j)
+      for(unsigned k=0;k<=dc;++k) value+=a[i]*b[j]*c[k]*f[i+j+k];
+  return value;
+}
+"""
+
+
+def emit_df_derivatives_cuda() -> typing.Any:
+    """Share base axis moments and Boys values across all independent centers.
+
+    The derivative of an unnormalized basis factor is
+    2*alpha*g_(a+1) - a*g_(a-1). This is applied to the same moment DAG as the
+    value generator, at generation time. A branch owns at most eleven scalar
+    coefficients; the runtime holds bounded coefficient arrays, never AD state.
+    """
+    prefix = r"""// Generated DF metric/three-center first derivatives.
+#ifndef GENERATIVEQC_GENERATED_DF_DERIVATIVES_CUH
+#define GENERATIVEQC_GENERATED_DF_DERIVATIVES_CUH
+#include <cuda_runtime.h>
+#include <cmath>
+namespace generativeqc::scf::generated_df_derivatives {
+struct Vec3 { double x,y,z; };
+struct Angular { unsigned x,y,z; };
+struct Response { double value; Vec3 first,second,third; };
+__device__ __forceinline__ unsigned order(Angular a) { return a.x+a.y+a.z; }
+__device__ __forceinline__ double component(Vec3 a,unsigned i) { return i==0?a.x:i==1?a.y:a.z; }
+__device__ __forceinline__ unsigned power(Angular a,unsigned i) { return i==0?a.x:i==1?a.y:a.z; }
+__DF_BOYS__/** Exact coefficients in u=t^2 of the shared Gaussian-moment value DAG. */
 __device__ __noinline__ void axis_polynomial(unsigned a,unsigned b,unsigned c,
     double pa,double pb,double dx,double sx,double sy,double ip,double iq,double* out) {
   switch(a*20U+b*4U+c) {
 """
-    lines = [prefix]
+    lines = [prefix.replace("__DF_BOYS__", emit_df_boys_cuda())]
     for a, b, c in product(range(5), range(5), range(4)):
         if a == b == 4:
             continue
@@ -130,16 +154,7 @@ __device__ __noinline__ void axis_polynomial(unsigned a,unsigned b,unsigned c,
         "  out[0]=NAN;",
         "}",
         r"""
-/** Integrate the product of three polynomials using exact Boys moments. */
-__device__ double dot(unsigned da,const double* a,unsigned db,const double* b,
-    unsigned dc,const double* c,const double* f) {
-  double value=0.0;
-  for(unsigned i=0;i<=da;++i)
-    for(unsigned j=0;j<=db;++j)
-      for(unsigned k=0;k<=dc;++k) value+=a[i]*b[j]*c[k]*f[i+j+k];
-  return value;
-}
-/** One primitive product, independent of the AO components using it. */
+__DF_POLYNOMIAL_DOT__/** One primitive product, independent of the AO components using it. */
 struct Geometry {
   double pa[3],pb[3],dx[3],sx,sy,ip,iq,prefactor,f[11];
 };
@@ -201,6 +216,7 @@ __device__ __forceinline__ Response three_center(double alpha,Vec3 A,Angular a,
     # Device functions need internal linkage, including their NVCC host stubs.
     return (
         "\n".join(lines)
+        .replace("__DF_POLYNOMIAL_DOT__", emit_df_polynomial_dot_cuda())
         .replace("__DF_GEOMETRY_PREPARATION__", emit_df_geometry_cuda())
         .replace("__device__", "static __device__")
     )

@@ -80,6 +80,8 @@ def make_df_value_fixture(
     *,
     variant: typing.Any = "asymmetric",
     primitive_lengths: typing.Any = None,
+    exponent_scale: float = 1.0,
+    separation_scale: float = 1.0,
 ) -> DFValueFixture:
     """Generate a full Cartesian/spherical M or A shell block with signed contractions."""
     count = len(angular)
@@ -89,11 +91,14 @@ def make_df_value_fixture(
         raise ValueError("DF fixtures require two/three s/p/d/f/g shells")
     if variant not in ("asymmetric", "coincident"):
         raise ValueError("unknown DF geometry variant")
+    if any(not math.isfinite(s) or s <= 0 for s in (exponent_scale, separation_scale)):
+        raise ValueError("DF fixture scales must be finite and positive")
     coordinates = [[0.13, -0.31, 0.24], [-0.43, 0.27, 0.51], [0.68, -0.14, -0.22]][
         :count
     ]
     if variant == "coincident":
         coordinates = [coordinates[0]] * count
+    coordinates = [[x * separation_scale for x in center] for center in coordinates]
     lengths = tuple(primitive_lengths or (2 if i % 2 == 0 else 1 for i in range(count)))
     if len(lengths) != count or any(type(n) is not int or n < 1 for n in lengths):
         raise ValueError("positive contraction lengths are required")
@@ -104,7 +109,10 @@ def make_df_value_fixture(
                 "atom_index": i,
                 "angular_momentum": l,
                 "primitives": [
-                    [0.57 + 0.23 * i + 0.71 * j, 0.83 if j == 0 else (-0.17 / j)]
+                    [
+                        (0.57 + 0.23 * i + 0.71 * j) * exponent_scale,
+                        0.83 if j == 0 else (-0.17 / j),
+                    ]
                     for j in range(length)
                 ],
             }

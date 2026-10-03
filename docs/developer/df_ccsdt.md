@@ -208,9 +208,20 @@ internal `run_rccsd_native_state` entry accepts an optional correlation auxiliar
 system to compose native CUDA RHF, this source, and the native DF CCSD solver.
 Public descriptors still reject DF; native DF triples, Lambda and forces are
 not registered by this entry.
-The current CUDA source accepts orbital and auxiliary shells through f. Its
-shared capability check runs before RHF; g-shell RI auxiliary bases require a
-separately qualified source extension.
+The value source accepts orbital shells through f and auxiliary shells through
+g. The shared capability check runs before RHF. Existing through-f values use
+Rys quadrature; g auxiliary values use compiler-generated Gaussian moment
+polynomials with F0–F10 from the shared FP64 Boys evaluator. The generic source
+policy reports `generated_rys_auxiliary_g_polynomial` when g is present; other
+math policies are rejected for such an owner. Raw/transformed three-center and
+metric derivative requests on this owner are rejected before launch. Legacy
+integral exporters and public derivative capabilities retain their f limit.
+
+The DF metadata packer skips SCF warm densities and pair/quartet task tables.
+It uses Cartesian metadata plus a separate six-term public g expansion, leaving
+the legacy three-term SCF topology unchanged. This is an internal value-domain
+extension; hundreds-AO molecular endpoints still require independent
+conditioning, energy, residual and amplitude qualification.
 
 The source reuses the generated CUDA three-center/metric evaluator and the
 shared cuSOLVER symmetric inverse-root owner, with an explicit relative cutoff.
@@ -240,11 +251,17 @@ reservations: it is a conservative bound, not a measured physical peak.
 
 `tests/python/test_df_cc_molecular_source.py` is enabled with
 `GENERATIVEQC_DF_CC_SOURCE_CUDA_TEST=1` inside a finite Slurm GPU allocation.
-It checks factors/blocks against committed independent raw integrals, including
-duplicated auxiliary shells and truncated metric rank, and exercises exact
+It checks factors/blocks against committed independent raw integrals and live
+PySCF g-auxiliary fixtures, including duplicated auxiliary shells and truncated metric rank, and exercises exact
 budget admission and transactional failure. Its two-electron molecular CCSD
 case uses an independent determinant-space energy oracle. This small-source
 qualification does not establish a complete hundreds-AO CCSD(T)/force endpoint.
+`tests/python/test_df_auxiliary_g.py` uses `GENERATIVEQC_DF_G_CUDA_TEST=1` for
+its CUDA parameter. `tools/validate_df_source.py --cases g-cartesian g-spherical
+g-dependent g-cartesian-spherical` checks raw/metric/J/K values, mapping and
+tile choices, and derivative rejection using `tests/native/df_value_probe.cpp`.
+All GPU runs require a finite Slurm allocation. Large-source conditioning
+limitations are retained in the [auxiliary-g decision](../../.agents/notes/implemented/numerics/2026-10-03-df-auxiliary-g-values.md).
 
 See the [native solver decision](../../.agents/notes/implemented/architecture/2026-10-03-df-cc-native-solver.md)
 for ownership and auxiliary-work rationale.

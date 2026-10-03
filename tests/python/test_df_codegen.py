@@ -54,10 +54,16 @@ def test_cuda_df_inventory_retains_all_operator_signatures_and_exact_root_counts
     from generativeqc_compiler.integral.df_cuda import df_program_inventory
 
     inventory = df_program_inventory()
-    assert len(inventory["programs"]) == 16 + 64
+    assert len(inventory["programs"]) == 25 + 80
     root_counts = set()
     for payload in inventory["programs"]:
         integral = integral_from_payload(payload)
+        if 4 in integral.signature.angular:
+            assert integral.recurrence == "subset_wick"
+            assert integral.maximum_coulomb_order <= 10
+            if len(integral.signature.angular) == 3:
+                assert max(integral.signature.angular[:2]) <= 3
+            continue
         count = sum(integral.signature.angular) // 2 + 1
         assert integral.recurrence == f"rys{count}"
         assert integral.required_rys_roots == count

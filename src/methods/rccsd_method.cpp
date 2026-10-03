@@ -972,8 +972,7 @@ RccsdNativeState run_rccsd_native_state(
 #if GENERATIVEQC_HAS_CUDA
   if (correlation_auxiliary) {
     std::string detail;
-    if (!scf::cuda_execution::cuda_df_shell_domain(*correlation_auxiliary, "auxiliary", detail) ||
-        !scf::cuda_execution::cuda_df_shell_domain(system, "orbital", detail))
+    if (!scf::cuda_execution::cuda_df_value_domain(system, *correlation_auxiliary, detail))
       throw MethodError(GENERATIVEQC_STATUS_NOT_IMPLEMENTED, detail);
   }
 #endif

@@ -1,0 +1,425 @@
+{
+  "build_identity_header": "#ifndef GENERATIVEQC_BUILD_IDENTITY_HPP\n#define GENERATIVEQC_BUILD_IDENTITY_HPP\n\n// The CMake input inventory includes native code and codegen/runtime policy.\ninline constexpr const char* kGenerativeQCSourceIdentity = \"cb6e5e2bbf8c49964fcc1bb1bc1d584703e63a347e73d8b193b633adbf5fa871\";\n#define GENERATIVEQC_CUDA_FAST_COMPILE 0\n#define GENERATIVEQC_TUNING_RELEASE_BUILD 1\n\n#endif\n",
+  "configuration": {
+    "aot_shells": false,
+    "architecture": "sm_120",
+    "build": "Release",
+    "cuda": "12.9.86",
+    "cuda_launcher": "ccache",
+    "cxx_launcher": "ccache",
+    "precision": "FP64"
+  },
+  "derivative_header_sha256": "71430c3d8929868c10156d36578f719bbd56d595b35c4ae56131930395f4ce04",
+  "gates": {
+    "molecular_correlation_absolute": 3e-09,
+    "molecular_hf_absolute": 1e-09,
+    "molecular_residual": 1e-10,
+    "primitive_atol": 3e-11,
+    "primitive_rtol": 3e-11,
+    "raw_matrix_jk_atol": 2e-09,
+    "raw_matrix_metric_raw_atol": 2e-10,
+    "raw_matrix_rtol": 2e-10,
+    "source_factor_block_atol": 3e-10,
+    "source_factor_block_rtol": 3e-10
+  },
+  "initial_base_revision": "263218099",
+  "large_ethane_errors_by_auxiliary_angular": {
+    "0": {
+      "metric_rows": 8.832934383917745e-12,
+      "raw": 2.3030466422824247e-12
+    },
+    "1": {
+      "metric_rows": 1.7120527218139614e-11,
+      "raw": 2.617017713646419e-12
+    },
+    "2": {
+      "metric_rows": 1.3812950783176348e-11,
+      "raw": 2.7606805730329143e-12
+    },
+    "3": {
+      "metric_rows": 1.1012524225861853e-11,
+      "raw": 1.4155343563970746e-12
+    },
+    "4": {
+      "metric_rows": 2.460254222569347e-13,
+      "raw": 1.1368683772161603e-13
+    }
+  },
+  "large_ethane_raw_diagnosis": {
+    "bvv_metric_only_error": 1.929602219674642e-08,
+    "bvv_raw_only_error": 2.6008110698416687e-07,
+    "bvv_same_cpu_eigh_error": 2.461432754286008e-07,
+    "case": "ethane230",
+    "cond": 350622043.9502922,
+    "metric_error": 1.7120527218139614e-11,
+    "minimum_eigenvalue": 3.1018552466749688e-06,
+    "raw_error": 2.7606805730329143e-12,
+    "whitening_error": 1.0758953465028753e-05
+  },
+  "large_source_probes": [
+    {
+      "accepted": false,
+      "case": "ethane230",
+      "counts": [
+        781028855,
+        294728584,
+        230,
+        25815200,
+        232,
+        5,
+        24472809600,
+        5873584104,
+        423200,
+        294728584,
+        3810304,
+        488
+      ],
+      "gates": [
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "maximum_block_errors": [
+        3.212499504314046e-09,
+        2.547445993872355e-07,
+        2.3367267322493834e-11,
+        2.3393966885193462e-11,
+        2.9928826639213923e-09,
+        7.522035227911435e-12,
+        1.0662581928500003e-12
+      ],
+      "scope": "supplied independent orbital frame; native CUDA DF source only",
+      "source_call_seconds": 1.2274633250199258,
+      "values": [
+        1.0875788266271164e-07,
+        350622038.9333399,
+        0.056153708,
+        0.11923243,
+        0.732707794,
+        0.139378073,
+        1.194781782
+      ]
+    },
+    {
+      "accepted": false,
+      "case": "benzene264",
+      "counts": [
+        1977155573,
+        986335704,
+        264,
+        46417536,
+        266,
+        5,
+        55422537984,
+        53657442846,
+        557568,
+        986335704,
+        7096896,
+        666
+      ],
+      "gates": [
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "maximum_block_errors": [
+        9.971349501300408e-10,
+        3.201379661366133e-08,
+        1.2699529795823228e-11,
+        1.2716252530131644e-11,
+        4.1555606178356186e-10,
+        2.475041005478573e-12,
+        1.6120438317557273e-13
+      ],
+      "scope": "supplied independent orbital frame; native CUDA DF source only",
+      "source_call_seconds": 2.436744083184749,
+      "values": [
+        5.512285277464198e-08,
+        40966817.06948761,
+        0.070769938,
+        0.131049297,
+        1.528620401,
+        0.45524917,
+        2.330162405
+      ]
+    }
+  ],
+  "library_sha256": "4513b93d7a908bd0551b63a9910fe5ffa04aba87adb32229636b0e20b4c10fad",
+  "molecular_records": [
+    {
+      "auxiliary_g": false,
+      "case": "h2",
+      "correlation_energy": -0.012165233608025907,
+      "duplicate_auxiliary": false,
+      "energy_error": 6.852157730108388e-16,
+      "native_method_seconds": 0.3066720310598612,
+      "residual_max": 4.163336342344337e-17
+    },
+    {
+      "auxiliary_g": false,
+      "case": "h2",
+      "correlation_energy": -0.01216523360802599,
+      "duplicate_auxiliary": true,
+      "energy_error": 7.337880303381894e-16,
+      "native_method_seconds": 0.019214638974517584,
+      "residual_max": 1.3877787807814457e-17
+    },
+    {
+      "auxiliary_g": true,
+      "case": "h2",
+      "correlation_energy": -0.01564358199850645,
+      "duplicate_auxiliary": false,
+      "energy_error": 1.1969591984239969e-15,
+      "native_method_seconds": 0.04746977100148797,
+      "residual_max": 5.551115123125783e-17
+    },
+    {
+      "auxiliary_g": true,
+      "case": "h2",
+      "correlation_energy": -0.015643581998505737,
+      "duplicate_auxiliary": true,
+      "energy_error": 3.5735303605122226e-16,
+      "native_method_seconds": 0.05002763494849205,
+      "residual_max": 8.326672684688674e-17
+    }
+  ],
+  "native_source_records": [
+    {
+      "case": "h2",
+      "duplicate_auxiliary": false,
+      "gemms": [
+        4,
+        5
+      ],
+      "maximum_block_error": 3.3306690738754696e-15,
+      "n": 2,
+      "o": 1,
+      "q": 2,
+      "rank": 2,
+      "raw_values": 8,
+      "source_rows": 2
+    },
+    {
+      "case": "water",
+      "duplicate_auxiliary": false,
+      "gemms": [
+        9,
+        5
+      ],
+      "maximum_block_error": 8.952560914821106e-14,
+      "n": 7,
+      "o": 5,
+      "q": 7,
+      "rank": 7,
+      "raw_values": 343,
+      "source_rows": 7
+    },
+    {
+      "case": "g_cartesian",
+      "duplicate_auxiliary": true,
+      "gemms": [
+        17,
+        5
+      ],
+      "maximum_block_error": 2.2820634271170093e-12,
+      "n": 15,
+      "o": 2,
+      "q": 33,
+      "rank": 32,
+      "raw_values": 7425,
+      "source_rows": 15
+    },
+    {
+      "case": "g_spherical",
+      "duplicate_auxiliary": true,
+      "gemms": [
+        14,
+        5
+      ],
+      "maximum_block_error": 3.2203493344207246e-13,
+      "n": 12,
+      "o": 2,
+      "q": 23,
+      "rank": 22,
+      "raw_values": 3312,
+      "source_rows": 12
+    },
+    {
+      "case": "lih",
+      "duplicate_auxiliary": false,
+      "gemms": [
+        8,
+        5
+      ],
+      "maximum_block_error": 5.789813073420191e-14,
+      "n": 6,
+      "o": 2,
+      "q": 6,
+      "rank": 6,
+      "raw_values": 216,
+      "source_rows": 6
+    },
+    {
+      "case": "f_heh",
+      "duplicate_auxiliary": false,
+      "gemms": [
+        11,
+        5
+      ],
+      "maximum_block_error": 2.7622348852673895e-13,
+      "n": 9,
+      "o": 1,
+      "q": 9,
+      "rank": 9,
+      "raw_values": 729,
+      "source_rows": 9
+    },
+    {
+      "case": "g_cartesian",
+      "duplicate_auxiliary": false,
+      "gemms": [
+        17,
+        5
+      ],
+      "maximum_block_error": 3.614775145877047e-12,
+      "n": 15,
+      "o": 2,
+      "q": 32,
+      "rank": 32,
+      "raw_values": 7200,
+      "source_rows": 15
+    },
+    {
+      "case": "g_spherical",
+      "duplicate_auxiliary": false,
+      "gemms": [
+        14,
+        5
+      ],
+      "maximum_block_error": 3.1993244858918857e-13,
+      "n": 12,
+      "o": 2,
+      "q": 22,
+      "rank": 22,
+      "raw_values": 3168,
+      "source_rows": 12
+    },
+    {
+      "case": "h2",
+      "duplicate_auxiliary": true,
+      "gemms": [
+        4,
+        5
+      ],
+      "maximum_block_error": 3.0531133177191805e-15,
+      "n": 2,
+      "o": 1,
+      "q": 3,
+      "rank": 2,
+      "raw_values": 12,
+      "source_rows": 2
+    },
+    {
+      "case": "water",
+      "duplicate_auxiliary": true,
+      "gemms": [
+        9,
+        5
+      ],
+      "maximum_block_error": 9.02333763264096e-14,
+      "n": 7,
+      "o": 5,
+      "q": 8,
+      "rank": 7,
+      "raw_values": 392,
+      "source_rows": 7
+    },
+    {
+      "case": "lih",
+      "duplicate_auxiliary": true,
+      "gemms": [
+        8,
+        5
+      ],
+      "maximum_block_error": 5.855038676116919e-14,
+      "n": 6,
+      "o": 2,
+      "q": 7,
+      "rank": 6,
+      "raw_values": 252,
+      "source_rows": 6
+    },
+    {
+      "case": "f_heh",
+      "duplicate_auxiliary": true,
+      "gemms": [
+        11,
+        5
+      ],
+      "maximum_block_error": 2.8332891588433995e-13,
+      "n": 9,
+      "o": 1,
+      "q": 10,
+      "rank": 9,
+      "raw_values": 810,
+      "source_rows": 9
+    }
+  ],
+  "raw_matrix_inputs": {
+    "g-cartesian": "8e4040238fe3b05791aa1ed1d551a4cca5fd06d88ae10437136b6eea72962a68",
+    "g-cartesian-spherical": "d1bb8f29eaf834c042c092807ef6f28a05369c6b0226622b9070b632f7cb5956",
+    "g-dependent": "a317a3cbb2c8efaf9497123da2ee758b630bdd4461f316bde63e1e23b99dde0d",
+    "g-spherical": "e119aa13a5433bb927e86b2e40eb0c8ff01e72523dd3f466001958aeb798647d"
+  },
+  "raw_matrix_job_ids": [
+    "12135"
+  ],
+  "raw_matrix_maximum_absolute_errors": {
+    "j": 2.587707825796315e-12,
+    "k": 6.916689443414725e-13,
+    "ka": 4.150013666048835e-13,
+    "kb": 2.76667577736589e-13,
+    "metric": 5.298872451930947e-12,
+    "raw": 1.1195488980320079e-12,
+    "uj": 2.587707825796315e-12
+  },
+  "reference": {
+    "molecular": "independent two-electron determinant Hamiltonian",
+    "primitive": "independent libcint int2c2e/int3c2e Cartesian/spherical blocks",
+    "pyscf": "2.14.0"
+  },
+  "retained_log_hashes": {
+    "gpu-final.log": "63aac85cd650eabbf5851b9400786df2190b4c31872a07aec7a8f85e48f071bc",
+    "memcheck-raw.log": "75848777d137977f32e9cef14694c17c9b7657be84be57e7cbca5c38221e3e3e",
+    "memcheck.log": "ac60f63203ecc1066f9e00804b1c54b9603bb102c1bd99524d32f1018916ba1f",
+    "raw-diagnostic.log": "5512c13796b89117658d067f6f8588ac8e26d1560e8da168a856a046b1e866ed",
+    "raw-matrix/report.json": "732dcbe9d2a750fbc4ea1d93fe09f4082cb7047cbc09775a4c4669a8d728ecfb",
+    "regressions.log": "1ea79b8f5892bb385aadb602a6adb78b53ed885835420a26343e85909deaabd8"
+  },
+  "schema": "generativeqc.df_auxiliary_g.qualification.v1",
+  "scope": "Native value-domain qualification only; large molecular CCSD(T)/forces not accepted.",
+  "source_base_revision": "5efba5c3f39a15f1c509d95b3b8afb0435e80817",
+  "source_delta_sha256": "dbfdab3fa5110cf40e84c3799e22a837bb483b3f7ed2e602ab7e35be933ce730",
+  "tests": {
+    "combined": 131,
+    "combined_cpu_value_and_domain": 58,
+    "combined_gpu_value": 57,
+    "combined_native_source_and_molecular": 16,
+    "compiler_derivative_admission_regressions": 120,
+    "host_metadata_assertions_enabled": true,
+    "memcheck_combined_errors": 0,
+    "memcheck_combined_passed": 131,
+    "memcheck_raw_source_errors": 0,
+    "raw_matrix_all_passed": true,
+    "raw_matrix_runs": 32
+  },
+  "value_header_sha256": "46c793538e844b3c8a3a8f8608db93413d5e93ff8f741708a567df28c308adc7"
+}

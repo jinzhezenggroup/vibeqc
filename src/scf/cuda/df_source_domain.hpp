@@ -12,4 +12,10 @@ namespace generativeqc::scf::cuda_execution {
  */
 bool cuda_df_shell_domain(const core::System& system, const char* role, std::string& detail);
 
+/** Value-only source domain: orbital through f, auxiliary through g.
+ * Legacy exporters/derivatives continue to use the stricter f query above.
+ */
+bool cuda_df_value_domain(const core::System& orbital, const core::System& auxiliary,
+                          std::string& detail);
+
 }  // namespace generativeqc::scf::cuda_execution
