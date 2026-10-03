@@ -26,7 +26,11 @@ def save_svg(fig: plt.Figure, path: Path) -> None:
     """Strip Matplotlib path-line whitespace for a clean, stable Git diff."""
     fig.savefig(path, metadata={"Date": None})
     path.write_text(
-        "\n".join(line.rstrip() for line in path.read_text().splitlines()) + "\n"
+        "\n".join(
+            line.rstrip() for line in path.read_text(encoding="utf-8").splitlines()
+        )
+        + "\n",
+        encoding="utf-8",
     )
 
 

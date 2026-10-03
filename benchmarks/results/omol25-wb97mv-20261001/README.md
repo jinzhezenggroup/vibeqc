@@ -12,7 +12,7 @@ and moved **21.447856 s**. GPU4PySCF's corresponding warm medians are
 **16.424809 s** and **16.471310 s**. Maximum absolute energy and force errors
 are `8.27e-12 Eh` and `5.79e-11 Eh/Bohr`.
 
-[Current scalar evidence and provenance](default-hf-cartesian/water3.json)
+[Current scalar evidence and provenance](default-hf-cartesian/water3.json.gz)
 and compressed complete native/reference journals preserve the original
 `737f3481fcc5a82039bd59b676f14d5e963a517d`-based candidate, library hash and
 source-file identities; they are not relabeled as measurements of a later
@@ -67,7 +67,7 @@ canonical-J/K PR-head preview (Slurm 11950), not the slow ordered-AO schedule.
 The current source integrates GitHub master
 `8154ab3df56a10900dd267039b857021a1054721` plus #1637 and the endpoint fixes;
 the earlier preview timing is not relabeled as a measurement of that new build.
-[endpoint-preview.json](endpoint-preview.json) retains all twelve scalar calls
+[endpoint-preview.json](endpoint-preview.json.gz) retains all twelve scalar calls
 for the old native schedule, canonical preview and independent reference, with
 their exact binary/source/raw identities.
 
@@ -280,3 +280,12 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=02:30:00 \
   python -m pytest -q tests/python/test_wb97mv_complete_cuda.py \
   -k 'test_complete_cuda_force_matches_independent_engine and (def2-tzvp or local-def2-tzvpd)'
 ```
+
+## Lossless report storage
+
+Five earlier scalar reports now use `.json.gz`; [report-storage.json](report-storage.json)
+records decoded/stored sizes and SHA-256 digests. `gzip -dc FILE.json.gz` recovers
+every original byte. Basis inputs, native/reference journals and all scientific
+observations are unchanged. The renderer consumes original run journals and
+emits these scalar reports; no executable consumer of these five stored reports
+was found in the source/test audit.

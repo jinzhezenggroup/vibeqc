@@ -1,0 +1,111 @@
+{
+  "schema": "generativeqc.wb97mv-readme-evidence.v1",
+  "source": {
+    "source_identity": "de8a1684f0afbb4ec8545022c46d24c1e6c85c3c7851df237af436897bf1d862",
+    "manifest_inputs": 1351,
+    "library_sha256": "b82e468613c5c90e076aa10082b2389c8dda74335f625a7b77641c1c085ef3f9",
+    "test_executable_sha256": "5956bd132175d701358722b8b7a204431a94962c84aec0011917af6a7f948c0e",
+    "built_source_commit": "c06859af9e03b869d5336e633778b3b0d8da7825",
+    "source_commit": "0132d75844c13d90bd04cb250e3aafae12d2a3dd",
+    "master_commit": "d442177a6b1ea151de4b66694749ec7e3e889dae",
+    "integration": "actual master merge changes only documentation/evidence/tests; all manifest inputs byte-equivalent to built source"
+  },
+  "scope": "opt-in integrated candidate; warm complete energy plus analytic forces; not a master default claim",
+  "files": {
+    "matched12-sparse.json.xz": {
+      "sha256": "3d6edf958329ac869d91d55afc854e474bc69488ad8045eb616168f19f1d1568",
+      "bytes": 9996,
+      "decoded_sha256": "39eafcc269ab21b520553f668bbd325f2435c795731479480c051be8f9ef48a0",
+      "decoded_bytes": 86407
+    },
+    "matched24-dense.json.xz": {
+      "sha256": "d6cb681628917905c38220e9200c64673143267e6e7cb4e07ad52ed77bb36320",
+      "bytes": 11428,
+      "decoded_sha256": "286642e07a06a05f5f874e1fab20ee7815c905fbfabaa7e39ff3a1600dda4f1b",
+      "decoded_bytes": 100425
+    },
+    "matched24-sparse.json.xz": {
+      "sha256": "f7bee52eb6ef7edb3d07eeb0d646b2530474d23d6122b49ead7eff2051108c5a",
+      "bytes": 11896,
+      "decoded_sha256": "26a60fe617cfd36117fea054057df6b1c5c24a618cd2a667ae4499671fdefdd1",
+      "decoded_bytes": 105206
+    },
+    "matched3-sparse.json.xz": {
+      "sha256": "9ccf4809ef2c586ea688ee807050d816a33b07e427b847e02aeac9dd23230e38",
+      "bytes": 8340,
+      "decoded_sha256": "d90495078684154f16192dfeca83098e1e8c1eab0086c77cda42e8feacf536d6",
+      "decoded_bytes": 72123
+    },
+    "matched48-dense.json.xz": {
+      "sha256": "47546b5a6f9f7360ec07290cd6a68f1f58d22a8b1238086db98c2422f72a166f",
+      "bytes": 15476,
+      "decoded_sha256": "fe4e7385e20b5a7847ce741059c1aad18568296e3c98be20969128e10f37b7d5",
+      "decoded_bytes": 137911
+    },
+    "matched48-sparse.json.xz": {
+      "sha256": "a3bba2c59be991fe59f808297e2831eeaf11f8e0328e8fec6815d4b9487131ae",
+      "bytes": 15760,
+      "decoded_sha256": "b07e03ccb45eae9baea758deb8978b1e763fc08ed3ddd804d22461e878cb4795",
+      "decoded_bytes": 142653
+    },
+    "matched6-sparse.json.xz": {
+      "sha256": "920e6dbdb20d1d164635a7d655ab1a5e719c7eb7427af195189e4555226cc488",
+      "bytes": 8872,
+      "decoded_sha256": "e2d91d8b1e3480c6320d3071e71d6be859610cbb44c086224107a2b74d7b1bfc",
+      "decoded_bytes": 76965
+    },
+    "matched96-dense.json.xz": {
+      "sha256": "62aa98a3aef4032003373ce9c264e1e26e89f7c5fbb76a5effd13dd3b508c9e3",
+      "bytes": 22968,
+      "decoded_sha256": "49e54fab605c9c43fc5b47b427e6dbe19f548f3c0f694879403906faff71542c",
+      "decoded_bytes": 212383
+    },
+    "matched96-sparse.json.xz": {
+      "sha256": "330df9491d70aade7f4f3d92362d99ef2088195b4d4e7cbff51d6efbc5220784",
+      "bytes": 23276,
+      "decoded_sha256": "0f70cf776b6ca2a764efe7ffe963848fd73e4bb9ee2d0118b3fa10025c00c330",
+      "decoded_bytes": 217295
+    }
+  },
+  "reproduction": {
+    "base_comparator_sha256": "c3160265baf9fa4b5baa9de155ceac045d629fc187e6c198397bcda5e3c16c63",
+    "patch_sha256": "8833024f1b9d0e4bf0036ab5bb6408302a3c6d9a4b960fe5fc485c96af68cc7b",
+    "result_sha256": {
+      "complete-cold-benchmark.py": "e91b1d52b77faa7e21c2f2b8d4177d917bead542a375a34dbfd29eda81793761",
+      "matched-probe.py": "175130388a59a3fe0c99981affa51742e61867167ef9f7431b5c8bf71ab4bd44",
+      "ao-work.py": "d339758940a82237cc97a69c0e9f84fe81a42885d0787833b6bf75ababe80fe2"
+    }
+  },
+  "slurm_jobs": {
+    "3": 5631,
+    "6": 5631,
+    "12": 5631,
+    "24": 5577,
+    "48": 5576,
+    "96": 1412
+  },
+  "comparison_modes": {
+    "3": [
+      "sparse"
+    ],
+    "6": [
+      "sparse"
+    ],
+    "12": [
+      "sparse"
+    ],
+    "24": [
+      "dense",
+      "sparse"
+    ],
+    "48": [
+      "dense",
+      "sparse"
+    ],
+    "96": [
+      "dense",
+      "sparse"
+    ]
+  },
+  "pending_controls": []
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "generativeqc.wb97mv-lossless-report-storage.v1",
+  "original_revision": "8e9461e95733cedb70c57e9350b57f044b369f82",
+  "scope": "Lossless storage of earlier WB97M-V reports; every original observation and byte is recoverable. Basis fixtures and compressed native/reference journals unchanged.",
+  "members": [
+    {
+      "original": "water3.json",
+      "stored": "water3.json.gz",
+      "original_bytes": 36403,
+      "stored_bytes": 6866,
+      "original_sha256": "7a5974a09008bf6eb9ffde8f359462ef3b68c5b67023ae0a1f51beb20f4d635e",
+      "stored_sha256": "c307d0d365c12d7a0c6163e7c4362113fd2f0c977222d87a6a8ea80aec1b4621"
+    },
+    {
+      "original": "water6.json",
+      "stored": "water6.json.gz",
+      "original_bytes": 18602,
+      "stored_bytes": 4281,
+      "original_sha256": "04a0539b0eddd20cba214344c1f513cd81bf50852a821af7bb41b512c41a7b07",
+      "stored_sha256": "3412d2fcf3c752669ffd3872204c75ad36b8172cbee42e2b463fb4c612ce9d1e"
+    },
+    {
+      "original": "endpoint-preview.json",
+      "stored": "endpoint-preview.json.gz",
+      "original_bytes": 41468,
+      "stored_bytes": 5109,
+      "original_sha256": "67eda4248b73ee26a56addd2aa5053b450f3ccde0547c6d4c3c1e5de3ef58dc9",
+      "stored_sha256": "57b44af2e35d4e6c132ae6fb8d73276457133ff81b4c179eddd22745e41f0d17"
+    },
+    {
+      "original": "default-hf-cartesian/water3.json",
+      "stored": "default-hf-cartesian/water3.json.gz",
+      "original_bytes": 36832,
+      "stored_bytes": 7078,
+      "original_sha256": "24b2f68c520cae27184274113ef934cb764ecf52ea531a3b53bb1999db9abf43",
+      "stored_sha256": "b6b5326f6c3de67859867191f49bec654b4b5db8d843c04af5e3b9aa91b57959"
+    },
+    {
+      "original": "default-hf-cartesian/water6.json",
+      "stored": "default-hf-cartesian/water6.json.gz",
+      "original_bytes": 30038,
+      "stored_bytes": 5962,
+      "original_sha256": "86607c919879c35b743dd97ba1a5002153d4726d88e061a69de8c23d1aad9524",
+      "stored_sha256": "cc19673fcb117b6385410eff4629e2237a50439e4961331b0220120de840d405"
+    }
+  ]
+}

@@ -194,6 +194,7 @@ print(first.energies)
 | Method | Performance |
 | --- | --- |
 | HF (direct / DF) | <a href="benchmarks/results/df-one-step-warm-20260926/hf.svg"><img src="benchmarks/results/df-one-step-warm-20260926/hf.svg" width="900" alt="GenerativeQC versus GPU4PySCF: direct and DF RHF energy-plus-force latency"></a> |
+| ωB97M-V / def2-SVP | <a href="benchmarks/results/wb97mv-active-ao-20261003/wb97mv.svg"><img src="benchmarks/results/wb97mv-active-ao-20261003/wb97mv.svg" width="900" alt="GenerativeQC versus GPU4PySCF: warm WB97M-V energy-plus-analytic-force latency at 3, 6, 12, 24, 48 and 96 atoms; medians and min–max ranges"></a> |
 
 <!-- DFT benchmark rows are temporarily withheld from the rendered README.
 Restore these rows to the table above only after approval to publish the results.
@@ -203,6 +204,16 @@ Restore these rows to the table above only after approval to publish the results
 
 RTX 5090, spherical def2-SVP: complete warm RHF energy + forces, five repeats.
 [Protocol and results](benchmarks/results/df-one-step-warm-20260926/README.md).
+
+ωB97M-V uses an explicitly enabled integration candidate with SCF/force AO
+selection and matched unpruned grids on an RTX 5090. The six-point figure uses
+the same AO sizes and visual style as HF and shows warm medians and min–max
+ranges over three fixed-density replays per engine. At 24–96 atoms, warm takes
+3.9–5.8% less time. Complete cold startup is documented separately and remains
+slower.
+[Source, controls, cold timings and all-sample accuracy
+gates](benchmarks/results/wb97mv-active-ao-20261003/README.md) identify the measured
+path separately from the master default.
 
 <!-- DFT benchmark discussion is temporarily withheld with the rows above.
 PBE0 uses the same 3–96-atom water clusters, full spherical def2-SVP,

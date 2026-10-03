@@ -1,0 +1,171 @@
+--- a/complete-cold-benchmark.py
++++ b/complete-cold-benchmark.py
+@@ -221,6 +221,19 @@
+ 
+     def save(stage: str) -> None:
+         record["stage"] = stage
++        # Preparation owns geometry-only AO discovery. Preserve execute-only
++        # fields and report synchronized preparation plus first execution for
++        # both engines; do not add lifetime preparation again to warm timings.
++        for engine in ("native", "reference"):
++            cold = record.get(f"{engine}_cold")
++            prepare = record.get(f"{engine}_prepare_seconds")
++            if cold is not None and prepare is not None:
++                record[f"{engine}_complete_cold"] = {
++                    "seconds": prepare + cold["seconds"],
++                    "prepare_seconds": prepare,
++                    "first_execute_seconds": cold["seconds"],
++                    "scope": "synchronized preparation plus first energy/force execution",
++                }
+         args.output.write_text(json.dumps(record, indent=2, allow_nan=False) + "\n")
+ 
+     batch = None
+@@ -234,11 +247,14 @@
+             }
+         )
+         record["environment"]["accelerator"] = cuda_accelerator_metadata(cp)
++        cp.cuda.runtime.deviceSynchronize()
+         started = perf_counter()
+         reference = reference_engine(atoms, "def2-svp", spec)
++        cp.cuda.runtime.deviceSynchronize()
+         record["reference_prepare_seconds"] = perf_counter() - started
+         if not args.reference_only:
+             save("native/prepare")
++            cp.cuda.runtime.deviceSynchronize()
+             started = perf_counter()
+             calc = Calculator(
+                 method="wb97m-v",
+@@ -252,6 +268,7 @@
+                 max_iterations=180,
+             )
+             batch = calc.prepare_batch([atoms], warm_start=True)
++            cp.cuda.runtime.deviceSynchronize()
+             record["native_prepare_seconds"] = perf_counter() - started
+             record["native_build"] = native_build_metadata(calc)
+             save("native/cold")
+--- /dev/null
++++ b/matched-probe.py
+@@ -0,0 +1,98 @@
++"""Clean full-Fock reference control using the unchanged complete comparator.
++
++All hooks record metadata after clean timers stop. Each engine computes its own
++density; only the reference convergence controls and shared active-density domain
++are specified here. Source snapshots and binary hashes live in the bundle receipt.
++"""
++import copy
++import numpy as np
++import importlib.util
++from pathlib import Path
++import os
++
++root = Path(os.environ['ACTIVE_AO_ROOT'])
++spec = importlib.util.spec_from_file_location('complete_cold_benchmark', root/'complete-cold-benchmark.py')
++benchmark = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(benchmark)
++spec = importlib.util.spec_from_file_location('ao_work', root/'ao-work.py')
++ao_work = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(ao_work)
++from benchmarks import compare_gpu4pyscf_batch as common
++from benchmarks.compare_df_direct_endpoint import reference_work_counter
++
++
++# SCF discovery is opt-in at native plan creation and belongs to preparation.
++# Force maps are a separate order-2 selection discovered on first execution.
++from generativeqc._stationary_composite_cuda import PreparedCompositeStationaryCudaGradient
++mode = os.environ['ACTIVE_AO_MODE']
++assert mode in ('dense', 'sparse')
++assert os.environ['GENERATIVEQC_CUDA_KS_ACTIVE_AO'] == ('1' if mode == 'sparse' else '0')
++original_execute = PreparedCompositeStationaryCudaGradient.execute
++
++def execute(self, *args, **kwargs):
++    kwargs.update(active_ao_cutoff=1e-16 if mode == 'sparse' else None,
++                  active_ao_cache_bytes=64 << 20)
++    return original_execute(self, *args, **kwargs)
++
++PreparedCompositeStationaryCudaGradient.execute = execute
++
++original_engine = benchmark.reference_engine
++original_reference_sample = benchmark.reference_sample
++original_native_sample = common._generativeqc_sample
++reference_cold = None
++
++
++def reference_engine(*args, **kwargs):
++    kwargs["full_fock"] = True
++    engine = original_engine(*args, **kwargs)
++    engine.conv_tol = 1e-11
++    engine.conv_tol_grad = 1e-8
++    engine.direct_scf_tol = 1e-14
++    return engine
++
++
++def reference_sample(engine, *args, **kwargs):
++    global reference_cold
++    with benchmark.reference_vv10_domain(1e-8) as domain:
++        with reference_work_counter(engine) as work:
++            result = original_reference_sample(engine, *args, **kwargs)
++        result['scf_jk_builds'] = work['scf_jk_builds']
++        result['vv10_density_thresholds'] = dict(domain)
++    from gpu4pyscf.dft.numint import _init_xcfuns
++    result['reference_xc_backend'] = [
++        {'id': int(x.func_id), 'weight': float(w), 'on_gpu': bool(x.on_gpu)}
++        for x, w in _init_xcfuns(engine.xc, engine.mol.spin)]
++    result["reference_fock_policy"] = "full-density get_veff; suppress dm_last and vhf_last"
++    # Validation occurs after the complete endpoint timer. Each replay uses
++    # this reference engine's own fixed post-cold density, as the harness requires.
++    if reference_cold is None:
++        reference_cold = copy.deepcopy(result)
++    errors = {}
++    for key, gate in (("energies_hartree", 1e-8), ("forces_hartree_per_bohr", 1e-7)):
++        actual, expected = np.asarray(result[key]), np.asarray(reference_cold[key])
++        assert actual.shape == expected.shape and np.isfinite(actual).all(), key
++        errors[key] = float(np.max(np.abs(actual - expected)))
++        assert errors[key] <= gate, (key, errors[key], gate)
++    result["reference_cold_consistency_errors"] = errors
++    return result
++
++
++def native_sample(batch, *args, **kwargs):
++    result = original_native_sample(batch, *args, **kwargs)
++    result['active_ao_experiment'] = dict(mode=mode, cutoff=1e-16 if mode == 'sparse' else None,
++        policy='explicit native SCF order1 and complete force order2 maps; SCF discovery charged in complete cold preparation')
++
++    work = ao_work.read_work(batch)
++    assert work['requested'] == work['selected'] == (1 if mode == 'sparse' else 0), work
++    assert work['xc_evaluations'] > 0
++    assert work['point_ao_square_sum'] <= work['dense_point_ao_square_sum']
++    result['native_scf_ao_work'] = work
++    result['native_scf_executed_point_ao_square_sum'] = work['xc_evaluations'] * work['point_ao_square_sum']
++    result['force_work'] = copy.deepcopy(batch._stationary_cuda_execution.last_work)
++    return result
++
++
++benchmark.reference_engine = reference_engine
++benchmark.reference_sample = reference_sample
++common._generativeqc_sample = native_sample
++benchmark.main()
+--- /dev/null
++++ b/ao-work.py
+@@ -0,0 +1,22 @@
++"""Read current-result native selection counters without entering a device path."""
++import ctypes as ct
++
++COUNTERS = ('requested selected tiles empty_tiles min_active max_active active_sum '
++            'discovery_ao_jet_values point_ao_visits point_ao_square_sum '
++            'dense_point_ao_square_sum discovery_d2h_bytes reserved_device_bytes '
++            'host_peak_bytes xc_evaluations').split()
++class AoWork(ct.Structure):
++    _fields_ = [('struct_size', ct.c_uint32), ('abi_version', ct.c_uint32)] + [
++        (name, ct.c_uint64) for name in COUNTERS] + [
++        ('cutoff', ct.c_double), ('discovery_seconds', ct.c_double)]
++
++def read_work(batch, index=0):
++    function = batch._library.generativeqc_batch_get_ks_ao_selection_diagnostic_v1
++    function.argtypes = [ct.c_void_p, ct.c_uint32, ct.POINTER(AoWork)]
++    function.restype = ct.c_int
++    value = AoWork()
++    value.struct_size = ct.sizeof(value)
++    value.abi_version = 0
++    status = function(batch._batch, index, ct.byref(value))
++    assert status == 0, ('AO work status', status, index)
++    return {name: getattr(value, name) for name, _ in value._fields_[2:]}
