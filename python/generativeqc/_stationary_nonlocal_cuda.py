@@ -29,6 +29,8 @@ def resident_nonlocal_geometry(
     ao_count: int,
     functional: int,
     ingredients: tuple[str, ...],
+    ao_maps: typing.Any = None,
+    ao_domain: typing.Any = None,
 ) -> tuple[dict[str, np.ndarray], dict[str, float], dict[str, typing.Any]]:
     """Prefer live SCF features, retaining the bounded device collection fallback.
 
@@ -72,6 +74,19 @@ def resident_nonlocal_geometry(
     if type(ao_count) is not int or ao_count <= 0:
         raise ValueError("resident nonlocal AO count must be a positive integer")
 
+    if (ao_maps is None) != (ao_domain is None):
+        raise ValueError("resident AO cache and domain must be supplied together")
+    if ao_maps is not None:
+        if (
+            ao_domain.point_pointer != resident_grid.points
+            or ao_domain.point_count != count
+            or ao_domain.device != resident_grid.device
+            or ao_domain.grid_identity != state.grid.identity
+            or ao_domain.geometry_identity != state.identity.geometry_identity
+        ):
+            raise ValueError("resident AO domain differs from the current grid lease")
+        ao_maps.reset_work()
+
     began = perf_counter()
     diagnostic = nonlocal_owner.diagnostic()
     if diagnostic.executed:
@@ -94,10 +109,15 @@ def resident_nonlocal_geometry(
         for begin in range(0, count, tile_points):
             end = min(begin + tile_points, count)
             point_pointer = resident_grid.points + 3 * begin * 8
+            ao_ids = (
+                None
+                if ao_maps is None
+                else ao_maps.select(grid, ao_domain, begin, end - begin)
+            )
             with grid.feature_task_device_points(
                 point_pointer,
                 end - begin,
-                None,
+                ao_ids,
                 ingredients,
             ) as task:
                 weights = state.grid.weights[begin:end]
@@ -234,6 +254,8 @@ def resident_nonlocal_geometry(
         "nonlocal_stationary_source_d2h_bytes": 3 * 3 * sources.natom * 8,
         "stationary_source_full_arena_d2h_bytes_avoided": 6 * 3 * sources.natom * 8,
     }
+    if ao_maps is not None:
+        work["active_ao_maps"] = ao_maps.work
     # Detailed profiling deliberately uses the retained explicit-owner / host
     # weight route. Each geometry consumer visits the complete grid exactly once,
     # including the two-pass feature fallback; count transfers per consumer, not
