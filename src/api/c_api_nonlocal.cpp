@@ -66,15 +66,17 @@ std::span<T> optional_span(T* pointer, std::uint32_t count, const char* label) {
 }
 
 #if GENERATIVEQC_HAS_CUDA
-// The dry query and allocating owner share this inventory. Its 22 I/O arrays
-// coexist with the pair layout and three sticky error flags; no GPU inspection
-// or allocation is needed to admit the force before JIT or owner preparation.
+// The dry query and allocating owner share this inventory. Fifteen full-grid
+// arrays cover xyz(3), immutable weights(1), rho/gradient(4), effective weights(1)
+// and seeds(6). Domain preparation overwrites private rho/gradient in place;
+// the later pair kernels reuse the dead gradient panel for point derivatives.
+// Pair workspace and three sticky error flags remain separately charged.
 std::size_t nonlocal_force_arena_doubles(
     const generativeqc::dft::nlc::Vv10CudaDeviceLayout& layout) {
   using generativeqc::runtime::size_add;
   using generativeqc::runtime::size_mul;
   return size_add(
-      size_mul(std::size_t{22}, layout.point_count, "resident nonlocal force extent overflow"),
+      size_mul(std::size_t{15}, layout.point_count, "resident nonlocal force extent overflow"),
       layout.workspace_bytes / sizeof(double), "resident nonlocal force extent overflow");
 }
 
@@ -275,10 +277,15 @@ GENERATIVEQC_API generativeqc_status generativeqc_internal_nonlocal_cuda_force_c
     result->raw_density = take(n);
     result->raw_gradient = take(3 * n);
     result->effective_weights = take(n);
-    result->effective_density = take(n);
-    result->effective_gradient = take(3 * n);
+    // MolecularV1 loads a point's rho/gradient before replacing those values.
+    // Keep original weights separate: a reset may unscreen an earlier row.
+    result->effective_density = result->raw_density;
+    result->effective_gradient = result->raw_gradient;
     result->seeds = take(6 * n);
-    result->point_derivative = take(3 * n);
+    // Local-scale construction is the last gradient reader. Ordered later
+    // pair kernels may overwrite it; packing then reads this AoS panel into
+    // the separate SoA seeds. Aliasing the seeds themselves would race.
+    result->point_derivative = result->raw_gradient;
     result->workspace = take(workspace_doubles);
     if (cursor != result->arena.get() + doubles)
       throw std::logic_error("resident nonlocal CUDA force arena partition mismatch");

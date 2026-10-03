@@ -358,6 +358,8 @@ __global__ void molecular_domain_kernel(std::size_t npoint, double threshold, co
                                         double* effective_gradient, int* failed) {
   for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < npoint;
        i += std::size_t(blockDim.x) * gridDim.x) {
+    // The private force owner uses in-place effective rho/gradient storage.
+    // Keep every input load before the first output store for this point.
     const double rho = density[i];
     const double gx = gradient[3 * i];
     const double gy = gradient[3 * i + 1];
