@@ -1,0 +1,68 @@
+{
+  "scope": "Native molecular DF pair projection; large converged-state replay is diagnostic only",
+  "base_commit": "a7eeb01b0aa6706310543cf013b4f4e4960cbf49",
+  "device": "NVIDIA GeForce RTX 5090; finite Slurm main/gpu:5090:1",
+  "qualified_binary_sha256": "3d422693cb122b989777ee67c847e46d15b9eb8edfac3316cd5762ec2e04fa4f",
+  "final_binary_sha256": "af99349095adf99c3c218c3536c2ee4630fbf309da7d576f78f0acef85e085be",
+  "factor_equation_hash": "5f7e40e355a25c7fe99673650f082a5d8074acb16303161b1e93dabe9a870ad3",
+  "generated_packing_sha256": {
+    "generated_df_cc_source_cpu.hpp": "dad6dd3010a86978e0ed9e6d57af350f903ef00bf3b1d91f5d8d86c079893efa",
+    "generated_df_cc_source_cuda.cu": "9ec72c6fb17d9298952898d84b5ad187aa49750d5c3c63752babb7c0fc31ffa8"
+  },
+  "validation": {
+    "cpu_regressions_passed": 50,
+    "optional_gpu_tests_skipped_in_cpu_run": 13,
+    "native_source_and_molecular_cases": 16,
+    "original_memcheck_errors": 0,
+    "final_binary_memcheck_cases_passed": 16,
+    "final_binary_memcheck_errors": 0,
+    "type_check_errors": 0
+  },
+  "large_diagnostics": [
+    {
+      "case": "ethane230",
+      "supplied_independent_frame_and_converged_amplitudes": true,
+      "status": 0,
+      "correlation_energy_error": 2.0083934515469082e-13,
+      "expanded_r1_max": 2.8032638710318025e-11,
+      "expanded_r2_max": 3.182098248094567e-11,
+      "amplitude_changes": [
+        1.0097419586828951e-28,
+        1.0097419586828951e-28
+      ],
+      "source_seconds": 1.2116626440547407,
+      "note": "Allowed damping nextafter(1,0), no DIIS, two primary evaluations plus expanded replay; not a cold solve",
+      "two_evaluations_and_expanded_replay_seconds": 37.365944696
+    },
+    {
+      "case": "benzene264",
+      "supplied_independent_frame_and_converged_amplitudes": true,
+      "status": 0,
+      "correlation_energy_error": 4.072298054325074e-13,
+      "expanded_r1_max": 1.917519094896125e-11,
+      "expanded_r2_max": 1.1687031117174618e-11,
+      "amplitude_changes": [
+        2.524354896707238e-29,
+        2.524354896707238e-29
+      ],
+      "source_seconds": 2.4147410397417843,
+      "two_evaluations_and_expanded_replay_seconds": 449.027742325,
+      "note": "Allowed damping nextafter(1,0), no DIIS, two primary evaluations plus expanded replay; not a cold solve"
+    }
+  ],
+  "original_large_factor_gates": "Still not qualified at atol=rtol=3e-10; no relaxation in this change",
+  "additional_projection_work": {
+    "weighted_summands": "2*N*N*Q",
+    "materialized_double_elements": "2*N*N*Q",
+    "kernels": 2
+  },
+  "excluded": [
+    "cold-start large molecular acceptance",
+    "native DF triples",
+    "native DF Lambda/forces",
+    "precision-policy promotion",
+    "performance speedup claim"
+  ],
+  "diagnostic_binary_sha256": "7df0b1b006aa4c64817d5043540ccdc0af0015fda28322bd3101e264ec7282e6",
+  "diagnostic_source_sha256": "7c48d919fc175dc356e0522d14805d3336b911c7dda0a3257e17000d4878629a"
+}

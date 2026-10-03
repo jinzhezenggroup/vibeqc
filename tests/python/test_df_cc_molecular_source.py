@@ -69,7 +69,7 @@ def source_probe(tmp_path_factory: pytest.TempPathFactory) -> typing.Any:
     )
     _native.load_library()
     dll = ct.CDLL(str(output))
-    call = dll.df_cc_source_probe
+    call: typing.Any = dll.df_cc_source_probe
     call.argtypes = [
         ct.c_void_p,
         ct.POINTER(ct.c_double),
@@ -227,6 +227,10 @@ def test_native_molecular_factors_and_blocks(
             root,
             optimize=True,
         )
+        # The physical owner applies one pair projection before selecting any
+        # sector. The independent reference must construct that same fitted
+        # Hamiltonian; per-block or B_vv-only repair would be inconsistent.
+        b = (b + b.transpose(1, 0, 2)) / 2
         eri = np.einsum("pqQ,rsQ->pqrs", b, b, optimize=True)
         expected = [
             b[:o, o:, :].transpose(2, 0, 1),
@@ -244,6 +248,8 @@ def test_native_molecular_factors_and_blocks(
             actual = output[offset : offset + size].reshape(shape)
             offset += size
             np.testing.assert_allclose(actual, want, atol=3e-10, rtol=3e-10)
+            if shape == (q, v, v):
+                np.testing.assert_array_equal(actual, actual.transpose(0, 2, 1))
             errors.append(float(np.max(np.abs(actual - want))))
         assert (
             counts[2] == n

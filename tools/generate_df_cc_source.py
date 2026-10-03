@@ -28,8 +28,13 @@ from tools.generate_rccsd_native import (
 
 
 def cpu_header() -> str:
-    """Emit packing oracle/capacity and equation-derived matrix products."""
-    program = factor_program(*REPRESENTATIVE, 1)
+    """Emit physical pair projection, packing/capacity and block products.
+
+    The same complete factor projection feeds all sectors. Its materialized
+    intermediates participate in the ordinary generated arena admission;
+    callers must not repair individual downloaded sectors after publication.
+    """
+    program = factor_program(*REPRESENTATIVE, 1, symmetric_pairs=True)
     lines = [
         "// Generated DF-CC source packing/blocks; do not edit.",
         "#pragma once",
@@ -130,7 +135,7 @@ FactorOutputs pack_cuda(CudaState& state);
 
 
 def cuda_source() -> str:
-    program = factor_program(*REPRESENTATIVE, 1)
+    program = factor_program(*REPRESENTATIVE, 1, symmetric_pairs=True)
     return "\n".join(
         [
             '#include "generated_df_cc_source_cuda.cuh"',
