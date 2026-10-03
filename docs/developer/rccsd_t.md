@@ -257,7 +257,17 @@ ordered schedule. No additional rank-four weight storage is introduced.
 Accepted CC amplitudes and MO blocks are host-owned between the resident CC solve
 and `(T)`; the triples owner stages those inputs once. The corrected-Lambda
 scientific RHS and transpose actions are now generated CUDA programs, with the
-symmetry-packed GMRES control flow still on host. Generated parameter,
+symmetry-packed GMRES control flow still on host. Native CPU and CUDA Lambda
+solves use the shared GMRES right diagonal preconditioner `-d1, -d2` by default.
+The doubles coordinate weights cancel for this diagonal. Unsafe small or
+pair-inconsistent denominators retain the unpreconditioned path; the physical
+operator, true-residual and independent expanded-residual gates are unchanged.
+The admitted independent-audit vector holds the diagonal during GMRES and is
+overwritten for the audit, so the numeric-capacity bound is unchanged. Internal
+`LambdaOptions::diagonal_preconditioning=false` selects the original solver;
+the completed-force trace reports selection, iterations and preconditioner
+actions. See the [decision and qualification](../../.agents/notes/implemented/performance/2026-10-03-lambda-diagonal-preconditioning.md).
+Generated parameter,
 Hamiltonian and orbital actions execute on CUDA. Triples response, the physical
 response control and the final MO-to-AO weight pullback retain host ownership;
 the complete endpoint is not fully device resident.

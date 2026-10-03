@@ -455,12 +455,21 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
   const auto response_problem =
       detail::make_lambda_response_problem(layout.dimension(), std::move(apply));
   const auto response_plan = response::prepare_response(response_problem, options.gmres);
-  auto solved = response::solve_response(response_plan, response_problem, rhs);
+  // This vector is already charged for the later independent physical audit.
+  // During GMRES it instead borrows the diagonal-preconditioner role, avoiding
+  // an additional live allocation and preserving the complete phase budget.
+  std::vector<double> independent(layout.dimension());
+  const bool preconditioned =
+      options.diagonal_preconditioning &&
+      detail::fill_lambda_diagonal_preconditioner(p, layout.representatives, layout.partners,
+                                                  options.gmres.breakdown_tolerance, independent);
+  auto solved = response::solve_response(
+      response_plan, response_problem, rhs, {},
+      preconditioned ? std::span<const double>(independent) : std::span<const double>{});
   if (!solved.converged()) throw std::runtime_error("RCCSD CUDA Lambda GMRES did not converge");
 
   layout.unpack_weighted(solved.solution, seed_one, seed_two);
   owner.transpose(true, seed_one, seed_two, action_one, action_two);
-  std::vector<double> independent(layout.dimension());
   layout.pack_weighted(action_one, action_two, independent);
 
   owner.rhs(true, dense_one, dense_two);
@@ -493,6 +502,8 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
   result.diagnostic.independent_residual_max = independent_max;
   result.diagnostic.iterations = solved.iterations;
   result.diagnostic.operator_actions = solved.operator_actions;
+  result.diagnostic.diagonal_preconditioned = preconditioned;
+  result.diagnostic.preconditioner_actions = solved.preconditioner_actions;
   if (fixed_orbital) {
     owner.set_parameter_seeds(result.lambda1, result.lambda2);
     fixed_orbital->foo =

@@ -92,7 +92,7 @@
     },
     "issue377-379-df": {
       "owner": "issue377-379-df",
-      "reason": "Reviewed retained large evidence for Occupied DF execution and compact source qualification (#377–379). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "reason": "Reviewed retained large evidence for Occupied DF execution and compact source qualification (#377\u2013379). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
       "review_document": "benchmarks/results/issue377-379-df/README.md"
     },
     "issue394-deferred": {
@@ -102,7 +102,7 @@
     },
     "issue404-407-df": {
       "owner": "issue404-407-df",
-      "reason": "Reviewed retained large evidence for DF tuning, screening and final-projection evidence (#404–407). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
+      "reason": "Reviewed retained large evidence for DF tuning, screening and final-projection evidence (#404\u2013407). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
       "review_document": "benchmarks/results/issue404-407-df/README.md"
     },
     "issue404-combined-rys": {
@@ -209,6 +209,11 @@
       "owner": "CCSD(T) native CUDA response qualification",
       "reason": "All 112 complete-call energies, forces and public diagnostics retained without rounding; shared defaults and field-name columns are factored with exact reconstruction checks. Exact large-sample hash and bytes are reviewed below; raw journals and profiler databases remain ignored.",
       "review_document": ".agents/notes/implemented/performance/2026-10-03-native-cuda-triples-response.md"
+    },
+    "cc-lambda-preconditioner-20261003": {
+      "owner": "CCSD(T) complete-endpoint qualification",
+      "reason": "Losslessly factored 112 independently gated complete endpoint calls with six alternating parent/candidate process pairs per size; exact scalar and force observations retained.",
+      "review_document": "benchmarks/results/cc-lambda-preconditioner-20261003/summary.json"
     }
   },
   "files": [
@@ -965,12 +970,12 @@
       "role": "Hash-bound source/build/runtime provenance, bytecode inventories, regression and ownership receipts, independent generated-DAG/header audits, raw and resolved endpoint PC profiles with failed profiler diagnostics; no binary, full generated header, or build tree. The unrelated ambient package inventory is transparently omitted and replaced by task-specific dependency versions."
     },
     {
-      "bytes": 219618,
+      "bytes": 176570,
       "classification": "required-compact-accepted-evidence",
       "family": "cc-derivative-batches-20261003",
       "path": "benchmarks/results/cc-derivative-batches-20261003/records.json",
       "role": "complete-endpoint-repeat-samples",
-      "sha256": "9fa9efceeb6758d9c150e01532b4fb4548745546a147901bbda01aec5b2ad5e2"
+      "sha256": "71453a786420030ba10789753245c96158683568c0cfa0ed92fd2b59b7ec2926"
     },
     {
       "bytes": 152952,
@@ -979,6 +984,14 @@
       "path": "benchmarks/results/cc-triples-response-cuda-20261003/records.json",
       "role": "complete-endpoint-repeat-samples",
       "sha256": "0d1d562b6676d2d81be44abff0566aa9d5aff60f624a77a94cf43b5b9cf0e520"
+    },
+    {
+      "bytes": 152851,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cc-lambda-preconditioner-20261003",
+      "path": "benchmarks/results/cc-lambda-preconditioner-20261003/records.json",
+      "role": "complete-endpoint-repeat-samples",
+      "sha256": "c4a3c2bd083518db31d992801e1cadc54bb685552fc6f3ad2aee8f58e39a4645"
     }
   ],
   "schema": "generativeqc.legacy-large-evidence-review.v1",

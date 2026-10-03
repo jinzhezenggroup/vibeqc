@@ -1,0 +1,309 @@
+diff --git a/cmake/GenerativeQCTests.cmake b/cmake/GenerativeQCTests.cmake
+index 1cf2b1283..9ca8ca8b3 100644
+--- a/cmake/GenerativeQCTests.cmake
++++ b/cmake/GenerativeQCTests.cmake
+@@ -74,6 +74,7 @@ macro(generativeqc_add_native_tests)
+     generativeqc_native_test(generativeqc_preliminary_initial_guess_tests tests/native/test_preliminary_initial_guess.cpp)
+     generativeqc_native_test(generativeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
+     generativeqc_native_test(generativeqc_native_gmres_tests tests/native/test_native_gmres.cpp)
++    generativeqc_native_test(generativeqc_cc_lambda_preconditioner_tests tests/native/test_cc_lambda_preconditioner.cpp)
+     generativeqc_native_test(generativeqc_mp2_gradient_tests tests/native/test_mp2_gradient.cpp)
+     generativeqc_native_test(generativeqc_posthf_rank2_tests tests/native/test_posthf_rank2_transform.cpp)
+   endif()
+diff --git a/src/cc/lambda_response.cpp b/src/cc/lambda_response.cpp
+index c2409297c..0953cd6d8 100644
+--- a/src/cc/lambda_response.cpp
++++ b/src/cc/lambda_response.cpp
+@@ -133,6 +133,33 @@ response::LinearResponseProblem make_lambda_response_problem(std::size_t dimensi
+   return {dimension, std::move(apply), response::LinearResponseSymmetry::General};
+ }
+ 
++bool fill_lambda_diagonal_preconditioner(const Problem& p,
++                                         std::span<const std::size_t> representatives,
++                                         std::span<const std::size_t> partners,
++                                         double breakdown_tolerance, std::span<double> diagonal) {
++  if (representatives.size() != partners.size() ||
++      diagonal.size() != checked_add(p.d1.size(), representatives.size()))
++    throw std::invalid_argument("RCCSD Lambda preconditioner shape mismatch");
++  // This is a solver convenience, not a new scientific denominator admission.
++  // Small denominators disable it instead of clipping or changing the operator.
++  const double threshold = std::max(1e-10, breakdown_tolerance);
++  auto safe = [&](double value) { return std::isfinite(value) && std::abs(value) > threshold; };
++  for (std::size_t i = 0; i < p.d1.size(); ++i) {
++    if (!safe(p.d1[i])) return false;
++    diagonal[i] = -p.d1[i];
++  }
++  for (std::size_t k = 0; k < representatives.size(); ++k) {
++    if (representatives[k] >= p.d2.size() || partners[k] >= p.d2.size())
++      throw std::invalid_argument("RCCSD Lambda preconditioner pair index out of range");
++    const auto first = p.d2[representatives[k]], second = p.d2[partners[k]];
++    if (!safe(first) || !safe(second) ||
++        std::abs(first - second) > 1e-10 * (1.0 + std::max(std::abs(first), std::abs(second))))
++      return false;
++    diagonal[p.d1.size() + k] = -first;
++  }
++  return true;
++}
++
+ }  // namespace detail
+ 
+ void validate_lambda_options(const LambdaOptions& options) {
+@@ -248,13 +275,22 @@ static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult&
+   const auto response_problem =
+       detail::make_lambda_response_problem(layout.dimension(), std::move(apply));
+   const auto response_plan = response::prepare_response(response_problem, options.gmres);
+-  auto solved = response::solve_response(response_plan, response_problem, rhs);
++  // Reuse the already-admitted independent-audit vector for the diagonal while
++  // GMRES runs. Its contents are overwritten by the physical audit afterward;
++  // no new numeric owner or larger simultaneous-capacity bound is required.
++  std::vector<double> independent(layout.dimension());
++  const bool preconditioned =
++      options.diagonal_preconditioning &&
++      detail::fill_lambda_diagonal_preconditioner(p, layout.representatives, layout.partners,
++                                                  options.gmres.breakdown_tolerance, independent);
++  auto solved = response::solve_response(
++      response_plan, response_problem, rhs, {},
++      preconditioned ? std::span<const double>(independent) : std::span<const double>{});
+   if (!solved.converged()) throw std::runtime_error("RCCSD Lambda GMRES did not converge");
+ 
+   layout.unpack_weighted(solved.solution, dense_one, dense_two);
+   const auto independent_action = generated::run_lambda_independent_transpose_cpu(
+       p.nocc, p.nvir, in, dense_one.data(), dense_two.data(), arena.data(), arena.size());
+-  std::vector<double> independent(layout.dimension());
+   layout.pack_weighted({independent_action.t1, layout.n1}, {independent_action.t2, layout.n2},
+                        independent);
+ 
+@@ -288,6 +324,8 @@ static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult&
+   result.diagnostic.independent_residual_max = independent_max;
+   result.diagnostic.iterations = solved.iterations;
+   result.diagnostic.operator_actions = solved.operator_actions;
++  result.diagnostic.diagonal_preconditioned = preconditioned;
++  result.diagnostic.preconditioner_actions = solved.preconditioner_actions;
+   result.diagnostic.numeric_capacity_bytes = capacity;
+   result.diagnostic.shared_program_hash = generated::lambda_transpose_program_hash;
+   result.diagnostic.independent_program_hash =
+diff --git a/src/cc/lambda_response.hpp b/src/cc/lambda_response.hpp
+index eb884cfe3..80a31ab1e 100644
+--- a/src/cc/lambda_response.hpp
++++ b/src/cc/lambda_response.hpp
+@@ -21,6 +21,16 @@ namespace detail {
+ response::LinearResponseProblem make_lambda_response_problem(std::size_t dimension,
+                                                              response::LinearOperator apply);
+ 
++/** Fill the approximate -D Jacobian diagonal in packed Lambda coordinates.
++ * Coordinate weights cancel for a diagonal operator: do not multiply by the
++ * doubles orbit's sqrt(2). Return false for unsafe or pair-inconsistent input
++ * denominators so the caller can retain the unpreconditioned solve.
++ */
++bool fill_lambda_diagonal_preconditioner(const Problem& problem,
++                                         std::span<const std::size_t> representatives,
++                                         std::span<const std::size_t> partners,
++                                         double breakdown_tolerance, std::span<double> diagonal);
++
+ }  // namespace detail
+ 
+ struct LambdaOptions {
+@@ -33,6 +43,9 @@ struct LambdaOptions {
+     options.absolute_tolerance = 1e-11;
+     return options;
+   }();
++  // Right preconditioning changes only Krylov coordinates, never the physical
++  // Lambda operator or either residual gate. False retains the original path.
++  bool diagonal_preconditioning{true};
+ };
+ 
+ struct LambdaDiagnostic {
+@@ -49,6 +62,8 @@ struct LambdaDiagnostic {
+   std::size_t d2h_bytes{};
+   std::size_t synchronizations{};
+   bool cuda_actions{};
++  bool diagonal_preconditioned{};
++  std::size_t preconditioner_actions{};
+   const char* shared_program_hash{};
+   const char* independent_program_hash{};
+ };
+diff --git a/src/cc/lambda_response_cuda.cu b/src/cc/lambda_response_cuda.cu
+index 3ac6ed10e..7ad57c74f 100644
+--- a/src/cc/lambda_response_cuda.cu
++++ b/src/cc/lambda_response_cuda.cu
+@@ -455,12 +455,21 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
+   const auto response_problem =
+       detail::make_lambda_response_problem(layout.dimension(), std::move(apply));
+   const auto response_plan = response::prepare_response(response_problem, options.gmres);
+-  auto solved = response::solve_response(response_plan, response_problem, rhs);
++  // This vector is already charged for the later independent physical audit.
++  // During GMRES it instead borrows the diagonal-preconditioner role, avoiding
++  // an additional live allocation and preserving the complete phase budget.
++  std::vector<double> independent(layout.dimension());
++  const bool preconditioned =
++      options.diagonal_preconditioning &&
++      detail::fill_lambda_diagonal_preconditioner(p, layout.representatives, layout.partners,
++                                                  options.gmres.breakdown_tolerance, independent);
++  auto solved = response::solve_response(
++      response_plan, response_problem, rhs, {},
++      preconditioned ? std::span<const double>(independent) : std::span<const double>{});
+   if (!solved.converged()) throw std::runtime_error("RCCSD CUDA Lambda GMRES did not converge");
+ 
+   layout.unpack_weighted(solved.solution, seed_one, seed_two);
+   owner.transpose(true, seed_one, seed_two, action_one, action_two);
+-  std::vector<double> independent(layout.dimension());
+   layout.pack_weighted(action_one, action_two, independent);
+ 
+   owner.rhs(true, dense_one, dense_two);
+@@ -493,6 +502,8 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
+   result.diagnostic.independent_residual_max = independent_max;
+   result.diagnostic.iterations = solved.iterations;
+   result.diagnostic.operator_actions = solved.operator_actions;
++  result.diagnostic.diagonal_preconditioned = preconditioned;
++  result.diagnostic.preconditioner_actions = solved.preconditioner_actions;
+   if (fixed_orbital) {
+     owner.set_parameter_seeds(result.lambda1, result.lambda2);
+     fixed_orbital->foo =
+diff --git a/src/cc/rccsdt_force.cpp b/src/cc/rccsdt_force.cpp
+index 96553d46e..e1201c70c 100644
+--- a/src/cc/rccsdt_force.cpp
++++ b/src/cc/rccsdt_force.cpp
+@@ -933,6 +933,8 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
+     Scope::number("triples_response_pages", result.triples_response_pages);
+     Scope::number("lambda_iterations", result.lambda.iterations);
+     Scope::number("lambda_operator_actions", result.lambda.operator_actions);
++    Scope::number("lambda_diagonal_preconditioned", result.lambda.diagonal_preconditioned);
++    Scope::number("lambda_preconditioner_actions", result.lambda.preconditioner_actions);
+     Scope::number("lambda_h2d_bytes", result.lambda.h2d_bytes);
+     Scope::number("lambda_d2h_bytes", result.lambda.d2h_bytes);
+     Scope::number("lambda_synchronizations", result.lambda.synchronizations);
+diff --git a/tests/native/test_cc_lambda_preconditioner.cpp b/tests/native/test_cc_lambda_preconditioner.cpp
+new file mode 100644
+index 000000000..904fea7a2
+--- /dev/null
++++ b/tests/native/test_cc_lambda_preconditioner.cpp
+@@ -0,0 +1,129 @@
++#include <algorithm>
++#include <cmath>
++#include <iostream>
++#include <stdexcept>
++#include <string_view>
++#include <vector>
++
++#include "cc/lambda_response.hpp"
++
++namespace {
++using namespace generativeqc::cc;
++
++void require(bool condition, const char* message) {
++  if (!condition) throw std::runtime_error(message);
++}
++
++/** Independent noninteracting reference: R1=(eps_a-eps_i)*t1 and
++ * R2=(eps_a+eps_b-eps_i-eps_j)*t2. With an external energy source S, the
++ * exact Lambda is S/D in dense coordinates, including off-diagonal pair
++ * orbits. No generated derivative or CPU response supplies the expected values.
++ */
++void qualify(bool cuda) {
++  constexpr std::size_t o = 2, v = 3, n1 = o * v, n2 = n1 * n1;
++  const double occupied[o]{-20.0, -1.0}, virtuals[v]{0.3, 2.0, 17.0};
++  Problem p;
++  p.nocc = o;
++  p.nvir = v;
++  p.foo.resize(o * o);
++  p.fov.resize(n1);
++  p.fvv.resize(v * v);
++  p.ovov.resize(n2);
++  p.ovvo.resize(n2);
++  p.oovv.resize(n2);
++  p.ovvv.resize(o * v * v * v);
++  p.ovoo.resize(o * v * o * o);
++  p.oooo.resize(o * o * o * o);
++  p.vvvv.resize(v * v * v * v);
++  p.d1.resize(n1);
++  p.d2.resize(n2);
++  p.initial_t1.resize(n1);
++  p.initial_t2.resize(n2);
++  for (std::size_t i = 0; i < o; ++i) p.foo[i * o + i] = occupied[i];
++  for (std::size_t a = 0; a < v; ++a) p.fvv[a * v + a] = virtuals[a];
++  std::vector<double> source1(n1), source2(n2), expected1(n1), expected2(n2);
++  for (std::size_t i = 0; i < o; ++i)
++    for (std::size_t a = 0; a < v; ++a) {
++      const auto k = i * v + a;
++      p.d1[k] = occupied[i] - virtuals[a];
++      source1[k] = 0.002 * (k + 1);
++      expected1[k] = source1[k] / p.d1[k];
++    }
++  for (std::size_t i = 0; i < o; ++i)
++    for (std::size_t j = 0; j < o; ++j)
++      for (std::size_t a = 0; a < v; ++a)
++        for (std::size_t b = 0; b < v; ++b) {
++          const auto k = ((i * o + j) * v + a) * v + b;
++          const auto mate = ((j * o + i) * v + b) * v + a;
++          p.d2[k] = (occupied[i] - virtuals[a]) + (occupied[j] - virtuals[b]);
++          source2[k] = 0.001 * (std::min(k, mate) + 1);
++          expected2[k] = source2[k] / p.d2[k];
++        }
++  SolverResult cc;
++  cc.status = SolveStatus::Converged;
++  cc.t1.resize(n1);
++  cc.t2.resize(n2);
++  LambdaOptions options;
++  options.gmres.absolute_tolerance = 1e-12;
++  options.gmres.max_iterations = 200;
++  const auto capacity = lambda_cpu_numeric_capacity(p, cc, options, true);
++  // Exact admitted host capacity includes the audit/diagonal buffer already.
++  options.max_bytes = capacity;
++  auto solve = [&] {
++#if GENERATIVEQC_HAS_CUDA
++    if (cuda) return solve_lambda_cuda_with_energy_source(p, cc, source1, source2, 0, options);
++#else
++    require(!cuda, "CUDA unavailable in this test build");
++#endif
++    return solve_lambda_cpu_with_energy_source(p, cc, source1, source2, options);
++  };
++  auto check = [&](const LambdaResult& result, bool preconditioned) {
++    require(result.converged(), "Lambda convergence");
++    double error = 0.0;
++    for (std::size_t k = 0; k < n1; ++k)
++      error = std::max(error, std::abs(result.lambda1[k] - expected1[k]));
++    for (std::size_t k = 0; k < n2; ++k)
++      error = std::max(error, std::abs(result.lambda2[k] - expected2[k]));
++    require(error < 1e-11, "independent noninteracting Lambda oracle mismatch");
++    require(result.diagnostic.diagonal_preconditioned == preconditioned,
++            "preconditioner selection");
++    require((result.diagnostic.preconditioner_actions > 0) == preconditioned,
++            "preconditioner work");
++    require(result.diagnostic.independent_residual_norm < 1e-9, "physical residual");
++    require(result.diagnostic.numeric_capacity_bytes == capacity, "unchanged numeric bound");
++    if (preconditioned)
++      require(result.diagnostic.iterations == 1, "diagonal solve needs one step");
++    else
++      require(result.diagnostic.iterations > 1, "nontrivial unpreconditioned comparison");
++    std::cout << (cuda ? "cuda" : "cpu") << " preconditioned=" << preconditioned
++              << " iterations=" << result.diagnostic.iterations
++              << " actions=" << result.diagnostic.operator_actions << " error=" << error << '\n';
++  };
++  check(solve(), true);
++  options.diagonal_preconditioning = false;
++  require(lambda_cpu_numeric_capacity(p, cc, options, true) == capacity, "optional capacity");
++  check(solve(), false);
++  options.diagonal_preconditioning = true;
++  const auto first = p.d1[0];
++  // Alter only optional solver denominators: the physical Fock operator and
++  // independent expected Lambda stay unchanged. Unsafe diagonals must fall back.
++  for (const double unsafe : {0.0, 1e-14}) {
++    p.d1[0] = unsafe;
++    check(solve(), false);
++  }
++  p.d1[0] = first;
++  p.d2[1] += 1.0;  // Break the (i,j,a,b)<->(j,i,b,a) denominator orbit.
++  check(solve(), false);
++}
++}  // namespace
++
++int main(int argc, char** argv) {
++  try {
++    qualify(argc == 2 && std::string_view(argv[1]) == "--cuda");
++    std::cout << "Lambda preconditioner oracle, fallback and budget gates passed\n";
++    return 0;
++  } catch (const std::exception& error) {
++    std::cerr << error.what() << '\n';
++    return 1;
++  }
++}

@@ -133,6 +133,33 @@ response::LinearResponseProblem make_lambda_response_problem(std::size_t dimensi
   return {dimension, std::move(apply), response::LinearResponseSymmetry::General};
 }
 
+bool fill_lambda_diagonal_preconditioner(const Problem& p,
+                                         std::span<const std::size_t> representatives,
+                                         std::span<const std::size_t> partners,
+                                         double breakdown_tolerance, std::span<double> diagonal) {
+  if (representatives.size() != partners.size() ||
+      diagonal.size() != checked_add(p.d1.size(), representatives.size()))
+    throw std::invalid_argument("RCCSD Lambda preconditioner shape mismatch");
+  // This is a solver convenience, not a new scientific denominator admission.
+  // Small denominators disable it instead of clipping or changing the operator.
+  const double threshold = std::max(1e-10, breakdown_tolerance);
+  auto safe = [&](double value) { return std::isfinite(value) && std::abs(value) > threshold; };
+  for (std::size_t i = 0; i < p.d1.size(); ++i) {
+    if (!safe(p.d1[i])) return false;
+    diagonal[i] = -p.d1[i];
+  }
+  for (std::size_t k = 0; k < representatives.size(); ++k) {
+    if (representatives[k] >= p.d2.size() || partners[k] >= p.d2.size())
+      throw std::invalid_argument("RCCSD Lambda preconditioner pair index out of range");
+    const auto first = p.d2[representatives[k]], second = p.d2[partners[k]];
+    if (!safe(first) || !safe(second) ||
+        std::abs(first - second) > 1e-10 * (1.0 + std::max(std::abs(first), std::abs(second))))
+      return false;
+    diagonal[p.d1.size() + k] = -first;
+  }
+  return true;
+}
+
 }  // namespace detail
 
 void validate_lambda_options(const LambdaOptions& options) {
@@ -248,13 +275,22 @@ static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& 
   const auto response_problem =
       detail::make_lambda_response_problem(layout.dimension(), std::move(apply));
   const auto response_plan = response::prepare_response(response_problem, options.gmres);
-  auto solved = response::solve_response(response_plan, response_problem, rhs);
+  // Reuse the already-admitted independent-audit vector for the diagonal while
+  // GMRES runs. Its contents are overwritten by the physical audit afterward;
+  // no new numeric owner or larger simultaneous-capacity bound is required.
+  std::vector<double> independent(layout.dimension());
+  const bool preconditioned =
+      options.diagonal_preconditioning &&
+      detail::fill_lambda_diagonal_preconditioner(p, layout.representatives, layout.partners,
+                                                  options.gmres.breakdown_tolerance, independent);
+  auto solved = response::solve_response(
+      response_plan, response_problem, rhs, {},
+      preconditioned ? std::span<const double>(independent) : std::span<const double>{});
   if (!solved.converged()) throw std::runtime_error("RCCSD Lambda GMRES did not converge");
 
   layout.unpack_weighted(solved.solution, dense_one, dense_two);
   const auto independent_action = generated::run_lambda_independent_transpose_cpu(
       p.nocc, p.nvir, in, dense_one.data(), dense_two.data(), arena.data(), arena.size());
-  std::vector<double> independent(layout.dimension());
   layout.pack_weighted({independent_action.t1, layout.n1}, {independent_action.t2, layout.n2},
                        independent);
 
@@ -288,6 +324,8 @@ static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& 
   result.diagnostic.independent_residual_max = independent_max;
   result.diagnostic.iterations = solved.iterations;
   result.diagnostic.operator_actions = solved.operator_actions;
+  result.diagnostic.diagonal_preconditioned = preconditioned;
+  result.diagnostic.preconditioner_actions = solved.preconditioner_actions;
   result.diagnostic.numeric_capacity_bytes = capacity;
   result.diagnostic.shared_program_hash = generated::lambda_transpose_program_hash;
   result.diagnostic.independent_program_hash =

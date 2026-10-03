@@ -21,6 +21,16 @@ namespace detail {
 response::LinearResponseProblem make_lambda_response_problem(std::size_t dimension,
                                                              response::LinearOperator apply);
 
+/** Fill the approximate -D Jacobian diagonal in packed Lambda coordinates.
+ * Coordinate weights cancel for a diagonal operator: do not multiply by the
+ * doubles orbit's sqrt(2). Return false for unsafe or pair-inconsistent input
+ * denominators so the caller can retain the unpreconditioned solve.
+ */
+bool fill_lambda_diagonal_preconditioner(const Problem& problem,
+                                         std::span<const std::size_t> representatives,
+                                         std::span<const std::size_t> partners,
+                                         double breakdown_tolerance, std::span<double> diagonal);
+
 }  // namespace detail
 
 struct LambdaOptions {
@@ -33,6 +43,9 @@ struct LambdaOptions {
     options.absolute_tolerance = 1e-11;
     return options;
   }();
+  // Right preconditioning changes only Krylov coordinates, never the physical
+  // Lambda operator or either residual gate. False retains the original path.
+  bool diagonal_preconditioning{true};
 };
 
 struct LambdaDiagnostic {
@@ -49,6 +62,8 @@ struct LambdaDiagnostic {
   std::size_t d2h_bytes{};
   std::size_t synchronizations{};
   bool cuda_actions{};
+  bool diagonal_preconditioned{};
+  std::size_t preconditioner_actions{};
   const char* shared_program_hash{};
   const char* independent_program_hash{};
 };

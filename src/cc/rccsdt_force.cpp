@@ -933,6 +933,8 @@ static RccsdtForceResult relaxed_rccsd_force_impl(
     Scope::number("triples_response_pages", result.triples_response_pages);
     Scope::number("lambda_iterations", result.lambda.iterations);
     Scope::number("lambda_operator_actions", result.lambda.operator_actions);
+    Scope::number("lambda_diagonal_preconditioned", result.lambda.diagonal_preconditioned);
+    Scope::number("lambda_preconditioner_actions", result.lambda.preconditioner_actions);
     Scope::number("lambda_h2d_bytes", result.lambda.h2d_bytes);
     Scope::number("lambda_d2h_bytes", result.lambda.d2h_bytes);
     Scope::number("lambda_synchronizations", result.lambda.synchronizations);
