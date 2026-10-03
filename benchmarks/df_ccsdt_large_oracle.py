@@ -14,11 +14,12 @@ import json
 import math
 import os
 import time
-from pathlib import Path
 
 import numpy as np
 import pyscf
 from pyscf import cc, df, gto, lib, scf
+
+from benchmarks._retention import raw_output_path
 
 
 def geometry(
@@ -57,7 +58,7 @@ def geometry(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=("ethane230", "benzene264"), required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--threads", type=int, default=16)
     args = parser.parse_args()
     if pyscf.__version__ != "2.14.0":
