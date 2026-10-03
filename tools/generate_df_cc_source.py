@@ -15,6 +15,7 @@ from generativeqc_compiler.cc.df_source import (
     FACTOR_NAMES,
     PHYSICAL_FACTORS,
     block_program,
+    factor_embedding_vjp,
     factor_program,
     retained_factor_vjp,
 )
@@ -33,6 +34,7 @@ RESPONSE_INPUTS = (
     *PHYSICAL_FACTORS,
     *("bar_" + x for x in (*BLOCK_FACTORS, "bov", "bvv")),
 )
+EMBED_INPUTS = tuple("bar_" + x for x in PHYSICAL_FACTORS)
 RESPONSE_OUTPUTS = tuple("bar_" + x for x in PHYSICAL_FACTORS)
 
 
@@ -45,6 +47,7 @@ def cpu_header() -> str:
     """
     program = factor_program(*REPRESENTATIVE, 1, symmetric_pairs=True)
     response = retained_factor_vjp(*REPRESENTATIVE, 1)
+    embedding = factor_embedding_vjp(*REPRESENTATIVE, 1)
     lines = [
         "// Generated DF-CC source packing/blocks; do not edit.",
         "#pragma once",
@@ -140,6 +143,19 @@ def cpu_header() -> str:
             batch_dim=True,
             output_fields=RESPONSE_OUTPUTS,
         ),
+        "struct EmbeddingInputs { const double *bar_boo{}, *bar_bov{}, *bar_bvv{}; };",
+        "struct EmbeddingOutputs { const double* bar_bmo{}; };",
+        f'inline constexpr const char* embedding_equation_hash="{embedding.logical_hash}";',
+        _required_function(embedding, "embedding_arena_elements", batch_dim=True),
+        _cpu_function(
+            embedding,
+            "embed_cpu",
+            "EmbeddingOutputs",
+            signature="const EmbeddingInputs& inputs",
+            input_overrides={x: "inputs." + x for x in EMBED_INPUTS},
+            batch_dim=True,
+            output_fields=("bar_bmo",),
+        ),
         "}  // namespace generativeqc::cc::generated::df_source",
         "",
     ]
@@ -167,6 +183,13 @@ struct ResponseCudaState : ResponseInputs {
   cudaStream_t stream{};
 };
 ResponseOutputs response_cuda(ResponseCudaState& state);
+struct EmbeddingCudaState : EmbeddingInputs {
+  std::size_t o{},v{},q{};
+  double* response_arena{};
+  int* error{};
+  cudaStream_t stream{};
+};
+EmbeddingOutputs embed_cuda(EmbeddingCudaState& state);
 }
 """
 
@@ -197,6 +220,16 @@ def cuda_source() -> str:
                 output_fields=RESPONSE_OUTPUTS,
             ),
             "ResponseOutputs response_cuda(ResponseCudaState& state) { return run_factor_response(state); }",
+            _cuda_program(
+                factor_embedding_vjp(*REPRESENTATIVE, 1),
+                "source_embedding",
+                "EmbeddingOutputs",
+                state_type="EmbeddingCudaState",
+                input_overrides={x: "s." + x for x in EMBED_INPUTS},
+                batch_dim=True,
+                output_fields=("bar_bmo",),
+            ),
+            "EmbeddingOutputs embed_cuda(EmbeddingCudaState& state) { return run_source_embedding(state); }",
             "}",
             "",
         ]
