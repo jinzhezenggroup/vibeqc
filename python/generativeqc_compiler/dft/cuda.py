@@ -214,6 +214,11 @@ class CudaGrid:
         super().__setattr__(name, value)
 
     @property
+    def geometry_generation(self) -> int:
+        """Monotonic center-rebind epoch for geometry-bound resident consumers."""
+        return self._geometry_generation
+
+    @property
     def source_stamp(self) -> typing.Any:
         """Read-only identity of the successfully uploaded current source."""
         return self._source_stamp
@@ -255,6 +260,7 @@ class CudaGrid:
         self._density_ready = False
         self._borrowed = False
         self._natom = basis.natom
+        self._geometry_generation = 0
         self._source_stamp = None
         self._source_kind = "density_matrix"
         self._fallback_reason = "missing_orbitals"
@@ -492,6 +498,9 @@ class CudaGrid:
             self._source_kind = "density_matrix"
             self._fallback_reason = "missing_orbitals"
             self._source_statistics = {}
+            # Revoke cached geometry even when the native update fails: a failed
+            # device call cannot establish that the old centers remain intact.
+            self._geometry_generation += 1
             self._call("grid_cuda_centers_v1", self._handle, pointer(value), value.size)
 
     def set_density(self, density: typing.Any) -> None:
