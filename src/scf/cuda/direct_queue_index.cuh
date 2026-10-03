@@ -10,6 +10,21 @@
 
 namespace generativeqc::scf::cuda_execution {
 
+/** Decode one live product or system, skipping repeated prefix entries. */
+template <class Offset>
+__device__ inline std::size_t bounded_direct_block_row(const Offset* prefix, std::size_t rows,
+                                                       std::uint64_t ordinal) {
+  std::size_t lower = 0, upper = rows;
+  while (lower + 1U < upper) {
+    const auto middle = lower + (upper - lower) / 2U;
+    if (static_cast<std::uint64_t>(prefix[middle]) <= ordinal)
+      lower = middle;
+    else
+      upper = middle;
+  }
+  return lower;
+}
+
 __device__ inline void decode_lower_triangle(std::size_t packed, std::size_t& first,
                                              std::size_t& second) {
   first = static_cast<std::size_t>(0.5 * (sqrt(8.0 * static_cast<double>(packed) + 1.0) - 1.0));

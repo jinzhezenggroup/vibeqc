@@ -8,6 +8,7 @@
 #include "scf/cuda/direct_jk_kernels.hpp"
 #include "scf/cuda/packed_basis.hpp"
 #include "scf/cuda/topology.hpp"
+#include "scf/direct_block_schedule.hpp"
 
 namespace generativeqc::scf::cuda_execution {
 
@@ -43,7 +44,8 @@ struct GeneratedCoulombPlan {
  */
 std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(
     const HostBatch& host, DeviceBatch borrowed, cudaStream_t stream, int device, double screening,
-    std::size_t budget, bool allow_bounded_shell_fallback = false);
+    std::size_t budget, bool allow_bounded_shell_fallback = false,
+    detail::BoundedDirectHostSchedule* bounded_schedule = nullptr);
 
 /** Enqueue raw J from total spin density. Inputs and result use public AO order.
  * The same stream owns every transform, scatter and projection; no host copies.
@@ -72,6 +74,8 @@ struct GeneratedExchangePlan {
   // share immutable shell topology, screening metadata and one cursor.
   bool force_capability{}, bounded_value_capability{};
   const std::uint32_t* bounded_pair_order{};
+  /** Optional geometry-live row index; owned by allocations, never by a call. */
+  detail::BoundedDirectBlockDomain bounded_block_domain{};
   std::uint32_t* bounded_value_overflow{};
   double *shell_pair_block_bounds{}, *force{};
   unsigned long long* force_cursor{};

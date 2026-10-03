@@ -444,6 +444,10 @@ bool force_density_product_screening_requested() noexcept {
   return enabled("GENERATIVEQC_FORCE_DENSITY_PRODUCT_SCREENING");
 }
 
+bool bounded_schwarz_schedule_requested() noexcept {
+  return selected("GENERATIVEQC_BOUNDED_SCHWARZ_SCHEDULE", "indexed");
+}
+
 bool resident_ppps_bra_requested() noexcept { return enabled("GENERATIVEQC_PPPS_RESIDENT_BRA"); }
 
 bool ppps_signature_bucketing_requested() noexcept {

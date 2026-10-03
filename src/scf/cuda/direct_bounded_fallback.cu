@@ -46,34 +46,60 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
     const double* density, const std::uint8_t* active, double* output,
     unsigned long long* global_cursor, DeviceShellClassProfileEntry* profile,
     double coulomb_coefficient, double exchange_coefficient, DirectRangeOperator radial_operator,
-    double omega, double secondary_exchange_coefficient, bool coulomb_only, bool exchange_only) {
+    double omega, double secondary_exchange_coefficient, bool coulomb_only, bool exchange_only,
+    detail::BoundedDirectBlockDomain block_domain = {}) {
   __shared__ ActiveShellQuartetTile queue[detail::kBoundedDirectQueueCapacity];
   __shared__ std::uint32_t queue_count;
   __shared__ unsigned long long block_quartet;
   const unsigned lane = threadIdx.x % detail::kDirectQuartetThreads;
   const unsigned warp = threadIdx.x / detail::kDirectQuartetThreads;
-  const std::size_t total = static_cast<std::size_t>(batch.total_shell_pair_block_quartets);
+  constexpr auto full_block_candidates =
+      detail::kBoundedDirectShellPairBlockSize * detail::kBoundedDirectShellPairBlockSize;
+  constexpr auto indexed_page_candidates =
+      full_block_candidates / detail::kBoundedDirectIndexedCandidatePages;
+  static_assert(full_block_candidates % detail::kBoundedDirectIndexedCandidatePages == 0);
+  static_assert(indexed_page_candidates <= detail::kBoundedDirectQueueCapacity);
+  const std::size_t pages = block_domain.prefix ? detail::kBoundedDirectIndexedCandidatePages : 1U;
+  const std::size_t products =
+      block_domain.prefix ? block_domain.quartet_count
+                          : static_cast<std::size_t>(batch.total_shell_pair_block_quartets);
+  const std::size_t total = products * pages;
 
   while (true) {
+    // Empty pages and screened/inactive claims bypass the candidate-loop barrier.
+    // All warps must finish reading this claim before the leader overwrites it.
+    __syncthreads();
     if (threadIdx.x == 0) {
       block_quartet = atomicAdd(global_cursor, 1ULL);
     }
     __syncthreads();
     if (block_quartet >= total) return;
 
-    const std::size_t packed_block_quartet = static_cast<std::size_t>(block_quartet);
-    const std::int32_t system = shell_pair_block_quartet_system(batch, packed_block_quartet);
+    const std::size_t packed_block_quartet = static_cast<std::size_t>(block_quartet) / pages;
+    std::int32_t system = 0;
+    std::size_t first_block = 0, second_block = 0;
+    if (block_domain.prefix) {
+      first_block = bounded_direct_block_row(block_domain.prefix, block_domain.row_count,
+                                             packed_block_quartet);
+      system = static_cast<std::int32_t>(bounded_direct_block_row(
+          batch.system_shell_pair_block_offsets, batch.batch_size, first_block));
+      second_block = static_cast<std::size_t>(batch.system_shell_pair_block_offsets[system]) +
+                     packed_block_quartet - block_domain.prefix[first_block];
+    } else {
+      system = shell_pair_block_quartet_system(batch, packed_block_quartet);
+      const auto local =
+          packed_block_quartet -
+          static_cast<std::size_t>(batch.system_shell_pair_block_quartet_offsets[system]);
+      decode_lower_triangle(local, first_block, second_block);
+      const auto begin = static_cast<std::size_t>(batch.system_shell_pair_block_offsets[system]);
+      first_block += begin;
+      second_block += begin;
+    }
     if (active != nullptr && active[system] == 0) continue;
-    const std::size_t local_block_quartet =
-        packed_block_quartet -
-        static_cast<std::size_t>(batch.system_shell_pair_block_quartet_offsets[system]);
-    std::size_t first_block_local = 0;
-    std::size_t second_block_local = 0;
-    decode_lower_triangle(local_block_quartet, first_block_local, second_block_local);
     const std::size_t system_block_begin =
         static_cast<std::size_t>(batch.system_shell_pair_block_offsets[system]);
-    const std::size_t first_block = system_block_begin + first_block_local;
-    const std::size_t second_block = system_block_begin + second_block_local;
+    const auto first_block_local = first_block - system_block_begin;
+    const auto second_block_local = second_block - system_block_begin;
     if (!bounded_direct_block_pair_survives_screening<Purpose>(
             first_block, second_block, system, screening_tolerance, shell_pair_block_bounds,
             system_density_bounds)) {
@@ -96,12 +122,17 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
     const std::size_t candidate_count =
         same_block ? first_count * (first_count + 1) / 2 : first_count * second_count;
 
-    for (std::size_t candidate_begin = 0; candidate_begin < candidate_count;
+    const std::size_t page_begin =
+        block_domain.prefix ? (block_quartet % pages) * indexed_page_candidates : 0U;
+    const std::size_t page_end = block_domain.prefix
+                                     ? min(candidate_count, page_begin + indexed_page_candidates)
+                                     : candidate_count;
+    for (std::size_t candidate_begin = page_begin; candidate_begin < page_end;
          candidate_begin += detail::kBoundedDirectQueueCapacity) {
       if (threadIdx.x == 0) queue_count = 0;
       __syncthreads();
       const std::size_t candidate = candidate_begin + threadIdx.x;
-      if (candidate < candidate_count) {
+      if (candidate < page_end) {
         std::size_t first_local = 0;
         std::size_t second_local = 0;
         if (same_block) {
@@ -110,8 +141,11 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
           first_local = candidate / second_count;
           second_local = candidate % second_count;
         }
-        const std::size_t first_pair = shell_pair_order[first_ordered_begin + first_local];
-        const std::size_t second_pair = shell_pair_order[second_ordered_begin + second_local];
+        const auto first_candidate = shell_pair_order[first_ordered_begin + first_local];
+        const auto second_candidate = shell_pair_order[second_ordered_begin + second_local];
+        // Sorting changes scheduling, never the canonical scientific task orientation.
+        const std::size_t first_pair = max(first_candidate, second_candidate);
+        const std::size_t second_pair = min(first_candidate, second_candidate);
         if (direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
                 batch, first_pair, second_pair, screening_tolerance, shell_pair_bounds,
                 shell_pair_density_bounds, nullptr, exchange_only, coulomb_only)) {
@@ -328,7 +362,8 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
     std::uint64_t enabled_mask, const std::uint32_t* bounded_generated_overflow,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* output,
     unsigned long long* global_cursor, DeviceShellClassProfileEntry* profile,
-    double coulomb_coefficient, double exchange_coefficient, bool separate_sources) {
+    double coulomb_coefficient, double exchange_coefficient, bool separate_sources,
+    detail::BoundedDirectBlockDomain block_domain) {
   const auto radial_operator =
       separate_sources ? DirectRangeOperator::FullSources : DirectRangeOperator::Full;
   if (unrestricted == true) {
@@ -339,7 +374,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile, coulomb_coefficient,
-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
+              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, block_domain);
     } else {
       bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Force, true>
           <<<grid, block, shared_bytes, stream>>>(
@@ -347,7 +382,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile, coulomb_coefficient,
-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
+              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, block_domain);
     }
   } else {
     if (purpose == DirectScreeningPurpose::Fock) {
@@ -357,7 +392,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile, coulomb_coefficient,
-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
+              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, block_domain);
     } else {
       bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Force, true>
           <<<grid, block, shared_bytes, stream>>>(
@@ -365,7 +400,7 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
               shell_pair_order, shell_pair_block_bounds, system_density_bounds,
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile, coulomb_coefficient,
-              exchange_coefficient, radial_operator, 0.0, 0.0, false, false);
+              exchange_coefficient, radial_operator, 0.0, 0.0, false, false, block_domain);
     }
   }
 }

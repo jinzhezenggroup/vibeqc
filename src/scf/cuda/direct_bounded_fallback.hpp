@@ -8,6 +8,7 @@
 
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/packed_basis.hpp"
+#include "scf/direct_block_domain.hpp"
 
 namespace generativeqc::scf::cuda_execution {
 
@@ -32,7 +33,8 @@ void launch_bounded_direct_shell_quartet_kernel_scaled(
     std::uint64_t enabled_mask, const std::uint32_t* bounded_generated_overflow,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* output,
     unsigned long long* global_cursor, DeviceShellClassProfileEntry* profile,
-    double coulomb_coefficient, double exchange_coefficient, bool separate_sources = false);
+    double coulomb_coefficient, double exchange_coefficient, bool separate_sources = false,
+    detail::BoundedDirectBlockDomain block_domain = {});
 
 /** Range-separated exchange derivative on the same bounded shell scheduler.
  * Full-range Schwarz bounds remain a conservative gate for SR/LR operators. */

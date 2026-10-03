@@ -39,7 +39,8 @@ GeneratedCoulombPlan::~GeneratedCoulombPlan() {
 
 std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(
     const HostBatch& host, DeviceBatch borrowed, cudaStream_t stream, int device, double screening,
-    std::size_t budget, bool allow_bounded_shell_fallback) try {
+    std::size_t budget, bool allow_bounded_shell_fallback,
+    detail::BoundedDirectHostSchedule* bounded_schedule) try {
   cudaDeviceProp properties{};
   check(cudaGetDeviceProperties(&properties, device));
   generated::select_profile_for_device(device, properties.major, properties.minor);
@@ -193,6 +194,10 @@ std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(
     check(cudaStreamSynchronize(stream));
     for (double bound : bounds)
       if (!std::isfinite(bound)) throw std::runtime_error("nonfinite generated J Schwarz bound");
+    // Reuse the required geometry readback, not a new force-time download.
+    if (bounded_schedule)
+      *bounded_schedule =
+          detail::make_bounded_direct_schedule(host.system_shell_pair_offsets, bounds, screening);
     // Descending bounds are a correctness precondition for generated ket-tail
     // termination, not just a performance ordering. Sort every class/system.
     for (std::size_t cls = 0; cls < detail::kDirectShellPairClassCount; ++cls)
@@ -235,6 +240,10 @@ std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(
     plan->host_preparation_bytes =
         sizeof(*plan) +
         runtime::vector_capacities(plan->allocations, order, offsets, bounds, expanded_transform);
+    if (bounded_schedule)
+      plan->host_preparation_bytes = runtime::size_add(
+          plan->host_preparation_bytes,
+          runtime::vector_capacities(bounded_schedule->pair_order, bounded_schedule->block_prefix));
     return plan;
   } catch (cudaError_t error) {
     if (error != cudaErrorMemoryAllocation) throw;
@@ -258,8 +267,11 @@ GeneratedExchangePlan::~GeneratedExchangePlan() {
 std::unique_ptr<GeneratedExchangePlan> prepare_generated_exchange(
     const HostBatch& host, DeviceBatch borrowed, cudaStream_t stream, int device, double screening,
     std::size_t budget, bool force_capability, bool allow_bounded_shell_fallback) try {
+  detail::BoundedDirectHostSchedule bounded_schedule;
+  const bool indexed = force_capability && cuda_policy::bounded_schwarz_schedule_requested();
   auto shared = prepare_generated_coulomb(host, borrowed, stream, device, screening, budget,
-                                          allow_bounded_shell_fallback);
+                                          allow_bounded_shell_fallback,
+                                          indexed ? &bounded_schedule : nullptr);
   if (!shared) return {};
   const bool bounded_value_capability = allow_bounded_shell_fallback && !shared->value_capability;
   const bool bounded_resources = force_capability || bounded_value_capability;
@@ -300,6 +312,14 @@ std::unique_ptr<GeneratedExchangePlan> prepare_generated_exchange(
   if (force_capability) charge(product(atoms, 9), sizeof(double));
   if (bounded_value_capability) charge(quartet_classes, sizeof(std::uint32_t));
   if (shared->device_bytes > budget || additional > budget - shared->device_bytes) return {};
+  if (!bounded_schedule.block_prefix.empty()) {
+    const auto prefix_bytes = product(bounded_schedule.block_prefix.size(), sizeof(std::uint64_t));
+    // A tight lease can still use sorted blocks with the old triangular index.
+    if (prefix_bytes <= budget - shared->device_bytes - additional)
+      charge(bounded_schedule.block_prefix.size(), sizeof(std::uint64_t));
+    else
+      bounded_schedule.block_prefix.clear();
+  }
 
   // The owner drains H2D on failed preparation before this staging is freed.
   std::vector<std::uint32_t> bounded_pair_order;
@@ -337,10 +357,22 @@ std::unique_ptr<GeneratedExchangePlan> prepare_generated_exchange(
   plan->system_pair_density_bounds = doubles(product(batch, pair_classes));
   plan->heads = static_cast<std::uint32_t*>(allocate(quartet_classes, sizeof(std::uint32_t)));
   if (bounded_resources) {
-    bounded_pair_order.resize(pairs);
-    std::iota(bounded_pair_order.begin(), bounded_pair_order.end(), 0U);
+    if (indexed)
+      bounded_pair_order = std::move(bounded_schedule.pair_order);
+    else {
+      bounded_pair_order.resize(pairs);
+      std::iota(bounded_pair_order.begin(), bounded_pair_order.end(), 0U);
+    }
     plan->bounded_pair_order = static_cast<const std::uint32_t*>(
         allocate(pairs, sizeof(std::uint32_t), bounded_pair_order.data()));
+    if (!bounded_schedule.block_prefix.empty()) {
+      if (bounded_schedule.block_prefix.size() != pair_blocks + 1U)
+        throw std::logic_error("bounded Schwarz row inventory drift");
+      plan->bounded_block_domain = {static_cast<const std::uint64_t*>(allocate(
+                                        bounded_schedule.block_prefix.size(), sizeof(std::uint64_t),
+                                        bounded_schedule.block_prefix.data())),
+                                    pair_blocks, bounded_schedule.block_prefix.back()};
+    }
     plan->shell_pair_block_bounds = doubles(pair_blocks);
     plan->force_cursor = static_cast<unsigned long long*>(allocate(1, sizeof(unsigned long long)));
     plan->shared->batch.total_shell_pair_blocks = host.system_shell_pair_block_offsets.back();
@@ -396,7 +428,8 @@ std::unique_ptr<GeneratedExchangePlan> prepare_generated_exchange(
     throw std::logic_error("generated K inventory drift");
   plan->host_preparation_bytes = runtime::size_add(
       plan->shared->host_preparation_bytes,
-      sizeof(*plan) + runtime::vector_capacities(plan->allocations, bounded_pair_order));
+      sizeof(*plan) + runtime::vector_capacities(plan->allocations, bounded_pair_order,
+                                                 bounded_schedule.block_prefix));
   return plan;
 } catch (cudaError_t error) {
   if (error != cudaErrorMemoryAllocation) throw;
@@ -635,7 +668,7 @@ cudaError_t execute_generated_full_range_energy_derivatives(
         unrestricted, shared.worker_blocks, shared.stream, b, shared.screening, shared.shell_bounds,
         p.shell_pair_density_bounds, p.bounded_pair_order, p.shell_pair_block_bounds,
         p.system_density_bounds, p.heads, shared.schwarz, p.direct_spin, shared.active, p.force,
-        p.force_cursor, coulomb_coefficient, exchange_coefficient);
+        p.force_cursor, coulomb_coefficient, exchange_coefficient, p.bounded_block_domain);
     error = cudaGetLastError();
     if (error != cudaSuccess) return error;
   }

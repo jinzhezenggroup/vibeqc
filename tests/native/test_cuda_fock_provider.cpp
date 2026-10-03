@@ -18,6 +18,7 @@
 #include "runtime/resource_ledger.hpp"
 #include "scf/cuda/direct_jk_kernels.hpp"
 #include "scf/cuda/direct_jk_plan.hpp"
+#include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_direct_jk.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
@@ -1796,6 +1797,108 @@ void full_range_shell_source_oracles(const generativeqc::core::System& system,
   }
 }
 
+/** Verify the indexed multi-system domain and exact optional-prefix budget edges.
+ * Independent CPU ERIs qualify both sources, including zero screening. This
+ * diagnostic-only policy is exercised when explicitly enabled by the test job. */
+void bounded_schwarz_schedule_budget() {
+  using namespace generativeqc;
+  using namespace generativeqc::scf::cuda_execution;
+  if (!cuda_policy::bounded_schwarz_schedule_requested()) return;
+  core::System first;
+  first.basis_representation = GENERATIVEQC_BASIS_SPHERICAL;
+  first.electron_count = 12;
+  for (unsigned atom = 0; atom < 12; ++atom) {
+    first.atoms.push_back(
+        {1, {0.2 * (atom % 3), 0.15 * (atom % 2), 40.0 * (atom / 6) + 0.5 * (atom % 6)}});
+    first.shells.push_back({atom, 0, {{0.8 + 0.03 * atom, 1.0}}});
+  }
+  std::string detail;
+  require(molecule::validate_and_normalize(first, detail) == GENERATIVEQC_STATUS_SUCCESS,
+          detail.c_str());
+  auto second = first;
+  second.atoms[1].position[0] += 0.1;
+  const std::vector<core::System> systems{first, second};
+  const auto dimension = molecule::ao_count(first);
+  const auto matrix = dimension * dimension;
+  const auto coordinates = first.atoms.size() * 3;
+  std::vector<double> density(2 * matrix), expected(4 * coordinates);
+  for (std::size_t index = 0; index < density.size(); ++index)
+    density[index] = std::cos(0.17 * (index % dimension) + 0.23 * (index / dimension)) / dimension;
+  for (std::size_t item = 0; item < systems.size(); ++item) {
+    const auto integrals = integrals::build_integrals(systems[item], true);
+    const std::vector<double> input(density.begin() + item * matrix,
+                                    density.begin() + (item + 1) * matrix);
+    for (unsigned source = 0; source < 2; ++source) {
+      auto spec = make_hf_fock_spec(FockSpin::Restricted);
+      spec.derivative_order = 1;
+      spec.coulomb = {source == 0, 1.0};
+      spec.exchange.present = source == 1;
+      spec.exchange.coefficient = -0.25;
+      const auto resolved = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
+      for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate)
+        expected[source * 2 * coordinates + item * coordinates + coordinate] =
+            contract_exact_direct_energy_derivative(
+                resolved, dimension,
+                std::span<const double>(integrals.eri_derivative)
+                    .subspan(coordinate * matrix * matrix, matrix * matrix),
+                input, {});
+    }
+  }
+  HostBatch host;
+  require(pack_host_batch(systems, {nullptr, nullptr}, host, true, false, true),
+          "cannot pack batch");
+  for (double screening : {0.0, 1e-12}) {
+    CudaDirectJkPlan* raw = nullptr;
+    CudaDirectJkDiagnostic diagnostic;
+    require(create_cuda_direct_jk_plan(0, systems, 1, screening, 64U << 20, &raw, diagnostic,
+                                       detail) == GENERATIVEQC_STATUS_SUCCESS,
+            detail.c_str());
+    std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+        raw, destroy_cuda_direct_jk_plan);
+    require(bool(plan->generated_exchange), "missing derivative owner");
+    auto& original = *plan->generated_exchange;
+    require(original.bounded_block_domain.prefix, "missing indexed domain");
+    const auto prefix_bytes =
+        (original.bounded_block_domain.row_count + 1U) * sizeof(std::uint64_t);
+    const auto full_budget = original.device_bytes;
+    check(cudaMemcpy(plan->density, density.data(), density.size() * sizeof(double),
+                     cudaMemcpyHostToDevice));
+    for (const auto budget : {full_budget, full_budget - 1U, full_budget - prefix_bytes}) {
+      auto owner = prepare_generated_exchange(host, original.shared->batch, plan->stream, 0,
+                                              screening, budget, true, false);
+      require(bool(owner), "tight prefix budget discarded admitted owner");
+      const bool indexed = owner->bounded_block_domain.prefix != nullptr;
+      require(indexed == (budget == full_budget), "incorrect prefix budget edge");
+      require(owner->device_bytes == full_budget - (indexed ? 0 : prefix_bytes),
+              "device inventory did not charge optional prefix exactly");
+      std::vector<double> actual;
+      check(execute_generated_full_range_energy_derivatives(*owner, false, plan->density, nullptr,
+                                                            1.0, -0.25, actual));
+      require(actual.size() == expected.size(), "batch source shape changed");
+      double error = 0;
+      for (std::size_t index = 0; index < actual.size(); ++index) {
+        require(std::isfinite(actual[index]), "nonfinite batch derivative");
+        error = std::max(error, std::abs(actual[index] - expected[index]));
+      }
+      require(error < 3e-10, "screened/budget batch derivative differs from CPU ERIs");
+      unsigned long long cursor = 0;
+      check(cudaMemcpy(&cursor, owner->force_cursor, sizeof(cursor), cudaMemcpyDeviceToHost));
+      const auto products = indexed ? owner->bounded_block_domain.quartet_count
+                                    : owner->shared->batch.total_shell_pair_block_quartets;
+      const auto pages =
+          indexed ? generativeqc::scf::detail::kBoundedDirectIndexedCandidatePages : 1U;
+      require(cursor == products * pages + owner->shared->worker_blocks,
+              "scheduler domain mismatch");
+      if (indexed && screening > 0)
+        require(products < owner->shared->batch.total_shell_pair_block_quartets,
+                "test fixture did not prune any rows");
+      std::cout << "screening=" << screening << " budget=" << budget << " indexed=" << indexed
+                << " products=" << products << " max_error=" << error << '\n';
+    }
+  }
+  std::cout << "CUDA indexed Schwarz batch and prefix-budget gates PASS\n";
+}
+
 void direct_providers(bool through_f_response, bool eri_tiles_only = false) {
   for (unsigned angular : {0U, 1U, 2U, 3U})
     for (auto representation : {GENERATIVEQC_BASIS_CARTESIAN, GENERATIVEQC_BASIS_SPHERICAL}) {
@@ -2088,6 +2191,7 @@ int main(int argc, char** argv) {
             "expected optional --mixed-census-only, --range-response-only, or "
             "--through-f-response");
     const bool through_f_response = argc == 2;
+    bounded_schwarz_schedule_budget();
     spd_optional_allocation_fallback();
     spd_canonical_range_values();
     direct_value_dispatch_selection();
