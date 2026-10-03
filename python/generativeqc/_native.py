@@ -460,7 +460,7 @@ class ScfDiagnostic(ctypes.Structure):
 
 
 class KsIterationDescriptor(ctypes.Structure):
-    """One physical iteration; energy_change has no finite value on step one."""
+    """Physical iteration; initial +inf/later -1 mark unavailable stage dE."""
 
     _fields_ = [
         ("struct_size", ctypes.c_uint32),

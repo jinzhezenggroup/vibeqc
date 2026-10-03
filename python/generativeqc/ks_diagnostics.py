@@ -30,7 +30,9 @@ class KsEnergyComponents:
 class KsIteration:
     """Current physical E/F/D and its proposed density change for one step.
 
-    Energy change is None on the first step: there is no preceding energy.
+    Energy change is None when a native iteration stage has no preceding
+    within-stage energy. The initial +infinity and an explicit later-stage
+    -1.0 native marker represent this unavailable baseline, never convergence.
     RMS maxima gate each spin separately. An occupation-stabilized proposal
     changes the iteration control only; all reported components are unshifted.
     """
@@ -69,7 +71,12 @@ class KsDiagnostic:
     history: tuple[KsIteration, ...]
 
     def to_payload(self) -> typing.Any:
-        """Return a finite JSON-compatible snapshot, including every iteration."""
+        """Copy every iteration; known unavailable stage baselines are null.
+
+        Finite physical records are JSON-compatible. Unexpected nonfinite
+        numerical values remain visible for callers to reject, not hidden as
+        missing stage baselines.
+        """
         return asdict(self)
 
 
@@ -145,7 +152,9 @@ def read_ks_diagnostic(
     rows = []
     for row in history:
         change = row.energy_change
-        if row.iteration == 1 and math.isinf(change) and change > 0:
+        if (row.iteration == 1 and math.isinf(change) and change > 0) or (
+            row.iteration > 1 and change == -1.0
+        ):
             change = None
         rows.append(
             KsIteration(

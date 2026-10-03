@@ -312,8 +312,36 @@ void native_scf() {
     options.compute_forces = false;
     options.max_iterations = 150;
     for (const auto run : {scf::run_lda_rks, scf::run_pbe_rks}) {
+      const auto check_physical = [&](const scf::ScfResult& result) {
+        const auto& ints = plan.one_electron();
+        const auto xc = run == scf::run_pbe_rks
+                            ? dft::integrate_pbe_rks_with_tail(basis, grid, result.density)
+                            : dft::integrate_lda_xc_pw_rks(basis, grid, result.density);
+        const auto jk = plan.build(result.density);
+        auto fock = scf::assemble_fock(plan.strategy(), ints.hcore, jk).alpha;
+        for (std::size_t i = 0; i < fock.size(); ++i) fock[i] += xc.potential[i];
+        const double energy = ints.nuclear_repulsion +
+                              scf::reference::dot(result.density, ints.hcore) +
+                              0.5 * scf::reference::dot(result.density, jk.coulomb) + xc.energy;
+        const auto residual =
+            scf::reference::commutator_residual(fock, result.density, ints.overlap, basis.nao);
+        double maximum = 0.0;
+        for (double value : residual) maximum = std::max(maximum, std::abs(value));
+        require(std::abs(energy - result.energy) < 1e-12 &&
+                    std::abs(scf::reference::residual_rms(residual) -
+                             result.physical_residual_rms) < 1e-13,
+                "RKS returned D/KS-energy/RMS from different physical states");
+        if (result.converged)
+          require(maximum <= std::min(1e-8, options.density_tolerance),
+                  "RKS accepted an RMS-small maximum-large physical commutator");
+        require(result.dft_diagnostic.history.size() == result.iterations &&
+                    result.iterations <=
+                        (options.experimental_incremental_xc ? 2U : 1U) * options.max_iterations,
+                "RKS closure exceeded the existing iteration/history budget");
+      };
       options.xc_density_route = XcDensityRoute::DensityMatrix;
       const auto d = run(plan, basis, grid, options, nullptr);
+      check_physical(d);
       require(d.converged && !d.xc_density_factor &&
                   d.xc_density_diagnostic.density_calls == d.fock_builds &&
                   d.xc_density_diagnostic.orbital_calls == 0 &&
@@ -325,6 +353,7 @@ void native_scf() {
         options.incremental_xc_max_density_rms = 1.0e6;
         options.incremental_xc_noise_density_rms = 0.0;
         const auto incremental = run(plan, basis, grid, options, nullptr);
+        check_physical(incremental);
         const auto& inc = incremental.dft_diagnostic.incremental_xc;
         require(
             incremental.converged && inc.enabled && inc.model_identity != 0 &&
@@ -351,6 +380,7 @@ void native_scf() {
         options.incremental_xc_max_updates = 1000;
         options.incremental_xc_max_density_rms = 1.0e-20;
         const auto drift_rebuild = run(plan, basis, grid, options, nullptr);
+        check_physical(drift_rebuild);
         require(drift_rebuild.converged &&
                     drift_rebuild.dft_diagnostic.incremental_xc.final_audits >= 1 &&
                     std::abs(drift_rebuild.energy - d.energy) < 2e-10,
@@ -361,6 +391,7 @@ void native_scf() {
         options.incremental_xc_max_density_rms = 1.0e6;
         options.incremental_xc_noise_density_rms = 1.0e6;
         const auto noise_rebuild = run(plan, basis, grid, options, nullptr);
+        check_physical(noise_rebuild);
         require(noise_rebuild.converged &&
                     noise_rebuild.dft_diagnostic.incremental_xc.final_audits >= 1 &&
                     std::abs(noise_rebuild.energy - d.energy) < 2e-10,
@@ -373,6 +404,7 @@ void native_scf() {
         options.incremental_xc_max_density_rms = 5.0e-2;
         options.strict_initial_density = true;
         const auto warm_incremental = run(plan, basis, grid, options, &d.density);
+        check_physical(warm_incremental);
         options.strict_initial_density = false;
         require(warm_incremental.converged && warm_incremental.initial_density_used &&
                     warm_incremental.dft_diagnostic.incremental_xc.model_identity !=
@@ -383,6 +415,7 @@ void native_scf() {
 
         options.max_iterations = 1;
         const auto failed_incremental = run(plan, basis, grid, options, nullptr);
+        check_physical(failed_incremental);
         options.max_iterations = 150;
         require(!failed_incremental.converged &&
                     failed_incremental.dft_diagnostic.incremental_xc.model_identity !=
@@ -408,6 +441,7 @@ void native_scf() {
                                                 DensityFactorSpin::Restricted, result.density),
                 "native RKS exported stale final orbitals");
       };
+      check_physical(c);
       check_current(c);
       require(c.xc_density_diagnostic.orbital_calls == c.fock_builds &&
                   c.xc_density_diagnostic.fallback_calls == 0 &&
@@ -420,6 +454,7 @@ void native_scf() {
       options.strict_initial_density = true;
       const auto warm = run(plan, basis, grid, options, &d.density);
       options.strict_initial_density = false;
+      check_physical(warm);
       check_current(warm);
       require(warm.converged && warm.initial_density_used &&
                   warm.xc_density_diagnostic.density_calls == 1 &&
@@ -434,6 +469,7 @@ void native_scf() {
       options.max_iterations = 150;
       require(!unfinished.converged && unfinished.fock_builds == 1,
               "nonconvergence test unexpectedly converged");
+      check_physical(unfinished);
       check_current(unfinished);
       check_current(c);  // Later replays must not mutate an earlier snapshot.
       std::cout << "native RKS " << (run == scf::run_lda_rks ? "LDA" : "PBE-scaled-v1")

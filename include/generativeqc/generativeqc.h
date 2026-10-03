@@ -1091,7 +1091,10 @@ typedef struct generativeqc_scf_diagnostic {
 } generativeqc_scf_diagnostic;
 
 /** A physical KS iteration before any optional final RKS validation rebuild.
- * The first energy_change is +infinity because no preceding energy exists.
+ * An initial energy_change of +infinity means no preceding energy exists.
+ * At a later CPU RKS stage's first iteration, energy_change is -1.0 when its
+ * within-stage baseline is unavailable. This reserved marker is not a measured
+ * difference or convergence evidence; actual nonnegative changes are unaltered.
  * Density change and residual are maxima of the spin RMS values (RKS has one
  * total-density matrix), distinct from the joined-spin legacy result RMS. */
 typedef struct generativeqc_ks_iteration {

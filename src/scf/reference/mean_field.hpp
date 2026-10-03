@@ -33,6 +33,8 @@ Matrix commutator_residual(const Matrix& fock, const Matrix& density, const Matr
 double density_rms(const Matrix& a, const Matrix& b);
 /** RMS physical residual, distinct from an update or DIIS extrapolation error. */
 double residual_rms(const Matrix& residual);
+/** Maximum absolute entry; nonfinite input fails closed with infinity. */
+double residual_max_abs(const Matrix& residual);
 
 }  // namespace generativeqc::scf::reference
 #endif

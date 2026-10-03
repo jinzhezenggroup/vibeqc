@@ -120,8 +120,12 @@ void check_state(bool pbe, unsigned max_iterations, bool hydroxyl = false,
     require(scf::reference::density_rms(projected, *spin) < 1e-12,
             "UKS occupation stabilization lost the integer-occupation projector");
   }
+  double maximum_entry = 0.0;
+  for (const auto* residual : {&residual_a, &residual_b})
+    for (double value : *residual) maximum_entry = std::max(maximum_entry, std::abs(value));
   if (result.converged)
-    require(maximum_spin_rms < options.density_tolerance &&
+    require(maximum_entry <= std::min(1e-8, options.density_tolerance) &&
+                maximum_spin_rms < options.density_tolerance &&
                 result.density_rms < options.density_tolerance &&
                 result.energy_change < options.energy_tolerance,
             "UKS returned success without passing all physical-state gates");

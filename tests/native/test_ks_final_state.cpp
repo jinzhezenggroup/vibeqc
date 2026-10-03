@@ -6,6 +6,7 @@
 
 #include "dft/ks_final_state.hpp"
 #include "dft/semilocal_family.hpp"
+#include "scf/reference/mean_field.hpp"
 
 namespace {
 using namespace generativeqc;
@@ -55,6 +56,28 @@ struct Fixture {
   }
   void sync() { physical.identity = candidate.identity = id; }
 };
+
+void residual_norm_contract() {
+  for (double tolerance : {1e-12, 1e-10, 1e-7}) {
+    const double gate = std::min(1e-8, tolerance);
+    Matrix sparse(4096, 0.0);
+    sparse[1] = gate;
+    sparse[64] = -gate;
+    require(
+        reference::residual_rms(sparse) < tolerance && reference::residual_max_abs(sparse) == gate,
+        "sparse maximum commutator was diluted into RMS or lost inclusive boundary");
+    sparse[1] = std::nextafter(gate, 1.0);
+    require(reference::residual_max_abs(sparse) > gate,
+            "maximum commutator accepted above the unchanged boundary");
+  }
+  require(reference::residual_max_abs({}) == 0 && reference::residual_max_abs({-0.0, 0.0}) == 0,
+          "empty/zero residual norm changed");
+  for (double value :
+       {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity()})
+    require(!std::isfinite(reference::residual_max_abs({0, value})),
+            "nonfinite maximum commutator did not fail closed");
+}
 
 void analytic_rks_and_uks() {
   Fixture rks;
@@ -236,6 +259,7 @@ void model_and_state_rejection() {
 
 int main() {
   try {
+    residual_norm_contract();
     analytic_rks_and_uks();
     cuda_global_hybrid_identity();
     identity_rejection();

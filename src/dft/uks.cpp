@@ -431,7 +431,10 @@ ScfResult run_uks_impl(
     final = std::move(next);
     if (result.energy_change < options.energy_tolerance &&
         density_change < options.density_tolerance &&
-        diagnostic.physical_residual < residual_gate) {
+        diagnostic.physical_residual < residual_gate &&
+        (strategy.backend != FockBackend::Cpu ||
+         std::max(residual_max_abs(ra), residual_max_abs(rb)) <=
+             std::min(1.0e-8, options.density_tolerance))) {
       result.converged = true;
       break;
     }

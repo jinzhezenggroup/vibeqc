@@ -1,0 +1,125 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "Narrow CPU final-closure correction plus frozen original-geometry PBE96 same-coordinate fixed-density gates; original cross-node failure and wrong-grid invalidation retained. No performance/default/large-force or universal-export claim.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 10414,
+      "path": "README.md",
+      "role": "summary",
+      "sha256": "3d9c701e2514021f88a5d76b4bc861d7ec226d02e4dfd703371f55be573d50e3"
+    },
+    {
+      "bytes": 9451,
+      "path": "common.py",
+      "role": "reproduction",
+      "sha256": "964509328d86ee1b122cf03275868b464c6d51e4792038363f452e3f3093f5c1"
+    },
+    {
+      "bytes": 7160,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "227b523322b2716612ba247f80458ac0e801aab3357b4336c584e51a6213c237"
+    },
+    {
+      "bytes": 1833,
+      "path": "explicit_grid.py",
+      "role": "reproduction",
+      "sha256": "da21d5f3a1f11f752d9958e621c3e09f9de6327796202557e323f350597e6e5f"
+    },
+    {
+      "bytes": 1277,
+      "path": "grid_audit.py",
+      "role": "reproduction",
+      "sha256": "dd33e3dea90bac39fa9c8639a6efabfc9a62a9f11fd9e1f851d5952f4a66c89f"
+    },
+    {
+      "bytes": 14633,
+      "path": "independent_state.py",
+      "role": "reproduction",
+      "sha256": "dbad4e3307fd9f823c57ba8d95c35f987f5069503c35845d89cf804f118b738f"
+    },
+    {
+      "bytes": 7481,
+      "path": "input.json",
+      "role": "input",
+      "sha256": "725428d4b5729b6452b7bc6a4b6409cafe24a7f19c5e35e51fbbfc1163f7f411"
+    },
+    {
+      "bytes": 10085,
+      "path": "native_state.py",
+      "role": "reproduction",
+      "sha256": "e7e4d02307878fea967646d7e703eb93de6d1da62ba61bfb075bf7303400576d"
+    },
+    {
+      "bytes": 2808,
+      "path": "oracle_state.py",
+      "role": "reproduction",
+      "sha256": "554aedd5af07832fd939ed311f84c0a2a440c7ac52fd53a1f1e73efe6100e4ff"
+    },
+    {
+      "bytes": 31917,
+      "path": "provenance.json",
+      "role": "summary",
+      "sha256": "47dc1978eae7648d61d49bb90f89eeed02d34647f19cbb4a63ebf1da7bd023b5"
+    },
+    {
+      "bytes": 2657,
+      "path": "reconstruct_source.py",
+      "role": "reproduction",
+      "sha256": "1fc276e62da8980d2a7aae888c085b39f21b49fa92d01c6ad632f1915dfbd344"
+    },
+    {
+      "bytes": 9409,
+      "path": "reproduce.py",
+      "role": "reproduction",
+      "sha256": "ce69b7107583d1f455cf58bdb8ccc7ded34eea21fd0a2bbca4883b9cdf6a6dd8"
+    },
+    {
+      "bytes": 1541,
+      "path": "run_small_controls.sh",
+      "role": "reproduction",
+      "sha256": "c835e9de5b219a505ae4f407a74182a187bb26ff579350fa6115a77615cef524"
+    },
+    {
+      "bytes": 1428,
+      "path": "run_union_controls.sh",
+      "role": "reproduction",
+      "sha256": "39f5f9c28e1e3fb66f22367cbb7fdbfe12fc3dee071494bd5db77095f0fc2c14"
+    },
+    {
+      "bytes": 3148,
+      "path": "safety.py",
+      "role": "reproduction",
+      "sha256": "6087f7b6265c302b96e87ad3e8586a75dcb008ab3d71b9b359a43d7b142e32a3"
+    },
+    {
+      "bytes": 20273,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "bad360a5bafcc3ae4ec70eb6d781c86c3f83c648e7978174edea7a7923919d31"
+    },
+    {
+      "bytes": 7810,
+      "path": "test_reproduction.py",
+      "role": "reproduction",
+      "sha256": "defaef16c28fa398c3576f267e0dbf65548af0bff72aeeceb60420a0d6dcf097"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "-B",
+      "benchmarks/results/cpu-ks-final-closure-20261003/reproduce.py",
+      "verify"
+    ]
+  },
+  "schema": "generativeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "b3c9f339de410c9c167d56a03fa7b5ed18cde825"
+  }
+}

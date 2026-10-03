@@ -1,6 +1,8 @@
 #include "scf/reference/mean_field.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 #include "generated_scf_array_native.hpp"
@@ -76,6 +78,15 @@ double density_rms(const Matrix& a, const Matrix& b) {
     square += delta * delta;
   }
   return std::sqrt(square / static_cast<double>(a.size()));
+}
+
+double residual_max_abs(const Matrix& residual) {
+  double maximum = 0.0;
+  for (double value : residual) {
+    if (!std::isfinite(value)) return std::numeric_limits<double>::infinity();
+    maximum = std::max(maximum, std::abs(value));
+  }
+  return maximum;
 }
 
 double residual_rms(const Matrix& residual) {
